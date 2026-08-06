@@ -1,0 +1,7 @@
+// Copy this file to Debug.local.xcconfig in the same directory.
+// Debug.local.xcconfig is gitignored and overrides Debug.xcconfig for local device testing.
+//
+// Use a PocketBase URL your iPhone or iPad can reach. Examples:
+// - Staging:  POCKETBASE_BASE_URL = https:/$()/staging.example.com
+// - LAN host: POCKETBASE_BASE_URL = http:/$()/192.168.1.42:8090
+POCKETBASE_BASE_URL = https:/$()/staging.example.invalid

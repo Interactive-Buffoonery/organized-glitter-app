@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Berry Cream — dark mode options</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #17151c; color: #eee; padding: 32px 16px 64px;
+  }
+  h1 { font-family: Caveat, cursive; font-size: 52px; text-align: center; }
+  .intro { text-align: center; color: #aaa; max-width: 660px; margin: 4px auto 40px; font-size: 15px; line-height: 1.5; }
+  .grid { display: flex; flex-wrap: wrap; gap: 40px 28px; justify-content: center; max-width: 1400px; margin: 0 auto; }
+  .option { width: 390px; max-width: 100%; }
+  .option-name { font-family: Caveat, cursive; font-size: 34px; margin-bottom: 2px; }
+  .option-desc { color: #aaa; font-size: 13.5px; line-height: 1.5; margin-bottom: 14px; min-height: 84px; }
+  .phone {
+    width: 390px; max-width: 100%; height: 760px; border-radius: 44px; overflow: hidden;
+    border: 6px solid #000; box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    display: flex; flex-direction: column; color: var(--fg);
+  }
+  .screen { flex: 1; overflow: hidden; padding: 14px 18px 0; background: var(--bg-gradient); display: flex; flex-direction: column; }
+  .statusbar { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; padding: 6px 10px 14px; }
+  .h1 { font-family: Caveat, cursive; font-size: 40px; font-weight: 700; line-height: 1; }
+  .subtitle { font-size: 14px; color: var(--muted); margin: 4px 0 16px; }
+  .sticker {
+    border-radius: 20px; border: 1.5px solid var(--outline);
+    box-shadow: 2.5px 3.5px 0 var(--shadow);
+    padding: 14px; margin-bottom: 14px;
+    color: var(--card-fg, inherit);
+  }
+  .sticker .sub, .sticker .lbl { color: var(--card-muted, var(--muted)); }
+  .metrics { display: flex; gap: 12px; margin-bottom: 14px; }
+  .metric { flex: 1; margin-bottom: 0; text-align: center; padding: 12px 8px; }
+  .metric .num { font-size: 26px; font-weight: 800; }
+  .metric .lbl { font-size: 11px; font-weight: 600; }
+  .section-h { font-family: Caveat, cursive; font-size: 27px; font-weight: 600; margin: 4px 0 10px; }
+  .proj { display: flex; align-items: center; gap: 12px; }
+  .thumb {
+    width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid var(--outline);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    background: rgba(255,255,255,var(--thumb-glass)); flex-shrink: 0;
+  }
+  .proj .info { flex: 1; min-width: 0; }
+  .proj .title { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj .sub { font-size: 12.5px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px;
+    background: var(--badge-bg); color: var(--badge-fg); border: 1px solid var(--outline);
+    flex-shrink: 0;
+  }
+  .pill-btn {
+    display: block; width: 100%; text-align: center; padding: 13px;
+    border-radius: 999px; border: 1.5px solid var(--outline);
+    box-shadow: 2.5px 3.5px 0 var(--shadow);
+    font-weight: 800; font-size: 15px; color: var(--btn-fg); background: var(--btn-bg);
+    margin: 4px 0 16px;
+  }
+  .tabbar {
+    margin-top: auto; display: flex; justify-content: space-around; align-items: center;
+    padding: 12px 8px calc(12px + 14px);
+    background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255,255,255,.25);
+    margin-left: -18px; margin-right: -18px;
+  }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; color: var(--muted); }
+  .tab.active { color: var(--primary); }
+  .tab .ico { font-size: 20px; }
+</style>
+</head>
+<body>
+<h1>Berry Cream 🍓 dark mode options</h1>
+<p class="intro">The light theme you picked, plus four different strategies for its dark companion. Same sticker language throughout — what changes is where the color lives at night.</p>
+<div class="grid" id="grid"></div>
+
+<script>
+const OPTIONS = [
+  {
+    name: "Reference · Berry Cream light",
+    desc: "The light theme you liked, unchanged, for side-by-side comparison. Blush-to-lilac gradient, strawberry/lilac/mint/periwinkle/butter surfaces, raspberry primary.",
+    v: {
+      bg: "linear-gradient(170deg,#fdeef3 0%,#f8e9f6 45%,#e7defa 100%)",
+      fg:"#46323e", muted:"#84687a", outline:"#3a2531", shadow:"rgba(58,37,49,.85)",
+      primary:"#d23c77", surfaces:["#fbd0dd","#ecd6fa","#cdeedd","#d3defb","#fdeab8"],
+      btnBg:"#fbd8b8", btnFg:"#4d3016", badgeBg:"rgba(210,60,119,.14)", badgeFg:"#d23c77",
+      glass:"rgba(255,255,255,.55)", thumbGlass:".65"
+    }
+  },
+  {
+    name: "A · Midnight Berry",
+    desc: "Near-black, OLED-friendly. The base goes almost neutral (a whisper of berry in the charcoal) and the card fills go quiet too — color comes from the glowing pink primary, badges, and outlines instead of the surfaces. The most 'serious iOS dark mode' of the four.",
+    v: {
+      bg: "linear-gradient(170deg,#211823 0%,#1d1a28 50%,#181622 100%)",
+      fg:"#efe5ec", muted:"#a898a4", outline:"#8a7a86", shadow:"rgba(0,0,0,.75)",
+      primary:"#f58bb5", surfaces:["#41252e","#372a4a","#233529","#28304c","#413620"],
+      btnBg:"#3f2e1c", btnFg:"#f6dcae", badgeBg:"rgba(245,139,181,.16)", badgeFg:"#f58bb5",
+      glass:"rgba(22,18,26,.6)", thumbGlass:".08"
+    }
+  },
+  {
+    name: "B · Glow Stickers",
+    desc: "The bold one: the background goes dark but the cards DON'T — they keep the exact light-mode pastel fills with dark text, like bright stickers on a dark scrapbook page. Maximum cheerfulness at night, zero extra colors to maintain (surfaces are shared with light mode).",
+    v: {
+      bg: "linear-gradient(170deg,#251a24 0%,#221d33 50%,#1d1b2e 100%)",
+      fg:"#f2e6ee", muted:"#b7a3b2", outline:"#2f2029", shadow:"rgba(0,0,0,.85)",
+      primary:"#f58bb5", surfaces:["#fbd0dd","#ecd6fa","#cdeedd","#d3defb","#fdeab8"],
+      cardFg:"#46323e", cardMuted:"#84687a",
+      btnBg:"#fbd8b8", btnFg:"#4d3016", badgeBg:"rgba(210,60,119,.14)", badgeFg:"#b02a60",
+      glass:"rgba(30,22,34,.55)", thumbGlass:".65"
+    }
+  },
+  {
+    name: "C · Dusk Rose",
+    desc: "Not fully dark — a dimmed 'dusk' theme in the spirit of Catppuccin Frappé. Mid-tone mauve base with surfaces that stay visibly rosy/colorful. Cozy rather than stark; the sticker shadows still read. Good if true dark mode always feels like the colors died.",
+    v: {
+      bg: "linear-gradient(170deg,#3d2c3a 0%,#39304a 50%,#333050 100%)",
+      fg:"#f4e8f0", muted:"#c9b2c2", outline:"#b99cae", shadow:"rgba(0,0,0,.55)",
+      primary:"#f7a3c3", surfaces:["#6b4254","#5d4a7c","#426150","#49537c","#6a5b36"],
+      btnBg:"#6b5632", btnFg:"#fde6bd", badgeBg:"rgba(247,163,195,.18)", badgeFg:"#f7a3c3",
+      glass:"rgba(60,44,58,.55)", thumbGlass:".12"
+    }
+  },
+  {
+    name: "D · Berry Navy",
+    desc: "Swaps the plum warmth for a cool deep navy-violet, so the pinks and peaches pop by contrast instead of blending in. Card fills stay softly tinted. Feels more 'night sky' than 'dark wine' — the biggest personality shift from the light theme while staying clearly related.",
+    v: {
+      bg: "linear-gradient(170deg,#1e2136 0%,#241f40 50%,#2a1e38 100%)",
+      fg:"#e8e7f4", muted:"#a3a1c0", outline:"#8b89ad", shadow:"rgba(0,0,0,.7)",
+      primary:"#f58bb5", surfaces:["#4b2a3c","#37325e","#2a4141","#2d3a60","#4a3f28"],
+      btnBg:"#4a3620", btnFg:"#fbd8b8", badgeBg:"rgba(245,139,181,.16)", badgeFg:"#f58bb5",
+      glass:"rgba(28,28,46,.55)", thumbGlass:".08"
+    }
+  }
+];
+
+const PROJECTS = [
+  { emoji:"💎", title:"Aurora Wolf", sub:"Diamond Art Club · 45×60", badge:"▶ In progress", s:0 },
+  { emoji:"🎨", title:"Enchanted Forest, p. 12", sub:"Coloring · Mythographic", badge:"▶ In progress", s:1 },
+  { emoji:"💎", title:"Cosmic Mandala", sub:"Dreamer Designs · 40×40", badge:"✓ Kitted", s:3 },
+];
+
+function phone(v) {
+  let vars = `--bg-gradient:${v.bg};--fg:${v.fg};--muted:${v.muted};--outline:${v.outline};--shadow:${v.shadow};--primary:${v.primary};--btn-bg:${v.btnBg};--btn-fg:${v.btnFg};--badge-bg:${v.badgeBg};--badge-fg:${v.badgeFg};--glass:${v.glass};--thumb-glass:${v.thumbGlass}`;
+  if (v.cardFg) vars += `;--card-fg:${v.cardFg};--card-muted:${v.cardMuted}`;
+  const projCards = PROJECTS.map(p => `
+    <div class="sticker proj" style="background:${v.surfaces[p.s]}">
+      <div class="thumb">${p.emoji}</div>
+      <div class="info"><div class="title">${p.title}</div><div class="sub">${p.sub}</div></div>
+      <span class="badge">${p.badge}</span>
+    </div>`).join("");
+  return `
+  <div class="phone" style="${vars}">
+    <div class="screen">
+      <div class="statusbar"><span>9:48</span><span>📶 🔋</span></div>
+      <div class="h1">Overview</div>
+      <div class="subtitle">Welcome back, Sarah ✨</div>
+      <div class="metrics">
+        <div class="sticker metric" style="background:${v.surfaces[4]}"><div class="num">12</div><div class="lbl">IN PROGRESS</div></div>
+        <div class="sticker metric" style="background:${v.surfaces[2]}"><div class="num">34</div><div class="lbl">COMPLETED</div></div>
+        <div class="sticker metric" style="background:${v.surfaces[1]}"><div class="num">7</div><div class="lbl">WISHLIST</div></div>
+      </div>
+      <div class="section-h">In progress</div>
+      ${projCards}
+      <a class="pill-btn">＋ Add Project</a>
+      <div class="tabbar">
+        <div class="tab active"><span class="ico">🏠</span>Overview</div>
+        <div class="tab"><span class="ico">💎</span>Library</div>
+        <div class="tab"><span class="ico">➕</span>Create</div>
+        <div class="tab"><span class="ico">🎲</span>Random</div>
+        <div class="tab"><span class="ico">👤</span>Account</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+document.getElementById("grid").innerHTML = OPTIONS.map(o => `
+  <div class="option">
+    <div class="option-name">${o.name}</div>
+    <p class="option-desc">${o.desc}</p>
+    ${phone(o.v)}
+  </div>`).join("");
+</script>
+</body>
+</html>

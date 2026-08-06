@@ -1,0 +1,10 @@
+.DS_Store
+DerivedData/
+.derived-data/
+.derived-data-*/
+build/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+.xcodebuildmcp/
+*.local.xcconfig

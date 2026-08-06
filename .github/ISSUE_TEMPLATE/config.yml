@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://organizedglitter.app/support
+    about: Report security and privacy problems privately. Don’t open a public issue.
+  - name: Organized Glitter support
+    url: https://organizedglitter.app/support
+    about: Get help with the official app or web service.

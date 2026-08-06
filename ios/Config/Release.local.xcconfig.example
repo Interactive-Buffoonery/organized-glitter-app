@@ -1,0 +1,4 @@
+// Copy this file to Release.local.xcconfig in the same directory.
+// Release.local.xcconfig is gitignored and overrides Release.xcconfig locally.
+// Replace the placeholder with the Release PocketBase URL supplied privately.
+POCKETBASE_BASE_URL = https:/$()/example.invalid

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organized Glitter — Theme Candidates</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #17151c; color: #eee; padding: 32px 16px 64px;
+  }
+  h1 { font-family: Caveat, cursive; font-size: 52px; text-align: center; }
+  .intro { text-align: center; color: #aaa; max-width: 640px; margin: 4px auto 40px; font-size: 15px; line-height: 1.5; }
+  .theme-section { max-width: 900px; margin: 0 auto 72px; }
+  .theme-name { font-family: Caveat, cursive; font-size: 38px; margin-bottom: 2px; }
+  .theme-desc { color: #aaa; font-size: 14px; margin-bottom: 20px; max-width: 640px; line-height: 1.5; }
+  .phones { display: flex; gap: 24px; flex-wrap: wrap; }
+  .phone {
+    width: 390px; max-width: 100%; height: 760px; border-radius: 44px; overflow: hidden;
+    border: 6px solid #000; box-shadow: 0 12px 40px rgba(0,0,0,.5);
+    position: relative; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    color: var(--fg);
+  }
+  .screen { flex: 1; overflow: hidden; padding: 14px 18px 0; background: var(--bg-gradient); display: flex; flex-direction: column; }
+  .statusbar { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; padding: 6px 10px 14px; }
+  .h1 { font-family: Caveat, cursive; font-size: 40px; font-weight: 700; line-height: 1; }
+  .subtitle { font-size: 14px; color: var(--muted); margin: 4px 0 16px; }
+  .sticker {
+    border-radius: 20px; border: 1.5px solid var(--outline);
+    box-shadow: 2.5px 3.5px 0 var(--shadow);
+    padding: 14px; margin-bottom: 14px;
+  }
+  .metrics { display: flex; gap: 12px; margin-bottom: 14px; }
+  .metric { flex: 1; margin-bottom: 0; text-align: center; padding: 12px 8px; }
+  .metric .num { font-size: 26px; font-weight: 800; }
+  .metric .lbl { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .section-h { font-family: Caveat, cursive; font-size: 27px; font-weight: 600; margin: 4px 0 10px; }
+  .proj { display: flex; align-items: center; gap: 12px; }
+  .thumb {
+    width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid var(--outline);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    background: rgba(255,255,255,var(--thumb-glass)); flex-shrink: 0;
+  }
+  .proj .info { flex: 1; min-width: 0; }
+  .proj .title { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj .sub { font-size: 12.5px; color: var(--muted); }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px;
+    background: var(--badge-bg); color: var(--badge-fg); border: 1px solid var(--outline);
+    flex-shrink: 0;
+  }
+  .pill-btn {
+    display: block; width: 100%; text-align: center; padding: 13px;
+    border-radius: 999px; border: 1.5px solid var(--outline);
+    box-shadow: 2.5px 3.5px 0 var(--shadow);
+    font-weight: 800; font-size: 15px; color: var(--btn-fg); background: var(--btn-bg);
+    margin: 4px 0 16px;
+  }
+  .tabbar {
+    margin-top: auto; display: flex; justify-content: space-around; align-items: center;
+    padding: 12px 8px calc(12px + 14px);
+    background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255,255,255,.25);
+    margin-left: -18px; margin-right: -18px;
+  }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; color: var(--muted); }
+  .tab.active { color: var(--primary); }
+  .tab .ico { font-size: 20px; }
+  .variant-label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #888; margin: 0 0 8px 6px; }
+  .phone-col { display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<h1>Organized Glitter ✨ theme candidates</h1>
+<p class="intro">Five bright-and-happy directions, each with a tuned dark variant. All keep Caveat headers, the sticker-card treatment (outline + offset shadow), pill buttons, and a glass tab bar. Surfaces cycle peach / lavender / mint / periwinkle / butter tints per theme.</p>
+<div id="themes"></div>
+
+<script>
+const THEMES = [
+  {
+    name: "1 · Latte Pop",
+    desc: "Catppuccin Latte's accent hues (peach, lavender, green, blue, yellow) lifted into true pastels on a cream base. Keeps the mauve primary — the closest to \"Catppuccin, but happy.\" Dark variant deepens the same hues Macchiato-style.",
+    light: {
+      bg: "linear-gradient(170deg,#f7f2e9 0%,#e3ecf7 45%,#dfe0fa 100%)",
+      fg:"#3b3648", muted:"#6e6880", outline:"#2d2a33", shadow:"rgba(45,42,51,.85)",
+      primary:"#8839ef", surfaces:["#f8d3bb","#dcdcfb","#d2ecc8","#ccdcfa","#f6e5b4"],
+      btnBg:"#c1f1dd", btnFg:"#1d3a2e", badgeBg:"rgba(136,57,239,.14)", badgeFg:"#8839ef",
+      glass:"rgba(255,255,255,.55)", thumbGlass:".65"
+    },
+    dark: {
+      bg: "linear-gradient(170deg,#241f2e 0%,#232637 45%,#282443 100%)",
+      fg:"#e7e2f2", muted:"#a9a3bd", outline:"#8f87a8", shadow:"rgba(0,0,0,.7)",
+      primary:"#c6a0f6", surfaces:["#4d3527","#37345c","#2e4230","#2c3a58","#4a4028"],
+      btnBg:"#2e4a3e", btnFg:"#c1f1dd", badgeBg:"rgba(198,160,246,.18)", badgeFg:"#c6a0f6",
+      glass:"rgba(30,26,40,.55)", thumbGlass:".08"
+    }
+  },
+  {
+    name: "2 · Berry Cream",
+    desc: "Pink-forward and sweet: blush-to-lilac gradient, strawberry and rose surfaces, raspberry primary. The most \"cheerful craft room\" of the set. Dark variant goes plum instead of grey.",
+    light: {
+      bg: "linear-gradient(170deg,#fdeef3 0%,#f8e9f6 45%,#e7defa 100%)",
+      fg:"#46323e", muted:"#84687a", outline:"#3a2531", shadow:"rgba(58,37,49,.85)",
+      primary:"#d23c77", surfaces:["#fbd0dd","#ecd6fa","#cdeedd","#d3defb","#fdeab8"],
+      btnBg:"#fbd8b8", btnFg:"#4d3016", badgeBg:"rgba(210,60,119,.14)", badgeFg:"#d23c77",
+      glass:"rgba(255,255,255,.55)", thumbGlass:".65"
+    },
+    dark: {
+      bg: "linear-gradient(170deg,#2b1e2a 0%,#2c2136 45%,#251f3d 100%)",
+      fg:"#f2e4ee", muted:"#bda2b6", outline:"#a487a0", shadow:"rgba(0,0,0,.7)",
+      primary:"#f58bb5", surfaces:["#4f2b38","#42305a","#2c4438","#31395c","#4d3f22"],
+      btnBg:"#513a24", btnFg:"#fbd8b8", badgeBg:"rgba(245,139,181,.18)", badgeFg:"#f58bb5",
+      glass:"rgba(35,25,38,.55)", thumbGlass:".08"
+    }
+  },
+  {
+    name: "3 · Seafoam Meadow",
+    desc: "The Pagebound Library look: cream → seafoam → periwinkle. Fresh and calm with color coming from the cards. Purple primary keeps the OG brand anchor. Dark variant is a deep teal-navy.",
+    light: {
+      bg: "linear-gradient(170deg,#f7f3e9 0%,#d9f0e6 48%,#ccd3f6 100%)",
+      fg:"#2f3a3c", muted:"#5f7376", outline:"#243233", shadow:"rgba(36,50,51,.85)",
+      primary:"#8535d4", surfaces:["#fad8c0","#ded9fa","#c8ecd4","#c9defa","#f4e6b5"],
+      btnBg:"#bff0e2", btnFg:"#1c3b32", badgeBg:"rgba(133,53,212,.13)", badgeFg:"#8535d4",
+      glass:"rgba(255,255,255,.55)", thumbGlass:".65"
+    },
+    dark: {
+      bg: "linear-gradient(170deg,#1c2826 0%,#1e2a33 48%,#232744 100%)",
+      fg:"#e2ecea", muted:"#9db4b0", outline:"#7f9a95", shadow:"rgba(0,0,0,.7)",
+      primary:"#c493f5", surfaces:["#4b3423","#363156","#274134","#2a3a55","#474025"],
+      btnBg:"#26473c", btnFg:"#bff0e2", badgeBg:"rgba(196,147,245,.18)", badgeFg:"#c493f5",
+      glass:"rgba(24,34,32,.55)", thumbGlass:".08"
+    }
+  },
+  {
+    name: "4 · Sunset Sherbet",
+    desc: "The Pagebound Home look: warm peach-coral melting into lavender. The most energetic option — feels like the home-screen mesh gradient. Dark variant keeps an ember warmth instead of going cold.",
+    light: {
+      bg: "linear-gradient(160deg,#fde4cf 0%,#fcd5da 40%,#dcd4f8 100%)",
+      fg:"#463236", muted:"#7f6169", outline:"#38262b", shadow:"rgba(56,38,43,.85)",
+      primary:"#8535d4", surfaces:["#fbcfae","#e4d6fa","#cdecd2","#cfdcfa","#fce8ae"],
+      btnBg:"#c4f0e6", btnFg:"#1c3b34", badgeBg:"rgba(133,53,212,.13)", badgeFg:"#8535d4",
+      glass:"rgba(255,255,255,.5)", thumbGlass:".6"
+    },
+    dark: {
+      bg: "linear-gradient(160deg,#33211d 0%,#321f2c 40%,#272045 100%)",
+      fg:"#f4e6e2", muted:"#c0a09b", outline:"#a8867f", shadow:"rgba(0,0,0,.7)",
+      primary:"#c493f5", surfaces:["#523222","#3d2f58","#2c4232","#303a57","#4f4122"],
+      btnBg:"#274a41", btnFg:"#c4f0e6", badgeBg:"rgba(196,147,245,.18)", badgeFg:"#c493f5",
+      glass:"rgba(40,26,30,.55)", thumbGlass:".08"
+    }
+  },
+  {
+    name: "5 · Grape Soda",
+    desc: "Purple-maximalist: leans all the way into the existing #8535D4 identity. Lavender-to-sky gradient with lilac and periwinkle surfaces. The safest brand evolution — Organized Glitter turned up to 11.",
+    light: {
+      bg: "linear-gradient(170deg,#f0e7fc 0%,#e3d9fa 45%,#cfe8f8 100%)",
+      fg:"#382f4a", muted:"#6d6485", outline:"#2b2338", shadow:"rgba(43,35,56,.85)",
+      primary:"#8535d4", surfaces:["#e3d3fb","#cfd4fb","#f9d3c4","#cbe9dd","#f7e3b2"],
+      btnBg:"#d2f2c8", btnFg:"#26401d", badgeBg:"rgba(133,53,212,.14)", badgeFg:"#8535d4",
+      glass:"rgba(255,255,255,.55)", thumbGlass:".65"
+    },
+    dark: {
+      bg: "linear-gradient(170deg,#251d38 0%,#282044 45%,#1f2b40 100%)",
+      fg:"#e9e2f6", muted:"#a99fc4", outline:"#9186ad", shadow:"rgba(0,0,0,.7)",
+      primary:"#c9a2f9", surfaces:["#3d2d5e","#323559","#4d3225","#294237","#4a4026"],
+      btnBg:"#31502a", btnFg:"#d2f2c8", badgeBg:"rgba(201,162,249,.18)", badgeFg:"#c9a2f9",
+      glass:"rgba(30,24,46,.55)", thumbGlass:".08"
+    }
+  }
+];
+
+const PROJECTS = [
+  { emoji:"💎", title:"Aurora Wolf", sub:"Diamond Art Club · 45×60", badge:"▶ In progress", s:0 },
+  { emoji:"🎨", title:"Enchanted Forest, p. 12", sub:"Coloring · Mythographic", badge:"▶ In progress", s:1 },
+  { emoji:"💎", title:"Cosmic Mandala", sub:"Dreamer Designs · 40×40", badge:"✓ Kitted", s:3 },
+];
+
+function phone(v, variantName) {
+  const vars = `--bg-gradient:${v.bg};--fg:${v.fg};--muted:${v.muted};--outline:${v.outline};--shadow:${v.shadow};--primary:${v.primary};--btn-bg:${v.btnBg};--btn-fg:${v.btnFg};--badge-bg:${v.badgeBg};--badge-fg:${v.badgeFg};--glass:${v.glass};--thumb-glass:${v.thumbGlass}`;
+  const projCards = PROJECTS.map(p => `
+    <div class="sticker proj" style="background:${v.surfaces[p.s]}">
+      <div class="thumb">${p.emoji}</div>
+      <div class="info"><div class="title">${p.title}</div><div class="sub">${p.sub}</div></div>
+      <span class="badge">${p.badge}</span>
+    </div>`).join("");
+  return `
+  <div class="phone-col">
+    <div class="variant-label">${variantName}</div>
+    <div class="phone" style="${vars}">
+      <div class="screen">
+        <div class="statusbar"><span>9:48</span><span>📶 🔋</span></div>
+        <div class="h1">Overview</div>
+        <div class="subtitle">Welcome back, Sarah ✨</div>
+        <div class="metrics">
+          <div class="sticker metric" style="background:${v.surfaces[4]}"><div class="num">12</div><div class="lbl">IN PROGRESS</div></div>
+          <div class="sticker metric" style="background:${v.surfaces[2]}"><div class="num">34</div><div class="lbl">COMPLETED</div></div>
+          <div class="sticker metric" style="background:${v.surfaces[1]}"><div class="num">7</div><div class="lbl">WISHLIST</div></div>
+        </div>
+        <div class="section-h">In progress</div>
+        ${projCards}
+        <a class="pill-btn">＋ Add Project</a>
+        <div class="tabbar">
+          <div class="tab active"><span class="ico">🏠</span>Overview</div>
+          <div class="tab"><span class="ico">💎</span>Library</div>
+          <div class="tab"><span class="ico">➕</span>Create</div>
+          <div class="tab"><span class="ico">🎲</span>Random</div>
+          <div class="tab"><span class="ico">👤</span>Account</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+document.getElementById("themes").innerHTML = THEMES.map(t => `
+  <section class="theme-section">
+    <div class="theme-name">${t.name}</div>
+    <p class="theme-desc">${t.desc}</p>
+    <div class="phones">${phone(t.light, "Light")}${phone(t.dark, "Dark")}</div>
+  </section>`).join("");
+</script>
+</body>
+</html>

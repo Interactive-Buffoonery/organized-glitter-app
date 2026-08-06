@@ -1,0 +1,2 @@
+POCKETBASE_BASE_URL = https:/$()/example.invalid
+#include? "Release.local.xcconfig"

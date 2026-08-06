@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest an improvement to the native iPhone or iPad app
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the problem before proposing a large implementation. Backend changes must remain compatible with the web app and can’t be copied into this repository.
+  - type: checkboxes
+    id: existing
+    attributes:
+      label: Existing request
+      options:
+        - label: I searched the existing issues and didn’t find this request.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Explain the user need or missing behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: Keep the proposal focused on the native app behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include a smaller solution if one would cover the need.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Don’t include customer information, private backend details, or proprietary assets you don’t own.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Submission check
+      options:
+        - label: This request contains no customer data, private backend material, or production configuration.
+          required: true

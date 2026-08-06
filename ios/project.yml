@@ -1,0 +1,67 @@
+name: OrganizedGlitter
+
+options:
+  bundleIdPrefix: com.interactivebuffoonery
+  deploymentTarget:
+    iOS: "18.0"
+  groupSortPosition: top
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_VERSION: 6.0
+
+targets:
+  OrganizedGlitter:
+    type: application
+    platform: iOS
+    sources:
+      - path: OrganizedGlitter
+      - path: BackendContract.json
+        buildPhase: resources
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: OrganizedGlitter/Resources/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.interactivebuffoonery.organizedglitter
+        SUPPORTS_MACCATALYST: false
+        TARGETED_DEVICE_FAMILY: "1,2"
+    scheme:
+      testTargets:
+        - OrganizedGlitterTests
+        - OrganizedGlitterUITests
+
+  OrganizedGlitterTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: OrganizedGlitterTests
+    dependencies:
+      - target: OrganizedGlitter
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.interactivebuffoonery.organizedglitter.tests
+
+  OrganizedGlitterUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: OrganizedGlitterUITests
+    dependencies:
+      - target: OrganizedGlitter
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.interactivebuffoonery.organizedglitter.uitests
