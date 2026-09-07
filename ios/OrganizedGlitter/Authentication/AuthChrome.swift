@@ -22,20 +22,27 @@ struct BrandWordmark: View {
 }
 
 /// Quiet primary action for account entry: full-width, no sticker chrome.
+/// Light uses the soft secondary wash; dark uses the elevated card fill so the
+/// control stays readable over the navy glow without a loud brand pill.
 struct AuthPrimaryButtonStyle: ButtonStyle {
   @Environment(\.theme) private var theme
+  @Environment(\.colorScheme) private var colorScheme
   @Environment(\.isEnabled) private var isEnabled
 
   func makeBody(configuration: Configuration) -> some View {
+    let fill: Color = {
+      if colorScheme == .dark {
+        return configuration.isPressed ? theme.muted : theme.card
+      }
+      return configuration.isPressed ? theme.muted : theme.secondary
+    }()
+
     configuration.label
       .font(.body.weight(.semibold))
       .foregroundStyle(theme.foreground)
       .frame(maxWidth: .infinity, minHeight: 52)
       .padding(.horizontal, 18)
-      .background(
-        configuration.isPressed ? theme.muted : theme.secondary,
-        in: .rect(cornerRadius: 16)
-      )
+      .background(fill, in: .rect(cornerRadius: 16))
       .overlay {
         RoundedRectangle(cornerRadius: 16)
           .stroke(theme.border, lineWidth: 1)

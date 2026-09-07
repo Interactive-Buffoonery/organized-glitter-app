@@ -97,9 +97,7 @@ struct AccountMethodView: View {
   }
 
   private func replaceMethod(with next: Mode) {
-    if !path.isEmpty {
-      path.removeLast()
-    }
+    path = NavigationPath()
     path.append(AccountEntryRoute.methods(next))
   }
 }

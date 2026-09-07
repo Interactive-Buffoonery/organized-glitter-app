@@ -2,9 +2,9 @@ import SwiftUI
 
 struct RegistrationView: View {
   @Environment(\.theme) private var theme
-  @Environment(\.dismiss) private var dismiss
 
   let client: PocketBaseClient?
+  @Binding var path: NavigationPath
 
   @State private var email = ""
   @State private var username = ""
@@ -15,6 +15,11 @@ struct RegistrationView: View {
   @State private var didSucceed = false
   @State private var submitGeneration = 0
   @FocusState private var focusedField: Field?
+
+  init(client: PocketBaseClient?, path: Binding<NavigationPath>) {
+    self.client = client
+    self._path = path
+  }
 
   private enum Field {
     case username
@@ -59,7 +64,9 @@ struct RegistrationView: View {
         .font(.footnote)
         .foregroundStyle(theme.mutedForeground)
 
-      Button("Back to welcome") { dismiss() }
+      Button("Back to welcome") {
+        path = NavigationPath()
+      }
         .buttonStyle(AuthPrimaryButtonStyle())
         .accessibilityIdentifier("registrationBackToWelcome")
     }
@@ -147,9 +154,13 @@ struct RegistrationView: View {
       Text("Already have an account?")
         .font(.subheadline)
         .foregroundStyle(theme.mutedForeground)
-      Button("Sign in") { dismiss() }
-        .buttonStyle(AuthLinkButtonStyle())
-        .accessibilityLabel("Back to sign in")
+      Button("Sign in") {
+        path = NavigationPath()
+        path.append(AccountEntryRoute.methods(.signIn))
+      }
+      .buttonStyle(AuthLinkButtonStyle())
+      .accessibilityLabel("Back to sign in")
+      .accessibilityIdentifier("registrationSignIn")
     }
     .frame(maxWidth: .infinity)
     .padding(.bottom, 24)

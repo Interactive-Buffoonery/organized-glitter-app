@@ -65,6 +65,7 @@
 		EB3F5E51F262CFE28DFBD02A /* BackendContract.json in Resources */ = {isa = PBXBuildFile; fileRef = 6C50EC0F0E446D63E719ED45 /* BackendContract.json */; };
 		F0CCF62DA6B4D1196F85DF73 /* APIErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */; };
 		F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */; };
+		F2EB4D73479C7792156305A5 /* AccountEntryRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66315A4B533EEEAF9FEFE7D /* AccountEntryRoute.swift */; };
 		F318A1BFDA2F6C1781E7799B /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728912BD866D6E64A64A1156 /* WelcomeView.swift */; };
 /* End PBXBuildFile section */
 
@@ -148,6 +149,7 @@
 		EBA59ED683A06332B020CA9E /* PocketBaseDate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseDate.swift; sourceTree = "<group>"; };
 		F07BA0F2894320D34E13F322 /* PasswordResetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
 		F1AC4F5A18671CC8570353D2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F66315A4B533EEEAF9FEFE7D /* AccountEntryRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountEntryRoute.swift; sourceTree = "<group>"; };
 		F9079468E04D40FFDADAC626 /* AuthChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthChrome.swift; sourceTree = "<group>"; };
 		FC31CDA7FA9313AFA620C102 /* Theme+Flavors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme+Flavors.swift"; sourceTree = "<group>"; };
 		FE0ECDFD08BB4369434B3DDE /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
@@ -253,6 +255,7 @@
 		33D1F6155B45FF8CFB87529A /* Authentication */ = {
 			isa = PBXGroup;
 			children = (
+				F66315A4B533EEEAF9FEFE7D /* AccountEntryRoute.swift */,
 				3243054F78356C39C4024422 /* AccountMethodView.swift */,
 				F9079468E04D40FFDADAC626 /* AuthChrome.swift */,
 				F07BA0F2894320D34E13F322 /* PasswordResetView.swift */,
@@ -499,6 +502,7 @@
 			files = (
 				19E7686A678185955B8E0709 /* APIError.swift in Sources */,
 				916E856E98DD5B03FA3DCDF4 /* AccountDestinations.swift in Sources */,
+				F2EB4D73479C7792156305A5 /* AccountEntryRoute.swift in Sources */,
 				1718F3F391D717BF461FB30A /* AccountMethodView.swift in Sources */,
 				1B0B07C183545FF70607088E /* AccountPreferencesModel.swift in Sources */,
 				82E7FA3D4B49FA1DF95E4B3C /* AccountView.swift in Sources */,

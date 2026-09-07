@@ -10,12 +10,14 @@ struct WelcomeView: View {
   var body: some View {
     NavigationStack(path: $path) {
       AuthEntryContainer(fillsHeight: true) {
-        VStack(spacing: 40) {
-          Spacer(minLength: 24)
-          BrandWordmark(size: 64)
-            .frame(maxWidth: .infinity)
-            .accessibilityIdentifier("welcomeWordmark")
-          Spacer(minLength: 24)
+        VStack(spacing: 0) {
+          VStack {
+            Spacer(minLength: 0)
+            BrandWordmark(size: 64)
+              .frame(maxWidth: .infinity)
+              .accessibilityIdentifier("welcomeWordmark")
+            Spacer(minLength: 0)
+          }
 
           VStack(spacing: 12) {
             Button {
