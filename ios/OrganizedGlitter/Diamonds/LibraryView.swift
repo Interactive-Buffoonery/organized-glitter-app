@@ -125,13 +125,17 @@ final class LibraryModel {
 
   /// Reloads the listing after a save, then returns the record that should stay
   /// selected. Filtered-out saves return `nil`; records that still belong but
-  /// are absent from page 1 keep the saved snapshot.
+  /// are absent from page 1 keep the saved snapshot, including any expand the
+  /// listing already had. Page writes omit the parent book, and page-number
+  /// sort often leaves the edited page off page 1.
   func selection(afterSaving item: LibraryItem) async -> LibraryItem? {
+    let snapshot = item.retainingListingContext(
+      from: items.first(where: { $0.id == item.id }))
     await load()
     if let refreshed = items.first(where: { $0.id == item.id }) {
       return refreshed
     }
-    return matchesCurrentListing(item) ? item : nil
+    return matchesCurrentListing(snapshot) ? snapshot : nil
   }
 
   func load(reset: Bool = true) async {
@@ -261,7 +265,8 @@ final class LibraryModel {
         filters.append(PocketBaseFilter.equals(.pageNumber, pageNumber))
       } else {
         filters.append(
-          PocketBaseFilter.contains(section == .pages ? .bookTitle : .title, search)
+          PocketBaseFilter.any(
+            searchFields(for: section).map { PocketBaseFilter.contains($0, search) })
         )
       }
     }
@@ -291,15 +296,42 @@ final class LibraryModel {
 
     switch item {
     case .diamond(let project):
-      return project.title.localizedCaseInsensitiveContains(search)
+      return matchesSearch(
+        search,
+        [
+          project.title,
+          project.expand?.artist?.name,
+          project.expand?.company?.name,
+        ])
     case .book(let book):
-      return book.title.localizedCaseInsensitiveContains(search)
+      return matchesSearch(
+        search,
+        [
+          book.title,
+          book.expand?.publisher?.name,
+          book.expand?.illustrator?.name,
+        ])
     case .page(let page):
       if let pageNumber = Int(search) {
         return page.pageNumber == pageNumber
       }
-      return (page.expand?.book?.title ?? "").localizedCaseInsensitiveContains(search)
+      guard let bookTitle = page.expand?.book?.title else {
+        return true
+      }
+      return bookTitle.localizedCaseInsensitiveContains(search)
     }
+  }
+
+  private func searchFields(for section: LibrarySection) -> [PocketBaseFilter.Field] {
+    switch section {
+    case .diamonds: [.title, .artistName, .companyName]
+    case .books: [.title, .publisherName, .illustratorName]
+    case .pages: [.bookTitle]
+    }
+  }
+
+  private func matchesSearch(_ search: String, _ values: [String?]) -> Bool {
+    values.contains { ($0 ?? "").localizedCaseInsensitiveContains(search) }
   }
 
   private func applyPagination<Record>(_ result: RecordList<Record>) {
@@ -730,8 +762,8 @@ struct LibraryView: View {
 
   private var searchPrompt: String {
     switch model.section {
-    case .diamonds: "Search titles, artists, or books"
-    case .books: "Search titles, artists, or books"
+    case .diamonds: "Search titles, artists, or companies"
+    case .books: "Search titles, publishers, or illustrators"
     case .pages: "Book title or page number"
     }
   }
@@ -798,7 +830,7 @@ struct LibraryItemDetail: View {
           }
           .frame(width: detailImageSize.width, height: detailImageSize.height)
           .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
-          .accessibilityLabel(imageAccessibilityLabel)
+          .accessibilityLabel(item.artworkAccessibilityLabel)
         }
 
         VStack(alignment: .leading, spacing: 12) {
@@ -876,13 +908,6 @@ struct LibraryItemDetail: View {
     switch item {
     case .book: CGSize(width: 160, height: 220)
     default: CGSize(width: 160, height: 160)
-    }
-  }
-
-  private var imageAccessibilityLabel: String {
-    switch item {
-    case .book: "Book cover"
-    default: "Page photo"
     }
   }
 }

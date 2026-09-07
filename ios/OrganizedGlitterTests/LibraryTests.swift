@@ -30,7 +30,7 @@ struct LibraryTests {
     #expect(model.projects.map(\.title) == ["Moon Garden"])
     #expect(
       filter(from: LibraryURLProtocol.requests.last)
-        == #"user = "user-1" && title ~ "Moon" && status = "wishlist""#)
+        == #"user = "user-1" && (title ~ "Moon" || artist.name ~ "Moon" || company.name ~ "Moon") && status = "wishlist""#)
 
     model.apply(LibraryRequest(section: .diamonds, status: "wishlist"))
     await loadIfListingChanged(model, token: &listingIdentity)
@@ -154,6 +154,9 @@ struct LibraryTests {
           dateStarted: nil, dateCompleted: nil, created: "2026-01-01",
           updated: "2026-01-02", expand: nil)
       ).artworkURL(using: client) == nil)
+    #expect(diamond.artworkAccessibilityLabel == "Project photo")
+    #expect(book.artworkAccessibilityLabel == "Book cover")
+    #expect(page.artworkAccessibilityLabel == "Page photo")
   }
 
   @Test
@@ -223,6 +226,122 @@ struct LibraryTests {
     #expect(selection?.id == "diamond:project-3")
     #expect(model.projects.map(\.title) == ["Moon Garden", "Star Quilt"])
     #expect(query(from: LibraryURLProtocol.requests.last, name: "page") == "1")
+  }
+
+  @Test
+  func savedPageSelectionKeepsTheParentBookWhenMissingFromTheFirstPage() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, pageList([(1, "Quiet pages")], page: 1, totalPages: 2, totalItems: 2)),
+        (200, pageList([(12, "Quiet pages")], page: 2, totalPages: 2, totalItems: 2, idOffset: 1)),
+        (200, pageList([(1, "Quiet pages")], page: 1, totalPages: 2, totalItems: 2)),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.select(.pages)
+    await model.load()
+    await model.load(reset: false)
+    #expect(model.pages.map(\.pageNumber) == [1, 12])
+
+    let saved = LibraryItem.page(
+      ColoringPageRecord(
+        id: "page-2", book: "book-1", pageNumber: 12, status: "in_progress",
+        photos: [], revealedSubject: "A moonlit garden", completedAt: nil,
+        startedAt: nil, created: "2026-01-01", updated: "2026-01-04",
+        expand: nil))
+
+    let selection = await model.selection(afterSaving: saved)
+
+    #expect(selection?.id == "page:page-2")
+    #expect(selection?.title == "A moonlit garden")
+    #expect(selection?.libraryCaption == "Quiet pages")
+    #expect(model.pages.map(\.pageNumber) == [1])
+  }
+
+  @Test
+  func savedPageSelectionStaysWhenBookSearchCannotSeeTheSaveExpand() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, pageList([(1, "Quiet pages")], page: 1, totalPages: 2, totalItems: 2)),
+        (200, pageList([(12, "Quiet pages")], page: 2, totalPages: 2, totalItems: 2, idOffset: 1)),
+        (200, pageList([(1, "Quiet pages")], page: 1, totalPages: 2, totalItems: 2)),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.select(.pages)
+    model.searchText = "Quiet pages"
+    await model.load()
+    await model.load(reset: false)
+
+    let saved = LibraryItem.page(
+      ColoringPageRecord(
+        id: "page-2", book: "book-1", pageNumber: 12, status: "not_started",
+        photos: [], revealedSubject: "A moonlit garden", completedAt: nil,
+        startedAt: nil, created: "2026-01-01", updated: "2026-01-04",
+        expand: nil))
+
+    let selection = await model.selection(afterSaving: saved)
+
+    #expect(selection?.id == "page:page-2")
+    #expect(selection?.libraryCaption == "Quiet pages")
+    #expect(
+      filter(from: LibraryURLProtocol.requests.last)
+        == #"book.user = "user-1" && book.title ~ "Quiet pages""#)
+  }
+
+  @Test
+  func diamondSearchMatchesTitleArtistAndCompany() async throws {
+    let client = try await signedInClient(responses: [(200, projectList(["Moon Garden"]))])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.searchText = "atelier"
+    await model.load()
+
+    #expect(
+      filter(from: LibraryURLProtocol.requests.last)
+        == #"user = "user-1" && (title ~ "atelier" || artist.name ~ "atelier" || company.name ~ "atelier")"#)
+  }
+
+  @Test
+  func bookSearchMatchesTitlePublisherAndIllustrator() async throws {
+    let client = try await signedInClient(responses: [(200, bookList(["Quiet pages"]))])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.select(.books)
+    model.searchText = "Press"
+    await model.load()
+
+    #expect(
+      filter(from: LibraryURLProtocol.requests.last)
+        == #"user = "user-1" && (title ~ "Press" || publisher.name ~ "Press" || illustrator.name ~ "Press")"#)
+  }
+
+  @Test
+  func savedSelectionKeepsACreditMatchMissingFromTheFirstPage() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Moon Garden"], page: 1, totalPages: 2, totalItems: 2)),
+        (
+          200,
+          projectList(
+            ["River Path"], page: 2, totalPages: 2, totalItems: 2, idOffset: 1,
+            company: "Fictional atelier")
+        ),
+        (200, projectList(["Moon Garden"], page: 1, totalPages: 2, totalItems: 2)),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.searchText = "atelier"
+    await model.load()
+    await model.load(reset: false)
+
+    let saved = LibraryItem.diamond(
+      DiamondProjectRecord(
+        id: "project-2", title: "River Path Revised", user: "user-1", company: nil,
+        artist: nil, status: "progress", kitCategory: "full", drillShape: nil,
+        generalNotes: nil, width: nil, height: nil, image: nil,
+        dateStarted: nil, dateCompleted: nil, created: "2026-01-01",
+        updated: "2026-01-04", expand: nil))
+
+    let selection = await model.selection(afterSaving: saved)
+
+    #expect(selection?.title == "River Path Revised")
+    #expect(selection?.libraryCaption == "Fictional atelier")
   }
 
   @Test
@@ -326,15 +445,41 @@ struct LibraryTests {
     page: Int = 1,
     totalPages: Int = 1,
     totalItems: Int? = nil,
-    idOffset: Int = 0
+    idOffset: Int = 0,
+    company: String? = nil
   ) -> String {
     let items = titles.enumerated().map { index, title in
-      """
-      {"id":"project-\(idOffset + index + 1)","title":"\(title)","user":"user-1","status":"\(status)","kit_category":"full","created":"2026-01-01 00:00:00.000Z","updated":"2026-01-0\(index + 2) 00:00:00.000Z"}
-      """
+      let expand: String
+      if let company {
+        expand =
+          #","expand":{"company":{"id":"c1","name":"\#(company)"},"artist":null}"#
+      } else {
+        expand = ""
+      }
+      return """
+        {"id":"project-\(idOffset + index + 1)","title":"\(title)","user":"user-1","status":"\(status)","kit_category":"full","created":"2026-01-01 00:00:00.000Z","updated":"2026-01-0\(index + 2) 00:00:00.000Z"\(expand)}
+        """
     }.joined(separator: ",")
     return """
       {"page":\(page),"perPage":50,"totalItems":\(totalItems ?? titles.count),"totalPages":\(totalPages),"items":[\(items)]}
+      """
+  }
+
+  private func pageList(
+    _ entries: [(number: Int, bookTitle: String)],
+    status: String = "not_started",
+    page: Int = 1,
+    totalPages: Int = 1,
+    totalItems: Int? = nil,
+    idOffset: Int = 0
+  ) -> String {
+    let items = entries.enumerated().map { index, entry in
+      """
+      {"id":"page-\(idOffset + index + 1)","book":"book-1","page_number":\(entry.number),"status":"\(status)","photos":[],"created":"2026-01-01 00:00:00.000Z","updated":"2026-01-0\(index + 2) 00:00:00.000Z","expand":{"book":{"id":"book-1","user":"user-1","title":"\(entry.bookTitle)","status":"in_progress","total_pages":12,"created":"2026-01-01 00:00:00.000Z","updated":"2026-01-02 00:00:00.000Z"}}}
+      """
+    }.joined(separator: ",")
+    return """
+      {"page":\(page),"perPage":50,"totalItems":\(totalItems ?? entries.count),"totalPages":\(totalPages),"items":[\(items)]}
       """
   }
 
