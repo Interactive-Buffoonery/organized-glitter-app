@@ -66,11 +66,12 @@ updated active records remains unchanged; the summary uses server totals.
 Account entry was migrated against the same studio revision while keeping
 ADR 0001 backgrounds. The system launch screen uses a solid brand
 `LaunchBackground` with a centered Caveat `LaunchWordmark` asset. The in-app
-restoration splash shows a live Caveat wordmark only while session restore
-runs. Signed-out users land on Welcome (centered wordmark above Create account
-and Sign in) with no authenticated tabs. Method selection offers Continue with
-email only; Apple, Google, and Discord stay out until a native OAuth path and
-provider continuity land. Email sign-in, registration, password-reset
+restoration splash shows a live Caveat wordmark with quiet progress only while
+session restore runs. Signed-out users land on Welcome (centered wordmark above
+Create account and Sign in) with no authenticated tabs. `WelcomeView` owns the
+signed-out `NavigationStack`. Method selection offers Continue with email only;
+Apple, Google, and Discord stay out until a native OAuth path and provider
+continuity land. Email sign-in, registration, password-reset
 request/confirmation, and verification request use quiet auth controls instead
 of sticker pills. See
 [account-entry validation](account-entry-validation.md).
