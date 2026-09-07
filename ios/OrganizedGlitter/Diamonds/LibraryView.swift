@@ -128,9 +128,11 @@ final class LibraryModel {
   /// are absent from page 1 keep the saved snapshot, including any expand the
   /// listing already had. Page writes omit the parent book, and page-number
   /// sort often leaves the edited page off page 1.
-  func selection(afterSaving item: LibraryItem) async -> LibraryItem? {
+  func selection(
+    afterSaving item: LibraryItem, previousSelection: LibraryItem? = nil
+  ) async -> LibraryItem? {
     let snapshot = item.retainingListingContext(
-      from: items.first(where: { $0.id == item.id }))
+      from: previousSelection ?? items.first(where: { $0.id == item.id }))
     await load()
     if let refreshed = items.first(where: { $0.id == item.id }) {
       return refreshed
@@ -729,7 +731,7 @@ struct LibraryView: View {
   }
 
   private func selectSaved(_ item: LibraryItem) async {
-    if let selected = await model.selection(afterSaving: item) {
+    if let selected = await model.selection(afterSaving: item, previousSelection: path.last) {
       path = [selected]
     } else {
       path = []
