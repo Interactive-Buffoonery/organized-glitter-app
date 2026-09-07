@@ -48,9 +48,7 @@ struct Theme: Equatable, Sendable {
 
 extension Theme {
   enum Radius {
-    static let small: CGFloat = 8
     static let medium: CGFloat = 10
-    static let large: CGFloat = 12
     static let sticker: CGFloat = 20
   }
 
@@ -58,8 +56,6 @@ extension Theme {
     static let xs: CGFloat = 4
     static let sm: CGFloat = 8
     static let md: CGFloat = 16
-    static let lg: CGFloat = 24
-    static let xl: CGFloat = 32
   }
 
   /// The offset hard shadow that makes sticker cards read as stickers.
