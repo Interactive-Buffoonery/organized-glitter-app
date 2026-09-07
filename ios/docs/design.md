@@ -96,8 +96,7 @@ Geometry (in `Theme.Sticker` / `Theme.Radius`): outline 1.5 pt, shadow offset
 radius 20 pt. Pressing a pill button collapses the shadow and shifts the pill
 into it (`PillButtonStyle`).
 
-Components: `.stickerCard(index)` for pastel cards, `.cardBackground()` for
-the older flat card (still valid for quiet surfaces like sheets and popovers).
+Component: `.stickerCard(index)` supplies the current pastel card treatment.
 
 ## Typography
 

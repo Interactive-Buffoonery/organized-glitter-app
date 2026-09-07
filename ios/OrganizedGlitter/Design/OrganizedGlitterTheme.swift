@@ -48,22 +48,6 @@ struct IconBadge: View {
   }
 }
 
-/// Flat at rest: DESIGN.json elevation is flat-by-default, so no baseline shadow.
-struct CardBackground: ViewModifier {
-  @Environment(\.theme) private var theme
-
-  var cornerRadius: CGFloat = Theme.Radius.panel
-
-  func body(content: Content) -> some View {
-    content
-      .background(theme.card, in: .rect(cornerRadius: cornerRadius))
-      .overlay {
-        RoundedRectangle(cornerRadius: cornerRadius)
-          .stroke(theme.border)
-      }
-  }
-}
-
 /// Pastel sticker card: accent-surface fill, crisp outline, offset hard shadow.
 /// Sets the foreground to the surface text color so nested text stays readable
 /// in dark mode, where these fills stay light ("Glow Stickers").
@@ -143,10 +127,6 @@ struct ThemedScrollBackground: ViewModifier {
 }
 
 extension View {
-  func cardBackground(cornerRadius: CGFloat = Theme.Radius.panel) -> some View {
-    modifier(CardBackground(cornerRadius: cornerRadius))
-  }
-
   func stickerCard(_ surfaceIndex: Int = 0, cornerRadius: CGFloat = Theme.Radius.sticker) -> some View {
     modifier(StickerCard(surfaceIndex: surfaceIndex, cornerRadius: cornerRadius))
   }

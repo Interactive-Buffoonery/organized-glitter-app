@@ -51,7 +51,6 @@ extension Theme {
     static let small: CGFloat = 8
     static let medium: CGFloat = 10
     static let large: CGFloat = 12
-    static let panel: CGFloat = 16
     static let sticker: CGFloat = 20
   }
 
