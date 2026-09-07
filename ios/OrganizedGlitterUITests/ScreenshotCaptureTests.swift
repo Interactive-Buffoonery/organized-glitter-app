@@ -1,7 +1,7 @@
 import XCTest
 
-/// Opt-in capture helper, not a test of behavior: walks the main tabs and the
-/// sign-in screen and writes PNGs for design review. Run with
+/// Opt-in capture helper, not a test of behavior: walks the main tabs and
+/// account-entry screens and writes PNGs for design review. Run with
 /// `TEST_RUNNER_SCREENSHOT_DIR=/tmp/og-shots xcodebuild test ...`; set the
 /// simulator appearance from the host (`xcrun simctl ui <udid> appearance`)
 /// before each run to capture a variant.
@@ -32,9 +32,29 @@ final class ScreenshotCaptureTests: XCTestCase {
     signedOut.launch()
     XCTAssertTrue(signedOut.buttons["welcomeSignIn"].waitForExistence(timeout: 5))
     try save(signedOut.screenshot(), to: "\(dir)/welcome.png")
+
+    signedOut.buttons["welcomeCreateAccount"].tap()
+    XCTAssertTrue(signedOut.buttons["createAccountButton"].waitForExistence(timeout: 5))
+    dismissKeyboard(in: signedOut)
+    try save(signedOut.screenshot(), to: "\(dir)/register.png")
+    signedOut.navigationBars.buttons.element(boundBy: 0).tap()
+
     signedOut.buttons["welcomeSignIn"].tap()
     XCTAssertTrue(signedOut.buttons["signInButton"].waitForExistence(timeout: 5))
+    dismissKeyboard(in: signedOut)
     try save(signedOut.screenshot(), to: "\(dir)/signin.png")
+
+    signedOut.buttons["Reset a forgotten password"].tap()
+    XCTAssertTrue(signedOut.buttons["passwordResetSend"].waitForExistence(timeout: 5))
+    dismissKeyboard(in: signedOut)
+    try save(signedOut.screenshot(), to: "\(dir)/password-reset.png")
+  }
+
+  private func dismissKeyboard(in app: XCUIApplication) {
+    if app.keyboards.element.waitForExistence(timeout: 1) {
+      app.swipeDown()
+      Thread.sleep(forTimeInterval: 0.4)
+    }
   }
 
   private func save(_ screenshot: XCUIScreenshot, to path: String) throws {

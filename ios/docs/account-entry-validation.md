@@ -48,19 +48,48 @@ provider accounts is not verified. Showing those buttons would be inert or
 simulated success, both disallowed. Follow-up work belongs in the backend and
 a later iOS change once providers and continuity are confirmed.
 
+## Selected screenshots
+
+Native simulator captures (fictional signed-out fixtures):
+
+- [iPhone Welcome, light](screenshots/account-entry/iphone-welcome-light.png)
+- [iPhone Welcome, dark](screenshots/account-entry/iphone-welcome-dark.png)
+- [iPhone email sign-in, light](screenshots/account-entry/iphone-signin-light.png)
+- [iPhone email sign-in, dark](screenshots/account-entry/iphone-signin-dark.png)
+- [iPhone registration, light](screenshots/account-entry/iphone-register-light.png)
+- [iPhone registration, dark](screenshots/account-entry/iphone-register-dark.png)
+- [iPhone password reset, light](screenshots/account-entry/iphone-password-reset-light.png)
+- [iPhone password reset, dark](screenshots/account-entry/iphone-password-reset-dark.png)
+
+Adopted studio QA references from revision
+`0135e6d3caa73ea01224bda27c8e0abbb954fd19` (kept for comparison; method-choice
+screens include providers that are not shipped natively):
+
+- [Studio splash, light](screenshots/account-entry/references/studio-splash-light.png)
+- [Studio splash, dark](screenshots/account-entry/references/studio-splash-dark.png)
+- [Studio welcome, light](screenshots/account-entry/references/studio-welcome-light.png)
+- [Studio welcome, dark](screenshots/account-entry/references/studio-welcome-dark.png)
+- [Studio email sign-in, light](screenshots/account-entry/references/studio-signin-email-light.png)
+- [Studio email sign-in, dark](screenshots/account-entry/references/studio-signin-email-dark.png)
+- [Studio method choice, light](screenshots/account-entry/references/studio-signin-methods-light.png)
+- [Studio register email, light](screenshots/account-entry/references/studio-register-email-light.png)
+- [Studio recovery, light](screenshots/account-entry/references/studio-recovery-light.png)
+- [Studio recovery confirmation, light](screenshots/account-entry/references/studio-recovery-confirmation-light.png)
+
+Root `screenshots/light-signin.png` and `screenshots/dark-signin.png` were
+refreshed to the current email sign-in presentation.
+
 ## Verification
 
 - Debug build for iPhone 17 succeeded.
-- `OrganizedGlitterTests` passed.
+- `OrganizedGlitterTests` passed (70 tests).
 - UI tests `testSignedOutAccountEntryPointsAreNative` and
   `testAuthenticatedShellShowsFiveDestinations` passed.
-- Light and dark iPhone welcome and email sign-in screenshots were captured
-  with fictional signed-out fixtures and inspected against the studio QA
-  references. Evidence:
-  - [iphone-welcome-light.png](screenshots/account-entry/iphone-welcome-light.png)
-  - [iphone-welcome-dark.png](screenshots/account-entry/iphone-welcome-dark.png)
-  - [iphone-signin-light.png](screenshots/account-entry/iphone-signin-light.png)
-  - [iphone-signin-dark.png](screenshots/account-entry/iphone-signin-dark.png)
+- Native welcome, email sign-in, registration, and password-reset screenshots
+  were captured in light and dark with fictional signed-out fixtures.
+- Studio QA reference images from revision
+  `0135e6d3caa73ea01224bda27c8e0abbb954fd19` are saved under
+  `screenshots/account-entry/references/`.
 
 ### Reproduce
 
@@ -92,10 +121,10 @@ Manual review: launch Debug with `-ui-testing-signed-out`.
 
 - Studio method-selection screen with provider marks is absent by contract
 - System launch cannot render Caveat; it uses the solid brand background only
-- Email sign-in autofocuses the email field, so captures often include the
-  keyboard; scroll still reaches Privacy, Terms, and Create account
 - Welcome wordmark sits slightly higher than some studio frames; actions remain
   thumb-reachable above the home indicator
+- Screenshot capture dismisses the keyboard before saving form screens; live
+  autofocus still opens it during normal use
 
 ## Backend / auth follow-ups
 
