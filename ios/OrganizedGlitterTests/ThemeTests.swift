@@ -1,5 +1,6 @@
 import SwiftUI
 import Testing
+
 @testable import OrganizedGlitter
 
 @MainActor
@@ -50,7 +51,7 @@ struct ThemeTests {
   }
 
   /// "Berry Cream after dark" paints a deep navy base with a bottom
-  /// berry-pink bloom; light stays flat with no bloom.
+  /// purple bloom; light retains its vertical gradient with no bloom.
   @Test
   func darkStageHasBloomLightDoesNot() {
     #expect(Theme.light.backgroundBloom == nil)
@@ -66,6 +67,15 @@ struct ThemeTests {
     for stop in Theme.light.gradientStops {
       #expect(contrastRatio(Theme.light.mutedForeground, stop) >= 4.5)
     }
+  }
+
+  @Test
+  func pageSecondaryTextRemainsReadableAcrossTheDarkGlow() throws {
+    let bloom = try #require(Theme.dark.backgroundBloom)
+    for stop in bloom.stops.dropLast() {
+      #expect(contrastRatio(Theme.dark.pageSecondaryForeground, stop.color) >= 4.5)
+    }
+    #expect(contrastRatio(Theme.dark.pageSecondaryForeground, Theme.dark.background) >= 4.5)
   }
 
   @Test

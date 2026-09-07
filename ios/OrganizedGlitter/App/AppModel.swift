@@ -39,6 +39,17 @@ final class AppModel {
         return
       }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated") {
+        if OverviewFixtureProtocol.scenario != nil {
+          Task {
+            do {
+              let session = try await client.signIn(identity: "fixture", password: "fixture")
+              phase = .signedIn(session.user)
+            } catch {
+              phase = .restorationFailed
+            }
+          }
+          return
+        }
         phase = .signedIn(.preview)
         return
       }

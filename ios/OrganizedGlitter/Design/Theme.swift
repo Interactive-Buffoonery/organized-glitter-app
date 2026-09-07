@@ -38,9 +38,14 @@ struct Theme: Equatable, Sendable {
   let pillForeground: Color
   /// Optional radial bloom drawn over a flat `background` base. `nil` for the
   /// light variant, which uses `backgroundGradient`. The dark "Berry Cream
-  /// after dark" stage paints a deep navy base with a berry-pink bloom rising
+  /// after dark" stage paints a deep navy base with a purple bloom rising
   /// from the bottom of the page.
   let backgroundBloom: Bloom?
+
+  /// Secondary text directly over the page must remain readable across the glow.
+  var pageSecondaryForeground: Color {
+    backgroundBloom == nil ? mutedForeground : foreground
+  }
 
   var backgroundGradient: LinearGradient {
     LinearGradient(colors: gradientStops, startPoint: .top, endPoint: .bottom)
@@ -48,7 +53,7 @@ struct Theme: Equatable, Sendable {
 
   /// The view to paint behind every screen. Light uses `backgroundGradient`;
   /// dark paints a flat `background` base with `backgroundBloom` over it so the
-  /// "Berry Cream after dark" stage gets its bottom berry-pink glow. Prefer
+  /// "Berry Cream after dark" stage gets its bottom purple glow. Prefer
   /// this over `backgroundGradient` so dark mode picks up the bloom.
   var themedBackground: ThemeBackground {
     ThemeBackground(theme: self)

@@ -79,7 +79,7 @@ extension Theme {
     backgroundBloom: nil
   )
 
-  /// "Berry Cream after dark" — deep navy stage with a berry-pink bloom rising
+  /// "Berry Cream after dark" — deep navy stage with a purple bloom rising
   /// from the bottom. Sticker cards keep the light-mode pastel fills with dark
   /// text (the "Glow Stickers" contract), so the shared pastel set and surface
   /// text colors are unchanged.

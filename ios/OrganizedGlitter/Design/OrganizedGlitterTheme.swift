@@ -220,26 +220,28 @@ struct AccessibleErrorLabel: View {
 struct StatusBadge: View {
   @Environment(\.theme) private var theme
 
+  enum Presentation {
+    case capsule
+    case quiet
+  }
+
   let status: String
-  /// On pastel sticker fills the theme tints lose contrast in dark mode (light
-  /// tint on light fill), so surface placement flattens to the surface text
-  /// color. Status stays distinguishable through its icon and written label.
-  var onSurface = false
+  var presentation: Presentation = .capsule
 
   var body: some View {
     Label(status.organizedGlitterLabel, systemImage: systemImage)
       // ponytail: both modifiers are load-bearing inside a List row. A bare Label
       // inherits the ambient style, and List rows supply .iconOnly, which drops the
       // written status text the accessibility contract below depends on. Fixing only
-      // the horizontal axis keeps the capsule at its natural height instead of
-      // stretching to fill the row.
+      // the horizontal axis keeps legacy capsules at their natural height.
+      // Quiet status text can wrap with Dynamic Type.
       .labelStyle(.titleAndIcon)
       .font(.caption.weight(.semibold))
       .foregroundStyle(tint)
-      .padding(.horizontal, 9)
-      .padding(.vertical, 6)
-      .background(tint.opacity(0.12), in: .capsule)
-      .fixedSize(horizontal: true, vertical: false)
+      .padding(.horizontal, presentation == .capsule ? 9 : 0)
+      .padding(.vertical, presentation == .capsule ? 6 : 0)
+      .background(tint.opacity(presentation == .capsule ? 0.12 : 0), in: .capsule)
+      .fixedSize(horizontal: presentation == .capsule, vertical: presentation == .quiet)
   }
 
   private var systemImage: String {
@@ -257,8 +259,8 @@ struct StatusBadge: View {
   /// Hue is never the only signal here: every case pairs with a distinct icon and
   /// its written label, as required by docs/design.md.
   private var tint: Color {
-    if onSurface {
-      return theme.surfaceForeground
+    if presentation == .quiet {
+      return theme.pageSecondaryForeground
     }
     return switch status {
     case "completed": theme.accent
@@ -268,6 +270,88 @@ struct StatusBadge: View {
     case "archived", "destashed": theme.mutedForeground
     case "kitted", "palette_chosen": theme.accent
     default: theme.mutedForeground
+    }
+  }
+}
+
+/// A quiet native control without sticker chrome or movement on press.
+struct QuietActionStyle: ButtonStyle {
+  @Environment(\.theme) private var theme
+  @Environment(\.isEnabled) private var isEnabled
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .labelStyle(.titleAndIcon)
+      .font(.body.weight(.medium))
+      .foregroundStyle(theme.foreground)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 8)
+      .frame(minHeight: 44)
+      .background(
+        configuration.isPressed ? theme.secondary : theme.card,
+        in: .rect(cornerRadius: 12)
+      )
+      .opacity(isEnabled ? 1 : 0.5)
+  }
+}
+
+/// Artwork leads; text and status can grow without truncation.
+struct ActiveProjectRow: View {
+  @Environment(\.theme) private var theme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  let item: LibraryItem
+  let imageURL: URL?
+
+  var body: some View {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+
+    layout {
+      artwork
+        .frame(width: 100, height: 124)
+        .background(theme.card, in: .rect(cornerRadius: 10))
+        .clipShape(.rect(cornerRadius: 10))
+        .accessibilityHidden(true)
+
+      VStack(alignment: .leading, spacing: 8) {
+        Text(item.title)
+          .font(.headline)
+          .foregroundStyle(theme.foreground)
+        if !item.subtitle.isEmpty {
+          Text(item.subtitle)
+            .font(.subheadline)
+            .foregroundStyle(theme.pageSecondaryForeground)
+        }
+        StatusBadge(status: item.status, presentation: .quiet)
+      }
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .padding(.vertical, 16)
+    .contentShape(.rect)
+    .accessibilityElement(children: .combine)
+  }
+
+  private var artwork: some View {
+    AsyncImage(url: imageURL) { phase in
+      if let image = phase.image {
+        image.resizable().scaledToFit()
+      } else if imageURL != nil, phase.error == nil {
+        ProgressView()
+      } else {
+        VStack(spacing: 8) {
+          Image(systemName: "photo")
+            .font(.title2)
+          Text("No artwork")
+            .font(.caption)
+            .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(theme.mutedForeground)
+        .padding(8)
+      }
     }
   }
 }

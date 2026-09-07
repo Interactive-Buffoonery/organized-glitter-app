@@ -26,6 +26,7 @@
 		4D5702666675052439F0CBDA /* PocketBaseClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9D28127350CFA29235E456 /* PocketBaseClientTests.swift */; };
 		4F140C1DA71C869912465529 /* TaxonomyPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88ABD6C004A9023D728D6A28 /* TaxonomyPicker.swift */; };
 		4FB1DD8A2539C2339DCA1E43 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 992DFF2FCFEA9047315D14FE /* OFL.txt */; };
+		51888056C3FE0717F9985E3F /* OverviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB627700AE4A6346043C16F /* OverviewUITests.swift */; };
 		5A7005B358D623FE511A003B /* BackendContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E0AAB8943F1B2ACAA6F424 /* BackendContract.swift */; };
 		696B08DE9F3F7CED1DE9815D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53BE7051E60073DC0E722076 /* RootView.swift */; };
 		6C69CA216788621BE1C82429 /* DiamondProjectEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3D9D8C588673C2C32B6E0E /* DiamondProjectEditor.swift */; };
@@ -44,6 +45,7 @@
 		A7365172AB35A101E89E30AD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C8130E21AA27F12F629A9523 /* PrivacyInfo.xcprivacy */; };
 		B487C0A1F2EF4330C3511E7E /* PocketBaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */; };
 		B5F6DF03D4C7892E8879D9A2 /* OverviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A580F5FC13D7331BCA7E222 /* OverviewTests.swift */; };
+		BCF12EEA076B4ED0113A1363 /* OverviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FA902DB3B6AA8EFE35CDD98 /* OverviewFixtures.swift */; };
 		BFB8A3D020A12F6D4AAF4DFA /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 446118EA1C4EE132BA9E157A /* ThemeTests.swift */; };
 		C2AA32251932FEF032C8070E /* Theme+Flavors.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC31CDA7FA9313AFA620C102 /* Theme+Flavors.swift */; };
 		CA869E6660B8FA3671B0C112 /* AccountPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D37503C19C43867510A924 /* AccountPreferencesTests.swift */; };
@@ -97,10 +99,12 @@
 		53BE7051E60073DC0E722076 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		58BD72A7B122B24BAD21755A /* OrganizedGlitterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizedGlitterUITests.swift; sourceTree = "<group>"; };
 		5D3DB50E4F57B385875B6FF1 /* AccountDestinations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDestinations.swift; sourceTree = "<group>"; };
+		5FA902DB3B6AA8EFE35CDD98 /* OverviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewFixtures.swift; sourceTree = "<group>"; };
 		63076BFAC078AAEE6B474418 /* Caveat.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Caveat.ttf; sourceTree = "<group>"; };
 		6BD7BDF23879C0D2F6038DA2 /* DiamondProjectEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiamondProjectEditorTests.swift; sourceTree = "<group>"; };
 		6C50EC0F0E446D63E719ED45 /* BackendContract.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = BackendContract.json; sourceTree = "<group>"; };
 		6DBA3A97EB4A2243C50C449B /* ColoringEditors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringEditors.swift; sourceTree = "<group>"; };
+		6EB627700AE4A6346043C16F /* OverviewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewUITests.swift; sourceTree = "<group>"; };
 		6FCC5D630FB65A58EB27EDEC /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		77D37503C19C43867510A924 /* AccountPreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPreferencesTests.swift; sourceTree = "<group>"; };
 		845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIErrorTests.swift; sourceTree = "<group>"; };
@@ -169,6 +173,14 @@
 				39A9F5EB63F7156CCDA9FAB6 /* Release.xcconfig */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		1DE3B9E7E9288F3DC5A1976F /* Preview */ = {
+			isa = PBXGroup;
+			children = (
+				5FA902DB3B6AA8EFE35CDD98 /* OverviewFixtures.swift */,
+			);
+			path = Preview;
 			sourceTree = "<group>";
 		};
 		248E21FEA60A280CE615B0FF /* Products */ = {
@@ -252,6 +264,7 @@
 				819D4881869CA16C7DCF8E46 /* Diamonds */,
 				2F1900124AA9AAD0EE8E62D9 /* Networking */,
 				0B2125704C4CF445FBD5EF23 /* Overview */,
+				1DE3B9E7E9288F3DC5A1976F /* Preview */,
 				E90FB2C6B975F27B1A9FF207 /* Randomizer */,
 				41C293E314D4E895451B0325 /* Resources */,
 			);
@@ -318,6 +331,7 @@
 			isa = PBXGroup;
 			children = (
 				58BD72A7B122B24BAD21755A /* OrganizedGlitterUITests.swift */,
+				6EB627700AE4A6346043C16F /* OverviewUITests.swift */,
 				8A9F90C2F0DE0D5DA98324C8 /* ScreenshotCaptureTests.swift */,
 			);
 			path = OrganizedGlitterUITests;
@@ -473,6 +487,7 @@
 				0FE72C97DBF94E7253AA79EB /* LibraryView.swift in Sources */,
 				81B74D4319E12928F38EE396 /* OrganizedGlitterApp.swift in Sources */,
 				DADD24FA4D40EDDA6A2F5541 /* OrganizedGlitterTheme.swift in Sources */,
+				BCF12EEA076B4ED0113A1363 /* OverviewFixtures.swift in Sources */,
 				D96D02906A574D5A96D1AD89 /* OverviewView.swift in Sources */,
 				33F937DC2E7932E23F2042D3 /* PocketBaseClient.swift in Sources */,
 				99314484D0CFB4AD1B9F4D28 /* PocketBaseDate.swift in Sources */,
@@ -495,6 +510,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6DAC08701FC034DF9D696B58 /* OrganizedGlitterUITests.swift in Sources */,
+				51888056C3FE0717F9985E3F /* OverviewUITests.swift in Sources */,
 				D794702464D2C7EDCEE80C55 /* ScreenshotCaptureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

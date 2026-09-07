@@ -93,6 +93,12 @@ final class LibraryModel {
     currentPage < totalPages
   }
 
+  func apply(_ request: LibraryRequest) {
+    select(request.section)
+    searchText = ""
+    statusFilter = request.status
+  }
+
   func select(_ section: LibrarySection) {
     guard self.section != section else {
       return
@@ -245,6 +251,12 @@ final class LibraryModel {
   }
 }
 
+struct LibraryRequest: Equatable {
+  let id = UUID()
+  let section: LibrarySection
+  let status: String
+}
+
 struct LibraryView: View {
   @Environment(\.theme) private var theme
 
@@ -254,16 +266,19 @@ struct LibraryView: View {
   @State private var deleteCandidate: LibraryItem?
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
+  let request: LibraryRequest?
 
   init(
     client: PocketBaseClient,
     userID: String,
     libraryRefresh: LibraryRefresh,
-    verticals: VerticalPreferences = .defaultValue
+    verticals: VerticalPreferences = .defaultValue,
+    request: LibraryRequest? = nil
   ) {
     _model = State(initialValue: LibraryModel(client: client, userID: userID))
     self.libraryRefresh = libraryRefresh
     self.verticals = verticals
+    self.request = request
   }
 
   var body: some View {
@@ -414,6 +429,11 @@ struct LibraryView: View {
     .task(id: "\(model.section.rawValue)|\(model.statusFilter ?? "")|\(libraryRefresh.generation)") {
       selection = nil
       await model.load()
+    }
+    .onChange(of: request, initial: true) { _, request in
+      guard let request else { return }
+      selection = nil
+      model.apply(request)
     }
     .onChange(of: verticals) { _, next in
       let available = LibrarySection.available(for: next)
@@ -577,10 +597,6 @@ struct LibraryItemRow: View {
 
   let item: LibraryItem
   var imageURL: URL? = nil
-  /// True when the row sits on a pastel sticker card (Overview); text and the
-  /// status badge then use the always-dark surface colors instead of the
-  /// variant's card colors.
-  var onSurface = false
 
   var body: some View {
     HStack(spacing: 12) {
@@ -604,18 +620,18 @@ struct LibraryItemRow: View {
       VStack(alignment: .leading, spacing: 4) {
         Text(item.title)
           .font(.headline)
-          .foregroundStyle(onSurface ? theme.surfaceForeground : theme.cardForeground)
+          .foregroundStyle(theme.cardForeground)
           .lineLimit(2)
         if !item.subtitle.isEmpty {
           Text(item.subtitle)
             .font(.subheadline)
-            .foregroundStyle(onSurface ? theme.surfaceMutedForeground : theme.mutedForeground)
+            .foregroundStyle(theme.mutedForeground)
             .lineLimit(1)
         }
       }
 
       Spacer(minLength: 8)
-      StatusBadge(status: item.status, onSurface: onSurface)
+      StatusBadge(status: item.status)
     }
     .padding(.vertical, 4)
     .accessibilityElement(children: .combine)

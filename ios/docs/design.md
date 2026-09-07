@@ -1,31 +1,68 @@
 # Design system — "Berry Cream"
 
-The iOS app ships one theme of its own, in a light and a dark variant. It does
-**not** port the web application's Catppuccin themes — those stay on web. The
-look is inspired by Pagebound's cheerful sticker aesthetic: soft gradient
-backgrounds, pastel "sticker" cards with a crisp outline and offset hard
-shadow, pill buttons, and Caveat display headers.
+The iOS app uses the native Berry Cream palette in light and dark appearances.
+[ADR 0001](adr/0001-retain-native-backgrounds.md) controls the palette and
+screen backgrounds. The selected D direction controls the new presentation:
+artwork-led content, quiet actions, clear headings, and native interactions.
 
-Canonical sources, in order:
+## Current design reference
 
-1. `OrganizedGlitter/Design/Theme.swift` + `Theme+Flavors.swift` — the tokens.
-2. This document — hex values and rules, kept in sync with the code.
-3. `docs/mockups/theme-mockups.html` and `docs/mockups/berry-dark-options.html`
-   — the approved HTML mockups the palette was chosen from (open in a browser).
-4. The web application's Berry Cream dark palette — `src/index.css` and
-   `docs/design-system/overview.md` on the `design/berry-cream-web-preview`
-   branch — the origin of the deep-navy "after dark" stage and bottom bloom.
+Overview was migrated against `Interactive-Buffoonery/organized-glitter`,
+branch `design/ios-mockup-studio`, revision
+`0135e6d3caa73ea01224bda27c8e0abbb954fd19`:
 
-The retained native palette and backgrounds are recorded in
-[ADR 0001](adr/0001-retain-native-backgrounds.md). That decision takes
-precedence over the D studio and standalone preview background treatments.
+- `docs/design-previews/ios-mockup/README.md`
+- `docs/design-previews/ios-mockup/client/phone.tsx` and `client/styles.ts`
+- `docs/design-previews/organized-glitter-ios.html`, the standalone refinement
+  named by the README, including its compact actions and Notes refinements.
+
+The current preview is D-only. A–C comparisons and the successive treatments
+in `STYLE.md` are historical experiments. Neither the studio's diagonal
+background nor the standalone's flat ordinary screens supersedes ADR 0001.
+Prototype saving, Notes, sharing, and other simulated actions are not native
+implementation contracts.
+
+## Migration status
+
+Runtime checks and current screenshots are recorded in
+[Overview validation](overview-validation.md).
+
+Overview now reuses `PageHeader` and `SectionHeader`, adds `QuietActionStyle`
+and `ActiveProjectRow`, and uses the quiet presentation of `StatusBadge`.
+Rows show uncropped project artwork or the first nonempty page photo through
+`PocketBaseClient.fileURL`; missing and failed images have a neutral fallback.
+Artwork is record-driven and replaceable. `pageSecondaryForeground` uses existing foreground text in dark mode to meet
+contrast over the brightest glow; it uses muted text in light mode. No palette
+values change. Rows have no sticker outline, hard
+shadow, or decorative icon tile. Status retains its written label and icon.
+Large accessibility text changes rows to a vertical layout and craft selection
+to a native menu. Quiet controls have no custom movement or animation.
+
+Overview places craft selection and active work before a compact count summary.
+Its background belongs to the scroll viewport and extends through safe areas,
+not the content stack, so content height does not determine the glow geometry.
+Content has a readable maximum width on iPad while the background fills the screen.
+Loading, retry, empty, refresh, and detail navigation remain available; failed
+refreshes also show an error while retaining in-memory rows.
+
+Wishlist opens the existing Library tab with the selected craft's wishlist
+filter and clears old search text. The menu follows enabled Library crafts.
+A combined Wishlist screen and native Notes feed are follow-up work; Overview
+has no placeholder Notes control. The existing per-craft limit of five recently
+updated active records remains unchanged; the summary uses server totals.
+
+Other screens still use legacy sticker surfaces, `StickerCard`, `IconBadge`,
+and `PillButtonStyle`. Their tokens and behavior remain until those screens are
+migrated. The old Overview metric view and the unused surface-placement options
+on the Library row and status badge were removed after checking references.
+The sections below describe both the retained palette and remaining legacy chrome.
 
 ## Variants
 
 - **Light — "Berry Cream."** Blush-to-lilac gradient, raspberry primary,
   pastel sticker cards.
 - **Dark — "Berry Cream after dark" (Glow Stickers).** Deep navy stage with a
-  berry-pink radial bloom rising from the bottom, but sticker cards keep the
+  purple radial bloom rising from the bottom. Legacy sticker cards keep the
   *light-mode pastel fills* with dark text — bright stickers on a dark
   scrapbook page. This is a deliberate contract: the five surface fills and
   their text colors are shared between variants, so there is exactly one
@@ -77,7 +114,7 @@ stock grouped-list grey.
 | Bottom | `#E7DEFA` |
 
 - **Dark — "Berry Cream after dark"** paints a flat navy base (`#05051A`) with
-  a berry-pink radial bloom rising from the bottom. The bloom is a circular
+  a purple radial bloom rising from the bottom. The bloom is a circular
   `RadialGradient` centered at `(0.56, 1.0)` with `endRadius` 0.55 × the
   longer screen dimension, approximating the web app's elliptical
   `radial-gradient(... at 56% 116%)` bloom:
@@ -88,7 +125,7 @@ stock grouped-list grey.
 | 1 | `0.38` | `#371475` |
 | 2 | `0.73` | transparent |
 
-## Sticker surfaces (shared between variants)
+## Legacy sticker surfaces (shared between variants)
 
 Cycled by index via `theme.accentSurface(i)`; indices wrap.
 
@@ -104,7 +141,7 @@ Text on any sticker surface: `surfaceForeground` `#46323E`, secondary text
 `surfaceMutedForeground` `#765669` — in **both** variants (the fills stay
 light in dark mode, so the text stays dark).
 
-## Sticker chrome
+## Legacy sticker chrome
 
 | Token | Light | Dark |
 | --- | --- | --- |

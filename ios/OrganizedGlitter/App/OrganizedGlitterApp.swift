@@ -11,11 +11,26 @@ struct OrganizedGlitterApp: App {
 
     do {
       let configuration = try AppConfiguration.load()
-      let sessionStore = KeychainSessionStore()
-      let client = PocketBaseClient(
-        baseURL: configuration.pocketBaseURL,
-        sessionStore: sessionStore
-      )
+      let sessionStore: KeychainSessionStore
+      let client: PocketBaseClient
+      #if DEBUG
+        if OverviewFixtureProtocol.scenario != nil {
+          URLProtocol.registerClass(OverviewFixtureProtocol.self)
+          sessionStore = KeychainSessionStore(service: "OverviewFixtures")
+          client = PocketBaseClient(
+            baseURL: URL(string: "https://overview.example.invalid")!,
+            sessionStore: sessionStore,
+            urlSession: OverviewFixtureProtocol.session()
+          )
+        } else {
+          sessionStore = KeychainSessionStore()
+          client = PocketBaseClient(
+            baseURL: configuration.pocketBaseURL, sessionStore: sessionStore)
+        }
+      #else
+        sessionStore = KeychainSessionStore()
+        client = PocketBaseClient(baseURL: configuration.pocketBaseURL, sessionStore: sessionStore)
+      #endif
       _model = State(
         initialValue: AppModel(client: client, sessionStore: sessionStore, themeStore: themeStore)
       )
