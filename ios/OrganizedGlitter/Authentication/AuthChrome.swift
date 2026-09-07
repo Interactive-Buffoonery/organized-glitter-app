@@ -1,6 +1,12 @@
+import CoreText
 import SwiftUI
+import UIKit
 
 /// Stacked Caveat wordmark used on splash, welcome, and account-entry screens.
+///
+/// SwiftUI `Text` and UILabel both clip Caveat’s ascenders against a tight
+/// typographic line box. Draw each line with Core Text using glyph-path bounds
+/// so the script stays whole, and shrink to fit the available width.
 struct BrandWordmark: View {
   @Environment(\.theme) private var theme
 
@@ -8,18 +14,149 @@ struct BrandWordmark: View {
   var relativeTo: Font.TextStyle = .largeTitle
   var accessibilityIdentifier: String? = nil
 
+  @ScaledMetric private var scaledSize: CGFloat
+
+  init(
+    size: CGFloat = 56,
+    relativeTo: Font.TextStyle = .largeTitle,
+    accessibilityIdentifier: String? = nil
+  ) {
+    self.size = size
+    self.relativeTo = relativeTo
+    self.accessibilityIdentifier = accessibilityIdentifier
+    _scaledSize = ScaledMetric(wrappedValue: size, relativeTo: relativeTo)
+  }
+
   var body: some View {
-    VStack(spacing: 0) {
-      Text("Organized")
-      Text("Glitter")
+    VStack(spacing: scaledSize * 0.08) {
+      CaveatWordmarkLine(text: "Organized", pointSize: scaledSize, color: theme.foreground)
+      CaveatWordmarkLine(text: "Glitter", pointSize: scaledSize, color: theme.foreground)
     }
-    .font(.caveat(size: size, relativeTo: relativeTo))
-    .foregroundStyle(theme.foreground)
-    .multilineTextAlignment(.center)
+    .frame(maxWidth: .infinity)
+    .fixedSize(horizontal: false, vertical: true)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Organized Glitter")
     .accessibilityAddTraits(.isHeader)
     .accessibilityIdentifier(accessibilityIdentifier ?? "brandWordmark")
+  }
+}
+
+private struct CaveatWordmarkLine: UIViewRepresentable {
+  var text: String
+  var pointSize: CGFloat
+  var color: Color
+
+  func makeUIView(context: Context) -> CaveatWordmarkLabel {
+    CaveatWordmarkLabel()
+  }
+
+  func updateUIView(_ label: CaveatWordmarkLabel, context: Context) {
+    label.wordmarkText = text
+    label.pointSize = pointSize
+    label.ink = UIColor(color)
+    label.setNeedsDisplay()
+    label.invalidateIntrinsicContentSize()
+  }
+
+  func sizeThatFits(
+    _ proposal: ProposedViewSize,
+    uiView: CaveatWordmarkLabel,
+    context: Context
+  ) -> CGSize? {
+    uiView.preferredSize(forWidth: proposal.width)
+  }
+}
+
+private final class CaveatWordmarkLabel: UIView {
+  var wordmarkText: String = ""
+  var pointSize: CGFloat = 56
+  var ink: UIColor = .label
+
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    isOpaque = false
+    backgroundColor = .clear
+    contentMode = .redraw
+    clipsToBounds = false
+    setContentHuggingPriority(.required, for: .vertical)
+    setContentCompressionResistancePriority(.required, for: .vertical)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  private var baseFont: UIFont {
+    UIFont(name: "Caveat-Regular", size: pointSize)
+      ?? UIFont(name: "Caveat", size: pointSize)
+      ?? .systemFont(ofSize: pointSize)
+  }
+
+  private func glyphBounds(for font: UIFont) -> CGRect {
+    let attributed = NSAttributedString(
+      string: wordmarkText,
+      attributes: [.font: font]
+    )
+    let line = CTLineCreateWithAttributedString(attributed)
+    return CTLineGetBoundsWithOptions(
+      line,
+      [.useGlyphPathBounds, .useOpticalBounds]
+    )
+  }
+
+  func preferredSize(forWidth width: CGFloat?) -> CGSize {
+    let font = baseFont
+    let bounds = glyphBounds(for: font)
+    let pad = font.pointSize * 0.08
+    var size = CGSize(
+      width: ceil(bounds.width + pad * 2),
+      height: ceil(bounds.height + pad * 2)
+    )
+    if let width, width > 0, width.isFinite, size.width > width {
+      let scale = width / size.width
+      size = CGSize(width: width, height: ceil(size.height * scale))
+    }
+    return size
+  }
+
+  override var intrinsicContentSize: CGSize {
+    preferredSize(forWidth: nil)
+  }
+
+  override func draw(_ rect: CGRect) {
+    guard let context = UIGraphicsGetCurrentContext(), !wordmarkText.isEmpty else { return }
+    let font = baseFont
+    let attributed = NSAttributedString(
+      string: wordmarkText,
+      attributes: [
+        .font: font,
+        .foregroundColor: ink,
+      ]
+    )
+    let line = CTLineCreateWithAttributedString(attributed)
+    let glyphBounds = CTLineGetBoundsWithOptions(
+      line,
+      [.useGlyphPathBounds, .useOpticalBounds]
+    )
+    let naturalWidth = max(glyphBounds.width, 1)
+    let naturalHeight = max(glyphBounds.height, 1)
+    let scale = min(
+      bounds.width / naturalWidth,
+      bounds.height / naturalHeight,
+      1
+    )
+
+    context.saveGState()
+    context.textMatrix = .identity
+    context.translateBy(x: bounds.midX, y: bounds.midY)
+    context.scaleBy(x: scale, y: -scale)
+    context.textPosition = CGPoint(
+      x: -glyphBounds.midX,
+      y: -glyphBounds.midY
+    )
+    CTLineDraw(line, context)
+    context.restoreGState()
   }
 }
 
@@ -128,6 +265,7 @@ struct AuthEntryContainer<Content: View>: View {
             alignment: fillsHeight ? .center : .top
           )
       }
+      .scrollClipDisabled()
     }
     .scrollDismissesKeyboard(.interactively)
     .background(theme.themedBackground.ignoresSafeArea())
