@@ -40,8 +40,8 @@ struct BrandWordmark: View {
   }
 
   private func wordmarkLine(_ text: String) -> some View {
-    Text(text)
-      .font(.caveat(size: scaledSize, relativeTo: relativeTo))
+    Text(text + "\u{2002}")
+      .font(.custom("Caveat", fixedSize: scaledSize))
       .foregroundStyle(theme.foreground)
       .lineLimit(1)
       .minimumScaleFactor(0.5)
