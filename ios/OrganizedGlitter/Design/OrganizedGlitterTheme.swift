@@ -20,7 +20,9 @@ struct SectionHeader: View {
   }
 
   var body: some View {
-    Text(title)
+    // Caveat's final stroke can extend beyond the measured text width.
+    Text(title + "\u{2002}")
+      .accessibilityLabel(title)
       .font(.caveat(size: 28, relativeTo: .title2))
       .foregroundStyle(theme.foreground)
       .accessibilityAddTraits(.isHeader)
@@ -173,7 +175,9 @@ struct PageHeader: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-      Text(title)
+      // Leave room for Caveat's final glyph overhang.
+      Text(title + "\u{2002}")
+        .accessibilityLabel(title)
         .font(.caveat(size: 40))
         .foregroundStyle(theme.foreground)
       if let subtitle {

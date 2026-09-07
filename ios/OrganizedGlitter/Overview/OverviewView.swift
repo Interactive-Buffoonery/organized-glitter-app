@@ -187,7 +187,7 @@ struct OverviewView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 24) {
-        PageHeader("Overview", subtitle: "A quiet look at what you’re working on.")
+        PageHeader("Overview")
 
         craftPicker
 
