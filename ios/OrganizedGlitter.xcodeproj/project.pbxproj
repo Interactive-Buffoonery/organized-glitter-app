@@ -15,11 +15,13 @@
 		194236C29D621F54421005AB /* PocketBaseFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911823E33E157F4AA5946C5D /* PocketBaseFilter.swift */; };
 		19E7686A678185955B8E0709 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5AC093CA2382FCEAFA736F1 /* APIError.swift */; };
 		1B0B07C183545FF70607088E /* AccountPreferencesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C78FAD72AC3EDC971685C2A /* AccountPreferencesModel.swift */; };
+		226A1A17DC4FCD75B9662AE1 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0847DB73C9A0DD9296BC4729 /* LibraryUITests.swift */; };
 		2D0B12BCFFE91DEE1EF7FE43 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0ECDFD08BB4369434B3DDE /* SignInView.swift */; };
 		33F937DC2E7932E23F2042D3 /* PocketBaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8DDEAF77D2BFB8332BD742A /* PocketBaseClient.swift */; };
 		342C8490F7BBBA1EB1CE9531 /* PocketBaseFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 469E2CDC832BD2CCC3A32EB9 /* PocketBaseFilterTests.swift */; };
 		34401C9DCE7231B3465C4D13 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCC5D630FB65A58EB27EDEC /* AppConfiguration.swift */; };
 		3D6BFE41A3B50BDD4E82CCC5 /* Caveat.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 63076BFAC078AAEE6B474418 /* Caveat.ttf */; };
+		4026BC25DE6D2DCB70DB696B /* LibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */; };
 		415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371EA167F285531DE866936F /* PocketBaseDateTests.swift */; };
 		42DB3225654CE75C370E028F /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */; };
 		4498CBAA20400E17D11E0CF4 /* QuickCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4B8471FD90C20BEA9D0975 /* QuickCreateView.swift */; };
@@ -79,6 +81,7 @@
 
 /* Begin PBXFileReference section */
 		0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomizerView.swift; sourceTree = "<group>"; };
+		0847DB73C9A0DD9296BC4729 /* LibraryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryUITests.swift; sourceTree = "<group>"; };
 		13C4B9656060CFE9B5E72A69 /* KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStore.swift; sourceTree = "<group>"; };
 		15A7FD3C8DA9EFE11CA84D25 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		187EF4472F90566B37B087AF /* PocketBaseRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseRecords.swift; sourceTree = "<group>"; };
@@ -117,6 +120,7 @@
 		96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseModels.swift; sourceTree = "<group>"; };
 		992DFF2FCFEA9047315D14FE /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		9A3D9D8C588673C2C32B6E0E /* DiamondProjectEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiamondProjectEditor.swift; sourceTree = "<group>"; };
+		A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryTests.swift; sourceTree = "<group>"; };
 		A9E0AAB8943F1B2ACAA6F424 /* BackendContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendContract.swift; sourceTree = "<group>"; };
 		C006B17BB53EDCD5E2E447F7 /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
 		C2BD9F8AA36F99FBBB93EF73 /* OrganizedGlitterTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OrganizedGlitterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -310,6 +314,7 @@
 				6BD7BDF23879C0D2F6038DA2 /* DiamondProjectEditorTests.swift */,
 				CB2D9D83C502889A70BE1CD7 /* DiamondProjectWriteTests.swift */,
 				E8B9784FB12A1B3910B9397C /* KeychainSessionStoreTests.swift */,
+				A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */,
 				1A580F5FC13D7331BCA7E222 /* OverviewTests.swift */,
 				4F9D28127350CFA29235E456 /* PocketBaseClientTests.swift */,
 				371EA167F285531DE866936F /* PocketBaseDateTests.swift */,
@@ -330,6 +335,7 @@
 		FB834733F1BBC17DD41B2E9B /* OrganizedGlitterUITests */ = {
 			isa = PBXGroup;
 			children = (
+				0847DB73C9A0DD9296BC4729 /* LibraryUITests.swift */,
 				58BD72A7B122B24BAD21755A /* OrganizedGlitterUITests.swift */,
 				6EB627700AE4A6346043C16F /* OverviewUITests.swift */,
 				8A9F90C2F0DE0D5DA98324C8 /* ScreenshotCaptureTests.swift */,
@@ -460,6 +466,7 @@
 				93395587CBC8A8386023D152 /* DiamondProjectEditorTests.swift in Sources */,
 				E446C2D725742D28F1775107 /* DiamondProjectWriteTests.swift in Sources */,
 				0B146CB8F788DA26C94E17F5 /* KeychainSessionStoreTests.swift in Sources */,
+				4026BC25DE6D2DCB70DB696B /* LibraryTests.swift in Sources */,
 				B5F6DF03D4C7892E8879D9A2 /* OverviewTests.swift in Sources */,
 				4D5702666675052439F0CBDA /* PocketBaseClientTests.swift in Sources */,
 				415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */,
@@ -509,6 +516,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				226A1A17DC4FCD75B9662AE1 /* LibraryUITests.swift in Sources */,
 				6DAC08701FC034DF9D696B58 /* OrganizedGlitterUITests.swift in Sources */,
 				51888056C3FE0717F9985E3F /* OverviewUITests.swift in Sources */,
 				D794702464D2C7EDCEE80C55 /* ScreenshotCaptureTests.swift in Sources */,

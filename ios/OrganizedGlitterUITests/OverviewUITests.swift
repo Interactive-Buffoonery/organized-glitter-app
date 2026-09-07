@@ -52,11 +52,15 @@ final class OverviewUITests: XCTestCase {
     try capture(app, "overview-bottom")
     wishlist.tap()
     app.buttons["Coloring book wishlist"].tap()
-    XCTAssertTrue(app.navigationBars["Coloring books"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Filter by status"].waitForExistence(timeout: 5))
+    let booksCraft = app.buttons["Books"].exists ? app.buttons["Books"] : app.staticTexts["Books"]
+    XCTAssertTrue(booksCraft.waitForExistence(timeout: 3))
+    XCTAssertTrue(
+      app.descendants(matching: .any).matching(
+        NSPredicate(format: "label CONTAINS %@", "Wishlist coloring book")
+      ).firstMatch.waitForExistence(timeout: 5))
     let filter = app.buttons["Filter by status"]
-    XCTAssertTrue(filter.exists)
-    filter.tap()
-    XCTAssertTrue(app.buttons["Wishlist"].waitForExistence(timeout: 3))
+    XCTAssertEqual(filter.value as? String, "Wishlist")
   }
 
   func testAccessibleLayoutAndRotation() throws {

@@ -99,26 +99,7 @@ final class OverviewModel {
   }
 
   func artworkURL(for item: LibraryItem) -> URL? {
-    let collection: String
-    let recordID: String
-    let filename: String?
-    switch item {
-    case .diamond(let project):
-      collection = "projects"
-      recordID = project.id
-      filename = project.image?.nonEmpty
-    case .page(let page):
-      collection = "coloring_pages"
-      recordID = page.id
-      filename = page.photos.first(where: { !$0.isEmpty })
-    case .book(let book):
-      collection = "coloring_books"
-      recordID = book.id
-      filename = book.coverImage?.nonEmpty
-    }
-    return filename.map {
-      client.fileURL(collection: collection, recordID: recordID, filename: $0)
-    }
+    item.artworkURL(using: client)
   }
 
   // ponytail: month boundaries use PocketBase date strings (YYYY-MM-DD) in UTC so

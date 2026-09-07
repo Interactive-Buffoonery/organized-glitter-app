@@ -61,36 +61,117 @@
       let filter =
         URLComponents(url: url, resolvingAgainstBaseURL: false)?
         .queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
-      if Self.scenario == "empty" || filter.contains("completed") || filter.contains("wishlist") {
+      if Self.scenario == "empty" {
         respond(object: Self.list([]))
-      } else if url.path.contains("/projects/") {
-        let items: [[String: Any]] = (1...5).map { index in
-          [
-            "id": "fictional-project-\(index)", "user": "preview-user",
-            "title": index == 1 ? "Garden of stars" : "A small constellation, chapter \(index)",
-            "status": "progress", "kit_category": "full",
-            "image": index == 2 ? "" : index == 3 ? "missing.png" : "fictional-garden.png",
-            "created": "2026-09-01", "updated": "2026-09-07 12:0\(index):00",
-          ]
-        }
-        respond(object: Self.list(items))
-      } else if url.path.contains("/coloring_pages/") {
-        respond(
-          object: Self.list([
-            [
-              "id": "fictional-page", "book": "fictional-book", "page_number": 12,
-              "status": "in_progress", "photos": ["fictional-page.png"],
-              "revealed_subject": "A moonlit garden with a very long, winding path",
-              "created": "2026-09-01", "updated": "2026-09-07 13:00:00",
-            ]
-          ]))
-      } else {
-        respond(object: Self.list([]))
+        return
       }
+      var items: [[String: Any]] = []
+      if url.path.contains("/projects/") {
+        items = Self.diamondItems
+      } else if url.path.contains("/coloring_books/") {
+        items = Self.bookItems
+      } else if url.path.contains("/coloring_pages/") {
+        items = Self.pageItems
+      }
+      if let status = Self.status(in: filter) {
+        items = items.filter { $0["status"] as? String == status }
+      }
+      respond(object: Self.list(items))
     }
 
     private static func list(_ items: [[String: Any]]) -> [String: Any] {
       ["page": 1, "perPage": 5, "totalPages": 1, "totalItems": items.count, "items": items]
+    }
+
+    private static func status(in filter: String) -> String? {
+      let marker = "status = \""
+      guard let start = filter.range(of: marker) else { return nil }
+      let rest = filter[start.upperBound...]
+      guard let end = rest.firstIndex(of: "\"") else { return nil }
+      return String(rest[..<end])
+    }
+
+    private static var diamondItems: [[String: Any]] {
+      (1...5).map { index in
+        var item: [String: Any] = [
+          "id": "fictional-project-\(index)", "user": "preview-user",
+          "title": index == 1 ? "Garden of stars" : "A small constellation, chapter \(index)",
+          "status": "progress", "kit_category": "full",
+          "image": index == 2 ? "" : index == 3 ? "missing.png" : "fictional-garden.png",
+          "created": "2026-09-01", "updated": "2026-09-07 12:0\(index):00",
+        ]
+        if index == 1 {
+          item["expand"] = ["company": ["id": "company-1", "name": "Fictional atelier"]]
+        }
+        return item
+      } + [
+        [
+          "id": "fictional-wishlist-project", "user": "preview-user",
+          "title": "Wishlist garden", "status": "wishlist", "kit_category": "full",
+          "image": "fictional-garden.png", "created": "2026-09-01",
+          "updated": "2026-09-04 12:00:00",
+        ]
+      ]
+    }
+
+    private static var bookItems: [[String: Any]] {
+      [
+        [
+          "id": "fictional-book-1", "user": "preview-user",
+          "title": "Moonlit meadows", "status": "in_progress", "total_pages": 24,
+          "completed_pages": 6, "cover_image": "fictional-cover.png",
+          "created": "2026-09-01", "updated": "2026-09-07 11:00:00",
+          "expand": ["publisher": ["id": "pub-1", "name": "Fictional Press"]],
+        ],
+        [
+          "id": "fictional-book-2", "user": "preview-user",
+          "title": "A quiet coloring book", "status": "in_stash", "total_pages": 12,
+          "cover_image": "", "created": "2026-09-01", "updated": "2026-09-06 11:00:00",
+        ],
+        [
+          "id": "fictional-book-3", "user": "preview-user",
+          "title": "Missing cover book", "status": "purchased", "total_pages": 8,
+          "cover_image": "missing.png", "created": "2026-09-01",
+          "updated": "2026-09-05 11:00:00",
+        ],
+        [
+          "id": "fictional-wishlist-book", "user": "preview-user",
+          "title": "Wishlist coloring book", "status": "wishlist", "total_pages": 20,
+          "cover_image": "fictional-cover.png", "created": "2026-09-01",
+          "updated": "2026-09-04 11:00:00",
+        ],
+      ]
+    }
+
+    private static var pageItems: [[String: Any]] {
+      [
+        [
+          "id": "fictional-page", "book": "fictional-book", "page_number": 12,
+          "status": "in_progress", "photos": ["fictional-page.png"],
+          "revealed_subject": "A moonlit garden with a very long, winding path",
+          "created": "2026-09-01", "updated": "2026-09-07 13:00:00",
+          "expand": [
+            "book": [
+              "id": "fictional-book", "user": "preview-user",
+              "title": "Moonlit meadows", "status": "in_progress", "total_pages": 24,
+              "created": "2026-09-01", "updated": "2026-09-07 11:00:00",
+            ]
+          ],
+        ],
+        [
+          "id": "fictional-page-2", "book": "fictional-book", "page_number": 3,
+          "status": "not_started", "photos": [],
+          "revealed_subject": "An empty page",
+          "created": "2026-09-01", "updated": "2026-09-06 13:00:00",
+          "expand": [
+            "book": [
+              "id": "fictional-book", "user": "preview-user",
+              "title": "Moonlit meadows", "status": "in_progress", "total_pages": 24,
+              "created": "2026-09-01", "updated": "2026-09-07 11:00:00",
+            ]
+          ],
+        ],
+      ]
     }
 
     private func respond(object: [String: Any], status: Int = 200) {

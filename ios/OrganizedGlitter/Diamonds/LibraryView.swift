@@ -27,12 +27,11 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     }
   }
 
-  /// Sticker surface for the sidebar icon badge (docs/design.md).
-  var surfaceIndex: Int {
+  var pickerTitle: String {
     switch self {
-    case .diamonds: 0
-    case .books: 1
-    case .pages: 2
+    case .diamonds: "Diamond art"
+    case .books: "Books"
+    case .pages: "Pages"
     }
   }
 
@@ -72,6 +71,7 @@ final class LibraryModel {
   private var currentPage = 0
   private var totalPages = 0
   private var generation = 0
+  private var listingEpoch = 0
 
   init(client: PocketBaseClient, userID: String) {
     self.client = client
@@ -93,10 +93,18 @@ final class LibraryModel {
     currentPage < totalPages
   }
 
+  /// Observed by Library's load task. Section and status are included so craft
+  /// and filter changes reload; `listingEpoch` changes when a Wishlist handoff
+  /// clears search without changing either.
+  var listingIdentity: String {
+    "\(section.rawValue)|\(statusFilter ?? "")|\(listingEpoch)"
+  }
+
   func apply(_ request: LibraryRequest) {
     select(request.section)
     searchText = ""
     statusFilter = request.status
+    listingEpoch += 1
   }
 
   func select(_ section: LibrarySection) {
@@ -105,6 +113,25 @@ final class LibraryModel {
     }
     self.section = section
     statusFilter = nil
+  }
+
+  /// Keeps Library on an enabled craft when preferences load or change.
+  func align(to verticals: VerticalPreferences) {
+    let available = LibrarySection.available(for: verticals)
+    if !available.contains(section), let first = available.first {
+      select(first)
+    }
+  }
+
+  /// Reloads the listing after a save, then returns the record that should stay
+  /// selected. Filtered-out saves return `nil`; records that still belong but
+  /// are absent from page 1 keep the saved snapshot.
+  func selection(afterSaving item: LibraryItem) async -> LibraryItem? {
+    await load()
+    if let refreshed = items.first(where: { $0.id == item.id }) {
+      return refreshed
+    }
+    return matchesCurrentListing(item) ? item : nil
   }
 
   func load(reset: Bool = true) async {
@@ -245,6 +272,36 @@ final class LibraryModel {
     return PocketBaseFilter.all(filters)
   }
 
+  private func matchesCurrentListing(_ item: LibraryItem) -> Bool {
+    switch (section, item) {
+    case (.diamonds, .diamond), (.books, .book), (.pages, .page):
+      break
+    default:
+      return false
+    }
+
+    if let statusFilter, item.status != statusFilter {
+      return false
+    }
+
+    let search = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !search.isEmpty else {
+      return true
+    }
+
+    switch item {
+    case .diamond(let project):
+      return project.title.localizedCaseInsensitiveContains(search)
+    case .book(let book):
+      return book.title.localizedCaseInsensitiveContains(search)
+    case .page(let page):
+      if let pageNumber = Int(search) {
+        return page.pageNumber == pageNumber
+      }
+      return (page.expand?.book?.title ?? "").localizedCaseInsensitiveContains(search)
+    }
+  }
+
   private func applyPagination<Record>(_ result: RecordList<Record>) {
     currentPage = result.page
     totalPages = result.totalPages
@@ -259,11 +316,14 @@ struct LibraryRequest: Equatable {
 
 struct LibraryView: View {
   @Environment(\.theme) private var theme
+  @Environment(\.horizontalSizeClass) private var sizeClass
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var model: LibraryModel
-  @State private var selection: LibraryItem?
+  @State private var path: [LibraryItem] = []
   @State private var editorTarget: LibraryEditorTarget?
   @State private var deleteCandidate: LibraryItem?
+  @State private var columnVisibility: NavigationSplitViewVisibility = .all
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
   let request: LibraryRequest?
@@ -275,233 +335,43 @@ struct LibraryView: View {
     verticals: VerticalPreferences = .defaultValue,
     request: LibraryRequest? = nil
   ) {
-    _model = State(initialValue: LibraryModel(client: client, userID: userID))
+    let model = LibraryModel(client: client, userID: userID)
+    if let request {
+      model.apply(request)
+    }
+    model.align(to: verticals)
+    _model = State(initialValue: model)
     self.libraryRefresh = libraryRefresh
     self.verticals = verticals
     self.request = request
   }
 
   var body: some View {
-    @Bindable var model = model
-    let sectionSelection = Binding<LibrarySection?>(
-      get: { model.section },
-      set: { newSection in
-        if let newSection {
-          model.select(newSection)
-        }
-      }
-    )
-
-    NavigationSplitView {
-      List(LibrarySection.available(for: verticals), selection: sectionSelection) { section in
-        HStack(spacing: 12) {
-          IconBadge(systemImage: section.systemImage, surfaceIndex: section.surfaceIndex)
-          Text(section.rawValue)
-        }
-        .tag(section)
-        .listRowBackground(theme.card)
-      }
-      .themedScrollBackground()
-      .navigationTitle("Library")
-    } content: {
-      Group {
-        if let errorMessage = model.errorMessage, model.items.isEmpty {
-          ContentUnavailableView {
-            Label("Couldn’t load your library", systemImage: "exclamationmark.triangle")
-          } description: {
-            Text(errorMessage)
-          } actions: {
-            Button("Try Again") {
-              Task { await model.load() }
-            }
-            .buttonStyle(PillButtonStyle())
-            .frame(maxWidth: 240)
-          }
-        } else if model.isLoading, !model.hasLoaded {
-          ProgressView("Loading \(model.section.rawValue.lowercased())")
-        } else if model.items.isEmpty {
-          ContentUnavailableView.search(text: model.searchText)
-        } else {
-          List(model.items, selection: $selection) { item in
-            LibraryItemRow(item: item, imageURL: imageURL(for: item, bookThumb: "160x220"))
-              .tag(item)
-              .listRowBackground(theme.card)
-              .task {
-                if item == model.items.last {
-                  await model.load(reset: false)
-                }
-              }
-          }
-          .themedScrollBackground()
-          .refreshable {
-            await model.load()
-          }
-          .overlay(alignment: .bottom) {
-            if model.isLoading, model.hasLoaded {
-              ProgressView()
-                .padding()
-            }
-          }
-        }
-      }
-      .navigationTitle(model.section.rawValue)
-      .searchable(text: $model.searchText, prompt: searchPrompt)
-      .onSubmit(of: .search) {
-        Task { await model.load() }
-      }
-      .toolbar {
-        ToolbarItemGroup {
-          Menu {
-            Button("All statuses") {
-              model.statusFilter = nil
-            }
-            Divider()
-            ForEach(model.section.statusOptions, id: \.self) { status in
-              Button(status.organizedGlitterLabel) {
-                model.statusFilter = status
-              }
-            }
-          } label: {
-            Label(
-              model.statusFilter?.organizedGlitterLabel ?? "All statuses",
-              systemImage: "line.3.horizontal.decrease.circle"
-            )
-          }
-          .accessibilityLabel("Filter by status")
-
-          if model.section == .diamonds {
-            Button {
-              editorTarget = .newDiamond
-            } label: {
-              Label("New project", systemImage: "plus")
-            }
-          } else if model.section == .books {
-            Button {
-              editorTarget = .newBook
-            } label: {
-              Label("New coloring book", systemImage: "plus")
-            }
-          }
-        }
-      }
-    } detail: {
-      if let selection {
-        switch selection {
-        case .diamond(let project):
-          LibraryItemDetail(
-            item: selection,
-            onEdit: {
-              editorTarget = .editDiamond(project)
-            },
-            onDelete: {
-              deleteCandidate = selection
-            }
-          )
-        case .book(let book):
-          LibraryItemDetail(
-            item: selection,
-            imageURL: imageURL(for: selection, bookThumb: "320x420"),
-            onEdit: {
-              editorTarget = .editBook(book)
-            },
-            onDelete: {
-              deleteCandidate = selection
-            },
-            deleteLabel: "Delete Coloring Book"
-          )
-        case .page(let page):
-          LibraryItemDetail(
-            item: selection,
-            imageURL: imageURL(for: selection, bookThumb: "320x420"),
-            onEdit: {
-              editorTarget = .editPage(page)
-            }
-          )
-        }
+    Group {
+      if sizeClass == .regular {
+        padLibrary
       } else {
-        ContentUnavailableView(
-          "Choose an item",
-          systemImage: model.section.systemImage,
-          description: Text("Select an item to see its details.")
-        )
+        phoneLibrary
       }
     }
-    .task(id: "\(model.section.rawValue)|\(model.statusFilter ?? "")|\(libraryRefresh.generation)") {
-      selection = nil
+    .task(id: "\(model.listingIdentity)|\(libraryRefresh.generation)") {
+      path = []
       await model.load()
     }
-    .onChange(of: request, initial: true) { _, request in
+    .onChange(of: request) { _, request in
       guard let request else { return }
-      selection = nil
+      path = []
       model.apply(request)
     }
     .onChange(of: verticals) { _, next in
-      let available = LibrarySection.available(for: next)
-      if !available.contains(model.section), let first = available.first {
-        selection = nil
-        model.select(first)
+      let previous = model.listingIdentity
+      model.align(to: next)
+      if model.listingIdentity != previous {
+        path = []
       }
     }
     .sheet(item: $editorTarget) { target in
-      switch target {
-      case .newDiamond:
-        DiamondProjectEditor(
-          client: model.client,
-          userID: model.userID,
-          onLibraryRefresh: { await model.load() }
-        ) { saved in
-          Task {
-            await model.load()
-            selection = model.items.first(where: { $0.id == "diamond:\(saved.id)" })
-          }
-        }
-      case .editDiamond(let project):
-        DiamondProjectEditor(
-          client: model.client,
-          userID: model.userID,
-          project: project,
-          onLibraryRefresh: { await model.load() }
-        ) { saved in
-          Task {
-            await model.load()
-            selection = model.items.first(where: { $0.id == "diamond:\(saved.id)" })
-          }
-        }
-      case .newBook:
-        ColoringBookEditor(
-          client: model.client,
-          userID: model.userID,
-          onLibraryRefresh: { await model.load() }
-        ) { saved in
-          Task {
-            await model.load()
-            selection = model.items.first(where: { $0.id == "book:\(saved.id)" })
-          }
-        }
-      case .editBook(let book):
-        ColoringBookEditor(
-          client: model.client,
-          userID: model.userID,
-          book: book,
-          onLibraryRefresh: { await model.load() }
-        ) { saved in
-          Task {
-            await model.load()
-            selection = model.items.first(where: { $0.id == "book:\(saved.id)" })
-          }
-        }
-      case .editPage(let page):
-        ColoringPageEditor(
-          client: model.client,
-          page: page,
-          onLibraryRefresh: { await model.load() }
-        ) { saved in
-          Task {
-            await model.load()
-            selection = model.items.first(where: { $0.id == "page:\(saved.id)" })
-          }
-        }
-      }
+      editor(for: target)
     }
     .confirmationDialog(
       deleteConfirmationTitle,
@@ -516,7 +386,7 @@ struct LibraryView: View {
           return
         }
         deleteCandidate = nil
-        selection = nil
+        path = []
         Task { await model.delete(candidate) }
       }
       Button("Cancel", role: .cancel) {
@@ -537,6 +407,300 @@ struct LibraryView: View {
       }
     } message: {
       Text(model.mutationError ?? "")
+    }
+  }
+
+  private var phoneLibrary: some View {
+    NavigationStack(path: $path) {
+      browsingScroll(showsCraftPicker: true)
+        .navigationDestination(for: LibraryItem.self) { item in
+          detail(for: item)
+        }
+    }
+  }
+
+  private var padLibrary: some View {
+    NavigationSplitView(columnVisibility: $columnVisibility) {
+      List(LibrarySection.available(for: verticals), selection: sectionSelection) { section in
+        Label(section.pickerTitle, systemImage: section.systemImage)
+          .tag(section)
+      }
+      .listStyle(.sidebar)
+      .themedScrollBackground()
+      .navigationTitle("Library")
+    } detail: {
+      NavigationStack(path: $path) {
+        browsingScroll(showsCraftPicker: false)
+          .navigationDestination(for: LibraryItem.self) { item in
+            detail(for: item)
+          }
+      }
+    }
+    .navigationSplitViewStyle(.balanced)
+  }
+
+  private func browsingScroll(showsCraftPicker: Bool) -> some View {
+    @Bindable var model = model
+    return ScrollView {
+      VStack(alignment: .leading, spacing: 24) {
+        PageHeader("Library")
+        if showsCraftPicker {
+          craftPicker
+        }
+        statusFilter
+        libraryBody
+        createAction
+      }
+      .frame(maxWidth: 760, alignment: .leading)
+      .padding()
+      .frame(maxWidth: .infinity)
+    }
+    .navigationTitle("Library")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(.hidden, for: .navigationBar)
+    .searchable(text: $model.searchText, prompt: searchPrompt)
+    .onSubmit(of: .search) {
+      Task { await model.load() }
+    }
+    .refreshable { await model.load() }
+    .background {
+      theme.themedBackground.ignoresSafeArea()
+    }
+    .overlay(alignment: .bottom) {
+      if model.isLoading, model.hasLoaded {
+        ProgressView()
+          .padding()
+      }
+    }
+  }
+
+  private var craftPicker: some View {
+    let selection = Binding<LibrarySection>(
+      get: { model.section },
+      set: { model.select($0) }
+    )
+    return Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        Picker("Craft", selection: selection) {
+          ForEach(LibrarySection.available(for: verticals)) { section in
+            Text(section.pickerTitle).tag(section)
+          }
+        }
+        .pickerStyle(.menu)
+        .buttonStyle(QuietActionStyle())
+      } else {
+        Picker("Craft", selection: selection) {
+          ForEach(LibrarySection.available(for: verticals)) { section in
+            Text(section.pickerTitle).tag(section)
+          }
+        }
+        .pickerStyle(.segmented)
+      }
+    }
+    .accessibilityIdentifier("library.craft")
+  }
+
+  private var statusFilter: some View {
+    Menu {
+      Button("All statuses") {
+        model.statusFilter = nil
+      }
+      Divider()
+      ForEach(model.section.statusOptions, id: \.self) { status in
+        Button(status.organizedGlitterLabel) {
+          model.statusFilter = status
+        }
+      }
+    } label: {
+      Label(
+        model.statusFilter?.organizedGlitterLabel ?? "All statuses",
+        systemImage: "line.3.horizontal.decrease.circle"
+      )
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .buttonStyle(QuietActionStyle())
+    .accessibilityLabel("Filter by status")
+    .accessibilityValue(model.statusFilter?.organizedGlitterLabel ?? "All statuses")
+  }
+
+  @ViewBuilder
+  private var libraryBody: some View {
+    if let errorMessage = model.errorMessage, model.items.isEmpty {
+      ContentUnavailableView {
+        Label("Couldn’t load your library", systemImage: "exclamationmark.triangle")
+      } description: {
+        Text(errorMessage)
+      } actions: {
+        retryButton
+      }
+      .frame(minHeight: 280)
+    } else if model.isLoading, !model.hasLoaded {
+      ProgressView("Loading \(model.section.rawValue.lowercased())")
+        .frame(maxWidth: .infinity, minHeight: 220)
+    } else {
+      if let errorMessage = model.errorMessage {
+        AccessibleErrorLabel(message: errorMessage)
+        retryButton
+      }
+      if model.items.isEmpty {
+        if model.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          EmptyFeatureView(
+            title: "Nothing here yet",
+            systemImage: model.section.systemImage,
+            message: "Items in this craft and filter will appear here."
+          )
+          .frame(minHeight: 220)
+        } else {
+          ContentUnavailableView.search(text: model.searchText)
+        }
+      } else {
+        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 26) {
+          ForEach(model.items) { item in
+            galleryItem(item)
+              .task {
+                if item.id == model.items.last?.id {
+                  await model.load(reset: false)
+                }
+              }
+          }
+        }
+      }
+    }
+  }
+
+  private var galleryColumns: [GridItem] {
+    let item = GridItem(.flexible(), spacing: 18, alignment: .top)
+    return dynamicTypeSize.isAccessibilitySize ? [item] : [item, item]
+  }
+
+  @ViewBuilder
+  private func galleryItem(_ item: LibraryItem) -> some View {
+    NavigationLink(value: item) {
+      LibraryGalleryCard(item: item, imageURL: item.artworkURL(using: model.client))
+    }
+    .buttonStyle(.plain)
+  }
+
+  private var retryButton: some View {
+    Button("Try Again") {
+      Task { await model.load() }
+    }
+    .buttonStyle(QuietActionStyle())
+    .disabled(model.isLoading)
+  }
+
+  @ViewBuilder
+  private var createAction: some View {
+    if let action = createDestination {
+      Button {
+        editorTarget = action.target
+      } label: {
+        Label(action.title, systemImage: "plus")
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      .buttonStyle(QuietActionStyle())
+    }
+  }
+
+  private var createDestination: (title: String, target: LibraryEditorTarget)? {
+    switch model.section {
+    case .diamonds: ("Add diamond painting project", .newDiamond)
+    case .books: ("Add coloring book", .newBook)
+    case .pages: nil
+    }
+  }
+
+  private var sectionSelection: Binding<LibrarySection?> {
+    Binding(
+      get: { model.section },
+      set: { newSection in
+        if let newSection {
+          model.select(newSection)
+        }
+      }
+    )
+  }
+
+  @ViewBuilder
+  private func detail(for item: LibraryItem) -> some View {
+    switch item {
+    case .diamond(let project):
+      LibraryItemDetail(
+        item: item,
+        imageURL: item.artworkURL(using: model.client),
+        onEdit: { editorTarget = .editDiamond(project) },
+        onDelete: { deleteCandidate = item }
+      )
+    case .book(let book):
+      LibraryItemDetail(
+        item: item,
+        imageURL: item.artworkURL(using: model.client),
+        onEdit: { editorTarget = .editBook(book) },
+        onDelete: { deleteCandidate = item },
+        deleteLabel: "Delete Coloring Book"
+      )
+    case .page(let page):
+      LibraryItemDetail(
+        item: item,
+        imageURL: item.artworkURL(using: model.client),
+        onEdit: { editorTarget = .editPage(page) }
+      )
+    }
+  }
+
+  @ViewBuilder
+  private func editor(for target: LibraryEditorTarget) -> some View {
+    switch target {
+    case .newDiamond:
+      DiamondProjectEditor(
+        client: model.client,
+        userID: model.userID,
+        onLibraryRefresh: { await model.load() }
+      ) { saved in
+        Task { await selectSaved(.diamond(saved)) }
+      }
+    case .editDiamond(let project):
+      DiamondProjectEditor(
+        client: model.client,
+        userID: model.userID,
+        project: project,
+        onLibraryRefresh: { await model.load() }
+      ) { saved in
+        Task { await selectSaved(.diamond(saved)) }
+      }
+    case .newBook:
+      ColoringBookEditor(
+        client: model.client,
+        userID: model.userID,
+        onLibraryRefresh: { await model.load() }
+      ) { saved in
+        Task { await selectSaved(.book(saved)) }
+      }
+    case .editBook(let book):
+      ColoringBookEditor(
+        client: model.client,
+        userID: model.userID,
+        book: book,
+        onLibraryRefresh: { await model.load() }
+      ) { saved in
+        Task { await selectSaved(.book(saved)) }
+      }
+    case .editPage(let page):
+      ColoringPageEditor(
+        client: model.client,
+        page: page,
+        onLibraryRefresh: { await model.load() }
+      ) { saved in
+        Task { await selectSaved(.page(saved)) }
+      }
+    }
+  }
+
+  private func selectSaved(_ item: LibraryItem) async {
+    if let selected = await model.selection(afterSaving: item) {
+      path = [selected]
+    } else {
+      path = []
     }
   }
 
@@ -564,104 +728,45 @@ struct LibraryView: View {
     }
   }
 
-  private func imageURL(for item: LibraryItem, bookThumb: String) -> URL? {
-    switch item {
-    case .diamond:
-      nil
-    case .book(let book):
-      book.coverImage?.nonEmpty.map {
-        model.client.fileURL(
-          collection: "coloring_books", recordID: book.id, filename: $0, thumb: bookThumb
-        )
-      }
-    case .page(let page):
-      page.photos.first.map {
-        model.client.fileURL(
-          collection: "coloring_pages", recordID: page.id, filename: $0, thumb: "160x160"
-        )
-      }
-    }
-  }
-
   private var searchPrompt: String {
     switch model.section {
-    case .diamonds: "Search projects"
-    case .books: "Search books"
+    case .diamonds: "Search titles, artists, or books"
+    case .books: "Search titles, artists, or books"
     case .pages: "Book title or page number"
     }
   }
 }
 
-struct LibraryItemRow: View {
+struct LibraryGalleryCard: View {
   @Environment(\.theme) private var theme
 
   let item: LibraryItem
-  var imageURL: URL? = nil
+  let imageURL: URL?
 
   var body: some View {
-    HStack(spacing: 12) {
-      Group {
-        if let imageURL {
-          AsyncImage(url: imageURL) { image in
-            image
-              .resizable()
-              .scaledToFill()
-          } placeholder: {
-            iconImage
-          }
-          .frame(width: thumbnailSize.width, height: thumbnailSize.height)
-          .clipShape(RoundedRectangle(cornerRadius: 6))
-        } else {
-          iconImage
-        }
-      }
-      .accessibilityHidden(true)
+    VStack(alignment: .leading, spacing: 8) {
+      RecordArtwork(url: imageURL, maxHeight: 230, emptyMinHeight: 170)
+        .frame(maxWidth: .infinity, minHeight: 170, maxHeight: 230)
+        .background(theme.card, in: .rect(cornerRadius: 10))
+        .accessibilityHidden(true)
 
-      VStack(alignment: .leading, spacing: 4) {
-        Text(item.title)
-          .font(.headline)
-          .foregroundStyle(theme.cardForeground)
-          .lineLimit(2)
-        if !item.subtitle.isEmpty {
-          Text(item.subtitle)
-            .font(.subheadline)
-            .foregroundStyle(theme.mutedForeground)
-            .lineLimit(1)
-        }
+      Text(item.title)
+        .font(.headline)
+        .foregroundStyle(theme.foreground)
+        .fixedSize(horizontal: false, vertical: true)
+
+      if !item.libraryCaption.isEmpty {
+        Text(item.libraryCaption)
+          .font(.subheadline)
+          .foregroundStyle(theme.pageSecondaryForeground)
+          .fixedSize(horizontal: false, vertical: true)
       }
 
-      Spacer(minLength: 8)
-      StatusBadge(status: item.status)
+      StatusBadge(status: item.status, presentation: .quiet)
     }
-    .padding(.vertical, 4)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(.rect)
     .accessibilityElement(children: .combine)
-  }
-
-  private var iconImage: some View {
-    IconBadge(systemImage: systemImage, surfaceIndex: iconSurfaceIndex)
-  }
-
-  private var iconSurfaceIndex: Int {
-    switch item {
-    case .diamond: 3
-    case .book: 1
-    case .page: 2
-    }
-  }
-
-  private var thumbnailSize: CGSize {
-    switch item {
-    case .book: CGSize(width: 40, height: 55)
-    default: CGSize(width: 44, height: 44)
-    }
-  }
-
-  private var systemImage: String {
-    switch item {
-    case .diamond: "diamond"
-    case .book: "book.closed"
-    case .page: "doc.richtext"
-    }
   }
 }
 

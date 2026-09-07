@@ -299,6 +299,37 @@ struct QuietActionStyle: ButtonStyle {
   }
 }
 
+/// Uncropped artwork with a shared missing and failed-image fallback.
+struct RecordArtwork: View {
+  @Environment(\.theme) private var theme
+
+  let url: URL?
+  var maxHeight: CGFloat = 124
+  var emptyMinHeight: CGFloat = 96
+
+  var body: some View {
+    AsyncImage(url: url) { phase in
+      if let image = phase.image {
+        image.resizable().scaledToFit()
+      } else if url != nil, phase.error == nil {
+        ProgressView()
+      } else {
+        VStack(spacing: 8) {
+          Image(systemName: "photo")
+            .font(.title2)
+          Text("No artwork")
+            .font(.caption)
+            .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(theme.mutedForeground)
+        .padding(8)
+        .frame(minHeight: emptyMinHeight)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: maxHeight)
+  }
+}
+
 /// Artwork leads; text and status can grow without truncation.
 struct ActiveProjectRow: View {
   @Environment(\.theme) private var theme
@@ -314,7 +345,7 @@ struct ActiveProjectRow: View {
       : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
 
     layout {
-      artwork
+      RecordArtwork(url: imageURL, maxHeight: 124, emptyMinHeight: 96)
         .frame(width: 100, height: 124)
         .background(theme.card, in: .rect(cornerRadius: 10))
         .clipShape(.rect(cornerRadius: 10))
@@ -337,25 +368,5 @@ struct ActiveProjectRow: View {
     .padding(.vertical, 16)
     .contentShape(.rect)
     .accessibilityElement(children: .combine)
-  }
-
-  private var artwork: some View {
-    AsyncImage(url: imageURL) { phase in
-      if let image = phase.image {
-        image.resizable().scaledToFit()
-      } else if imageURL != nil, phase.error == nil {
-        ProgressView()
-      } else {
-        VStack(spacing: 8) {
-          Image(systemName: "photo")
-            .font(.title2)
-          Text("No artwork")
-            .font(.caption)
-            .multilineTextAlignment(.center)
-        }
-        .foregroundStyle(theme.mutedForeground)
-        .padding(8)
-      }
-    }
   }
 }

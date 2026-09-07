@@ -105,7 +105,8 @@ Native Notes has no functional destination yet. Wishlist currently routes to
 the existing per-craft Library filters, not a combined Wishlist or link-saving
 screen. Those unfinished features were not removed as dead code.
 
-The next smallest presentation step is migrating Library rows to the shared
-artwork/quiet-status treatment while preserving its existing search, filtering,
-pagination, editing, and selection behavior. Notes should be a separate,
+Library presentation and Wishlist handoff are recorded in
+[Library validation](library-validation.md). The next smallest presentation
+step is migrating Create's sticker chrome to the shared quiet treatment while
+preserving its existing destinations. Notes should remain a separate,
 explicitly scoped functional implementation.

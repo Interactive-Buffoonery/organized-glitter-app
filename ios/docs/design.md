@@ -25,7 +25,18 @@ implementation contracts.
 ## Migration status
 
 Runtime checks and current screenshots are recorded in
-[Overview validation](overview-validation.md).
+[Overview validation](overview-validation.md) and
+[Library validation](library-validation.md).
+
+Library was migrated against the same studio revision. iPhone uses peer craft
+segments (Diamond art / Books / Pages), native search, a quiet status menu,
+and an artwork-led two-column gallery. Captions prefer company, publisher, or
+parent book title. Create stays in the scroll content, not the navigation bar.
+iPad keeps a craft sidebar and opens item details on the content stack.
+Artwork uses `RecordArtwork` and `PocketBaseClient.fileURL`, with a shared
+missing/failed fallback. `listingIdentity` includes a handoff epoch so
+returning to the same craft's Wishlist clears search and reloads the
+unsearched listing without `apply` starting a second competing load.
 
 Overview now reuses `PageHeader` and `SectionHeader`, adds `QuietActionStyle`
 and `ActiveProjectRow`, and uses the quiet presentation of `StatusBadge`.
@@ -53,8 +64,9 @@ updated active records remains unchanged; the summary uses server totals.
 
 Other screens still use legacy sticker surfaces, `StickerCard`, `IconBadge`,
 and `PillButtonStyle`. Their tokens and behavior remain until those screens are
-migrated. The old Overview metric view and the unused surface-placement options
-on the Library row and status badge were removed after checking references.
+migrated. The old Overview metric view, `LibraryItemRow`, and unused
+surface-placement options on the Library row and status badge were removed
+after checking references. `IconBadge` stays because Create still uses it.
 The sections below describe both the retained palette and remaining legacy chrome.
 
 ## Variants

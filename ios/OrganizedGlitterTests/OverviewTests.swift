@@ -95,21 +95,4 @@ struct OverviewPresentationTests {
     #expect(model.artworkURL(for: page()) == nil)
     #expect(model.artworkURL(for: page(photos: [""])) == nil)
   }
-
-  @Test func wishlistNavigationClearsAnExistingSearchAndFilter() {
-    let model = LibraryModel(client: client(), userID: "fictional-user")
-    model.select(.pages)
-    model.searchText = "previous search"
-    model.statusFilter = "completed"
-    let request = LibraryRequest(section: .books, status: "wishlist")
-    model.apply(request)
-    #expect(model.section == .books)
-    #expect(model.searchText.isEmpty)
-    #expect(model.statusFilter == "wishlist")
-
-    model.searchText = "another search"
-    model.apply(LibraryRequest(section: .books, status: "wishlist"))
-    #expect(model.searchText.isEmpty)
-    #expect(request != LibraryRequest(section: .books, status: "wishlist"))
-  }
 }

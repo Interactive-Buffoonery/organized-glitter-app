@@ -239,6 +239,45 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
       page.updated
     }
   }
+
+  /// Publisher/company for library cards; pages keep the parent book title.
+  var libraryCaption: String {
+    switch self {
+    case .diamond(let project):
+      project.expand?.company?.name.nonEmpty
+        ?? project.expand?.artist?.name.nonEmpty
+        ?? ""
+    case .book(let book):
+      book.expand?.publisher?.name.nonEmpty
+        ?? book.series?.nonEmpty
+        ?? ""
+    case .page(let page):
+      page.expand?.book?.title ?? ""
+    }
+  }
+
+  func artworkURL(using client: PocketBaseClient) -> URL? {
+    let collection: String
+    let recordID: String
+    let filename: String?
+    switch self {
+    case .diamond(let project):
+      collection = "projects"
+      recordID = project.id
+      filename = project.image?.nonEmpty
+    case .book(let book):
+      collection = "coloring_books"
+      recordID = book.id
+      filename = book.coverImage?.nonEmpty
+    case .page(let page):
+      collection = "coloring_pages"
+      recordID = page.id
+      filename = page.photos.first(where: { !$0.isEmpty })
+    }
+    return filename.map {
+      client.fileURL(collection: collection, recordID: recordID, filename: $0)
+    }
+  }
 }
 
 extension String {
