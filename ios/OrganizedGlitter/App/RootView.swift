@@ -11,9 +11,7 @@ struct RootView: View {
       case .restoring:
         LaunchView()
       case .signedOut:
-        NavigationStack {
-          WelcomeView(model: model)
-        }
+        WelcomeView(model: model)
       case .signedIn(let user):
         if let client = model.client {
           AppShellView(model: model, client: client, user: user)
@@ -42,14 +40,16 @@ struct RootView: View {
 
 /// In-app restoration surface. Distinct from the system launch screen: it can
 /// show progress while session restore runs, then yields as soon as `phase`
-/// leaves `.restoring`. No artificial branding delay.
+/// leaves `.restoring`. No artificial branding delay. Wordmark matches Welcome;
+/// progress is quiet and labeled for VoiceOver only.
 private struct LaunchView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
-    VStack(spacing: 24) {
+    VStack(spacing: 28) {
       BrandWordmark(size: 64)
-      ProgressView("Opening your library")
+      ProgressView()
+        .accessibilityLabel("Opening your library")
         .accessibilityIdentifier("launchProgress")
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)

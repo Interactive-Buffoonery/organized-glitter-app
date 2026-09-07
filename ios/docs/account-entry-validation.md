@@ -50,9 +50,9 @@ supplement `screenshots/account-entry/references/`.
 
 | Surface | Behavior |
 | --- | --- |
-| System launch screen | Solid `LaunchBackground` (`#F8E9F6` light / `#05051A` dark). No logo tile. |
-| In-app restoration | Caveat wordmark plus progress only while restoring. No artificial delay. |
-| Welcome | Stacked Caveat wordmark, Create account, Sign in. No authenticated tabs. |
+| System launch screen | Solid `LaunchBackground` (`#F8E9F6` light / `#05051A` dark) with centered Caveat `LaunchWordmark` asset. |
+| In-app restoration | Live Caveat wordmark plus progress only while restoring. No artificial delay. |
+| Welcome | Stacked Caveat wordmark centered above bottom actions (Create account, Sign in). No authenticated tabs. |
 | Method selection | Wordmark, Welcome back / Create account, Continue with email, switch link. |
 | Email sign-in | Email, password, Sign in, Forgot password?, Privacy, Terms, Resend verification. |
 | Registration | Username, email, password, confirmation; success guidance after create. |
@@ -81,12 +81,15 @@ Native simulator captures (fictional signed-out fixtures):
 - [iPhone password reset, light](screenshots/account-entry/iphone-password-reset-light.png)
 - [iPhone password reset, dark](screenshots/account-entry/iphone-password-reset-dark.png)
 - [iPad Welcome, light](screenshots/account-entry/ipad-welcome-light.png)
+- [iPad Welcome, dark](screenshots/account-entry/ipad-welcome-dark.png)
 - [iPad method choice, light](screenshots/account-entry/ipad-signin-methods-light.png)
+- [iPad method choice, dark](screenshots/account-entry/ipad-signin-methods-dark.png)
 - [iPad email sign-in, light](screenshots/account-entry/ipad-signin-light.png)
+- [iPad email sign-in, dark](screenshots/account-entry/ipad-signin-dark.png)
 - [iPhone Welcome, accessibility XXXL](screenshots/account-entry/iphone-welcome-axxl.png)
 - [iPhone method choice, accessibility XXXL](screenshots/account-entry/iphone-signin-methods-axxl.png)
 
-Studio QA references:
+Studio QA and launch references:
 
 - [Studio splash, light](screenshots/account-entry/references/studio-splash-light.png)
 - [Studio splash, dark](screenshots/account-entry/references/studio-splash-dark.png)
@@ -98,6 +101,8 @@ Studio QA references:
 - [Studio register email, light](screenshots/account-entry/references/studio-register-email-light.png)
 - [Studio recovery, light](screenshots/account-entry/references/studio-recovery-light.png)
 - [Studio recovery confirmation, light](screenshots/account-entry/references/studio-recovery-confirmation-light.png)
+- [Launch wordmark asset, light](screenshots/account-entry/references/launch-wordmark-light.png)
+- [Launch wordmark asset, dark](screenshots/account-entry/references/launch-wordmark-dark.png)
 
 Root `screenshots/light-signin.png` and `screenshots/dark-signin.png` match the
 current email sign-in presentation.
@@ -136,15 +141,16 @@ Manual review: launch Debug with `-ui-testing-signed-out`.
   against a real PocketBase instance
 - Live Discord, Google, or Apple authentication (not implemented on iOS)
 - Universal-link token confirmation for reset or verification
+- iPad dark-mode account-entry captures
 - System launch screen pixel comparison on device cold start
-- iPad dark-mode and iPad accessibility XXXL account-entry matrices
+- iPad accessibility XXXL account-entry matrix
 
 ## Remaining visual gaps
 
 - Studio method choice shows Apple/Google/Discord; native shows email only by
   contract
-- System launch cannot render Caveat; it uses the solid brand background only
-- Welcome wordmark sits slightly higher than some studio frames
+- System launch uses a pre-rendered Caveat `LaunchWordmark` asset rather than
+  live Dynamic Type text
 - Native method choice uses one capsule email row instead of four provider rows
 
 ## Backend / auth follow-ups

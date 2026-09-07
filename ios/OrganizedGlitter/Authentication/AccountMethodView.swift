@@ -5,7 +5,7 @@ import SwiftUI
 struct AccountMethodView: View {
   @Environment(\.theme) private var theme
 
-  enum Mode {
+  enum Mode: Hashable {
     case signIn
     case register
 
@@ -18,8 +18,7 @@ struct AccountMethodView: View {
 
     var emailDestinationTitle: String {
       switch self {
-      case .signIn: "Continue with email"
-      case .register: "Continue with email"
+      case .signIn, .register: "Continue with email"
       }
     }
 
@@ -36,17 +35,26 @@ struct AccountMethodView: View {
       case .register: "Sign in"
       }
     }
+
+    var opposite: Mode {
+      switch self {
+      case .signIn: .register
+      case .register: .signIn
+      }
+    }
   }
 
   let model: AppModel
   let mode: Mode
+  @Binding var path: NavigationPath
 
   var body: some View {
     AuthEntryContainer(fillsHeight: true) {
       VStack(spacing: 24) {
+        Spacer(minLength: 12)
+
         BrandWordmark(size: 52, relativeTo: .largeTitle)
           .frame(maxWidth: .infinity)
-          .padding(.top, 12)
 
         Text(mode.title)
           .font(.title2.weight(.semibold))
@@ -55,13 +63,8 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("accountMethodTitle")
 
         VStack(spacing: 12) {
-          NavigationLink {
-            switch mode {
-            case .signIn:
-              SignInView(model: model)
-            case .register:
-              RegistrationView(client: model.client)
-            }
+          Button {
+            path.append(mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister)
           } label: {
             Label(mode.emailDestinationTitle, systemImage: "envelope")
               .labelStyle(.titleAndIcon)
@@ -77,24 +80,27 @@ struct AccountMethodView: View {
           Text(mode.switchPrompt)
             .font(.subheadline)
             .foregroundStyle(theme.mutedForeground)
-          NavigationLink {
-            AccountMethodView(
-              model: model,
-              mode: mode == .signIn ? .register : .signIn
-            )
-          } label: {
-            Text(mode.switchActionTitle)
+          Button(mode.switchActionTitle) {
+            replaceMethod(with: mode.opposite)
           }
           .buttonStyle(AuthLinkButtonStyle())
           .accessibilityIdentifier("accountMethodSwitch")
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 8)
+
+        Spacer(minLength: 12)
       }
-      .frame(minHeight: 480)
       .frame(maxWidth: .infinity)
     }
     .navigationBarTitleDisplayMode(.inline)
+  }
+
+  private func replaceMethod(with next: Mode) {
+    if !path.isEmpty {
+      path.removeLast()
+    }
+    path.append(AccountEntryRoute.methods(next))
   }
 }
 

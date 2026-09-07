@@ -5,36 +5,50 @@ import SwiftUI
 struct WelcomeView: View {
   let model: AppModel
 
+  @State private var path = NavigationPath()
+
   var body: some View {
-    AuthEntryContainer(fillsHeight: true) {
-      VStack(spacing: 40) {
-        Spacer(minLength: 24)
-        BrandWordmark(size: 64)
-          .frame(maxWidth: .infinity)
-          .accessibilityIdentifier("welcomeWordmark")
-        Spacer(minLength: 24)
+    NavigationStack(path: $path) {
+      AuthEntryContainer(fillsHeight: true) {
+        VStack(spacing: 40) {
+          Spacer(minLength: 24)
+          BrandWordmark(size: 64)
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("welcomeWordmark")
+          Spacer(minLength: 24)
 
-        VStack(spacing: 12) {
-          NavigationLink {
-            AccountMethodView(model: model, mode: .register)
-          } label: {
-            Text("Create account")
-          }
-          .buttonStyle(AuthPrimaryButtonStyle())
-          .accessibilityIdentifier("welcomeCreateAccount")
-          .disabled(model.client == nil)
+          VStack(spacing: 12) {
+            Button {
+              path.append(AccountEntryRoute.methods(.register))
+            } label: {
+              Text("Create account")
+            }
+            .buttonStyle(AuthPrimaryButtonStyle())
+            .accessibilityIdentifier("welcomeCreateAccount")
+            .disabled(model.client == nil)
 
-          NavigationLink {
-            AccountMethodView(model: model, mode: .signIn)
-          } label: {
-            Text("Sign in")
+            Button {
+              path.append(AccountEntryRoute.methods(.signIn))
+            } label: {
+              Text("Sign in")
+            }
+            .buttonStyle(AuthSecondaryButtonStyle())
+            .accessibilityIdentifier("welcomeSignIn")
           }
-          .buttonStyle(AuthSecondaryButtonStyle())
-          .accessibilityIdentifier("welcomeSignIn")
+          .padding(.bottom, 16)
         }
-        .padding(.bottom, 8)
+      }
+      .toolbar(.hidden, for: .navigationBar)
+      .navigationDestination(for: AccountEntryRoute.self) { route in
+        switch route {
+        case .methods(let mode):
+          AccountMethodView(model: model, mode: mode, path: $path)
+        case .emailSignIn:
+          SignInView(model: model)
+        case .emailRegister:
+          RegistrationView(client: model.client, path: $path)
+        }
       }
     }
-    .toolbar(.hidden, for: .navigationBar)
   }
 }
