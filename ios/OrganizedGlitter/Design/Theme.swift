@@ -64,7 +64,7 @@ extension Theme {
     static let outlineWidth: CGFloat = 1.5
   }
 
-  /// ease-out-quart from DESIGN.json. No bounce, no elastic.
+  /// Brief ease-out motion without bounce or elastic movement.
   static let motion = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.24)
 }
 

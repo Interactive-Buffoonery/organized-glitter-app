@@ -231,7 +231,7 @@ struct StatusBadge: View {
   }
 
   /// Hue is never the only signal here: every case pairs with a distinct icon and
-  /// its written label, per DESIGN.json's WCAG 2.2 AA requirement.
+  /// its written label, as required by docs/design.md.
   private var tint: Color {
     if onSurface {
       return theme.surfaceForeground

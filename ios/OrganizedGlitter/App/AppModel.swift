@@ -142,7 +142,7 @@ final class AppModel {
   /// web application stores `theme_preference` on the user record; only
   /// system/light/dark carry over — the web's Catppuccin flavor names don't
   /// exist on iOS and are deliberately ignored, keeping the device preference.
-  /// Local theme changes remain device-local until write-back is added.
+  /// AccountPreferencesModel writes supported theme choices back to the account.
   private func applyThemePreference(from user: UserRecord) {
     guard let themeStore, let preference = user.themePreference else {
       return
