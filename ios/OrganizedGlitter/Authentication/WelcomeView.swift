@@ -6,7 +6,7 @@ struct WelcomeView: View {
   let model: AppModel
 
   var body: some View {
-    AuthEntryContainer {
+    AuthEntryContainer(fillsHeight: true) {
       VStack(spacing: 40) {
         Spacer(minLength: 24)
         BrandWordmark(size: 64)
@@ -16,7 +16,7 @@ struct WelcomeView: View {
 
         VStack(spacing: 12) {
           NavigationLink {
-            RegistrationView(client: model.client)
+            AccountMethodView(model: model, mode: .register)
           } label: {
             Text("Create account")
           }
@@ -25,16 +25,15 @@ struct WelcomeView: View {
           .disabled(model.client == nil)
 
           NavigationLink {
-            SignInView(model: model)
+            AccountMethodView(model: model, mode: .signIn)
           } label: {
             Text("Sign in")
           }
           .buttonStyle(AuthSecondaryButtonStyle())
           .accessibilityIdentifier("welcomeSignIn")
         }
-        .padding(.bottom, 16)
+        .padding(.bottom, 8)
       }
-      .frame(minHeight: 520)
     }
     .toolbar(.hidden, for: .navigationBar)
   }

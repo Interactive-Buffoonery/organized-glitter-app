@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Email and password sign-in. Provider method selection is deferred until
-/// Apple, Google, and Discord continuity is verified against production.
+/// Email and password sign-in. Reached from the email-only method screen.
 struct SignInView: View {
   @Environment(\.theme) private var theme
 
@@ -64,7 +63,7 @@ struct SignInView: View {
         .disabled(model.isSubmitting || model.client == nil)
         .accessibilityIdentifier("signInButton")
 
-        HStack(spacing: 20) {
+        VStack(spacing: 4) {
           NavigationLink {
             if let client = model.client {
               PasswordResetView(client: client, initialEmail: identity)
@@ -76,45 +75,30 @@ struct SignInView: View {
           .accessibilityLabel("Reset a forgotten password")
           .disabled(model.client == nil)
 
+          privacyAndTermsLinks
+
           NavigationLink {
             if let client = model.client {
               VerificationRequestView(client: client, initialEmail: identity)
             }
           } label: {
-            Text("Resend verification")
+            Text("Resend verification email")
           }
           .buttonStyle(AuthLinkButtonStyle())
           .accessibilityLabel("Request a new verification email")
           .disabled(model.client == nil)
         }
         .frame(maxWidth: .infinity)
-
-        privacyAndTermsLinks
-          .frame(maxWidth: .infinity)
-
-        HStack(spacing: 6) {
-          Text("New to Organized Glitter?")
-            .font(.subheadline)
-            .foregroundStyle(theme.mutedForeground)
-          NavigationLink {
-            RegistrationView(client: model.client)
-          } label: {
-            Text("Create account")
-          }
-          .buttonStyle(AuthLinkButtonStyle())
-          .disabled(model.client == nil)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 8)
+        .padding(.top, 4)
       }
     }
     .navigationBarTitleDisplayMode(.inline)
     .onAppear {
       model.signInError = nil
-      focusedField = .identity
     }
     .onDisappear {
       submitGeneration += 1
+      focusedField = nil
     }
   }
 
@@ -130,6 +114,7 @@ struct SignInView: View {
   }
 
   private func signIn() {
+    focusedField = nil
     submitGeneration += 1
     let generation = submitGeneration
     Task {

@@ -43,9 +43,11 @@ struct VerificationRequestView: View {
       if email.isEmpty {
         email = initialEmail
       }
-      isEmailFocused = true
     }
-    .onDisappear { submitGeneration += 1 }
+    .onDisappear {
+      submitGeneration += 1
+      isEmailFocused = false
+    }
   }
 
   @ViewBuilder

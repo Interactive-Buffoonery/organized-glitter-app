@@ -12,6 +12,7 @@
 		05FEBA42EEF5E16E150CE2BC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A7FD3C8DA9EFE11CA84D25 /* Theme.swift */; };
 		0B146CB8F788DA26C94E17F5 /* KeychainSessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B9784FB12A1B3910B9397C /* KeychainSessionStoreTests.swift */; };
 		0FE72C97DBF94E7253AA79EB /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4286752BA69AD6852C049E5D /* LibraryView.swift */; };
+		1718F3F391D717BF461FB30A /* AccountMethodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3243054F78356C39C4024422 /* AccountMethodView.swift */; };
 		194236C29D621F54421005AB /* PocketBaseFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911823E33E157F4AA5946C5D /* PocketBaseFilter.swift */; };
 		19E7686A678185955B8E0709 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5AC093CA2382FCEAFA736F1 /* APIError.swift */; };
 		1B0B07C183545FF70607088E /* AccountPreferencesModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C78FAD72AC3EDC971685C2A /* AccountPreferencesModel.swift */; };
@@ -95,6 +96,7 @@
 		257F0863604513177CB207BE /* OrganizedGlitterTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizedGlitterTheme.swift; sourceTree = "<group>"; };
 		2E7976C3250DB200B8D6BC78 /* ColoringEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringEditorTests.swift; sourceTree = "<group>"; };
 		2F4C3D5F5234F13224CA4205 /* LibraryRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryRefresh.swift; sourceTree = "<group>"; };
+		3243054F78356C39C4024422 /* AccountMethodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountMethodView.swift; sourceTree = "<group>"; };
 		33736DFA39E0AD4255D9B3D3 /* OrganizedGlitter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OrganizedGlitter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		371EA167F285531DE866936F /* PocketBaseDateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseDateTests.swift; sourceTree = "<group>"; };
 		39A9F5EB63F7156CCDA9FAB6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -251,6 +253,7 @@
 		33D1F6155B45FF8CFB87529A /* Authentication */ = {
 			isa = PBXGroup;
 			children = (
+				3243054F78356C39C4024422 /* AccountMethodView.swift */,
 				F9079468E04D40FFDADAC626 /* AuthChrome.swift */,
 				F07BA0F2894320D34E13F322 /* PasswordResetView.swift */,
 				5D9C4E6FD2A3DBB49CDA8FAC /* RegistrationView.swift */,
@@ -496,6 +499,7 @@
 			files = (
 				19E7686A678185955B8E0709 /* APIError.swift in Sources */,
 				916E856E98DD5B03FA3DCDF4 /* AccountDestinations.swift in Sources */,
+				1718F3F391D717BF461FB30A /* AccountMethodView.swift in Sources */,
 				1B0B07C183545FF70607088E /* AccountPreferencesModel.swift in Sources */,
 				82E7FA3D4B49FA1DF95E4B3C /* AccountView.swift in Sources */,
 				34401C9DCE7231B3465C4D13 /* AppConfiguration.swift in Sources */,

@@ -67,11 +67,12 @@ Account entry was migrated against the same studio revision while keeping
 ADR 0001 backgrounds. The system launch screen uses a solid brand
 `LaunchBackground`. The in-app restoration splash shows the Caveat wordmark
 only while session restore runs. Signed-out users land on Welcome (wordmark,
-Create account, Sign in) with no authenticated tabs. Email sign-in,
-registration, password-reset request/confirmation, and verification request
-use quiet auth controls instead of sticker pills. Apple, Google, and Discord
-method buttons stay out until provider continuity and native OAuth work land;
-see account-entry validation for the dependency list.
+Create account, Sign in) with no authenticated tabs. Method selection offers
+Continue with email only; Apple, Google, and Discord stay out until a native
+OAuth path and provider continuity land. Email sign-in, registration,
+password-reset request/confirmation, and verification request use quiet auth
+controls instead of sticker pills. See
+[account-entry validation](account-entry-validation.md).
 
 Other authenticated screens still use legacy sticker surfaces, `StickerCard`,
 `IconBadge`, and `PillButtonStyle`. Their tokens and behavior remain until

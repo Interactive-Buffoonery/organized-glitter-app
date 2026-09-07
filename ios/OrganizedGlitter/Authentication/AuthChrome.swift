@@ -36,6 +36,10 @@ struct AuthPrimaryButtonStyle: ButtonStyle {
         configuration.isPressed ? theme.muted : theme.secondary,
         in: .rect(cornerRadius: 16)
       )
+      .overlay {
+        RoundedRectangle(cornerRadius: 16)
+          .stroke(theme.border, lineWidth: 1)
+      }
       .opacity(isEnabled ? 1 : 0.5)
   }
 }
@@ -98,15 +102,23 @@ struct AuthEntryContainer<Content: View>: View {
   @Environment(\.theme) private var theme
 
   var alignment: HorizontalAlignment = .center
+  var fillsHeight: Bool = false
   @ViewBuilder let content: Content
 
   var body: some View {
-    ScrollView {
-      content
-        .frame(maxWidth: 420, alignment: Alignment(horizontal: alignment, vertical: .center))
-        .padding(.horizontal, 28)
-        .padding(.vertical, 24)
-        .frame(maxWidth: .infinity)
+    GeometryReader { proxy in
+      ScrollView {
+        content
+          .frame(maxWidth: 420, alignment: Alignment(horizontal: alignment, vertical: .center))
+          .padding(.horizontal, 28)
+          .padding(.top, 24)
+          .padding(.bottom, 36)
+          .frame(
+            maxWidth: .infinity,
+            minHeight: fillsHeight ? proxy.size.height : nil,
+            alignment: fillsHeight ? .center : .top
+          )
+      }
     }
     .scrollDismissesKeyboard(.interactively)
     .background(theme.themedBackground.ignoresSafeArea())

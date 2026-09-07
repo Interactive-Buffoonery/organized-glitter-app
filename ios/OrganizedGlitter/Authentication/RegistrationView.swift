@@ -40,7 +40,7 @@ struct RegistrationView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .onAppear { focusedField = .username }
+    .onAppear { focusedField = nil }
     .onDisappear { submitGeneration += 1 }
   }
 
@@ -147,13 +147,12 @@ struct RegistrationView: View {
       Text("Already have an account?")
         .font(.subheadline)
         .foregroundStyle(theme.mutedForeground)
-      // Prefer popping when this screen was pushed from Sign in; otherwise
-      // Welcome remains the parent and the user can choose Sign in there.
       Button("Sign in") { dismiss() }
         .buttonStyle(AuthLinkButtonStyle())
         .accessibilityLabel("Back to sign in")
     }
     .frame(maxWidth: .infinity)
+    .padding(.bottom, 24)
   }
 
   private func register() async {
