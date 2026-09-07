@@ -323,7 +323,8 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
       return .diamond(project.withExpand(prior.expand))
     case (.book(let book), .book(let prior)) where book.expand == nil:
       return .book(book.withExpand(prior.expand))
-    case (.page(let page), .page(let prior)) where page.expand == nil:
+    case (.page(let page), .page(let prior))
+    where page.expand == nil && page.book == prior.book:
       return .page(page.withExpand(prior.expand))
     default:
       return self

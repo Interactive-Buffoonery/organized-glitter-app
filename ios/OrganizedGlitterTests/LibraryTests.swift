@@ -235,6 +235,7 @@ struct LibraryTests {
         (200, pageList([(1, "Quiet pages")], page: 1, totalPages: 2, totalItems: 2)),
         (200, pageList([(12, "Quiet pages")], page: 2, totalPages: 2, totalItems: 2, idOffset: 1)),
         (200, pageList([(1, "Quiet pages")], page: 1, totalPages: 2, totalItems: 2)),
+        (200, pageList([(1, "Quiet pages")], page: 1, totalPages: 2, totalItems: 2)),
       ])
     let model = LibraryModel(client: client, userID: "user-1")
     model.select(.pages)
@@ -255,6 +256,31 @@ struct LibraryTests {
     #expect(selection?.title == "A moonlit garden")
     #expect(selection?.libraryCaption == "Quiet pages")
     #expect(model.pages.map(\.pageNumber) == [1])
+
+    let secondSelection = await model.selection(
+      afterSaving: saved, previousSelection: selection)
+    #expect(secondSelection?.libraryCaption == "Quiet pages")
+  }
+
+  @Test
+  func savedPageContextRequiresTheSameRecordAndBook() throws {
+    let json = pageList([(1, "Quiet pages")])
+    let decoder = JSONDecoder()
+    let prior = try decoder.decode(
+      RecordList<ColoringPageRecord>.self, from: Data(json.utf8)).items[0]
+    let moved = try decoder.decode(
+      RecordList<ColoringPageRecord>.self,
+      from: Data(json.replacingOccurrences(of: "book-1", with: "book-2").utf8)).items[0]
+    let other = try decoder.decode(
+      RecordList<ColoringPageRecord>.self,
+      from: Data(json.replacingOccurrences(of: "page-1", with: "page-2").utf8)).items[0]
+
+    #expect(LibraryItem.page(prior.withExpand(nil))
+      .retainingListingContext(from: .page(prior)).libraryCaption == "Quiet pages")
+    #expect(LibraryItem.page(moved.withExpand(nil))
+      .retainingListingContext(from: .page(prior)).libraryCaption.isEmpty)
+    #expect(LibraryItem.page(other.withExpand(nil))
+      .retainingListingContext(from: .page(prior)).libraryCaption.isEmpty)
   }
 
   @Test
