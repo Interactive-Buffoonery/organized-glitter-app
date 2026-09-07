@@ -45,7 +45,7 @@ struct AccountMethodView: View {
   }
 
   let model: AppModel
-  let mode: Mode
+  @Binding var mode: Mode
   @Binding var path: NavigationPath
 
   var body: some View {
@@ -81,7 +81,7 @@ struct AccountMethodView: View {
             .font(.subheadline)
             .foregroundStyle(theme.mutedForeground)
           Button(mode.switchActionTitle) {
-            replaceMethod(with: mode.opposite)
+            mode = mode.opposite
           }
           .buttonStyle(AuthLinkButtonStyle())
           .accessibilityIdentifier("accountMethodSwitch")
@@ -94,11 +94,6 @@ struct AccountMethodView: View {
       .frame(maxWidth: .infinity)
     }
     .navigationBarTitleDisplayMode(.inline)
-  }
-
-  private func replaceMethod(with next: Mode) {
-    path = NavigationPath()
-    path.append(AccountEntryRoute.methods(next))
   }
 }
 

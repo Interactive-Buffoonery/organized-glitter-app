@@ -52,8 +52,16 @@ final class OrganizedGlitterUITests: XCTestCase {
     app.buttons["continueWithEmail"].tap()
     XCTAssertTrue(app.staticTexts["Create account with email"].waitForExistence(timeout: 3))
     XCTAssertTrue(app.buttons["createAccountButton"].exists)
-    app.buttons["registrationSignIn"].tap()
-    XCTAssertTrue(app.staticTexts["Welcome back"].waitForExistence(timeout: 3))
+    let registrationSignIn = app.buttons["registrationSignIn"]
+    if !registrationSignIn.exists {
+      app.swipeUp()
+    }
+    XCTAssertTrue(registrationSignIn.waitForExistence(timeout: 3))
+    registrationSignIn.tap()
+    XCTAssertTrue(
+      app.otherElements["accountMethodTitle"].waitForExistence(timeout: 3)
+        || app.staticTexts["Welcome back"].waitForExistence(timeout: 3)
+    )
   }
 
   func testAuthenticatedShellShowsFiveDestinations() {

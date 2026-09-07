@@ -5,6 +5,7 @@ struct RegistrationView: View {
 
   let client: PocketBaseClient?
   @Binding var path: NavigationPath
+  @Binding var methodMode: AccountMethodView.Mode
 
   @State private var email = ""
   @State private var username = ""
@@ -16,9 +17,14 @@ struct RegistrationView: View {
   @State private var submitGeneration = 0
   @FocusState private var focusedField: Field?
 
-  init(client: PocketBaseClient?, path: Binding<NavigationPath>) {
+  init(
+    client: PocketBaseClient?,
+    path: Binding<NavigationPath>,
+    methodMode: Binding<AccountMethodView.Mode>
+  ) {
     self.client = client
     self._path = path
+    self._methodMode = methodMode
   }
 
   private enum Field {
@@ -67,8 +73,8 @@ struct RegistrationView: View {
       Button("Back to welcome") {
         path = NavigationPath()
       }
-        .buttonStyle(AuthPrimaryButtonStyle())
-        .accessibilityIdentifier("registrationBackToWelcome")
+      .buttonStyle(AuthPrimaryButtonStyle())
+      .accessibilityIdentifier("registrationBackToWelcome")
     }
   }
 
@@ -155,8 +161,10 @@ struct RegistrationView: View {
         .font(.subheadline)
         .foregroundStyle(theme.mutedForeground)
       Button("Sign in") {
-        path = NavigationPath()
-        path.append(AccountEntryRoute.methods(.signIn))
+        methodMode = .signIn
+        if !path.isEmpty {
+          path.removeLast()
+        }
       }
       .buttonStyle(AuthLinkButtonStyle())
       .accessibilityLabel("Back to sign in")

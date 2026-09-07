@@ -7,7 +7,8 @@ Date: 2026-09-07. Branch: `chore/native-ui-cleanup` in
 
 Adopted against `Interactive-Buffoonery/organized-glitter` branch
 `design/ios-mockup-studio`, revision
-`0135e6d3caa73ea01224bda27c8e0abbb954fd19`:
+`0135e6d3caa73ea01224bda27c8e0abbb954fd19` (verified 2026-09-07 via
+`git fetch` / `git rev-parse origin/design/ios-mockup-studio`):
 
 - `docs/design-previews/ios-mockup/README.md`
 - `docs/design-previews/ios-mockup/client/phone.tsx` and `client/welcome.ts`
@@ -26,16 +27,17 @@ iOS app still has no native OAuth client path, so method selection offers only
 Continue with email. Provider buttons are intentionally omitted rather than
 shown as inert or “Soon.”
 
-Conversation assets in the Cursor project at implementation time were
-unrelated Bugbot and review screenshots. If Sarah has newer splash/welcome
-reference images beyond the studio QA set above, they should replace or
-supplement `screenshots/account-entry/references/`.
+Supplied design images in the mockup studio `references/` folder are Wishlist
+and Notes inspiration, not splash/welcome. Account-entry visual decisions use
+the studio QA set above plus native simulator captures. If newer splash/welcome
+references exist outside that set, they should replace or supplement
+`screenshots/account-entry/references/`.
 
 ## Entry flow map
 
 | Screen | Native destination | Backend contract |
 | --- | --- | --- |
-| System launch | `UILaunchScreen` + `LaunchBackground` | None |
+| System launch | `UILaunchScreen` + `LaunchBackground` + `LaunchWordmark` | None |
 | In-app restore | `LaunchView` while `phase == .restoring` | Keychain + `authRefresh` |
 | Welcome | `WelcomeView` | Navigation only |
 | Method choice | `AccountMethodView` | Email only today |
@@ -51,11 +53,11 @@ supplement `screenshots/account-entry/references/`.
 | Surface | Behavior |
 | --- | --- |
 | System launch screen | Solid `LaunchBackground` (`#F8E9F6` light / `#05051A` dark) with centered Caveat `LaunchWordmark` asset. |
-| In-app restoration | Live Caveat wordmark plus progress only while restoring. No artificial delay. |
-| Welcome | Stacked Caveat wordmark centered above bottom actions (Create account, Sign in). No authenticated tabs. |
-| Method selection | Wordmark, Welcome back / Create account, Continue with email, switch link. |
-| Email sign-in | Email, password, Sign in, Forgot password?, Privacy, Terms, Resend verification. |
-| Registration | Username, email, password, confirmation; success guidance after create. |
+| In-app restoration | Caveat wordmark plus unlabeled progress (VoiceOver: “Opening your library”) only while restoring. No artificial delay. |
+| Welcome | Stacked Caveat wordmark, Create account, Sign in. Owns `NavigationStack` path. No authenticated tabs. |
+| Method selection | Wordmark, Welcome back / Create account, Continue with email, switch link. Mode switches in place without stacking duplicate method screens. |
+| Email sign-in | Email, password, Sign in, Forgot password?, Privacy, Terms, Resend verification. Password reset and verification use the shared path, not nested `NavigationLink` destinations. |
+| Registration | Username, email, password, confirmation; success guidance after create. Sign in pops back to method choice in sign-in mode. |
 | Password reset | Request form distinct from “Check your inbox” confirmation. |
 | Verification request | Request form and confirmation guidance. |
 | Offline / restoration failure / configuration error | Wordmark plus retry or configuration copy. |
@@ -114,9 +116,10 @@ current email sign-in presentation.
 - UI tests `testSignedOutAccountEntryPointsAreNative` and
   `testAuthenticatedShellShowsFiveDestinations` passed. The signed-out test
   walks Welcome → method choice → email form, asserts Apple/Google/Discord
-  buttons are absent, and checks empty-submit validation.
+  buttons are absent, checks empty-submit validation, method-mode switching,
+  and registration → Sign in returning to Welcome back.
 - Light/dark iPhone, light iPad, and accessibility XXXL account-entry
-  screenshots were captured with fictional fixtures and compared to studio QA
+  screenshots were recaptured with fictional fixtures and compared to studio QA
   references.
 
 ### Reproduce
@@ -141,17 +144,22 @@ Manual review: launch Debug with `-ui-testing-signed-out`.
   against a real PocketBase instance
 - Live Discord, Google, or Apple authentication (not implemented on iOS)
 - Universal-link token confirmation for reset or verification
-- iPad dark-mode account-entry captures
 - System launch screen pixel comparison on device cold start
-- iPad accessibility XXXL account-entry matrix
+- iPad dark-mode and iPad accessibility XXXL account-entry matrices
 
 ## Remaining visual gaps
 
 - Studio method choice shows Apple/Google/Discord; native shows email only by
   contract
-- System launch uses a pre-rendered Caveat `LaunchWordmark` asset rather than
-  live Dynamic Type text
+- System launch cannot use a live Dynamic Type Caveat font; it uses the
+  `LaunchWordmark` image asset on `LaunchBackground`
+- Studio dark email CTAs use a light lavender fill; native quiet buttons use
+  elevated card fill over the ADR navy glow
 - Native method choice uses one capsule email row instead of four provider rows
+- In-app restore splash was not captured as a still (restore exits immediately
+  with signed-out fixtures)
+- Accessibility XXXL captures may reflect host simulator text size; confirm on
+  device if shipping release notes need exact AX sizing
 
 ## Backend / auth follow-ups
 

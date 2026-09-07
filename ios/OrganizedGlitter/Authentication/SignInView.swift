@@ -5,6 +5,7 @@ struct SignInView: View {
   @Environment(\.theme) private var theme
 
   let model: AppModel
+  @Binding var path: NavigationPath
 
   @State private var identity = ""
   @State private var password = ""
@@ -64,12 +65,8 @@ struct SignInView: View {
         .accessibilityIdentifier("signInButton")
 
         VStack(spacing: 4) {
-          NavigationLink {
-            if let client = model.client {
-              PasswordResetView(client: client, initialEmail: identity)
-            }
-          } label: {
-            Text("Forgot password?")
+          Button("Forgot password?") {
+            path.append(AccountEntryRoute.passwordReset(email: identity))
           }
           .buttonStyle(AuthLinkButtonStyle())
           .accessibilityLabel("Reset a forgotten password")
@@ -77,12 +74,8 @@ struct SignInView: View {
 
           privacyAndTermsLinks
 
-          NavigationLink {
-            if let client = model.client {
-              VerificationRequestView(client: client, initialEmail: identity)
-            }
-          } label: {
-            Text("Resend verification email")
+          Button("Resend verification email") {
+            path.append(AccountEntryRoute.verificationRequest(email: identity))
           }
           .buttonStyle(AuthLinkButtonStyle())
           .accessibilityLabel("Request a new verification email")

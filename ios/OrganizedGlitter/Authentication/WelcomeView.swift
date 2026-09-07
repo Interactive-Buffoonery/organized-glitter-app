@@ -6,6 +6,7 @@ struct WelcomeView: View {
   let model: AppModel
 
   @State private var path = NavigationPath()
+  @State private var methodMode: AccountMethodView.Mode = .signIn
 
   var body: some View {
     NavigationStack(path: $path) {
@@ -13,15 +14,15 @@ struct WelcomeView: View {
         VStack(spacing: 0) {
           VStack {
             Spacer(minLength: 0)
-            BrandWordmark(size: 64)
+            BrandWordmark(size: 64, accessibilityIdentifier: "welcomeWordmark")
               .frame(maxWidth: .infinity)
-              .accessibilityIdentifier("welcomeWordmark")
             Spacer(minLength: 0)
           }
 
           VStack(spacing: 12) {
             Button {
-              path.append(AccountEntryRoute.methods(.register))
+              methodMode = .register
+              path.append(AccountEntryRoute.methods)
             } label: {
               Text("Create account")
             }
@@ -30,7 +31,8 @@ struct WelcomeView: View {
             .disabled(model.client == nil)
 
             Button {
-              path.append(AccountEntryRoute.methods(.signIn))
+              methodMode = .signIn
+              path.append(AccountEntryRoute.methods)
             } label: {
               Text("Sign in")
             }
@@ -43,12 +45,26 @@ struct WelcomeView: View {
       .toolbar(.hidden, for: .navigationBar)
       .navigationDestination(for: AccountEntryRoute.self) { route in
         switch route {
-        case .methods(let mode):
-          AccountMethodView(model: model, mode: mode, path: $path)
+        case .methods:
+          AccountMethodView(model: model, mode: $methodMode, path: $path)
         case .emailSignIn:
-          SignInView(model: model)
+          SignInView(model: model, path: $path)
         case .emailRegister:
-          RegistrationView(client: model.client, path: $path)
+          RegistrationView(client: model.client, path: $path, methodMode: $methodMode)
+        case .passwordReset(let email):
+          if let client = model.client {
+            PasswordResetView(client: client, initialEmail: email)
+          } else {
+            Text("Organized Glitter is not configured for password reset.")
+              .padding()
+          }
+        case .verificationRequest(let email):
+          if let client = model.client {
+            VerificationRequestView(client: client, initialEmail: email)
+          } else {
+            Text("Organized Glitter is not configured for verification.")
+              .padding()
+          }
         }
       }
     }

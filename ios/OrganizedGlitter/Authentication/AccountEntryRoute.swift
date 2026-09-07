@@ -6,4 +6,6 @@ enum AccountEntryRoute: Hashable {
   case methods
   case emailSignIn
   case emailRegister
+  case passwordReset(email: String)
+  case verificationRequest(email: String)
 }

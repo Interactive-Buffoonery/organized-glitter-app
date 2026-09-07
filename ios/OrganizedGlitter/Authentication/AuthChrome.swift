@@ -6,6 +6,7 @@ struct BrandWordmark: View {
 
   var size: CGFloat = 56
   var relativeTo: Font.TextStyle = .largeTitle
+  var accessibilityIdentifier: String? = nil
 
   var body: some View {
     VStack(spacing: 0) {
@@ -18,6 +19,7 @@ struct BrandWordmark: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Organized Glitter")
     .accessibilityAddTraits(.isHeader)
+    .accessibilityIdentifier(accessibilityIdentifier ?? "brandWordmark")
   }
 }
 
