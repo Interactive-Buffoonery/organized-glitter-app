@@ -48,9 +48,9 @@ client.
 
 ### Local configuration
 
-Debug builds use `http://127.0.0.1:8090` by default.
+Debug builds use `https://data.organizedglitter.app` by default.
 
-To use another development backend, copy the example and set a URL your device
+To use a local PocketBase instead, copy the example and set a URL your device
 or simulator can reach:
 
 ```sh
@@ -58,8 +58,8 @@ cd ios
 cp Config/Debug.local.xcconfig.example Config/Debug.local.xcconfig
 ```
 
-`Config/Debug.local.xcconfig` is gitignored. Keep credentials, private
-infrastructure, and production configuration out of tracked files.
+`Config/Debug.local.xcconfig` is gitignored. Keep credentials and private
+infrastructure out of tracked files.
 
 The tracked Release configuration intentionally points to `example.invalid`.
 Official release builds receive their backend URL through the gitignored
