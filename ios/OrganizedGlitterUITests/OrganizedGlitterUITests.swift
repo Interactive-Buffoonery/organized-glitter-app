@@ -7,14 +7,29 @@ final class OrganizedGlitterUITests: XCTestCase {
     app.launchArguments.append("-ui-testing-signed-out")
     app.launch()
 
-    XCTAssertTrue(app.buttons["Sign In"].waitForExistence(timeout: 2))
-    XCTAssertTrue(app.buttons["Create an Organized Glitter account"].exists)
+    XCTAssertTrue(app.otherElements["welcomeWordmark"].waitForExistence(timeout: 2)
+      || app.staticTexts["Organized Glitter"].waitForExistence(timeout: 2))
+    XCTAssertTrue(app.buttons["welcomeCreateAccount"].waitForExistence(timeout: 2))
+    XCTAssertTrue(app.buttons["welcomeSignIn"].exists)
+
+    app.buttons["welcomeSignIn"].tap()
+    XCTAssertTrue(app.staticTexts["Sign in with email"].waitForExistence(timeout: 2))
+    XCTAssertTrue(app.buttons["signInButton"].exists)
     XCTAssertTrue(app.buttons["Reset a forgotten password"].exists)
     XCTAssertTrue(app.buttons["Request a new verification email"].exists)
 
-    app.buttons["Create an Organized Glitter account"].tap()
-    XCTAssertTrue(app.navigationBars["Create Account"].waitForExistence(timeout: 2))
-    XCTAssertTrue(app.buttons["Create Account"].exists)
+    app.buttons["Request a new verification email"].tap()
+    XCTAssertTrue(app.staticTexts["Verify email"].waitForExistence(timeout: 2))
+    app.navigationBars.buttons["Back"].tap()
+
+    app.buttons["Reset a forgotten password"].tap()
+    XCTAssertTrue(app.staticTexts["Reset password"].waitForExistence(timeout: 2))
+    app.buttons["passwordResetBack"].tap()
+
+    app.navigationBars.buttons["Back"].tap()
+    app.buttons["welcomeCreateAccount"].tap()
+    XCTAssertTrue(app.staticTexts["Create account with email"].waitForExistence(timeout: 2))
+    XCTAssertTrue(app.buttons["createAccountButton"].exists)
   }
 
   func testAuthenticatedShellShowsFiveDestinations() {
@@ -39,13 +54,17 @@ final class OrganizedGlitterUITests: XCTestCase {
     let app = XCUIApplication()
     app.launch()
 
-    let identityField = app.textFields["Email address"]
+    if app.buttons["welcomeSignIn"].waitForExistence(timeout: 2) {
+      app.buttons["welcomeSignIn"].tap()
+    }
+
+    let identityField = app.textFields["signInEmail"]
     if identityField.waitForExistence(timeout: 2) {
       identityField.tap()
       identityField.typeText(identity)
-      app.secureTextFields["Password"].tap()
-      app.secureTextFields["Password"].typeText(password)
-      app.buttons["Sign In"].tap()
+      app.secureTextFields["signInPassword"].tap()
+      app.secureTextFields["signInPassword"].typeText(password)
+      app.buttons["signInButton"].tap()
     }
 
     let library = app.descendants(matching: .any)["Library"]

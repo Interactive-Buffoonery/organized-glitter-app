@@ -12,7 +12,7 @@ struct RootView: View {
         LaunchView()
       case .signedOut:
         NavigationStack {
-          SignInView(model: model)
+          WelcomeView(model: model)
         }
       case .signedIn(let user):
         if let client = model.client {
@@ -36,51 +36,76 @@ struct RootView: View {
         ConfigurationErrorView(message: message)
       }
     }
-    .background(theme.themedBackground)
+    .background(theme.themedBackground.ignoresSafeArea())
   }
 }
 
+/// In-app restoration surface. Distinct from the system launch screen: it can
+/// show progress while session restore runs, then yields as soon as `phase`
+/// leaves `.restoring`. No artificial branding delay.
 private struct LaunchView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
   var body: some View {
-    VStack(spacing: 16) {
-      Image("Logo")
-        .resizable()
-        .scaledToFit()
-        .frame(width: 96, height: 96)
-        .accessibilityHidden(true)
+    VStack(spacing: 24) {
+      BrandWordmark(size: 64)
       ProgressView("Opening your library")
+        .accessibilityIdentifier("launchProgress")
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .accessibilityElement(children: .combine)
+    .transaction { transaction in
+      if reduceMotion {
+        transaction.animation = nil
+      }
+    }
   }
 }
 
 private struct ConnectionUnavailableView: View {
+  @Environment(\.theme) private var theme
+
   let title: String
   let message: String
   let systemImage: String
   let retry: () -> Void
 
   var body: some View {
-    ContentUnavailableView {
-      Label(title, systemImage: systemImage)
-    } description: {
-      Text(message)
-    } actions: {
-      Button("Try Again", action: retry)
-        .buttonStyle(PillButtonStyle())
-        .frame(maxWidth: 240)
+    AuthEntryContainer {
+      VStack(spacing: 24) {
+        BrandWordmark(size: 48, relativeTo: .title)
+        ContentUnavailableView {
+          Label(title, systemImage: systemImage)
+        } description: {
+          Text(message)
+        } actions: {
+          Button("Try Again", action: retry)
+            .buttonStyle(AuthPrimaryButtonStyle())
+            .frame(maxWidth: 280)
+            .accessibilityIdentifier("sessionRetry")
+        }
+      }
+      .foregroundStyle(theme.foreground)
     }
   }
 }
 
 private struct ConfigurationErrorView: View {
+  @Environment(\.theme) private var theme
+
   let message: String
 
   var body: some View {
-    ContentUnavailableView {
-      Label("Configuration needed", systemImage: "wrench.and.screwdriver")
-    } description: {
-      Text(message)
+    AuthEntryContainer {
+      VStack(spacing: 24) {
+        BrandWordmark(size: 48, relativeTo: .title)
+        ContentUnavailableView {
+          Label("Configuration needed", systemImage: "wrench.and.screwdriver")
+        } description: {
+          Text(message)
+        }
+      }
+      .foregroundStyle(theme.foreground)
     }
   }
 }

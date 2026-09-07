@@ -30,7 +30,10 @@ final class ScreenshotCaptureTests: XCTestCase {
     let signedOut = XCUIApplication()
     signedOut.launchArguments.append("-ui-testing-signed-out")
     signedOut.launch()
-    XCTAssertTrue(signedOut.textFields["Email address"].waitForExistence(timeout: 5))
+    XCTAssertTrue(signedOut.buttons["welcomeSignIn"].waitForExistence(timeout: 5))
+    try save(signedOut.screenshot(), to: "\(dir)/welcome.png")
+    signedOut.buttons["welcomeSignIn"].tap()
+    XCTAssertTrue(signedOut.buttons["signInButton"].waitForExistence(timeout: 5))
     try save(signedOut.screenshot(), to: "\(dir)/signin.png")
   }
 

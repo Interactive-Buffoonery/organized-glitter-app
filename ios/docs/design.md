@@ -25,8 +25,9 @@ implementation contracts.
 ## Migration status
 
 Runtime checks and current screenshots are recorded in
-[Overview validation](overview-validation.md) and
-[Library validation](library-validation.md).
+[Overview validation](overview-validation.md),
+[Library validation](library-validation.md), and
+[Account entry validation](account-entry-validation.md).
 
 Library was migrated against the same studio revision. iPhone uses peer craft
 segments (Diamond art / Books / Pages), native search, a quiet status menu,
@@ -62,12 +63,23 @@ A combined Wishlist screen and native Notes feed are follow-up work; Overview
 has no placeholder Notes control. The existing per-craft limit of five recently
 updated active records remains unchanged; the summary uses server totals.
 
-Other screens still use legacy sticker surfaces, `StickerCard`, `IconBadge`,
-and `PillButtonStyle`. Their tokens and behavior remain until those screens are
-migrated. The old Overview metric view, `LibraryItemRow`, and unused
-surface-placement options on the Library row and status badge were removed
-after checking references. `IconBadge` stays because Create still uses it.
-The sections below describe both the retained palette and remaining legacy chrome.
+Account entry was migrated against the same studio revision while keeping
+ADR 0001 backgrounds. The system launch screen uses a solid brand
+`LaunchBackground`. The in-app restoration splash shows the Caveat wordmark
+only while session restore runs. Signed-out users land on Welcome (wordmark,
+Create account, Sign in) with no authenticated tabs. Email sign-in,
+registration, password-reset request/confirmation, and verification request
+use quiet auth controls instead of sticker pills. Apple, Google, and Discord
+method buttons stay out until provider continuity and native OAuth work land;
+see account-entry validation for the dependency list.
+
+Other authenticated screens still use legacy sticker surfaces, `StickerCard`,
+`IconBadge`, and `PillButtonStyle`. Their tokens and behavior remain until
+those screens are migrated. The old Overview metric view, `LibraryItemRow`,
+and unused surface-placement options on the Library row and status badge were
+removed after checking references. `IconBadge` stays because Create still uses
+it. The sections below describe both the retained palette and remaining legacy
+chrome.
 
 ## Variants
 
