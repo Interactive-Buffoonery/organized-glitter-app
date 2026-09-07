@@ -13,6 +13,10 @@ Canonical sources, in order:
 3. `docs/mockups/theme-mockups.html` and `docs/mockups/berry-dark-options.html`
    — the approved HTML mockups the palette was chosen from (open in a browser).
 
+The retained native palette and backgrounds are recorded in
+[ADR 0001](adr/0001-retain-native-backgrounds.md). That decision takes
+precedence over the D studio and standalone preview background treatments.
+
 ## Variants
 
 - **Light — "Berry Cream."** Blush-to-lilac gradient, raspberry primary,
