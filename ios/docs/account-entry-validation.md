@@ -29,9 +29,13 @@ shown as inert or “Soon.”
 
 Supplied design images in the mockup studio `references/` folder are Wishlist
 and Notes inspiration, not splash/welcome. Account-entry visual decisions use
-the studio QA set above plus native simulator captures. If newer splash/welcome
-references exist outside that set, they should replace or supplement
-`screenshots/account-entry/references/`.
+the studio QA HTML mockups plus native simulator captures.
+
+The App Store / home-screen icon was regenerated from
+`Interactive-Buffoonery/organized-glitter` `dev` at
+`b3b422a68f28d74388b487bc5134f75a01d61787` using `docs/icons/app-icon.html`
+(square 1024 export). See
+[references/app-icon-1024.png](screenshots/account-entry/references/app-icon-1024.png).
 
 ## Entry flow map
 
