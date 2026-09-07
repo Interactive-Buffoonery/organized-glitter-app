@@ -209,7 +209,7 @@ struct OverviewView: View {
     }
     .navigationTitle("Overview")
     .navigationBarTitleDisplayMode(.inline)
-    .background(theme.backgroundGradient)
+    .background(theme.themedBackground)
     .refreshable {
       await model.load()
     }

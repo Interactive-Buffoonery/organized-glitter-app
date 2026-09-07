@@ -75,37 +75,50 @@ extension Theme {
     stickerOutline: Color(hex: 0x3A2531),
     stickerShadow: Color(hex: 0x3A2531, opacity: 0.85),
     pillFill: Color(hex: 0xFBD8B8),
-    pillForeground: Color(hex: 0x4D3016)
+    pillForeground: Color(hex: 0x4D3016),
+    backgroundBloom: nil
   )
 
-  /// "Glow Stickers" — dark plum stage, light-mode pastel cards with dark text.
+  /// "Berry Cream after dark" — deep navy stage with a berry-pink bloom rising
+  /// from the bottom. Sticker cards keep the light-mode pastel fills with dark
+  /// text (the "Glow Stickers" contract), so the shared pastel set and surface
+  /// text colors are unchanged.
   static let dark = Theme(
-    background: Color(hex: 0x221D33),
-    foreground: Color(hex: 0xF2E6EE),
-    card: Color(hex: 0x2C2438),
-    cardForeground: Color(hex: 0xF2E6EE),
-    popover: Color(hex: 0x2F2740),
-    popoverForeground: Color(hex: 0xF2E6EE),
-    primary: Color(hex: 0xF58BB5),
-    primaryForeground: Color(hex: 0x3A1524),
-    secondary: Color(hex: 0x342B42),
-    secondaryForeground: Color(hex: 0xF2E6EE),
-    muted: Color(hex: 0x322940),
-    mutedForeground: Color(hex: 0xB7A3B2),
-    accent: Color(hex: 0xC9A2F9),
-    accentForeground: Color(hex: 0x2A1F3A),
-    destructive: Color(hex: 0xF57A8A),
-    destructiveForeground: Color(hex: 0x3A151C),
-    border: Color(hex: 0x453A52),
-    ring: Color(hex: 0xF58BB5),
-    gradientStops: [Color(hex: 0x251A24), Color(hex: 0x221D33), Color(hex: 0x1D1B2E)],
+    background: Color(hex: 0x05051A),
+    foreground: Color(hex: 0xF7F2F7),
+    card: Color(hex: 0x141028),
+    cardForeground: Color(hex: 0xF7F2F7),
+    popover: Color(hex: 0x0F0B28),
+    popoverForeground: Color(hex: 0xF7F2F7),
+    primary: Color(hex: 0xF58AB5),
+    primaryForeground: Color(hex: 0x381423),
+    secondary: Color(hex: 0x0F0B28),
+    secondaryForeground: Color(hex: 0xF7F2F7),
+    muted: Color(hex: 0x1C1636),
+    mutedForeground: Color(hex: 0xBEB1C3),
+    accent: Color(hex: 0xCAA4F9),
+    accentForeground: Color(hex: 0x05051A),
+    destructive: Color(hex: 0xEA3E3E),
+    destructiveForeground: Color(hex: 0xF7F2F7),
+    border: Color(hex: 0x37304B),
+    ring: Color(hex: 0xF58AB5),
+    gradientStops: [Color(hex: 0x05051A), Color(hex: 0x05051A)],
     accentSurfaces: sharedSurfaces,
     surfaceForeground: Color(hex: 0x46323E),
     surfaceMutedForeground: Color(hex: 0x765669),
     stickerOutline: Color(hex: 0x2F2029),
     stickerShadow: Color(hex: 0x000000, opacity: 0.85),
     pillFill: Color(hex: 0xFBD8B8),
-    pillForeground: Color(hex: 0x4D3016)
+    pillForeground: Color(hex: 0x4D3016),
+    backgroundBloom: Bloom(
+      center: UnitPoint(x: 0.56, y: 1.0),
+      stops: [
+        Bloom.Stop(color: Color(hex: 0x5C27B5), location: 0.0),
+        Bloom.Stop(color: Color(hex: 0x371475), location: 0.38),
+        Bloom.Stop(color: .clear, location: 0.73),
+      ],
+      radiusFraction: 0.55
+    )
   )
 }
 

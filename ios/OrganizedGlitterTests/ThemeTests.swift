@@ -49,6 +49,15 @@ struct ThemeTests {
     #expect(Theme.light.surfaceForeground == Theme.dark.surfaceForeground)
   }
 
+  /// "Berry Cream after dark" paints a deep navy base with a bottom
+  /// berry-pink bloom; light stays flat with no bloom.
+  @Test
+  func darkStageHasBloomLightDoesNot() {
+    #expect(Theme.light.backgroundBloom == nil)
+    #expect(Theme.dark.backgroundBloom != nil)
+    #expect(rgb(Theme.dark.background) == (0x05, 0x05, 0x1A))
+  }
+
   @Test
   func secondaryTextMeetsMinimumContrast() {
     for surface in Theme.light.accentSurfaces {

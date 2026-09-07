@@ -36,7 +36,7 @@ struct RootView: View {
         ConfigurationErrorView(message: message)
       }
     }
-    .background(theme.backgroundGradient)
+    .background(theme.themedBackground)
   }
 }
 

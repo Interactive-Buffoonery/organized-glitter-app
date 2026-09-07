@@ -12,6 +12,9 @@ Canonical sources, in order:
 2. This document — hex values and rules, kept in sync with the code.
 3. `docs/mockups/theme-mockups.html` and `docs/mockups/berry-dark-options.html`
    — the approved HTML mockups the palette was chosen from (open in a browser).
+4. The web application's Berry Cream dark palette — `src/index.css` and
+   `docs/design-system/overview.md` on the `design/berry-cream-web-preview`
+   branch — the origin of the deep-navy "after dark" stage and bottom bloom.
 
 The retained native palette and backgrounds are recorded in
 [ADR 0001](adr/0001-retain-native-backgrounds.md). That decision takes
@@ -21,7 +24,8 @@ precedence over the D studio and standalone preview background treatments.
 
 - **Light — "Berry Cream."** Blush-to-lilac gradient, raspberry primary,
   pastel sticker cards.
-- **Dark — "Glow Stickers."** Dark plum stage, but sticker cards keep the
+- **Dark — "Berry Cream after dark" (Glow Stickers).** Deep navy stage with a
+  berry-pink radial bloom rising from the bottom, but sticker cards keep the
   *light-mode pastel fills* with dark text — bright stickers on a dark
   scrapbook page. This is a deliberate contract: the five surface fills and
   their text colors are shared between variants, so there is exactly one
@@ -36,39 +40,53 @@ back to the device preference — see `AppModel.applyThemePreference`.
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `background` | `#F8E9F6` | `#221D33` |
-| `foreground` | `#46323E` | `#F2E6EE` |
-| `card` | `#FDF5F8` | `#2C2438` |
-| `cardForeground` | `#46323E` | `#F2E6EE` |
-| `popover` | `#FDF5F8` | `#2F2740` |
-| `popoverForeground` | `#46323E` | `#F2E6EE` |
-| `primary` | `#D23C77` | `#F58BB5` |
-| `primaryForeground` | `#FFFFFF` | `#3A1524` |
-| `secondary` | `#F6DCE6` | `#342B42` |
-| `secondaryForeground` | `#46323E` | `#F2E6EE` |
-| `muted` | `#F3E4EC` | `#322940` |
-| `mutedForeground` | `#765669` | `#B7A3B2` |
-| `accent` | `#8535D4` | `#C9A2F9` |
-| `accentForeground` | `#FFFFFF` | `#2A1F3A` |
-| `destructive` | `#C93A4C` | `#F57A8A` |
-| `destructiveForeground` | `#FFFFFF` | `#3A151C` |
-| `border` | `#E5CDD9` | `#453A52` |
-| `ring` | `#D23C77` | `#F58BB5` |
+| `background` | `#F8E9F6` | `#05051A` |
+| `foreground` | `#46323E` | `#F7F2F7` |
+| `card` | `#FDF5F8` | `#141028` |
+| `cardForeground` | `#46323E` | `#F7F2F7` |
+| `popover` | `#FDF5F8` | `#0F0B28` |
+| `popoverForeground` | `#46323E` | `#F7F2F7` |
+| `primary` | `#D23C77` | `#F58AB5` |
+| `primaryForeground` | `#FFFFFF` | `#381423` |
+| `secondary` | `#F6DCE6` | `#0F0B28` |
+| `secondaryForeground` | `#46323E` | `#F7F2F7` |
+| `muted` | `#F3E4EC` | `#1C1636` |
+| `mutedForeground` | `#765669` | `#BEB1C3` |
+| `accent` | `#8535D4` | `#CAA4F9` |
+| `accentForeground` | `#FFFFFF` | `#05051A` |
+| `destructive` | `#C93A4C` | `#EA3E3E` |
+| `destructiveForeground` | `#FFFFFF` | `#F7F2F7` |
+| `border` | `#E5CDD9` | `#37304B` |
+| `ring` | `#D23C77` | `#F58AB5` |
 
 `accent` stays the brand purple (`#8535D4`) from the original Organized
 Glitter identity and the app icon.
 
-## Background gradient
+## Page background
 
-Applied top-to-bottom on every page (`Theme.backgroundGradient`), including
-list screens via `.themedScrollBackground()`. Never leave a screen on the
+Painted behind every screen via `Theme.themedBackground`, including list
+screens through `.themedScrollBackground()`. Never leave a screen on the
 stock grouped-list grey.
 
-| Stop | Light | Dark |
+- **Light** uses a top-to-bottom blush-to-lilac `backgroundGradient`:
+
+| Stop | Light |
+| --- | --- |
+| Top | `#FDEEF3` |
+| Middle | `#F8E9F6` |
+| Bottom | `#E7DEFA` |
+
+- **Dark — "Berry Cream after dark"** paints a flat navy base (`#05051A`) with
+  a berry-pink radial bloom rising from the bottom. The bloom is a circular
+  `RadialGradient` centered at `(0.56, 1.0)` with `endRadius` 0.55 × the
+  longer screen dimension, approximating the web app's elliptical
+  `radial-gradient(... at 56% 116%)` bloom:
+
+| Stop | Location | Color |
 | --- | --- | --- |
-| Top | `#FDEEF3` | `#251A24` |
-| Middle | `#F8E9F6` | `#221D33` |
-| Bottom | `#E7DEFA` | `#1D1B2E` |
+| 0 | `0.0` | `#5C27B5` |
+| 1 | `0.38` | `#371475` |
+| 2 | `0.73` | transparent |
 
 ## Sticker surfaces (shared between variants)
 

@@ -97,7 +97,7 @@ struct SignInView: View {
       .padding(32)
       .frame(maxWidth: .infinity)
     }
-    .background(theme.backgroundGradient)
+    .background(theme.themedBackground)
     .onAppear { focusedField = .identity }
   }
 
