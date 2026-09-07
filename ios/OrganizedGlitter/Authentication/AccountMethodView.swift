@@ -46,7 +46,6 @@ struct AccountMethodView: View {
 
   let model: AppModel
   @Binding var mode: Mode
-  @Binding var path: NavigationPath
 
   var body: some View {
     AuthEntryContainer(fillsHeight: true) {
@@ -63,9 +62,7 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("accountMethodTitle")
 
         VStack(spacing: 12) {
-          Button {
-            path.append(mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister)
-          } label: {
+          NavigationLink(value: mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister) {
             Label(mode.emailDestinationTitle, systemImage: "envelope")
               .labelStyle(.titleAndIcon)
           }
