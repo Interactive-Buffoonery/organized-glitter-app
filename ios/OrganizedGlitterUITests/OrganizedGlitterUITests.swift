@@ -41,11 +41,19 @@ final class OrganizedGlitterUITests: XCTestCase {
     app.navigationBars.buttons.element(boundBy: 0).tap()
     app.navigationBars.buttons.element(boundBy: 0).tap()
 
+    XCTAssertTrue(app.buttons["welcomeCreateAccount"].waitForExistence(timeout: 3))
     app.buttons["welcomeCreateAccount"].tap()
-    XCTAssertTrue(app.staticTexts["Create account"].waitForExistence(timeout: 2))
+    XCTAssertTrue(app.otherElements["accountMethodTitle"].waitForExistence(timeout: 3)
+      || app.staticTexts["Create account"].waitForExistence(timeout: 3))
+    app.buttons["accountMethodSwitch"].tap()
+    XCTAssertTrue(app.staticTexts["Welcome back"].waitForExistence(timeout: 3))
+    app.buttons["accountMethodSwitch"].tap()
+    XCTAssertTrue(app.staticTexts["Create account"].waitForExistence(timeout: 3))
     app.buttons["continueWithEmail"].tap()
-    XCTAssertTrue(app.staticTexts["Create account with email"].waitForExistence(timeout: 2))
+    XCTAssertTrue(app.staticTexts["Create account with email"].waitForExistence(timeout: 3))
     XCTAssertTrue(app.buttons["createAccountButton"].exists)
+    app.buttons["registrationSignIn"].tap()
+    XCTAssertTrue(app.staticTexts["Welcome back"].waitForExistence(timeout: 3))
   }
 
   func testAuthenticatedShellShowsFiveDestinations() {
