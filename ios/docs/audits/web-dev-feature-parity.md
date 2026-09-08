@@ -11,9 +11,11 @@
 | iOS app UI | this repository | `main` at audit start | `ab385b737fa24f4bc8ce74450ff85155489137ca` | 2026-09-07 |
 | iOS `BackendContract.json` | this repository | same as `origin/dev` after this revision | `3651feba64885af3b59f8232de2ed0d2653ce2ba` | 2026-09-08 |
 
-This review uses **current `origin/dev`** as the backend. Schema SHA-256 of `docs/pocketbase/collections.schema.json` on that commit is `e9d2569d1399e4bbb13f27468c97d126fb78ae664d54ff190aa3e5732c737abc`. PocketBase version documented on that branch is **0.40.1**.
+This review uses **current `origin/dev`** as the backend source in git. Schema SHA-256 of `docs/pocketbase/collections.schema.json` on that commit is `e9d2569d1399e4bbb13f27468c97d126fb78ae664d54ff190aa3e5732c737abc`. PocketBase version documented on that branch is **0.40.1**.
 
-The previous contract file pointed at `6aff8ce` (2026-07-22, PocketBase 0.37.5). That was stale metadata in this repo, not a missing backend. Color references, stats routes, notes-latest, and Discord OAuth already exist on `origin/dev` and can be called from iOS. The Debug/Release default base URL is still `https://data.organizedglitter.app`; confirm that host is on this revision before shipping a slice that needs a new route.
+The live PocketBase is **`https://data.organizedglitter.app`**. That host has been production for a long time. The web app and this iOS app both talk to it (Debug/Release default). Native CRUD, Discord, notes, and photos hit the same user data as the website. There is no separate native backend.
+
+The previous contract file pointed at `6aff8ce` (2026-07-22, PocketBase 0.37.5). That was stale metadata in this repo, not a missing server. Color references, stats routes, notes-latest, and Discord OAuth are on this PocketBase and can be called from iOS.
 
 Evidence is from source inspection, not a live dual-client walkthrough. Web inventory also used `docs/feature-inventory.csv` (generated 2026-06-21) and was re-checked against `origin/dev` routes and pages. Color Codes & Swatches shipped on web after that CSV (`c54aa95`, 2026-09-07) and is included here.
 
