@@ -5,7 +5,7 @@ struct SignInView: View {
   @Environment(\.theme) private var theme
 
   let model: AppModel
-  @Binding var path: NavigationPath
+  @Binding var path: [AccountEntryRoute]
 
   @State private var identity = ""
   @State private var password = ""
