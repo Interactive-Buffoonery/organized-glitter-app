@@ -1,2 +1,2 @@
-POCKETBASE_BASE_URL = https:/$()/example.invalid
+POCKETBASE_BASE_URL = https:/$()/data.organizedglitter.app
 #include? "Release.local.xcconfig"

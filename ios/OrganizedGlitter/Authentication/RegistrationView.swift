@@ -4,7 +4,7 @@ struct RegistrationView: View {
   @Environment(\.theme) private var theme
 
   let client: PocketBaseClient?
-  @Binding var path: NavigationPath
+  @Binding var path: [AccountEntryRoute]
   @Binding var methodMode: AccountMethodView.Mode
 
   @State private var email = ""
@@ -19,7 +19,7 @@ struct RegistrationView: View {
 
   init(
     client: PocketBaseClient?,
-    path: Binding<NavigationPath>,
+    path: Binding<[AccountEntryRoute]>,
     methodMode: Binding<AccountMethodView.Mode>
   ) {
     self.client = client
@@ -71,7 +71,7 @@ struct RegistrationView: View {
         .foregroundStyle(theme.mutedForeground)
 
       Button("Back to welcome") {
-        path = NavigationPath()
+        path.removeAll()
       }
       .buttonStyle(AuthPrimaryButtonStyle())
       .accessibilityIdentifier("registrationBackToWelcome")

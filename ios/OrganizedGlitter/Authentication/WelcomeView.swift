@@ -5,7 +5,7 @@ import SwiftUI
 struct WelcomeView: View {
   let model: AppModel
 
-  @State private var path = NavigationPath()
+  @State private var path: [AccountEntryRoute] = []
   @State private var methodMode: AccountMethodView.Mode = .signIn
 
   var body: some View {
@@ -46,7 +46,7 @@ struct WelcomeView: View {
       .navigationDestination(for: AccountEntryRoute.self) { route in
         switch route {
         case .methods:
-          AccountMethodView(model: model, mode: $methodMode, path: $path)
+          AccountMethodView(model: model, mode: $methodMode)
         case .emailSignIn:
           SignInView(model: model, path: $path)
         case .emailRegister:
