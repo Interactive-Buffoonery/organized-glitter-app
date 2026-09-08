@@ -1,6 +1,6 @@
 # iOS feature parity audit vs web `dev`
 
-**Date:** 2026-09-08  
+**Date:** 2026-09-08 (revised: backend baseline is current `origin/dev`, not the old July contract file)  
 **Question:** For every user-facing capability on the web `dev` branch, is it included, incomplete, or missing in this iOS app?
 
 ## Snapshots compared
@@ -8,14 +8,38 @@
 | Side | Repository | Ref | SHA | Date |
 | --- | --- | --- | --- | --- |
 | Web product + backend | `Interactive-Buffoonery/organized-glitter` | `origin/dev` | `3651feba64885af3b59f8232de2ed0d2653ce2ba` | 2026-09-08 |
-| iOS app | this repository | `main` at audit start | `ab385b737fa24f4bc8ce74450ff85155489137ca` | 2026-09-07 |
-| iOS backend pin | `ios/BackendContract.json` | backend commit | `6aff8ce42e7360513131a10ceb1c9478afb828f8` | 2026-07-22 |
+| iOS app UI | this repository | `main` at audit start | `ab385b737fa24f4bc8ce74450ff85155489137ca` | 2026-09-07 |
+| iOS `BackendContract.json` | this repository | same as `origin/dev` after this revision | `3651feba64885af3b59f8232de2ed0d2653ce2ba` | 2026-09-08 |
 
-The iOS contract pin is **205 commits behind** `origin/dev`. Several shipped web features (color references, randomizer redesign, archive schema v2) landed after that pin. Native work that needs those contracts should wait until the matching backend revision is verified and the pin is updated.
+This review uses **current `origin/dev`** as the backend. Schema SHA-256 of `docs/pocketbase/collections.schema.json` on that commit is `e9d2569d1399e4bbb13f27468c97d126fb78ae664d54ff190aa3e5732c737abc`. PocketBase version documented on that branch is **0.40.1**.
+
+The previous contract file pointed at `6aff8ce` (2026-07-22, PocketBase 0.37.5). That was stale metadata in this repo, not a missing backend. Color references, stats routes, notes-latest, and Discord OAuth already exist on `origin/dev` and can be called from iOS. The Debug/Release default base URL is still `https://data.organizedglitter.app`; confirm that host is on this revision before shipping a slice that needs a new route.
 
 Evidence is from source inspection, not a live dual-client walkthrough. Web inventory also used `docs/feature-inventory.csv` (generated 2026-06-21) and was re-checked against `origin/dev` routes and pages. Color Codes & Swatches shipped on web after that CSV (`c54aa95`, 2026-09-07) and is included here.
 
-Product intent for native launch is `docs/mobile/mobile-v1-scope.md` on web `dev`. This audit reports **web vs iOS**, then notes whether mobile v1 treats the gap as in-scope, excluded, post-v1, or silent.
+Product intent for this plan: CRUD into PocketBase plus Discord sign-in. Randomizer expansion is deferred. `docs/mobile/mobile-v1-scope.md` is still the broader native product doc.
+
+### Already on `origin/dev` (iOS can implement now)
+
+| Capability | Contract |
+| --- | --- |
+| Collection CRUD | Standard PocketBase record APIs; rules are user-scoped |
+| Discord and Google OAuth | `listAuthMethods` / `authWithOAuth2`. Production already advertised password, Google, and Discord (Apple not enabled). Native still needs a redirect URL registered for `ASWebAuthenticationSession`. |
+| Stats | Authenticated `/api/stats/*` (`pb_hooks/stats.pb.js`) |
+| Latest notes batch | `POST /api/notes/latest` |
+| Set coloring page main photo | `POST /api/coloring/pages/{pageId}/main-photo` |
+| Color Codes & Swatches | `POST /api/coloring/pages/{pageId}/color-reference` only; collection CUD locked. Photos on that collection are **protected** and need file tokens. |
+| Progress notes, tags, companies, artists, mediums, publishers, illustrators | Collections exist; iOS UI is the gap |
+
+### Still missing or blocked on the backend
+
+| Gap | Why it still waits |
+| --- | --- |
+| Legacy file fields unprotected | `users.avatar`, `projects.image`, notes images, book covers, page photos. Public-release blocker (`FILE_ACCESS_CONTRACT.md`). Swatch photos are already protected. |
+| Server-owned account deletion | Web still writes `account_deletions` from the client. Do not copy that. |
+| Associated Domains / token confirm links | Not defined for native |
+| Apple OAuth | Typed; not enabled |
+| Timer, catalog, URL kit import | Not shipped |
 
 ## How to read status
 
@@ -354,13 +378,13 @@ Not native app features. iOS Account already links Privacy and Terms.
 
 ## 15. Backend / platform gaps that block native completeness
 
-From `ios/docs/architecture.md` and this comparison:
+These are still true on current `origin/dev`. They are **not** “wait for a newer pin.”
 
 1. **Universal links** for verify-email, confirm-password-reset, and confirm-email-change (Associated Domains file, stable HTTPS routes, token format, fallback for older apps and web).
 2. **Account deletion** as one authenticated server endpoint that writes an immutable audit record from server context, then deletes. Do not port the web client-written `account_deletions` flow.
-3. **Protected file fields + short-lived file tokens** (`docs/FILE_ACCESS_CONTRACT.md` on web; still a native public-release blocker). All iOS image loads go through `PocketBaseClient.fileURL` so the token query can land in one place.
-4. **Backend pin drift:** native is pinned to PocketBase **0.37.5** / commit `6aff8ce` (2026-07-22). Color references use a transactional route, not collection CRUD; do not add that UI against the current pin.
-5. **OAuth native continuity** (Google, Discord, eventually Apple) is a product/auth-design problem, not just a missing button.
+3. **Protected file fields + short-lived file tokens** for legacy uploads (`docs/FILE_ACCESS_CONTRACT.md`). Color-reference photos already use protected files + tokens. All iOS image loads go through `PocketBaseClient.fileURL` so the token query can land in one place.
+4. **Discord on iOS** is an iOS + redirect-URL problem. The PocketBase Discord provider is already live. Register the native callback on the provider, then implement `ASWebAuthenticationSession` / OAuth2 code exchange. Do not merge Discord and email accounts on the client.
+5. **Sign in with Apple** is required for App Store if Discord remains in the binary; the Apple provider is not enabled yet.
 
 ---
 
@@ -382,10 +406,11 @@ What `origin/dev` schema/docs describe versus what this app actually reads or wr
 | `coloring_tags` / book tag joins | unused |
 | `coloring_mediums` | unused |
 | `randomizer_spins` | unused |
-| `coloring_page_color_references` + transactional route | unused |
+| `coloring_page_color_references` + `POST /api/coloring/pages/{pageId}/color-reference` | unused (route is on `origin/dev` now) |
+| `POST /api/coloring/pages/{pageId}/main-photo` | unused |
+| `POST /api/notes/latest` | unused |
 | `account_deletions` | unused (must stay unused until the server-owned endpoint exists) |
-| stats collections / `/api/stats/*` | unused |
-| notes-feed / latest-notes helpers | unused |
+| `/api/stats/*` | unused |
 
 `PocketBaseClient` public surface is auth + generic list/get/create/update/delete + `fileURL`. No OAuth, confirm-token, multipart upload, or custom routes.
 
@@ -466,7 +491,7 @@ Near-term product intent (2026-09-08): **CRUD into PocketBase**, plus **Sign in 
 3. **Progress notes** from detail and Create, then a Notes page.
 4. **Photos** (project cover, book cover, page photos) via `fileURL`.
 5. **Diamond metadata** and **Manage Lists** (company, artist, tags, dates, notes).
-6. **Coloring page progress**: mediums, mystery, then color references after the backend pin includes that route.
+6. **Coloring page progress**: mediums, mystery, then color references (transactional route already on `origin/dev`).
 7. **App Store:** Sign in with Apple (required if Discord is in the binary), file tokens, server-owned deletion.
 8. **Not scheduled:** Randomizer product, Stats, Google OAuth, timer, catalog.
 
