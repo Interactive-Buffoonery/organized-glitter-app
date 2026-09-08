@@ -456,6 +456,9 @@ Counts below treat each table row in §§1–14 as one item. Stubs count as Inco
 
 ## 18. Suggested native sequence (not a commitment)
 
+The full era-by-era plan, backend track, and exit criteria live in
+[native-build-sequence.md](./native-build-sequence.md).
+
 Order follows daily-session value in `mobile-v1-scope.md`, not web page count.
 
 1. **Progress notes** (diamond + coloring page) from detail and Create, then a Notes page.
