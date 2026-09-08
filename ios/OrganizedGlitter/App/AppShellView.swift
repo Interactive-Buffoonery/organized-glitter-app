@@ -15,6 +15,7 @@ struct AppShellView: View {
 
   @State private var selectedTab: AppTab = .overview
   @State private var libraryRefresh = LibraryRefresh()
+  @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
 
   init(model: AppModel, client: PocketBaseClient, user: UserRecord) {
@@ -33,7 +34,11 @@ struct AppShellView: View {
     TabView(selection: $selectedTab) {
       Tab("Overview", systemImage: "house", value: .overview) {
         NavigationStack {
-          OverviewView(client: client, userID: user.id)
+          OverviewView(client: client, userID: user.id, verticals: accountPreferences.verticals) {
+            section in
+            libraryRequest = LibraryRequest(section: section, status: "wishlist")
+            selectedTab = .library
+          }
         }
       }
 
@@ -42,7 +47,8 @@ struct AppShellView: View {
           client: client,
           userID: user.id,
           libraryRefresh: libraryRefresh,
-          verticals: accountPreferences.verticals
+          verticals: accountPreferences.verticals,
+          request: libraryRequest
         )
       }
 

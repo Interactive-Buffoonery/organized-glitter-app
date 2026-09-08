@@ -98,6 +98,10 @@ final class OverviewModel {
     }
   }
 
+  func artworkURL(for item: LibraryItem) -> URL? {
+    item.artworkURL(using: client)
+  }
+
   // ponytail: month boundaries use PocketBase date strings (YYYY-MM-DD) in UTC so
   // the filter matches date_completed and completed_at field storage.
   static func startOfMonth(containing date: Date) -> String {
@@ -126,128 +130,166 @@ final class OverviewModel {
   }
 }
 
+enum OverviewCraft: String, CaseIterable, Identifiable {
+  case all = "All crafts"
+  case diamonds = "Diamond art"
+  case coloring = "Coloring"
+
+  var id: Self { self }
+
+  func includes(_ item: LibraryItem) -> Bool {
+    switch (self, item) {
+    case (.all, _), (.diamonds, .diamond), (.coloring, .page): true
+    default: false
+    }
+  }
+}
+
 struct OverviewView: View {
   @Environment(\.theme) private var theme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var model: OverviewModel
+  @State private var craft = OverviewCraft.all
+  let verticals: VerticalPreferences
+  let onWishlist: (LibrarySection) -> Void
 
-  init(client: PocketBaseClient, userID: String) {
+  init(
+    client: PocketBaseClient,
+    userID: String,
+    verticals: VerticalPreferences,
+    onWishlist: @escaping (LibrarySection) -> Void
+  ) {
     _model = State(initialValue: OverviewModel(client: client, userID: userID))
+    self.verticals = verticals
+    self.onWishlist = onWishlist
   }
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 24) {
-        PageHeader(
-          "Overview",
-          subtitle: "A quiet look at what you’re working on."
-        )
+        PageHeader("Overview")
 
-        LazyVGrid(
-          columns: [GridItem(.adaptive(minimum: 145, maximum: 220), spacing: 12)],
-          spacing: 12
-        ) {
-          OverviewMetric(
-            title: "Diamond projects",
-            value: model.activeDiamondCount,
-            systemImage: "diamond",
-            surfaceIndex: 4
-          )
-          OverviewMetric(
-            title: "Coloring pages",
-            value: model.activeColoringPageCount,
-            systemImage: "paintpalette",
-            surfaceIndex: 2
-          )
-          OverviewMetric(
-            title: "Completed this month",
-            value: model.completedThisMonthCount,
-            systemImage: "checkmark.seal",
-            surfaceIndex: 1
-          )
+        craftPicker
+
+        VStack(alignment: .leading, spacing: 12) {
+          SectionHeader("In progress")
+          activeWork
         }
 
-        if model.isLoading, !model.hasLoaded {
-          ProgressView("Loading your overview")
-            .frame(maxWidth: .infinity, minHeight: 220)
-        } else if let errorMessage = model.errorMessage, model.items.isEmpty {
-          ContentUnavailableView {
-            Label("Couldn’t load your overview", systemImage: "exclamationmark.triangle")
-          } description: {
-            Text(errorMessage)
-          } actions: {
-            Button("Try Again") {
-              Task { await model.load() }
-            }
-            .buttonStyle(PillButtonStyle())
-            .frame(maxWidth: 240)
-          }
-          .frame(minHeight: 280)
-        } else if model.items.isEmpty {
-          EmptyFeatureView(
-            title: "No work in progress",
-            systemImage: "sparkles.rectangle.stack",
-            message: "Projects and coloring pages marked in progress will appear here."
+        if model.hasLoaded, model.errorMessage == nil {
+          Text(
+            "Active diamond projects: \(model.activeDiamondCount) · Active coloring pages: \(model.activeColoringPageCount) · Completed this month: \(model.completedThisMonthCount)"
           )
-          .frame(minHeight: 280)
-        } else {
-          VStack(alignment: .leading, spacing: 12) {
-            SectionHeader("In progress")
+          .font(.footnote)
+          .foregroundStyle(theme.pageSecondaryForeground)
+        }
 
-            ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-              NavigationLink(value: item) {
-                LibraryItemRow(item: item, onSurface: true)
-                  .padding(12)
-                  .stickerCard(index)
+        VStack(alignment: .leading, spacing: 8) {
+          SectionHeader("Quick links")
+          Menu {
+            ForEach(LibrarySection.available(for: verticals).filter { $0 != .pages }) { section in
+              Button(
+                section == .diamonds ? "Diamond art wishlist" : "Coloring book wishlist",
+                systemImage: section.systemImage
+              ) {
+                onWishlist(section)
               }
-              .buttonStyle(.plain)
             }
+          } label: {
+            Label("Wishlist", systemImage: "heart")
+              .frame(maxWidth: .infinity, alignment: .leading)
           }
+          .buttonStyle(QuietActionStyle())
         }
       }
+      .frame(maxWidth: 760, alignment: .leading)
       .padding()
+      .frame(maxWidth: .infinity)
     }
     .navigationTitle("Overview")
     .navigationBarTitleDisplayMode(.inline)
-    .background(theme.backgroundGradient)
-    .refreshable {
-      await model.load()
+    .toolbarBackground(.hidden, for: .navigationBar)
+    .background {
+      theme.themedBackground.ignoresSafeArea()
     }
+    .refreshable { await model.load() }
     .navigationDestination(for: LibraryItem.self) { item in
-      LibraryItemDetail(item: item)
+      LibraryItemDetail(item: item, imageURL: model.artworkURL(for: item))
     }
-    .task {
-      await model.load()
+    .task { await model.load() }
+  }
+
+  private var craftPicker: some View {
+    Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        Picker("Craft", selection: $craft) {
+          ForEach(OverviewCraft.allCases) { craft in
+            Text(craft.rawValue).tag(craft)
+          }
+        }
+        .pickerStyle(.menu)
+        .buttonStyle(QuietActionStyle())
+      } else {
+        Picker("Craft", selection: $craft) {
+          ForEach(OverviewCraft.allCases) { craft in
+            Text(craft.rawValue).tag(craft)
+          }
+        }
+        .pickerStyle(.segmented)
+      }
+    }
+    .accessibilityIdentifier("overview.craft")
+  }
+
+  @ViewBuilder
+  private var activeWork: some View {
+    if model.isLoading, !model.hasLoaded {
+      ProgressView("Loading your overview")
+        .frame(maxWidth: .infinity, minHeight: 220)
+    } else if let errorMessage = model.errorMessage, model.items.isEmpty {
+      ContentUnavailableView {
+        Label("Couldn’t load your overview", systemImage: "exclamationmark.triangle")
+      } description: {
+        Text(errorMessage)
+      } actions: {
+        retryButton
+      }
+      .frame(minHeight: 280)
+    } else {
+      if let errorMessage = model.errorMessage {
+        AccessibleErrorLabel(message: errorMessage)
+        retryButton
+      }
+      let items = model.items.filter(craft.includes)
+      if items.isEmpty {
+        EmptyFeatureView(
+          title: craft == .all
+            ? "No work in progress" : "No \(craft.rawValue.lowercased()) in progress",
+          systemImage: "sparkles.rectangle.stack",
+          message: "Projects and coloring pages marked in progress will appear here."
+        )
+        .frame(minHeight: 220)
+      } else {
+        LazyVStack(spacing: 0) {
+          ForEach(items) { item in
+            NavigationLink(value: item) {
+              ActiveProjectRow(item: item, imageURL: model.artworkURL(for: item))
+            }
+            .buttonStyle(.plain)
+            Divider().overlay(theme.border)
+          }
+        }
+      }
     }
   }
-}
 
-private struct OverviewMetric: View {
-  @Environment(\.theme) private var theme
-
-  let title: String
-  let value: Int
-  let systemImage: String
-  let surfaceIndex: Int
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      Image(systemName: systemImage)
-        .font(.title2)
-        .foregroundStyle(theme.surfaceForeground)
-        .accessibilityHidden(true)
-      Text(value.formatted())
-        .font(.title.bold())
-        .foregroundStyle(theme.surfaceForeground)
-        .contentTransition(.numericText())
-      Text(title)
-        .font(.subheadline)
-        .foregroundStyle(theme.surfaceMutedForeground)
+  private var retryButton: some View {
+    Button("Try Again") {
+      Task { await model.load() }
     }
-    .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
-    .padding()
-    .stickerCard(surfaceIndex)
-    .accessibilityElement(children: .combine)
+    .buttonStyle(QuietActionStyle())
+    .disabled(model.isLoading)
   }
 }
 

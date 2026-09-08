@@ -36,9 +36,27 @@ struct Theme: Equatable, Sendable {
   let stickerShadow: Color
   let pillFill: Color
   let pillForeground: Color
+  /// Optional radial bloom drawn over a flat `background` base. `nil` for the
+  /// light variant, which uses `backgroundGradient`. The dark "Berry Cream
+  /// after dark" stage paints a deep navy base with a purple bloom rising
+  /// from the bottom of the page.
+  let backgroundBloom: Bloom?
+
+  /// Secondary text directly over the page must remain readable across the glow.
+  var pageSecondaryForeground: Color {
+    backgroundBloom == nil ? mutedForeground : foreground
+  }
 
   var backgroundGradient: LinearGradient {
     LinearGradient(colors: gradientStops, startPoint: .top, endPoint: .bottom)
+  }
+
+  /// The view to paint behind every screen. Light uses `backgroundGradient`;
+  /// dark paints a flat `background` base with `backgroundBloom` over it so the
+  /// "Berry Cream after dark" stage gets its bottom purple glow. Prefer
+  /// this over `backgroundGradient` so dark mode picks up the bloom.
+  var themedBackground: ThemeBackground {
+    ThemeBackground(theme: self)
   }
 
   func accentSurface(_ index: Int) -> Color {
@@ -47,11 +65,26 @@ struct Theme: Equatable, Sendable {
 }
 
 extension Theme {
+  /// A radial color bloom drawn over the flat dark `background`. The web app's
+  /// "Berry Cream after dark" stage paints an elliptical bloom from the bottom
+  /// of the page; iOS approximates it with a circular radial gradient whose
+  /// end radius scales with the longer screen dimension.
+  struct Bloom: Equatable, Sendable {
+    let center: UnitPoint
+    let stops: [Stop]
+    /// End radius as a fraction of `max(width, height)`.
+    let radiusFraction: CGFloat
+
+    struct Stop: Equatable, Sendable {
+      let color: Color
+      let location: CGFloat
+    }
+  }
+}
+
+extension Theme {
   enum Radius {
-    static let small: CGFloat = 8
     static let medium: CGFloat = 10
-    static let large: CGFloat = 12
-    static let panel: CGFloat = 16
     static let sticker: CGFloat = 20
   }
 
@@ -59,8 +92,6 @@ extension Theme {
     static let xs: CGFloat = 4
     static let sm: CGFloat = 8
     static let md: CGFloat = 16
-    static let lg: CGFloat = 24
-    static let xl: CGFloat = 32
   }
 
   /// The offset hard shadow that makes sticker cards read as stickers.
@@ -69,7 +100,7 @@ extension Theme {
     static let outlineWidth: CGFloat = 1.5
   }
 
-  /// ease-out-quart from DESIGN.json. No bounce, no elastic.
+  /// Brief ease-out motion without bounce or elastic movement.
   static let motion = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.24)
 }
 

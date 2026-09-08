@@ -22,6 +22,17 @@ struct PocketBaseFilterTests {
   }
 
   @Test
+  func combinesAlternateContainsAsAGroup() {
+    let filter = PocketBaseFilter.any([
+      PocketBaseFilter.contains(.title, "atelier"),
+      PocketBaseFilter.contains(.artistName, "atelier"),
+      PocketBaseFilter.contains(.companyName, "atelier"),
+    ])
+
+    #expect(filter == #"(title ~ "atelier" || artist.name ~ "atelier" || company.name ~ "atelier")"#)
+  }
+
+  @Test
   func encodesNumericAndDateComparisons() {
     #expect(PocketBaseFilter.equals(.pageNumber, 42) == "page_number = 42")
     #expect(
