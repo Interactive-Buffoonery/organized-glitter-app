@@ -37,6 +37,15 @@ struct DiamondProjectRecord: Codable, Hashable, Identifiable, Sendable {
     case dateStarted = "date_started"
     case dateCompleted = "date_completed"
   }
+
+  func withExpand(_ expand: DiamondProjectExpand?) -> DiamondProjectRecord {
+    DiamondProjectRecord(
+      id: id, title: title, user: user, company: company, artist: artist,
+      status: status, kitCategory: kitCategory, drillShape: drillShape,
+      generalNotes: generalNotes, width: width, height: height, image: image,
+      dateStarted: dateStarted, dateCompleted: dateCompleted, created: created,
+      updated: updated, expand: expand)
+  }
 }
 
 struct ColoringBookExpand: Codable, Hashable, Sendable {
@@ -67,6 +76,15 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
     case completionPercentage = "completion_percentage"
     case coverImage = "cover_image"
   }
+
+  func withExpand(_ expand: ColoringBookExpand?) -> ColoringBookRecord {
+    ColoringBookRecord(
+      id: id, user: user, title: title, series: series, status: status,
+      totalPages: totalPages, completedPages: completedPages,
+      completionPercentage: completionPercentage, coverImage: coverImage,
+      publisher: publisher, illustrator: illustrator, created: created,
+      updated: updated, expand: expand)
+  }
 }
 
 struct ColoringPageExpand: Codable, Hashable, Sendable {
@@ -92,6 +110,13 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
     case revealedSubject = "revealed_subject"
     case completedAt = "completed_at"
     case startedAt = "started_at"
+  }
+
+  func withExpand(_ expand: ColoringPageExpand?) -> ColoringPageRecord {
+    ColoringPageRecord(
+      id: id, book: book, pageNumber: pageNumber, status: status, photos: photos,
+      revealedSubject: revealedSubject, completedAt: completedAt,
+      startedAt: startedAt, created: created, updated: updated, expand: expand)
   }
 }
 
@@ -237,6 +262,72 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
       book.updated
     case .page(let page):
       page.updated
+    }
+  }
+
+  var artworkAccessibilityLabel: String {
+    switch self {
+    case .diamond: "Project photo"
+    case .book: "Book cover"
+    case .page: "Page photo"
+    }
+  }
+
+  /// Publisher/company for library cards; pages keep the parent book title.
+  var libraryCaption: String {
+    switch self {
+    case .diamond(let project):
+      project.expand?.company?.name.nonEmpty
+        ?? project.expand?.artist?.name.nonEmpty
+        ?? ""
+    case .book(let book):
+      book.expand?.publisher?.name.nonEmpty
+        ?? book.series?.nonEmpty
+        ?? ""
+    case .page(let page):
+      page.expand?.book?.title ?? ""
+    }
+  }
+
+  func artworkURL(using client: PocketBaseClient) -> URL? {
+    let collection: String
+    let recordID: String
+    let filename: String?
+    switch self {
+    case .diamond(let project):
+      collection = "projects"
+      recordID = project.id
+      filename = project.image?.nonEmpty
+    case .book(let book):
+      collection = "coloring_books"
+      recordID = book.id
+      filename = book.coverImage?.nonEmpty
+    case .page(let page):
+      collection = "coloring_pages"
+      recordID = page.id
+      filename = page.photos.first(where: { !$0.isEmpty })
+    }
+    return filename.map {
+      client.fileURL(collection: collection, recordID: recordID, filename: $0)
+    }
+  }
+
+  /// Save responses omit relation expands. Reuse the previously listed
+  /// expand so a record that stays off page 1 still has credits and parent book.
+  func retainingListingContext(from previous: LibraryItem?) -> LibraryItem {
+    guard let previous, previous.id == id else {
+      return self
+    }
+    switch (self, previous) {
+    case (.diamond(let project), .diamond(let prior)) where project.expand == nil:
+      return .diamond(project.withExpand(prior.expand))
+    case (.book(let book), .book(let prior)) where book.expand == nil:
+      return .book(book.withExpand(prior.expand))
+    case (.page(let page), .page(let prior))
+    where page.expand == nil && page.book == prior.book:
+      return .page(page.withExpand(prior.expand))
+    default:
+      return self
     }
   }
 }

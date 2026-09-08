@@ -37,3 +37,62 @@ struct OverviewTests {
     #expect(OverviewModel.startOfNextMonth(containing: december) == "2027-01-01")
   }
 }
+
+@MainActor
+@Suite("Overview presentation behavior")
+struct OverviewPresentationTests {
+  private func client() -> PocketBaseClient {
+    PocketBaseClient(
+      baseURL: URL(string: "https://overview.example.invalid")!,
+      sessionStore: KeychainSessionStore(service: "OverviewTests.\(UUID().uuidString)")
+    )
+  }
+
+  private func project(image: String? = nil) -> LibraryItem {
+    .diamond(
+      DiamondProjectRecord(
+        id: "fictional-project", title: "Garden of stars", user: "fictional-user",
+        company: nil, artist: nil, status: "progress", kitCategory: "full",
+        drillShape: nil, generalNotes: nil, width: nil, height: nil, image: image,
+        dateStarted: nil, dateCompleted: nil, created: "2026-09-01", updated: "2026-09-07",
+        expand: nil
+      ))
+  }
+
+  private func page(photos: [String] = []) -> LibraryItem {
+    .page(
+      ColoringPageRecord(
+        id: "fictional-page", book: "fictional-book", pageNumber: 12,
+        status: "in_progress", photos: photos, revealedSubject: "A moonlit garden",
+        completedAt: nil, startedAt: nil, created: "2026-09-01", updated: "2026-09-06",
+        expand: nil
+      ))
+  }
+
+  @Test func craftFilterPreservesRecordIdentityAndOrder() {
+    let items = [project(), page()]
+    #expect(items.filter(OverviewCraft.all.includes) == items)
+    #expect(items.filter(OverviewCraft.diamonds.includes) == [items[0]])
+    #expect(items.filter(OverviewCraft.coloring.includes) == [items[1]])
+    #expect([items[0]].filter(OverviewCraft.coloring.includes).isEmpty)
+  }
+
+  @Test func artworkUsesTheFileAccessBoundary() {
+    let client = client()
+    let model = OverviewModel(client: client, userID: "fictional-user")
+    #expect(
+      model.artworkURL(for: project(image: "garden image.png"))
+        == client.fileURL(
+          collection: "projects", recordID: "fictional-project", filename: "garden image.png"
+        ))
+    #expect(
+      model.artworkURL(for: page(photos: ["", "page.png", "later.png"]))
+        == client.fileURL(
+          collection: "coloring_pages", recordID: "fictional-page", filename: "page.png"
+        ))
+    #expect(model.artworkURL(for: project()) == nil)
+    #expect(model.artworkURL(for: project(image: "")) == nil)
+    #expect(model.artworkURL(for: page()) == nil)
+    #expect(model.artworkURL(for: page(photos: [""])) == nil)
+  }
+}

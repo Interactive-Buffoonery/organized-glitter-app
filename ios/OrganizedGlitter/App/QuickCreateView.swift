@@ -44,7 +44,7 @@ struct QuickCreateView: View {
       }
       .padding()
     }
-    .background(theme.backgroundGradient)
+    .background(theme.themedBackground)
     .navigationTitle("Create")
     .navigationBarTitleDisplayMode(.inline)
     .sheet(isPresented: $isCreatingDiamond) {

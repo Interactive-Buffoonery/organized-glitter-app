@@ -43,27 +43,23 @@ signing values are supplied privately and aren’t tracked in Git.
 
 Organized Glitter uses PocketBase for both data and identity. The backend remains responsible for schema, collection rules, hooks,
 migrations, backups, recovery, and production deployment. Don’t copy those
-operations or production configuration into this repository. `BackendContract.json` records the compatibility contract used by the native
+operations into this repository. `BackendContract.json` records the compatibility contract used by the native
 client.
 
 ### Local configuration
 
-Debug builds use `http://127.0.0.1:8090` by default.
+Debug and Release builds use `https://data.organizedglitter.app` by default.
+That hostname is public application config, not a secret.
 
-To use another development backend, copy the example and set a URL your device
-or simulator can reach:
+To point a local checkout at another PocketBase (for example
+`http://127.0.0.1:8090`), copy the matching example. Those `*.local.xcconfig`
+files are gitignored overrides; they are not how the shipped app learns its
+backend.
 
 ```sh
 cd ios
 cp Config/Debug.local.xcconfig.example Config/Debug.local.xcconfig
 ```
-
-`Config/Debug.local.xcconfig` is gitignored. Keep credentials, private
-infrastructure, and production configuration out of tracked files.
-
-The tracked Release configuration intentionally points to `example.invalid`.
-Official release builds receive their backend URL through the gitignored
-`Config/Release.local.xcconfig`.
 
 ## Tests
 

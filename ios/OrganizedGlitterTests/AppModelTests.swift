@@ -65,6 +65,28 @@ struct AppModelTests {
     #expect(themeStore.flavor == .system)
     try store.clear()
   }
+
+  @Test
+  func rejectsEmptySignInWithoutSubmitting() async throws {
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [ServerFailureURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    model.phase = .signedOut
+
+    await model.signIn(identity: "  ", password: "")
+
+    #expect(model.phase == .signedOut)
+    #expect(model.signInError == "Enter your email address and password.")
+    #expect(model.isSubmitting == false)
+  }
 }
 
 private final class MochaUserURLProtocol: URLProtocol, @unchecked Sendable {

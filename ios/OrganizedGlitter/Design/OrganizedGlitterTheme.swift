@@ -20,7 +20,9 @@ struct SectionHeader: View {
   }
 
   var body: some View {
-    Text(title)
+    // Caveat's final stroke can extend beyond the measured text width.
+    Text(title + "\u{2002}")
+      .accessibilityLabel(title)
       .font(.caveat(size: 28, relativeTo: .title2))
       .foregroundStyle(theme.foreground)
       .accessibilityAddTraits(.isHeader)
@@ -45,22 +47,6 @@ struct IconBadge: View {
         Circle().stroke(theme.stickerOutline, lineWidth: Theme.Sticker.outlineWidth)
       }
       .accessibilityHidden(true)
-  }
-}
-
-/// Flat at rest: DESIGN.json elevation is flat-by-default, so no baseline shadow.
-struct CardBackground: ViewModifier {
-  @Environment(\.theme) private var theme
-
-  var cornerRadius: CGFloat = Theme.Radius.panel
-
-  func body(content: Content) -> some View {
-    content
-      .background(theme.card, in: .rect(cornerRadius: cornerRadius))
-      .overlay {
-        RoundedRectangle(cornerRadius: cornerRadius)
-          .stroke(theme.border)
-      }
   }
 }
 
@@ -131,22 +117,42 @@ struct PillButtonStyle: ButtonStyle {
   }
 }
 
-/// Replaces the stock grouped-list grey with the themed gradient surface.
+/// The page background. Light paints the blush-to-lilac `backgroundGradient`.
+/// Dark paints a flat navy base with the theme's `backgroundBloom` over it —
+/// the "Berry Cream after dark" stage. The opaque base keeps nested
+/// backgrounds from doubling up the bloom.
+struct ThemeBackground: View {
+  let theme: Theme
+
+  var body: some View {
+    if let bloom = theme.backgroundBloom {
+      GeometryReader { geo in
+        RadialGradient(
+          stops: bloom.stops.map { Gradient.Stop(color: $0.color, location: $0.location) },
+          center: bloom.center,
+          startRadius: 0,
+          endRadius: max(geo.size.width, geo.size.height) * bloom.radiusFraction
+        )
+      }
+      .background(theme.background)
+    } else {
+      theme.backgroundGradient
+    }
+  }
+}
+
+/// Replaces the stock grouped-list grey with the themed background surface.
 struct ThemedScrollBackground: ViewModifier {
   @Environment(\.theme) private var theme
 
   func body(content: Content) -> some View {
     content
       .scrollContentBackground(.hidden)
-      .background(theme.backgroundGradient)
+      .background(theme.themedBackground)
   }
 }
 
 extension View {
-  func cardBackground(cornerRadius: CGFloat = Theme.Radius.panel) -> some View {
-    modifier(CardBackground(cornerRadius: cornerRadius))
-  }
-
   func stickerCard(_ surfaceIndex: Int = 0, cornerRadius: CGFloat = Theme.Radius.sticker) -> some View {
     modifier(StickerCard(surfaceIndex: surfaceIndex, cornerRadius: cornerRadius))
   }
@@ -169,7 +175,9 @@ struct PageHeader: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-      Text(title)
+      // Leave room for Caveat's final glyph overhang.
+      Text(title + "\u{2002}")
+        .accessibilityLabel(title)
         .font(.caveat(size: 40))
         .foregroundStyle(theme.foreground)
       if let subtitle {
@@ -216,26 +224,28 @@ struct AccessibleErrorLabel: View {
 struct StatusBadge: View {
   @Environment(\.theme) private var theme
 
+  enum Presentation {
+    case capsule
+    case quiet
+  }
+
   let status: String
-  /// On pastel sticker fills the theme tints lose contrast in dark mode (light
-  /// tint on light fill), so surface placement flattens to the surface text
-  /// color. Status stays distinguishable through its icon and written label.
-  var onSurface = false
+  var presentation: Presentation = .capsule
 
   var body: some View {
     Label(status.organizedGlitterLabel, systemImage: systemImage)
       // ponytail: both modifiers are load-bearing inside a List row. A bare Label
       // inherits the ambient style, and List rows supply .iconOnly, which drops the
       // written status text the accessibility contract below depends on. Fixing only
-      // the horizontal axis keeps the capsule at its natural height instead of
-      // stretching to fill the row.
+      // the horizontal axis keeps legacy capsules at their natural height.
+      // Quiet status text can wrap with Dynamic Type.
       .labelStyle(.titleAndIcon)
       .font(.caption.weight(.semibold))
       .foregroundStyle(tint)
-      .padding(.horizontal, 9)
-      .padding(.vertical, 6)
-      .background(tint.opacity(0.12), in: .capsule)
-      .fixedSize(horizontal: true, vertical: false)
+      .padding(.horizontal, presentation == .capsule ? 9 : 0)
+      .padding(.vertical, presentation == .capsule ? 6 : 0)
+      .background(tint.opacity(presentation == .capsule ? 0.12 : 0), in: .capsule)
+      .fixedSize(horizontal: presentation == .capsule, vertical: presentation == .quiet)
   }
 
   private var systemImage: String {
@@ -251,10 +261,10 @@ struct StatusBadge: View {
   }
 
   /// Hue is never the only signal here: every case pairs with a distinct icon and
-  /// its written label, per DESIGN.json's WCAG 2.2 AA requirement.
+  /// its written label, as required by docs/design.md.
   private var tint: Color {
-    if onSurface {
-      return theme.surfaceForeground
+    if presentation == .quiet {
+      return theme.pageSecondaryForeground
     }
     return switch status {
     case "completed": theme.accent
@@ -265,5 +275,98 @@ struct StatusBadge: View {
     case "kitted", "palette_chosen": theme.accent
     default: theme.mutedForeground
     }
+  }
+}
+
+/// A quiet native control without sticker chrome or movement on press.
+struct QuietActionStyle: ButtonStyle {
+  @Environment(\.theme) private var theme
+  @Environment(\.isEnabled) private var isEnabled
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .labelStyle(.titleAndIcon)
+      .font(.body.weight(.medium))
+      .foregroundStyle(theme.foreground)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 8)
+      .frame(minHeight: 44)
+      .background(
+        configuration.isPressed ? theme.secondary : theme.card,
+        in: .rect(cornerRadius: 12)
+      )
+      .opacity(isEnabled ? 1 : 0.5)
+  }
+}
+
+/// Uncropped artwork with a shared missing and failed-image fallback.
+struct RecordArtwork: View {
+  @Environment(\.theme) private var theme
+
+  let url: URL?
+  var maxHeight: CGFloat = 124
+  var emptyMinHeight: CGFloat = 96
+
+  var body: some View {
+    AsyncImage(url: url) { phase in
+      if let image = phase.image {
+        image.resizable().scaledToFit()
+      } else if url != nil, phase.error == nil {
+        ProgressView()
+      } else {
+        VStack(spacing: 8) {
+          Image(systemName: "photo")
+            .font(.title2)
+          Text("No artwork")
+            .font(.caption)
+            .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(theme.mutedForeground)
+        .padding(8)
+        .frame(minHeight: emptyMinHeight)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: maxHeight)
+  }
+}
+
+/// Artwork leads; text and status can grow without truncation.
+struct ActiveProjectRow: View {
+  @Environment(\.theme) private var theme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  let item: LibraryItem
+  let imageURL: URL?
+
+  var body: some View {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+
+    layout {
+      RecordArtwork(url: imageURL, maxHeight: 124, emptyMinHeight: 96)
+        .frame(width: 100, height: 124)
+        .background(theme.card, in: .rect(cornerRadius: 10))
+        .clipShape(.rect(cornerRadius: 10))
+        .accessibilityHidden(true)
+
+      VStack(alignment: .leading, spacing: 8) {
+        Text(item.title)
+          .font(.headline)
+          .foregroundStyle(theme.foreground)
+        if !item.subtitle.isEmpty {
+          Text(item.subtitle)
+            .font(.subheadline)
+            .foregroundStyle(theme.pageSecondaryForeground)
+        }
+        StatusBadge(status: item.status, presentation: .quiet)
+      }
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .padding(.vertical, 16)
+    .contentShape(.rect)
+    .accessibilityElement(children: .combine)
   }
 }

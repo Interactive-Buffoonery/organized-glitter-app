@@ -37,7 +37,7 @@ struct ThemedRoot<Content: View>: View {
     content
       .environment(\.theme, theme)
       .tint(theme.primary)
-      .background(theme.backgroundGradient)
+      .background(theme.themedBackground)
       .preferredColorScheme(flavor.preferredColorScheme)
   }
 }

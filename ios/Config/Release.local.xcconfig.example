@@ -1,4 +1,6 @@
 // Copy this file to Release.local.xcconfig in the same directory.
-// Release.local.xcconfig is gitignored and overrides Release.xcconfig locally.
-// Replace the placeholder with the Release PocketBase URL supplied privately.
-POCKETBASE_BASE_URL = https:/$()/example.invalid
+// Release.local.xcconfig is gitignored and overrides Release.xcconfig.
+//
+// Tracked Release builds already use https://data.organizedglitter.app.
+// Use this file only when a Release build should hit a different PocketBase.
+POCKETBASE_BASE_URL = https:/$()/data.organizedglitter.app
