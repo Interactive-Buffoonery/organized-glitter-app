@@ -15,7 +15,8 @@
 
 - Work **one slice at a time**. Each slice should leave the app shippable: no disabled “Soon” that the slice was supposed to retire, no timer placeholders, no half-wired Create rows.
 - Run **Track B (backend)** in parallel with **Track A (iOS)**. Do not stall daily-craft work on universal links or catalog billing.
-- Backend changes land in `Interactive-Buffoonery/organized-glitter` first. Do not copy hooks, migrations, or schema into this repo. Do not edit `ios/BackendContract.json` until that revision is verified.
+- This plan targets **`origin/dev` `3651feba`** (PocketBase **0.40.1**). `ios/BackendContract.json` records that revision. Confirm `data.organizedglitter.app` is on it before relying on a new hook in a live TestFlight.
+- Backend *code* changes still land in `Interactive-Buffoonery/organized-glitter` first. Do not copy hooks, migrations, or schema into this repo.
 - Keep `PocketBaseClient` as the only transport. Add methods there (multipart, confirm-token, custom routes). Do not add a repository protocol.
 - Records stay in memory. Writes require connectivity. Last-write-wins; refresh after unknown completion (already the editor pattern).
 
@@ -23,7 +24,7 @@
 
 | Horizon | User can | Must wait on Track B |
 | --- | --- | --- |
-| **H0 Everyday TestFlight** | Sign in with email **or Discord**, browse Library, create/edit core records, log notes and photos, manage lists and preferences | Discord OAuth redirect that native can complete; backend pin current enough for notes/photos |
+| **H0 Everyday TestFlight** | Sign in with email **or Discord**, browse Library, create/edit core records, log notes and photos, manage lists and preferences | Native Discord redirect URL registered on the existing PocketBase Discord provider |
 | **H1 App Store** | H0 plus Sign in with Apple, in-app account deletion, file-token-ready image loads, identity continuity, legal links (already present) | Apple provider + redirect, deletion endpoint, file-access contract, production pin verification |
 | **H2 Auth continuity** | H1 plus in-app verify/reset/email-change confirmation | Associated Domains + token contract |
 | **H3 Post-v1 product** | Timer, catalog/Supporter, URL kit import | New collections/billing; timer ADR |
@@ -39,11 +40,11 @@ These are not iOS feature PRs. They gate later slices. Owner: backend repo.
 
 | ID | Work | Unblocks | Notes |
 | --- | --- | --- | --- |
-| B1 | Choose and verify a `dev` backend revision; bump PocketBase if required; update `ios/BackendContract.json` only after verification | Almost everything after Era 0 | Pin is 205 commits behind `origin/dev`. Color references already exist on `dev`. |
-| B2 | File-access contract: protected fields + short-lived tokens | App Store image privacy (H1) | iOS already builds URLs in `PocketBaseClient.fileURL`. Implement token query there only. Unprotected display can ship in Era 2. |
+| B1 | Record `origin/dev` in `BackendContract.json` (done for `3651feba` / schema `e9d2569d…` / PocketBase 0.40.1). Re-pin when `dev` moves. | Contract file matches the backend this plan uses | Not a feature gate. Notes, photos, swatches, stats, Discord provider already exist on this revision. |
+| B2 | File-access contract: protect **legacy** fields + short-lived tokens | App Store image privacy (H1) | Swatch photos are already protected. iOS already builds URLs in `PocketBaseClient.fileURL`. |
 | B3 | Associated Domains file, HTTPS token routes, token format, web + old-app fallback | Verify email, confirm reset, confirm email change | Architecture already forbids guessing this. |
 | B4 | Server-owned account deletion endpoint (no client-written audit) | In-app delete (H1) | Do not port the web `account_deletions` client flow. |
-| B5a | Discord OAuth native redirect: PocketBase provider enabled, redirect URL(s) for `ASWebAuthenticationSession` (custom scheme or HTTPS), `listAuthMethods` includes discord | Era 0 Discord button | Existing users may be Discord-only (ADR-0007). Same PocketBase user as web; never merge accounts by email on the client. |
+| B5a | Register native Discord OAuth redirect URL(s) for `ASWebAuthenticationSession` (custom scheme or HTTPS) on the **existing** Discord provider | Era 0 Discord button | Provider is already live. Same PocketBase user as web; never merge accounts by email on the client. |
 | B5b | Apple OAuth provider + native redirect, and a Sign in with Apple button on web if the store binary will offer Discord | H1 | Guideline 4.8: third-party login on iOS requires Apple. Web today has Discord/Google UI; Apple is typed but unshipped. |
 | B5c | Google OAuth native path | Optional later | Not required for H0. |
 | B6 | `work_sessions` collection + ADR + Live Activity proof | Timer (H3) | Prove background presentation before any timer UI. |
@@ -54,7 +55,7 @@ These are not iOS feature PRs. They gate later slices. Owner: backend repo.
 
 | Failure | Trigger | Response |
 | --- | --- | --- |
-| Pin too old for a slice | Color-reference route 404, unknown fields | Stop the slice; finish B1; do not invent a client-side collection write |
+| Pin too old for a slice | Live host not on `3651feba` (or later) when a new hook is required | Check deployed revision; do not invent a client-side collection write |
 | Deletion copied from web | Temptation to ship App Store faster | Refuse; keep mailto until B4 |
 | Timer UI before B6 | “Just a stopwatch” | Out of scope; no Coming Soon control |
 | File tokens forgotten | Ship H1 with public file URLs | H1 checklist fails; land B2 before submission |
@@ -144,7 +145,7 @@ Required for v1. Lower frequency than logging progress, so it follows the picker
 | --- | --- | --- | --- |
 | 5.1 | Attach/detach mediums on page; ownership errors surfaced | 4.4, 2.3 | Cannot attach another user’s medium |
 | 5.2 | Mystery UX: reveal / edit subject / mark unrevealed; contact-sheet watermark for unrevealed | 3.5, 3.6 | Book `is_mystery` is metadata; reveal is per page |
-| 5.3 | Color Codes & Swatches via transactional route, not collection CRUD | B1, 2.5 preferred | Empty references removed server-side; photos protected |
+| 5.3 | Color Codes & Swatches via `POST /api/coloring/pages/{pageId}/color-reference`, not collection CRUD; file tokens for those photos | 2.3, 0.3 | Empty references removed server-side; do not PATCH the collection |
 | 5.4 | Page prev/next within book | 3.6 | Mismatched book/page id → not found |
 
 ### Era 6 — Randomizer (not scheduled)
@@ -171,7 +172,7 @@ Not a bottom-nav slot. Add under Account or Overview accessory after H0 if the s
 
 | Slice | Work | Depends |
 | --- | --- | --- |
-| 8.1 | Read-only Stats: craft scope, year/all-time, diamond + coloring regions | B1, existing `/api/stats/*` |
+| 8.1 | Read-only Stats: craft scope, year/all-time, diamond + coloring regions | existing `/api/stats/*` on `origin/dev` |
 | 8.2 | Do not compute collection splits on device if the server already does | 8.1 |
 
 ### Era 9 — Post-v1 product (H3)
@@ -194,10 +195,10 @@ Do not schedule native CSV, DAC import, bulk photo ZIP, archive export/restore, 
 
 ## Suggested calendar shape (not dates)
 
-Work **Era 0 (including Discord) → 1 → 2** as the H0 spine (sign in, then add notes and photos). Start **B1, B5a, B2, B4** on day one. Overlap **Era 3** with **Era 2** once covers work. **Era 4** after 3.1/3.5. **Era 5** after mediums exist. **Era 7** Apple + deletion as soon as B5b/B4 land. Do not wait on Randomizer.
+Work **Era 0 (including Discord) → 1 → 2** as the H0 spine (sign in, then add notes and photos). Start **B5a, B2, B4** on day one. Overlap **Era 3** with **Era 2** once covers work. **Era 4** after 3.1/3.5. **Era 5** after mediums exist (swatches do not wait on a pin bump). **Era 7** Apple + deletion as soon as B5b/B4 land. Do not wait on Randomizer.
 
 ```
-Track B:  B1 + B5a ────────── B2 ── B4 ── B5b ── H1
+Track B:  B5a ──────────────── B2 ── B4 ── B5b ── H1
                  └── B3 ──────────────────────── H2
                  └── B6 / B7 / B8 ────────────── H3
 
