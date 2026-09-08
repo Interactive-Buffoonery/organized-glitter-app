@@ -459,16 +459,16 @@ Counts below treat each table row in §§1–14 as one item. Stubs count as Inco
 The full era-by-era plan, backend track, and exit criteria live in
 [native-build-sequence.md](./native-build-sequence.md).
 
-Order follows daily-session value in `mobile-v1-scope.md`, not web page count.
+Near-term product intent (2026-09-08): **CRUD into PocketBase**, plus **Sign in with Discord**. Randomizer is deferred.
 
-1. **Progress notes** (diamond + coloring page) from detail and Create, then a Notes page.
-2. **Photos** (project cover, book cover, page photos) once the file-token contract is decided; keep using `fileURL`.
-3. **Diamond metadata** that library browsing needs: company, artist, tags, dates, notes.
-4. **Manage Lists** under Account, plus diamond company/artist pickers.
-5. **Coloring page progress**: mediums, mystery book flag + reveal/unreveal, then color references after the backend pin includes that route.
-6. **Randomizer product** (modes, pool, persist spins, Next Up, section helper including existing number picker, notes from result).
-7. **Auth continuity**: OAuth, then universal-link confirmations, then server-owned account deletion.
-8. **Stats** only if product wants it on mobile; it is not a v1 nav slot.
+1. **Discord sign-in** (same PocketBase user as web) alongside existing email auth.
+2. **Create/edit completeness** for diamonds, books, and pages (wire Create stubs, remaining fields).
+3. **Progress notes** from detail and Create, then a Notes page.
+4. **Photos** (project cover, book cover, page photos) via `fileURL`.
+5. **Diamond metadata** and **Manage Lists** (company, artist, tags, dates, notes).
+6. **Coloring page progress**: mediums, mystery, then color references after the backend pin includes that route.
+7. **App Store:** Sign in with Apple (required if Discord is in the binary), file tokens, server-owned deletion.
+8. **Not scheduled:** Randomizer product, Stats, Google OAuth, timer, catalog.
 
 Do not add timer chrome, catalog paywalls, or import/export in this app until those decisions ship on the backend and in mobile scope.
 
