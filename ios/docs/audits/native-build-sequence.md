@@ -1,10 +1,15 @@
 # Native build sequence
 
-**Date:** 2026-09-08  
-**Companion:** [web-dev-feature-parity.md](./web-dev-feature-parity.md)  
-**Product bar:** workflow parity for everyday phone use (`docs/mobile/mobile-v1-scope.md` on web `dev`), then App Store gates, then post-v1 product. This is not a 1:1 clone of every desktop control.
+**Date:** 2026-09-08 (revised same day: CRUD-first; Discord required; Randomizer deferred)  
+**Companion:** [web-dev-feature-parity.md](./web-dev-feature-parity.md)
 
-This plan sequences **all** gaps in the parity audit: mobile v1, App Store blockers, post-v1 product, and desktop-class extras that should stay on the web unless product intent changes.
+**Product bar:** the iOS app is a PocketBase client for adding and editing library data (projects, books, pages, notes, photos, lists, preferences). It is not a 1:1 clone of every web control.
+
+**In near-term scope:** email auth, **Sign in with Discord**, create/edit/delete core records, progress notes, photos, Manage Lists, account preferences.
+
+**Deferred:** Randomizer (leave the existing number picker as-is; do not expand it). Stats, timer, catalog, Google OAuth.
+
+**App Store constraint (ADR-0007):** if the shipped binary offers Discord (or Google), Sign in with Apple is mandatory. Plan Apple for H1 even though it is not needed for TestFlight Discord.
 
 ## How to use this plan
 
@@ -18,9 +23,9 @@ This plan sequences **all** gaps in the parity audit: mobile v1, App Store block
 
 | Horizon | User can | Must wait on Track B |
 | --- | --- | --- |
-| **H0 Everyday TestFlight** | Sign in with email, browse Library, create/edit core records, log notes and photos, randomize what to work on, manage lists and preferences | Backend pin current enough for notes/photos/randomizer collections |
-| **H1 App Store** | H0 plus in-app account deletion, file-token-ready image loads, identity continuity, legal links (already present) | Deletion endpoint, file-access contract, production pin verification |
-| **H2 Auth continuity** | H1 plus OAuth, in-app verify/reset/email-change confirmation | Associated Domains + token contract; OAuth native path |
+| **H0 Everyday TestFlight** | Sign in with email **or Discord**, browse Library, create/edit core records, log notes and photos, manage lists and preferences | Discord OAuth redirect that native can complete; backend pin current enough for notes/photos |
+| **H1 App Store** | H0 plus Sign in with Apple, in-app account deletion, file-token-ready image loads, identity continuity, legal links (already present) | Apple provider + redirect, deletion endpoint, file-access contract, production pin verification |
+| **H2 Auth continuity** | H1 plus in-app verify/reset/email-change confirmation | Associated Domains + token contract |
 | **H3 Post-v1 product** | Timer, catalog/Supporter, URL kit import | New collections/billing; timer ADR |
 | **H4 Web-only extras** | CSV, DAC, bulk photos, archive, marketing, PWA | Never required on iOS unless product changes |
 
@@ -34,11 +39,13 @@ These are not iOS feature PRs. They gate later slices. Owner: backend repo.
 
 | ID | Work | Unblocks | Notes |
 | --- | --- | --- | --- |
-| B1 | Choose and verify a `dev` backend revision; bump PocketBase if required; update `ios/BackendContract.json` only after verification | Almost everything after Era 0 | Pin is 205 commits behind `origin/dev`. Color references and randomizer metadata already exist on `dev`. |
+| B1 | Choose and verify a `dev` backend revision; bump PocketBase if required; update `ios/BackendContract.json` only after verification | Almost everything after Era 0 | Pin is 205 commits behind `origin/dev`. Color references already exist on `dev`. |
 | B2 | File-access contract: protected fields + short-lived tokens | App Store image privacy (H1) | iOS already builds URLs in `PocketBaseClient.fileURL`. Implement token query there only. Unprotected display can ship in Era 2. |
 | B3 | Associated Domains file, HTTPS token routes, token format, web + old-app fallback | Verify email, confirm reset, confirm email change | Architecture already forbids guessing this. |
 | B4 | Server-owned account deletion endpoint (no client-written audit) | In-app delete (H1) | Do not port the web `account_deletions` client flow. |
-| B5 | Native OAuth continuity (Google, Discord; Apple later) | OAuth buttons | Web has Google/Discord; Apple is typed but unshipped on web too. |
+| B5a | Discord OAuth native redirect: PocketBase provider enabled, redirect URL(s) for `ASWebAuthenticationSession` (custom scheme or HTTPS), `listAuthMethods` includes discord | Era 0 Discord button | Existing users may be Discord-only (ADR-0007). Same PocketBase user as web; never merge accounts by email on the client. |
+| B5b | Apple OAuth provider + native redirect, and a Sign in with Apple button on web if the store binary will offer Discord | H1 | Guideline 4.8: third-party login on iOS requires Apple. Web today has Discord/Google UI; Apple is typed but unshipped. |
+| B5c | Google OAuth native path | Optional later | Not required for H0. |
 | B6 | `work_sessions` collection + ADR + Live Activity proof | Timer (H3) | Prove background presentation before any timer UI. |
 | B7 | Catalog, Supporter, tips contracts | Catalog/billing (H3) | ADR-0021. Native billing is StoreKit, not PayPal. |
 | B8 | URL kit-import API | Paste-URL create (H3) | Plan exists on web; not shipped. |
@@ -56,7 +63,7 @@ These are not iOS feature PRs. They gate later slices. Owner: backend repo.
 
 ## Track A — iOS eras
 
-Each era lists **slices** (PR-sized), **depends on**, **exit criteria**, and **tests**. Slice IDs are the build order inside the era. Eras 1–6 are H0. Era 7 is H1/H2. Eras 8–9 are H3. Era 10 is H4.
+Each era lists **slices** (PR-sized), **depends on**, **exit criteria**, and **tests**. Slice IDs are the build order inside the era. Eras 0–5 are H0. Era 7 is H1/H2. Eras 8–9 are H3. Randomizer is not scheduled.
 
 ### Era 0 — Foundation and cheap wins
 
@@ -70,8 +77,9 @@ Unblock later eras and retire the obvious stubs. No new product surface except w
 | 0.4 | Create tab: New coloring book opens `ColoringBookEditor` (already on Library) | — | No “Soon” on that row; vertical still gates it |
 | 0.5 | Overview craft picker respects enabled verticals | — | Disabled craft omitted; Wishlist menu already gated |
 | 0.6 | Authenticated change password (`oldPassword` / `password` / `passwordConfirm`) then sign out | — | Account row is change password, not “reset via email” for signed-in users |
+| 0.7 | Sign in with Discord: `listAuthMethods`, `ASWebAuthenticationSession` (or equivalent), PocketBase OAuth2 code exchange, Keychain session same as email | B5a | Discord-only users reach the same `users` record as on web. Cancel, network, and account-conflict map to ADR-0007 categories. No email/password merge on the client. |
 
-**Do not** add OAuth buttons, deletion, or timer chrome here.
+**Do not** add Google, Apple (until H1), deletion, Randomizer product work, or timer chrome here. Discord is required in Era 0 so existing Discord accounts can add library data.
 
 ### Era 1 — Progress notes (daily loop)
 
@@ -139,22 +147,9 @@ Required for v1. Lower frequency than logging progress, so it follows the picker
 | 5.3 | Color Codes & Swatches via transactional route, not collection CRUD | B1, 2.5 preferred | Empty references removed server-side; photos protected |
 | 5.4 | Page prev/next within book | 3.6 | Mismatched book/page id → not found |
 
-### Era 6 — Randomizer as a product
+### Era 6 — Randomizer (not scheduled)
 
-Keep the existing number picker. Do not throw it away.
-
-| Slice | Work | Depends | Exit criteria |
-| --- | --- | --- | --- |
-| 6.1 | Modes: diamond / coloring book / coloring page, coerced to verticals | B1 | URL or in-memory mode; empty pool copy |
-| 6.2 | Eligibility by status + target list (search, select all/none) | 6.1 | At least one target to spin |
-| 6.3 | Persist `randomizer_spins`; result panel; history | 6.2 | Unknown JSON keys in metadata preserved |
-| 6.4 | Native “spin” (picker/wheel). Numbered segments are the product; a SwiftUI wheel is optional | 6.3 | VoiceOver announces winning number |
-| 6.5 | Size-mode section helper + existing number-mode picker on diamond results | 6.4 | Discriminated `kind: size \| number` metadata |
-| 6.6 | Next Up per mode in `user_dashboard_settings` | 6.3 | One slot per mode |
-| 6.7 | Progress note from result (diamond and coloring page) | 1.3, 6.3 | Optional; spin does not require a note |
-| 6.8 | Book result → random unfinished page | 6.3 | Error if none |
-
-Remove the footnote “picks are not saved” when 6.3 ships.
+Leave the current numbered-section picker in the tab. Do not build modes, wheel, spin history, Next Up, or notes-from-result unless product asks again. Users who want the full Randomizer keep using the website.
 
 ### Era 7 — Account remaining, App Store, auth continuity
 
@@ -164,11 +159,11 @@ Remove the footnote “picks are not saved” when 6.3 ships.
 | 7.2 | In-app deletion: confirm + reauth, call B4 only | B4 | H1 |
 | 7.3 | Associated Domains + confirm verification / reset / email-change screens | B3 | H2 |
 | 7.4 | Change-email request (confirm is 7.3) | 7.3 for completion | H2 |
-| 7.5 | OAuth Google/Discord | B5 | H2 |
-| 7.6 | Sign in with Apple | B5 + web Apple UI | H2/H3 |
+| 7.5 | Sign in with Apple (required once Discord is in the App Store binary) | B5b, 0.7 | H1 |
+| 7.6 | Google OAuth | B5c | Optional; not H0 |
 | 7.7 | Coloring walkthrough (optional; once per account) | — | After H0 if desired |
 
-**H1 submission checklist** (from architecture, not optional): deployed backend revision, PocketBase version, identity continuity, collection auth, backups, B4 deletion, B2 file tokens, Privacy/Terms links (done).
+**H1 submission checklist** (from architecture, not optional): deployed backend revision, PocketBase version, identity continuity, collection auth, backups, B4 deletion, B2 file tokens, Privacy/Terms links (done), **Sign in with Apple if Discord remains in the binary**.
 
 ### Era 8 — Stats
 
@@ -199,17 +194,17 @@ Do not schedule native CSV, DAC import, bulk photo ZIP, archive export/restore, 
 
 ## Suggested calendar shape (not dates)
 
-Work **Era 0 → 1 → 2** as a single H0 spine (notes then photos). Start **Track B1–B4** on day one. Overlap **Era 3** (metadata/filters) with **Era 2** once covers work. **Era 4** after 3.1/3.5 so lists are not empty chrome. **Era 5** after mediums exist. **Era 6** after notes exist so result-to-note is real. **Era 7** App Store items as soon as B2/B4 land, even if Randomizer is still mid-era. **Era 8–9** only after H1.
+Work **Era 0 (including Discord) → 1 → 2** as the H0 spine (sign in, then add notes and photos). Start **B1, B5a, B2, B4** on day one. Overlap **Era 3** with **Era 2** once covers work. **Era 4** after 3.1/3.5. **Era 5** after mediums exist. **Era 7** Apple + deletion as soon as B5b/B4 land. Do not wait on Randomizer.
 
 ```
-Track B:  B1 ──────────────── B2 ── B4 ── H1
-                 └── B3 / B5 ──────────── H2
-                 └── B6 / B7 / B8 ─────── H3
+Track B:  B1 + B5a ────────── B2 ── B4 ── B5b ── H1
+                 └── B3 ──────────────────────── H2
+                 └── B6 / B7 / B8 ────────────── H3
 
-Track A:  0 ─ 1 ─ 2 ─┬─ 3 ─ 4 ─ 5 ─ 6 ── H0
-                     └─ 7.1
-                            7.2–7.6 ──── H1/H2
-                            8, 9 ──────── H3
+Track A:  0 (incl. Discord) ─ 1 ─ 2 ─┬─ 3 ─ 4 ─ 5 ── H0
+                                      └─ 7.1
+                                             7.2, 7.5 ── H1
+                                             8, 9 ────── H3
 ```
 
 ## Architecture constraints to keep
@@ -234,3 +229,5 @@ Match existing style: Swift Testing for models/filters/writes; UI tests for the 
 - Native import/export as a shortcut around web Data tab.
 - Building catalog paywalls before B7.
 - Six-tab navigation (Notes and Stats are pages, not slots).
+- Expanding Randomizer before CRUD, notes, and photos are done.
+- Merging Discord and email accounts on the client.
