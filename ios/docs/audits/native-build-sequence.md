@@ -15,7 +15,7 @@
 
 - Work **one slice at a time**. Each slice should leave the app shippable: no disabled “Soon” that the slice was supposed to retire, no timer placeholders, no half-wired Create rows.
 - Run **Track B (backend)** in parallel with **Track A (iOS)**. Do not stall daily-craft work on universal links or catalog billing.
-- This plan targets **`origin/dev` `3651feba`** (PocketBase **0.40.1**). `ios/BackendContract.json` records that revision. Confirm `data.organizedglitter.app` is on it before relying on a new hook in a live TestFlight.
+- This plan targets **`origin/dev` `3651feba`** (PocketBase **0.40.1**) as the git contract. `ios/BackendContract.json` records that revision. The live server is **`https://data.organizedglitter.app`**, the same PocketBase the website has used for a long time. iOS already points there; there is no separate native backend.
 - Backend *code* changes still land in `Interactive-Buffoonery/organized-glitter` first. Do not copy hooks, migrations, or schema into this repo.
 - Keep `PocketBaseClient` as the only transport. Add methods there (multipart, confirm-token, custom routes). Do not add a repository protocol.
 - Records stay in memory. Writes require connectivity. Last-write-wins; refresh after unknown completion (already the editor pattern).
@@ -55,7 +55,7 @@ These are not iOS feature PRs. They gate later slices. Owner: backend repo.
 
 | Failure | Trigger | Response |
 | --- | --- | --- |
-| Pin too old for a slice | Live host not on `3651feba` (or later) when a new hook is required | Check deployed revision; do not invent a client-side collection write |
+| Pin too old for a slice | Git `dev` has a new hook that is not on `data.organizedglitter.app` yet | Deploy that backend revision to the existing host; do not invent a client-side collection write |
 | Deletion copied from web | Temptation to ship App Store faster | Refuse; keep mailto until B4 |
 | Timer UI before B6 | “Just a stopwatch” | Out of scope; no Coming Soon control |
 | File tokens forgotten | Ship H1 with public file URLs | H1 checklist fails; land B2 before submission |
