@@ -168,6 +168,14 @@ final class LibraryModel {
     sort = .recentlyUpdated
   }
 
+  func clearSearch() async {
+    guard !searchText.isEmpty else {
+      return
+    }
+    searchText = ""
+    await load()
+  }
+
   /// Keeps Library on an enabled craft when preferences load or change.
   func align(to verticals: VerticalPreferences) {
     let available = LibrarySection.available(for: verticals)

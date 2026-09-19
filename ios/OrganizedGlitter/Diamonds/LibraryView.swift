@@ -77,7 +77,6 @@ struct LibraryView: View {
       }
       .listStyle(.sidebar)
       .themedScrollBackground()
-      .navigationTitle("Library")
     } detail: {
       NavigationStack(path: $path) {
         browsingScroll(showsCraftPicker: false)
@@ -139,6 +138,17 @@ struct LibraryView: View {
         .onSubmit {
           Task { await model.load() }
         }
+      if !model.searchText.isEmpty {
+        Button {
+          Task { await model.clearSearch() }
+        } label: {
+          Image(systemName: "xmark.circle.fill")
+            .foregroundStyle(theme.pageSecondaryForeground)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Clear search")
+        .accessibilityIdentifier("library.search.clear")
+      }
     }
     .padding(.horizontal, 12)
     .frame(minHeight: 44)
