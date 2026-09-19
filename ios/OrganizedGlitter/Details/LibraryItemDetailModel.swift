@@ -52,6 +52,7 @@ final class LibraryItemDetailModel {
   private var progressNotesPage = 0
   private var progressNotesTotalPages = 0
   private var generation = 0
+  private var unresolvedDiamondWriteIncludesPhoto = false
 
   init(item: LibraryItem, client: PocketBaseClient, userID: String) {
     self.item = item
@@ -75,12 +76,12 @@ final class LibraryItemDetailModel {
     do {
       switch item {
       case .diamond(let project):
-        let loadedProject: DiamondProjectRecord = try await client.get(
+        async let projectRequest: DiamondProjectRecord = client.get(
           collection: "projects",
           id: project.id,
           expand: "company,artist"
         )
-        let loadedNotes: RecordList<DiamondProgressNoteRecord> = try await client.list(
+        async let notesRequest: RecordList<DiamondProgressNoteRecord> = client.list(
           collection: "progress_notes",
           page: 1,
           perPage: 20,
@@ -90,6 +91,7 @@ final class LibraryItemDetailModel {
           ]),
           sort: "-date,-created"
         )
+        let (loadedProject, loadedNotes) = try await (projectRequest, notesRequest)
         guard requestGeneration == generation else { return false }
         item = .diamond(loadedProject)
         progressNotes = loadedNotes.items
@@ -98,12 +100,29 @@ final class LibraryItemDetailModel {
         canLoadMoreProgressNotes = loadedNotes.page < loadedNotes.totalPages
 
       case .book(let book):
-        let loadedBook: ColoringBookRecord = try await client.get(
+        let requestedFilter = bookPageFilter
+        var filters = [
+          PocketBaseFilter.equals(.book, book.id),
+          PocketBaseFilter.equals(.bookUser, userID),
+        ]
+        if let status = requestedFilter.status {
+          filters.append(PocketBaseFilter.equals(.status, status))
+        }
+        let pagesFilter = PocketBaseFilter.all(filters)
+        async let bookRequest: ColoringBookRecord = client.get(
           collection: "coloring_books",
           id: book.id,
           expand: "publisher,illustrator"
         )
-        let loadedPages = try await bookPagesResult(bookID: book.id, page: 1)
+        async let pagesRequest: RecordList<ColoringPageRecord> = client.list(
+          collection: "coloring_pages",
+          page: 1,
+          perPage: 24,
+          filter: pagesFilter,
+          sort: "+page_number",
+          expand: "book"
+        )
+        let (loadedBook, loadedPages) = try await (bookRequest, pagesRequest)
         guard requestGeneration == generation else { return false }
         item = .book(loadedBook)
         bookPages = loadedPages.items
@@ -321,12 +340,11 @@ final class LibraryItemDetailModel {
         collection: "progress_notes",
         multipart: form
       )
-      if !progressNotes.contains(where: { $0.id == saved.id }) {
-        progressNotes.insert(saved, at: 0)
-      }
+      mergeProgressNote(saved)
       await load()
       return true
     } catch APIError.offline, APIError.server {
+      unresolvedDiamondWriteIncludesPhoto = photo != nil
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
       return false
@@ -394,6 +412,7 @@ final class LibraryItemDetailModel {
   func clearUnresolvedWriteRecovery() {
     guard unresolvedWriteState == .refreshed else { return }
     unresolvedWriteState = nil
+    unresolvedDiamondWriteIncludesPhoto = false
     mutationErrorMessage = nil
   }
 
@@ -401,15 +420,52 @@ final class LibraryItemDetailModel {
     let didRefresh = await load()
     if didRefresh {
       unresolvedWriteState = .refreshed
-      mutationErrorMessage =
-        "The upload response was lost. Review the refreshed photos before starting a new upload."
+      switch item {
+      case .diamond:
+        mutationErrorMessage =
+          unresolvedDiamondWriteIncludesPhoto
+          ? "The save response was lost. Review the refreshed progress notes and photos before adding another note."
+          : "The save response was lost. Review the refreshed progress notes before adding another note."
+      case .page:
+        mutationErrorMessage =
+          "The upload response was lost. Review the refreshed photos before starting a new upload."
+      case .book:
+        mutationErrorMessage = "The save response was lost. Review the refreshed item."
+      }
       return true
     }
 
     unresolvedWriteState = .needsRefresh
-    mutationErrorMessage =
-      "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
+    switch item {
+    case .diamond:
+      mutationErrorMessage =
+        "Progress note status is unknown because the project could not be refreshed. Refresh status before adding another note."
+    case .page:
+      mutationErrorMessage =
+        "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
+    case .book:
+      mutationErrorMessage = "Save status is unknown. Refresh the item before trying again."
+    }
     return false
+  }
+
+  private func mergeProgressNote(_ saved: DiamondProgressNoteRecord) {
+    progressNotes.removeAll { $0.id == saved.id }
+    let insertionIndex =
+      progressNotes.firstIndex {
+        Self.progressNote(saved, precedes: $0)
+      } ?? progressNotes.endIndex
+    progressNotes.insert(saved, at: insertionIndex)
+  }
+
+  private static func progressNote(
+    _ lhs: DiamondProgressNoteRecord,
+    precedes rhs: DiamondProgressNoteRecord
+  ) -> Bool {
+    if lhs.date != rhs.date {
+      return lhs.date > rhs.date
+    }
+    return lhs.created > rhs.created
   }
 
   private func bookPagesResult(bookID: String, page: Int) async throws

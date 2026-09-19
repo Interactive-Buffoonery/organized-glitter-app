@@ -148,14 +148,14 @@ struct LibraryItemDetailModelTests {
   }
 
   @Test
-  func confirmedDiamondNoteRemainsVisibleWhenRefreshFails() async throws {
+  func confirmedBackdatedDiamondNoteKeepsServerSortWhenRefreshFails() async throws {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)
-      if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
-        return (200, Self.noteJSON)
-      }
       if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
-        return (500, "{}")
+        return (200, Self.projectJSON)
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/progress_notes/records") {
+        return (200, Self.newerNoteListJSON)
       }
       Issue.record("Unexpected request: \(request)")
       return (500, "{}")
@@ -168,12 +168,59 @@ struct LibraryItemDetailModelTests {
       contentType: "image/png"
     )
 
+    #expect(await model.load())
+    #expect(model.progressNotes.map(\.id) == ["note-new"])
+
+    DetailURLProtocol.handler = { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
+        return (200, Self.noteJSON)
+      }
+      if request.httpMethod == "GET",
+        path.hasSuffix("/projects/records/project-1")
+          || path.hasSuffix("/progress_notes/records")
+      {
+        return (500, "{}")
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+
     #expect(
       await model.addDiamondProgressNote(
         content: "Halfway done", date: Date(timeIntervalSince1970: 0), photo: photo
       ))
-    #expect(model.progressNotes.map(\.id) == ["note-1"])
+    #expect(model.progressNotes.map(\.id) == ["note-new", "note-1"])
     #expect(model.errorMessage != nil)
+  }
+
+  @Test
+  func uncertainTextOnlyDiamondNotePointsToProgressNotes() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
+        return (500, "{}")
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
+        return (200, Self.projectJSON)
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/progress_notes/records") {
+        return (200, Self.textOnlyNoteListJSON)
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .diamond(Self.project), client: client, userID: "user-1")
+
+    #expect(
+      !(await model.addDiamondProgressNote(
+        content: "Reached the halfway point", date: Date(timeIntervalSince1970: 0), photo: nil
+      )))
+    #expect(model.unresolvedWriteState == .refreshed)
+    #expect(model.mutationErrorMessage?.contains("progress notes") == true)
+    #expect(model.mutationErrorMessage?.contains("photos") == false)
+    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "POST" }.count == 1)
   }
 
   @Test
@@ -261,6 +308,12 @@ struct LibraryItemDetailModelTests {
 
   nonisolated private static let noteListJSON =
     #"{"page":1,"perPage":20,"totalItems":1,"totalPages":1,"items":[{"id":"note-1","project":"project-1","content":"Halfway done","date":"2026-09-19 00:00:00.000Z","image":"progress.png","created":"2026-09-19","updated":"2026-09-19"}]}"#
+
+  nonisolated private static let newerNoteListJSON =
+    #"{"page":1,"perPage":20,"totalItems":1,"totalPages":1,"items":[{"id":"note-new","project":"project-1","content":"Latest update","date":"2026-09-20 00:00:00.000Z","created":"2026-09-20","updated":"2026-09-20"}]}"#
+
+  nonisolated private static let textOnlyNoteListJSON =
+    #"{"page":1,"perPage":20,"totalItems":1,"totalPages":1,"items":[{"id":"note-text","project":"project-1","content":"Reached the halfway point","date":"2026-09-19 00:00:00.000Z","created":"2026-09-19","updated":"2026-09-19"}]}"#
 
   nonisolated private static func pageListJSON(
     id: String,

@@ -193,7 +193,7 @@ struct DiamondProjectDetailView: View {
         Label(message, systemImage: "checkmark.circle")
           .foregroundStyle(theme.foreground)
       }
-      Button("Done reviewing photos") {
+      Button("Done reviewing progress notes") {
         model.clearUnresolvedWriteRecovery()
       }
       .buttonStyle(.bordered)
@@ -290,7 +290,9 @@ private struct DiamondProgressNoteEditor: View {
         } else if model.isMutating {
           Section {
             ProgressView(
-              model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…"
+              model.unresolvedWriteState == nil
+                ? (processedPhoto == nil ? "Adding progress note…" : "Uploading photo…")
+                : "Checking save status…"
             )
           }
           .listRowBackground(theme.card)
@@ -314,7 +316,7 @@ private struct DiamondProgressNoteEditor: View {
         }
       }
       .themedScrollBackground()
-      .navigationTitle("Add progress photo")
+      .navigationTitle("Add progress note")
       .navigationBarTitleDisplayMode(.inline)
       .interactiveDismissDisabled(isPreparingPhoto || model.isMutating)
       .accessibilityIdentifier("detail.diamond.noteEditor")
@@ -332,7 +334,7 @@ private struct DiamondProgressNoteEditor: View {
             .disabled(model.isMutating)
             .accessibilityIdentifier("detail.diamond.noteRefresh")
           case .refreshed:
-            Button("Back to photos") {
+            Button("Back to project") {
               model.clearUnresolvedWriteRecovery()
               dismiss()
             }
@@ -405,16 +407,20 @@ private struct DiamondProgressNoteEditor: View {
       dismiss()
     } else if model.unresolvedWriteState == .refreshed {
       AccessibilityNotification.Announcement(
-        "Photos refreshed. Review them before starting another upload."
+        processedPhoto == nil
+          ? "Progress notes refreshed. Review them before adding another note."
+          : "Progress notes and photos refreshed. Review them before adding another note."
       ).post()
     }
   }
 
   private func refreshUploadStatus() async {
-    AccessibilityNotification.Announcement("Refreshing upload status").post()
+    AccessibilityNotification.Announcement("Refreshing progress note status").post()
     if await model.refreshUnresolvedWriteStatus() {
       await onCollectionChanged()
-      AccessibilityNotification.Announcement("Photos refreshed").post()
+      AccessibilityNotification.Announcement(
+        processedPhoto == nil ? "Progress notes refreshed" : "Progress notes and photos refreshed"
+      ).post()
     }
   }
 }
