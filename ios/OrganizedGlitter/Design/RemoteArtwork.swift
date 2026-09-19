@@ -179,7 +179,7 @@ actor RemoteArtworkDataStore {
     let id: UUID
     let generation: UInt64
     let task: Task<Data, Error>
-    var waiters: Set<UUID>
+    var waiters: [UUID: CheckedContinuation<Data, Error>]
   }
 
   private let maximumByteCount: Int
@@ -197,6 +197,10 @@ actor RemoteArtworkDataStore {
     entries.count
   }
 
+  func inFlightWaiterCount(for url: URL) -> Int {
+    inFlightRequests[url]?.waiters.count ?? 0
+  }
+
   func data(
     for url: URL,
     fetch: @escaping @Sendable () async throws -> Data
@@ -209,52 +213,45 @@ actor RemoteArtworkDataStore {
       return entry.data
     }
 
-    let waiterID = UUID()
-    let request: InFlightRequest
-    if var existing = inFlightRequests[url] {
-      existing.waiters.insert(waiterID)
-      inFlightRequests[url] = existing
-      request = existing
+    let requestID: UUID
+    if let existing = inFlightRequests[url] {
+      requestID = existing.id
     } else {
       let task = Task {
         try await fetch()
       }
-      request = InFlightRequest(
+      let request = InFlightRequest(
         id: UUID(),
         generation: generation,
         task: task,
-        waiters: [waiterID]
+        waiters: [:]
       )
       inFlightRequests[url] = request
-    }
-
-    do {
-      let data = try await withTaskCancellationHandler {
-        let data = try await request.task.value
-        try Task.checkCancellation()
-        return data
-      } onCancel: {
-        Task {
-          await self.cancelWaiter(waiterID, for: url, requestID: request.id)
+      requestID = request.id
+      Task {
+        do {
+          let data = try await task.value
+          completeRequest(with: data, for: url, requestID: request.id)
+        } catch {
+          failRequest(with: error, for: url, requestID: request.id)
         }
       }
-      completeWaiter(
-        waiterID,
-        for: url,
-        requestID: request.id,
-        requestGeneration: request.generation,
-        data: data
-      )
-      return data
-    } catch {
-      completeWaiter(
-        waiterID,
-        for: url,
-        requestID: request.id,
-        requestGeneration: request.generation,
-        data: nil
-      )
-      throw error
+    }
+
+    let waiterID = UUID()
+    return try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation(isolation: self) { continuation in
+        guard var request = inFlightRequests[url], request.id == requestID else {
+          continuation.resume(throwing: CancellationError())
+          return
+        }
+        request.waiters[waiterID] = continuation
+        inFlightRequests[url] = request
+      } onCancel: {
+        Task {
+          await self.cancelWaiter(waiterID, for: url, requestID: requestID)
+        }
+      }
     }
   }
 
@@ -262,6 +259,9 @@ actor RemoteArtworkDataStore {
     generation &+= 1
     for request in inFlightRequests.values {
       request.task.cancel()
+      for continuation in request.waiters.values {
+        continuation.resume(throwing: CancellationError())
+      }
     }
     inFlightRequests.removeAll()
     entries.removeAll()
@@ -272,7 +272,10 @@ actor RemoteArtworkDataStore {
     guard var request = inFlightRequests[url], request.id == requestID else {
       return
     }
-    request.waiters.remove(waiterID)
+    guard let continuation = request.waiters.removeValue(forKey: waiterID) else {
+      return
+    }
+    continuation.resume(throwing: CancellationError())
     if request.waiters.isEmpty {
       request.task.cancel()
       inFlightRequests[url] = nil
@@ -281,27 +284,26 @@ actor RemoteArtworkDataStore {
     }
   }
 
-  private func completeWaiter(
-    _ waiterID: UUID,
-    for url: URL,
-    requestID: UUID,
-    requestGeneration: UInt64,
-    data: Data?
-  ) {
-    guard var request = inFlightRequests[url], request.id == requestID else {
+  private func completeRequest(with data: Data, for url: URL, requestID: UUID) {
+    guard let request = inFlightRequests[url], request.id == requestID else {
       return
     }
-    guard request.waiters.remove(waiterID) != nil else {
-      return
-    }
-
-    if let data, requestGeneration == generation {
+    inFlightRequests[url] = nil
+    if request.generation == generation {
       insert(data, for: url)
     }
-    if request.waiters.isEmpty {
-      inFlightRequests[url] = nil
-    } else {
-      inFlightRequests[url] = request
+    for continuation in request.waiters.values {
+      continuation.resume(returning: data)
+    }
+  }
+
+  private func failRequest(with error: Error, for url: URL, requestID: UUID) {
+    guard let request = inFlightRequests[url], request.id == requestID else {
+      return
+    }
+    inFlightRequests[url] = nil
+    for continuation in request.waiters.values {
+      continuation.resume(throwing: error)
     }
   }
 

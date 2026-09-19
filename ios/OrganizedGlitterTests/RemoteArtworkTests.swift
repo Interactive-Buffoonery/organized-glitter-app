@@ -44,6 +44,55 @@ struct RemoteArtworkTests {
   }
 
   @Test
+  func cancellingOneWaiterReturnsPromptlyWithoutCancellingTheSharedFetch() async throws {
+    let store = RemoteArtworkDataStore(maximumByteCount: 1_024)
+    let gate = ArtworkFetchGate(data: Data(repeating: 9, count: 128))
+    let url = URL(string: "https://artwork.example.test/coalesced.jpg")!
+    let first = Task {
+      try await store.data(for: url) { try await gate.fetch() }
+    }
+    while await store.inFlightWaiterCount(for: url) < 1 {
+      await Task.yield()
+    }
+    let second = Task {
+      try await store.data(for: url) { try await gate.fetch() }
+    }
+    while await store.inFlightWaiterCount(for: url) < 2 {
+      await Task.yield()
+    }
+
+    first.cancel()
+    let cancelledPromptly = await withTaskGroup(of: Bool.self) { group in
+      group.addTask {
+        do {
+          _ = try await first.value
+          return false
+        } catch is CancellationError {
+          return true
+        } catch {
+          return false
+        }
+      }
+      group.addTask {
+        try? await Task.sleep(for: .milliseconds(250))
+        return false
+      }
+      let result = await group.next() ?? false
+      await gate.finish()
+      group.cancelAll()
+      return result
+    }
+
+    let secondData = try await second.value
+    let fetchCount = await gate.fetchCount
+    let cachedByteCount = await store.cachedByteCount
+    #expect(cancelledPromptly)
+    #expect(secondData == Data(repeating: 9, count: 128))
+    #expect(fetchCount == 1)
+    #expect(cachedByteCount == 128)
+  }
+
+  @Test
   func encodedCacheStaysWithinItsMemoryLimit() async throws {
     let store = RemoteArtworkDataStore(maximumByteCount: 10)
 
@@ -172,6 +221,28 @@ private actor ArtworkFetchProbe {
     fetchCount += 1
     try await Task.sleep(for: delay)
     return data
+  }
+}
+
+private actor ArtworkFetchGate {
+  private let data: Data
+  private var continuation: CheckedContinuation<Data, Error>?
+  private(set) var fetchCount = 0
+
+  init(data: Data) {
+    self.data = data
+  }
+
+  func fetch() async throws -> Data {
+    fetchCount += 1
+    return try await withCheckedThrowingContinuation(isolation: self) { continuation in
+      self.continuation = continuation
+    }
+  }
+
+  func finish() {
+    continuation?.resume(returning: data)
+    continuation = nil
   }
 }
 
