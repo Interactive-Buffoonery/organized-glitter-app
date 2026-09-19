@@ -1,111 +1,191 @@
 import SwiftUI
 
-struct LibraryItemDetail: View {
-  @Environment(\.theme) private var theme
+struct LibraryItemDetailDestination: View {
+  @Environment(\.dismiss) private var dismiss
+  @State private var model: LibraryItemDetailModel
+  @State private var editor: DetailEditor?
+  @State private var isConfirmingDelete = false
 
-  let item: LibraryItem
-  var imageURL: URL? = nil
-  var onEdit: (() -> Void)?
-  var onDelete: (() -> Void)?
-  var deleteLabel: String = "Delete Project"
+  let onCollectionChanged: @MainActor @Sendable () async -> Void
+
+  init(
+    item: LibraryItem,
+    client: PocketBaseClient,
+    userID: String,
+    onCollectionChanged: @escaping @MainActor @Sendable () async -> Void
+  ) {
+    _model = State(
+      initialValue: LibraryItemDetailModel(item: item, client: client, userID: userID))
+    self.onCollectionChanged = onCollectionChanged
+  }
 
   var body: some View {
-    List {
-      Section {
-        if let imageURL {
-          AsyncImage(url: imageURL) { image in
-            image
-              .resizable()
-              .scaledToFill()
-          } placeholder: {
-            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-              .fill(theme.muted)
-              .overlay {
-                Image(systemName: kindSystemImage)
-                  .font(.title)
-                  .foregroundStyle(theme.mutedForeground)
-              }
-          }
-          .frame(width: detailImageSize.width, height: detailImageSize.height)
-          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
-          .accessibilityLabel(item.artworkAccessibilityLabel)
+    Group {
+      switch model.item {
+      case .diamond(let project):
+        DiamondProjectDetailView(
+          project: project,
+          model: model,
+          onCollectionChanged: onCollectionChanged
+        )
+        .accessibilityIdentifier("detail.diamond")
+      case .book(let book):
+        ColoringBookDetailView(book: book, model: model) {
+          editor = .book(book)
         }
-
-        VStack(alignment: .leading, spacing: 12) {
-          Text(item.title)
-            .font(.largeTitle.bold())
-          if !item.subtitle.isEmpty {
-            Text(item.subtitle)
-              .foregroundStyle(.secondary)
-          }
-          StatusBadge(status: item.status)
-        }
-        .padding(.vertical, 8)
-        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("detail.book")
+      case .page(let page):
+        ColoringPageDetailView(
+          page: page,
+          model: model,
+          onCollectionChanged: onCollectionChanged
+        )
+        .accessibilityIdentifier("detail.page")
       }
-      .listRowBackground(theme.card)
-
-      Group {
-        switch item {
-        case .diamond(let project):
-          Section("Project") {
-            LabeledContent("Kit", value: project.kitCategory.organizedGlitterLabel)
-            LabeledContent(
-              "Drill shape",
-              value: project.drillShape?.nonEmpty?.organizedGlitterLabel ?? "Not set"
-            )
-            if let width = project.width, let height = project.height {
-              LabeledContent("Size", value: "\(width.formatted()) × \(height.formatted()) cm")
-            }
-          }
-        case .book(let book):
-          Section("Progress") {
-            LabeledContent("Completed", value: "\(book.completedPages ?? 0) of \(book.totalPages)")
-            ProgressView(value: book.completionPercentage ?? 0, total: 100)
-              .accessibilityLabel("Book completion")
-          }
-        case .page(let page):
-          Section("Page") {
-            LabeledContent("Page number", value: page.pageNumber.formatted())
-            LabeledContent("Book", value: page.expand?.book?.title ?? "Unknown book")
-          }
-        }
-      }
-      .listRowBackground(theme.card)
     }
-    .themedScrollBackground()
-    .navigationTitle(item.title)
+    .navigationTitle(model.item.title)
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
-      if let onEdit {
-        ToolbarItem {
-          Button("Edit", action: onEdit)
+      ToolbarItemGroup(placement: .topBarTrailing) {
+        Button("Edit") {
+          editor = DetailEditor(item: model.item)
         }
-      }
-      if let onDelete {
-        ToolbarItem {
+        .disabled(model.isMutating)
+        .accessibilityIdentifier("detail.edit")
+
+        if model.item.canDeleteFromDetail {
           Menu {
-            Button(deleteLabel, role: .destructive, action: onDelete)
+            Button(model.item.deleteLabel, role: .destructive) {
+              isConfirmingDelete = true
+            }
+            .accessibilityIdentifier("detail.delete")
           } label: {
             Label("More", systemImage: "ellipsis.circle")
           }
+          .disabled(model.isMutating)
+          .accessibilityIdentifier("detail.more")
         }
       }
     }
-  }
-
-  private var kindSystemImage: String {
-    switch item {
-    case .diamond: "diamond"
-    case .book: "book.closed"
-    case .page: "doc.richtext"
+    .task {
+      await model.load()
+    }
+    .onAppear {
+      guard model.hasLoaded, case .book = model.item else { return }
+      Task { await model.load() }
+    }
+    .sheet(item: $editor) { editor in
+      editorView(for: editor)
+    }
+    .confirmationDialog(
+      "Delete \(model.item.title)?",
+      isPresented: $isConfirmingDelete,
+      titleVisibility: .visible
+    ) {
+      Button(model.item.deleteLabel, role: .destructive) {
+        Task {
+          if await model.deleteItem() {
+            await onCollectionChanged()
+            dismiss()
+          }
+        }
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text(model.item.deleteMessage)
     }
   }
 
-  private var detailImageSize: CGSize {
+  @ViewBuilder
+  private func editorView(for editor: DetailEditor) -> some View {
+    switch editor {
+    case .diamond(let project):
+      DiamondProjectEditor(
+        client: model.client,
+        userID: model.userID,
+        project: project,
+        onLibraryRefresh: refreshCollection,
+        onSaved: { saved in
+          Task { await acceptSaved(.diamond(saved)) }
+        }
+      )
+    case .book(let book):
+      ColoringBookEditor(
+        client: model.client,
+        userID: model.userID,
+        book: book,
+        onLibraryRefresh: refreshCollection,
+        onSaved: { saved in
+          Task { await acceptSaved(.book(saved)) }
+        }
+      )
+    case .page(let page):
+      ColoringPageEditor(
+        client: model.client,
+        page: page,
+        onLibraryRefresh: refreshCollection,
+        onSaved: { saved in
+          Task { await acceptSaved(.page(saved)) }
+        }
+      )
+    }
+  }
+
+  private func acceptSaved(_ item: LibraryItem) async {
+    await model.acceptSaved(item)
+    await onCollectionChanged()
+  }
+
+  private func refreshCollection() async {
+    await model.load()
+    await onCollectionChanged()
+  }
+}
+
+private enum DetailEditor: Identifiable {
+  case diamond(DiamondProjectRecord)
+  case book(ColoringBookRecord)
+  case page(ColoringPageRecord)
+
+  init(item: LibraryItem) {
     switch item {
-    case .book: CGSize(width: 160, height: 220)
-    default: CGSize(width: 160, height: 160)
+    case .diamond(let project): self = .diamond(project)
+    case .book(let book): self = .book(book)
+    case .page(let page): self = .page(page)
+    }
+  }
+
+  var id: String {
+    switch self {
+    case .diamond(let project): "diamond:\(project.id)"
+    case .book(let book): "book:\(book.id)"
+    case .page(let page): "page:\(page.id)"
+    }
+  }
+}
+
+extension LibraryItem {
+  fileprivate var canDeleteFromDetail: Bool {
+    if case .page = self { return false }
+    return true
+  }
+
+  fileprivate var deleteLabel: String {
+    switch self {
+    case .diamond: "Delete Project"
+    case .book: "Delete Book"
+    case .page: ""
+    }
+  }
+
+  fileprivate var deleteMessage: String {
+    switch self {
+    case .diamond:
+      "This deletes the project and its progress notes."
+    case .book:
+      "This deletes the book and its generated pages."
+    case .page:
+      ""
     }
   }
 }
