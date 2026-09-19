@@ -93,14 +93,19 @@ enum DetailPhotoProcessor {
       throw DetailPhotoProcessingError.inputTooLarge
     }
 
-    return try await Task.detached(priority: .userInitiated) {
+    let processingTask = Task.detached(priority: .userInitiated) {
       try Task.checkCancellation()
       return try processSynchronously(
         data: data,
         contentTypeIdentifier: contentTypeIdentifier,
         originalFileName: originalFileName
       )
-    }.value
+    }
+    return try await withTaskCancellationHandler {
+      try await processingTask.value
+    } onCancel: {
+      processingTask.cancel()
+    }
   }
 
   private static func processSynchronously(
@@ -208,7 +213,7 @@ enum DetailPhotoProcessor {
     let sanitized = base?
       .unicodeScalars
       .map { allowed.contains($0) ? Character(String($0)) : "-" }
-    let value = sanitized.map(String.init)?.nonEmpty ?? "artwork"
+    let value = sanitized.map { String($0) }?.nonEmpty ?? "artwork"
     return String(value.prefix(60))
   }
 }
