@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct DiamondProjectDetailView: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
 
@@ -54,7 +55,8 @@ struct DiamondProjectDetailView: View {
           )
         }
 
-        detailSection("Photos") {
+        VStack(alignment: .leading, spacing: 12) {
+          photoHeader
           if progressPhotos.isEmpty {
             ContentUnavailableView(
               "No progress photos",
@@ -65,17 +67,6 @@ struct DiamondProjectDetailView: View {
           } else {
             DetailPhotoGallery(photos: progressPhotos)
           }
-
-          Button {
-            isAddingNote = true
-          } label: {
-            Label("Add photo", systemImage: "plus")
-              .frame(maxWidth: .infinity)
-          }
-          .buttonStyle(.borderedProminent)
-          .controlSize(.large)
-          .disabled(model.isMutating || model.unresolvedWriteState != nil)
-          .accessibilityIdentifier("detail.diamond.addNote")
 
           if !isAddingNote {
             unresolvedWriteRecovery
@@ -199,6 +190,30 @@ struct DiamondProjectDetailView: View {
       .buttonStyle(.bordered)
     case nil:
       EmptyView()
+    }
+  }
+
+  private var photoHeader: some View {
+    let layout = dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+      : AnyLayout(HStackLayout())
+    return layout {
+      Text("Photos")
+        .font(.title3.weight(.semibold))
+        .foregroundStyle(theme.foreground)
+        .accessibilityAddTraits(.isHeader)
+      if !dynamicTypeSize.isAccessibilitySize {
+        Spacer()
+      }
+      Button {
+        isAddingNote = true
+      } label: {
+        Label("Add photo", systemImage: "plus")
+          .frame(minHeight: 32)
+      }
+      .buttonStyle(.bordered)
+      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      .accessibilityIdentifier("detail.diamond.addNote")
     }
   }
 
