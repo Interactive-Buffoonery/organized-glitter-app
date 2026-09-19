@@ -71,7 +71,14 @@ final class RemoteArtworkLoader: @unchecked Sendable {
   private let session: URLSession
 
   convenience init() {
-    self.init(session: Self.ephemeralSession())
+    #if DEBUG
+      self.init(
+        session: Self.sessionForDebugRun(
+          isFixtureRun: OverviewFixtureProtocol.scenario != nil
+        ))
+    #else
+      self.init(session: Self.ephemeralSession())
+    #endif
   }
 
   init(session: URLSession) {
@@ -131,6 +138,12 @@ final class RemoteArtworkLoader: @unchecked Sendable {
       return RemoteArtworkImage(cgImage: image)
     }
   }
+
+  #if DEBUG
+    static func sessionForDebugRun(isFixtureRun: Bool) -> URLSession {
+      isFixtureRun ? OverviewFixtureProtocol.session() : ephemeralSession()
+    }
+  #endif
 
   private static func ephemeralSession() -> URLSession {
     let configuration = URLSessionConfiguration.ephemeral
