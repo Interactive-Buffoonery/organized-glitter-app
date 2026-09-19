@@ -19,7 +19,7 @@ birds, in reading order. These were generated for the same fictional records
 with botanical ink/watercolor art, quiet serif titles, and no marketing copy.
 The fixture crops at the midpoint boundaries without stretching the covers.
 Both atlases live in the development-only `Preview/FixtureAssets.xcassets`
-catalog, excluded from archive and install builds through Xcode's
+catalog, explicitly excluded from Release builds in addition to Xcode's
 `DEVELOPMENT_ASSET_PATHS` setting.
 
 Fixture generation prompt:

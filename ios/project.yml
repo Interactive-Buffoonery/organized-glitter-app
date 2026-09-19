@@ -38,6 +38,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.interactivebuffoonery.organizedglitter
         SUPPORTS_MACCATALYST: false
         TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: "$(inherited) FixtureAssets.xcassets"
     scheme:
       testTargets:
         - OrganizedGlitterTests
