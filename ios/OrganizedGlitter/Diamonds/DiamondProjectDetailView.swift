@@ -203,7 +203,7 @@ struct DiamondProjectDetailView: View {
   }
 
   private var heroHeight: CGFloat {
-    horizontalSizeClass == .regular ? 360 : 280
+    horizontalSizeClass == .regular ? 360 : 250
   }
 
   private func noteDate(_ value: String) -> String {
@@ -460,7 +460,8 @@ struct DetailMetadataRow<Content: View>: View {
       Text(label)
         .foregroundStyle(theme.pageSecondaryForeground)
     }
-    .padding(.vertical, 13)
+    .padding(.vertical, 10)
+    .frame(minHeight: 44)
     .overlay(alignment: .bottom) {
       Divider()
     }

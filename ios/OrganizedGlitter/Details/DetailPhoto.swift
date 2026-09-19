@@ -9,43 +9,46 @@ struct DetailPhoto: Identifiable, Hashable, Sendable {
 }
 
 struct DetailPhotoGallery: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.theme) private var theme
 
   let photos: [DetailPhoto]
 
-  private let columns = [
-    GridItem(.adaptive(minimum: 132, maximum: 220), spacing: 12)
-  ]
-
   var body: some View {
-    LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-      ForEach(photos) { photo in
-        RemoteArtwork(url: photo.url, maxPixelDimension: 660) { phase in
-          switch phase {
-          case .success(let image):
-            image
-              .resizable()
-              .scaledToFit()
-              .accessibilityLabel(photo.accessibilityLabel)
-          case .failure:
-            photoPlaceholder(systemImage: "photo.badge.exclamationmark")
-              .accessibilityLabel("Photo unavailable")
-          case .empty:
-            photoPlaceholder(systemImage: "photo")
-              .overlay { ProgressView() }
-              .accessibilityHidden(true)
-          @unknown default:
-            photoPlaceholder(systemImage: "photo")
-              .accessibilityHidden(true)
+    ScrollView(.horizontal) {
+      LazyHStack(spacing: 12) {
+        ForEach(photos) { photo in
+          RemoteArtwork(url: photo.url, maxPixelDimension: 660) { phase in
+            switch phase {
+            case .success(let image):
+              image
+                .resizable()
+                .scaledToFit()
+                .accessibilityLabel(photo.accessibilityLabel)
+            case .failure:
+              photoPlaceholder(systemImage: "photo.badge.exclamationmark")
+                .accessibilityLabel("Photo unavailable")
+            case .empty:
+              photoPlaceholder(systemImage: "photo")
+                .overlay { ProgressView() }
+                .accessibilityHidden(true)
+            @unknown default:
+              photoPlaceholder(systemImage: "photo")
+                .accessibilityHidden(true)
+            }
           }
+          .frame(width: thumbnailSize, height: thumbnailSize)
+          .background(theme.muted.opacity(0.45))
+          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
         }
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fit)
-        .background(theme.muted.opacity(0.45))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
       }
     }
+    .scrollIndicators(.hidden)
     .accessibilityIdentifier("detail.photos")
+  }
+
+  private var thumbnailSize: CGFloat {
+    dynamicTypeSize.isAccessibilitySize ? 160 : 104
   }
 
   private func photoPlaceholder(systemImage: String) -> some View {
