@@ -8,6 +8,25 @@ import UniformTypeIdentifiers
 
 struct RemoteArtworkTests {
   @Test
+  func fixtureRunUsesFixtureTransportAndDecodesArtwork() async throws {
+    let session = RemoteArtworkLoader.sessionForDebugRun(isFixtureRun: true)
+    defer { session.invalidateAndCancel() }
+    let loader = RemoteArtworkLoader(session: session)
+
+    let image = try await loader.load(
+      from: URL(
+        string:
+          "https://overview.example.invalid/api/files/projects/design-project/design-peony.png"
+      )!,
+      maxPixelDimension: 660
+    ).cgImage
+
+    #expect(image.width > 0)
+    #expect(image.height > 0)
+    #expect(max(image.width, image.height) <= 660)
+  }
+
+  @Test
   func downsampleBoundsDecodedPixelsAndAppliesOrientation() throws {
     let data = try jpegData(width: 2_400, height: 1_200, orientation: .right)
 
