@@ -13,6 +13,7 @@ final class NativeRefinementUITests: XCTestCase {
 
     openCard(named: "Peony garden", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
+    assertArtworkLoaded("Project artwork", in: app)
     try capture("refinement-03-diamond-detail")
 
     app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -23,12 +24,14 @@ final class NativeRefinementUITests: XCTestCase {
     openCard(named: "Botanical days", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(element("detail.book.pages", in: app).waitForExistence(timeout: 5))
+    assertArtworkLoaded("Book cover", in: app)
     try capture("refinement-05-book-detail")
 
     let page = element("detail.book.page.design-page-0", in: app)
     makeHittable(page, in: app)
     page.tap()
     XCTAssertTrue(element("detail.page", in: app).waitForExistence(timeout: 5))
+    assertArtworkLoaded("Page artwork", in: app)
     try capture("refinement-06-page-detail")
   }
 
@@ -185,6 +188,13 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func button(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
     app.buttons.matching(identifier: identifier).firstMatch
+  }
+
+  private func assertArtworkLoaded(_ label: String, in app: XCUIApplication) {
+    let artwork = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label == %@", label)
+    ).firstMatch
+    XCTAssertTrue(artwork.waitForExistence(timeout: 5), "\(label) never finished loading")
   }
 
   private func confirmationButton(named label: String, in app: XCUIApplication) -> XCUIElement {
