@@ -124,4 +124,37 @@ final class LibraryUITests: XCTestCase {
     XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
     try capture(app, "library-accessibility-landscape")
   }
+
+  func testSearchStatusAndSortUseServerBackedControls() throws {
+    let app = launch("design")
+    openLibrary(app)
+    XCTAssertTrue(app.staticTexts["Peony garden"].waitForExistence(timeout: 5))
+
+    app.buttons["library.status"].tap()
+    app.buttons["Completed"].tap()
+    XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Peony garden"].exists)
+
+    app.buttons["library.status"].tap()
+    app.buttons["All statuses"].tap()
+    app.buttons["library.sort"].tap()
+    app.buttons["Title A to Z"].tap()
+    let blueHour = app.staticTexts["Blue hour"]
+    let citrusGrove = app.staticTexts["Citrus grove"]
+    XCTAssertTrue(blueHour.waitForExistence(timeout: 5))
+    XCTAssertTrue(citrusGrove.exists)
+    XCTAssertTrue(
+      blueHour.frame.minY < citrusGrove.frame.minY
+        || (blueHour.frame.minY == citrusGrove.frame.minY
+          && blueHour.frame.minX < citrusGrove.frame.minX)
+    )
+
+    let search = app.textFields["library.search"]
+    search.tap()
+    search.typeText("Citrus\n")
+    XCTAssertTrue(citrusGrove.waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Blue hour"].exists)
+    app.buttons["library.search.clear"].tap()
+    XCTAssertTrue(app.staticTexts["Blue hour"].waitForExistence(timeout: 5))
+  }
 }
