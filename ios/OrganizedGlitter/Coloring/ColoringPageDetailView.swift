@@ -2,6 +2,7 @@ import PhotosUI
 import SwiftUI
 
 struct ColoringPageDetailView: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
 
@@ -48,10 +49,7 @@ struct ColoringPageDetailView: View {
         }
 
         VStack(alignment: .leading, spacing: 12) {
-          Text("Photos")
-            .font(.title3.weight(.semibold))
-            .foregroundStyle(theme.foreground)
-            .accessibilityAddTraits(.isHeader)
+          photoHeader
 
           if photos.isEmpty {
             ContentUnavailableView(
@@ -129,15 +127,6 @@ struct ColoringPageDetailView: View {
               .frame(maxWidth: .infinity)
               .disabled(model.isMutating)
             }
-          } else {
-            PhotosPicker(selection: $selectedItem, matching: .images) {
-              Label("Add photo", systemImage: "plus")
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(isPreparingPhoto || model.isMutating)
-            .accessibilityIdentifier("detail.page.addPhoto")
           }
         }
 
@@ -200,6 +189,30 @@ struct ColoringPageDetailView: View {
   private func formattedDate(_ value: String?) -> String? {
     guard let value = value?.nonEmpty else { return nil }
     return DetailDateOnly.formatted(value)
+  }
+
+  private var photoHeader: some View {
+    let layout = dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+      : AnyLayout(HStackLayout())
+    return layout {
+      Text("Photos")
+        .font(.title3.weight(.semibold))
+        .foregroundStyle(theme.foreground)
+        .accessibilityAddTraits(.isHeader)
+      if !dynamicTypeSize.isAccessibilitySize {
+        Spacer()
+      }
+      if pendingPhoto == nil {
+        PhotosPicker(selection: $selectedItem, matching: .images) {
+          Label("Add photo", systemImage: "plus")
+            .frame(minHeight: 32)
+        }
+        .buttonStyle(.bordered)
+        .disabled(isPreparingPhoto || model.isMutating)
+        .accessibilityIdentifier("detail.page.addPhoto")
+      }
+    }
   }
 
   private var heroHeight: CGFloat {
