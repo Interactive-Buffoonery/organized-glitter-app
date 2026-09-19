@@ -90,7 +90,7 @@ struct LibraryView: View {
 
   private func browsingScroll(showsCraftPicker: Bool) -> some View {
     return ScrollView {
-      VStack(alignment: .leading, spacing: 18) {
+      VStack(alignment: .leading, spacing: 12) {
         Text("Library")
           .font(.largeTitle.bold())
           .foregroundStyle(theme.foreground)
@@ -108,7 +108,7 @@ struct LibraryView: View {
       }
       .frame(maxWidth: 760, alignment: .leading)
       .padding(.horizontal, 20)
-      .padding(.top, 20)
+      .padding(.top, 12)
       .padding(.bottom, 32)
       .frame(maxWidth: .infinity)
     }
@@ -135,6 +135,7 @@ struct LibraryView: View {
         .autocorrectionDisabled()
         .submitLabel(.search)
         .accessibilityIdentifier("library.search")
+        .accessibilityHint(searchHint)
         .onSubmit {
           Task { await model.load() }
         }
@@ -183,18 +184,22 @@ struct LibraryView: View {
   }
 
   private var filterControls: some View {
-    let layout =
-      dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
-      : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
-
-    return layout {
-      statusFilter
-      sortMenu
+    Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        VStack(alignment: .leading, spacing: 4) {
+          statusFilter(showsIcon: true)
+          sortMenu(showsTitle: true)
+        }
+      } else {
+        HStack(spacing: 8) {
+          statusFilter(showsIcon: false)
+          sortMenu(showsTitle: false)
+        }
+      }
     }
   }
 
-  private var statusFilter: some View {
+  private func statusFilter(showsIcon: Bool) -> some View {
     Menu {
       Button("All statuses") {
         model.statusFilter = nil
@@ -206,19 +211,27 @@ struct LibraryView: View {
         }
       }
     } label: {
-      Label(
-        model.statusFilter?.organizedGlitterLabel ?? "All statuses",
-        systemImage: "line.3.horizontal.decrease.circle"
-      )
+      HStack(spacing: 5) {
+        if showsIcon {
+          Image(systemName: "line.3.horizontal.decrease.circle")
+        }
+        Text(model.statusFilter?.organizedGlitterLabel ?? "All statuses")
+        Image(systemName: "chevron.down")
+          .font(.caption2.weight(.semibold))
+          .accessibilityHidden(true)
+      }
       .frame(maxWidth: .infinity, alignment: .leading)
+      .frame(minHeight: 44)
+      .contentShape(.rect)
+      .foregroundStyle(theme.foreground)
     }
-    .buttonStyle(QuietActionStyle())
+    .buttonStyle(.plain)
     .accessibilityLabel("Filter by status")
     .accessibilityValue(model.statusFilter?.organizedGlitterLabel ?? "All statuses")
     .accessibilityIdentifier("library.status")
   }
 
-  private var sortMenu: some View {
+  private func sortMenu(showsTitle: Bool) -> some View {
     Menu {
       ForEach(model.section.sortOptions) { option in
         Button {
@@ -232,10 +245,20 @@ struct LibraryView: View {
         }
       }
     } label: {
-      Label("Sort", systemImage: "arrow.up.arrow.down")
-        .frame(maxWidth: .infinity, alignment: .leading)
+      if showsTitle {
+        Label(model.sort.title, systemImage: "arrow.up.arrow.down")
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .frame(minHeight: 44)
+          .contentShape(.rect)
+          .foregroundStyle(theme.foreground)
+      } else {
+        Image(systemName: "arrow.up.arrow.down")
+          .frame(width: 44, height: 44)
+          .contentShape(.rect)
+          .foregroundStyle(theme.foreground)
+      }
     }
-    .buttonStyle(QuietActionStyle())
+    .buttonStyle(.plain)
     .accessibilityLabel("Sort library")
     .accessibilityValue(model.sort.title)
     .accessibilityIdentifier("library.sort")
@@ -272,7 +295,7 @@ struct LibraryView: View {
           ContentUnavailableView.search(text: model.searchText)
         }
       } else {
-        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 26) {
+        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
           ForEach(model.items) { item in
             galleryItem(item)
               .task {
@@ -381,9 +404,17 @@ struct LibraryView: View {
 
   private var searchPrompt: String {
     switch model.section {
+    case .diamonds: "Search diamond art"
+    case .books: "Search books"
+    case .pages: "Search pages"
+    }
+  }
+
+  private var searchHint: String {
+    switch model.section {
     case .diamonds: "Search titles, artists, or companies"
     case .books: "Search titles, publishers, or illustrators"
-    case .pages: "Book title or page number"
+    case .pages: "Search by book title or page number"
     }
   }
 }
