@@ -116,14 +116,14 @@ struct LibraryItemDetailModelTests {
   }
 
   @Test
-  func uncertainPageUploadRefreshesBeforeAllowingRetry() async throws {
+  func unresolvedPageUploadNeverRepeatsTheWriteWhenRefreshFails() async throws {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)
       if request.httpMethod == "PATCH", path.hasSuffix("/coloring_pages/records/page-1") {
         return (500, "{}")
       }
       if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records/page-1") {
-        return (200, Self.pageJSON(id: "page-1", number: 1, photos: []))
+        return (500, "{}")
       }
       Issue.record("Unexpected request: \(request)")
       return (500, "{}")
@@ -137,9 +137,74 @@ struct LibraryItemDetailModelTests {
     )
 
     #expect(!(await model.appendPagePhoto(photo)))
-    #expect(model.mutationErrorMessage?.contains("status is unknown") == true)
+    #expect(model.unresolvedWriteState == .needsRefresh)
+    #expect(model.mutationErrorMessage?.contains("could not be refreshed") == true)
+
+    #expect(!(await model.appendPagePhoto(photo)))
+    #expect(!(await model.refreshUnresolvedWriteStatus()))
     let detailRequests = DetailURLProtocol.requests.dropFirst()
-    #expect(detailRequests.map(\.httpMethod) == ["PATCH", "GET"])
+    #expect(detailRequests.map(\.httpMethod) == ["PATCH", "GET", "GET"])
+    #expect(detailRequests.filter { $0.httpMethod == "PATCH" }.count == 1)
+  }
+
+  @Test
+  func confirmedDiamondNoteRemainsVisibleWhenRefreshFails() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
+        return (200, Self.noteJSON)
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
+        return (500, "{}")
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .diamond(Self.project), client: client, userID: "user-1")
+    let photo = ProcessedDetailPhoto(
+      data: Data([0x89, 0x50, 0x4e, 0x47]),
+      fileName: "progress.png",
+      contentType: "image/png"
+    )
+
+    #expect(
+      await model.addDiamondProgressNote(
+        content: "Halfway done", date: Date(timeIntervalSince1970: 0), photo: photo
+      ))
+    #expect(model.progressNotes.map(\.id) == ["note-1"])
+    #expect(model.errorMessage != nil)
+  }
+
+  @Test
+  func failedBookFilterClearsPagesThatBelongToThePreviousFilter() async throws {
+    let client = try await signedInClient { request in
+      let components = URLComponents(
+        url: try #require(request.url), resolvingAgainstBaseURL: false)
+      let path = try #require(request.url?.path)
+      if path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, Self.bookJSON)
+      }
+      if path.hasSuffix("/coloring_pages/records") {
+        let filter = components?.queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
+        if filter.contains(#"status = "completed""#) {
+          return (500, "{}")
+        }
+        return (200, Self.pageListJSON(id: "page-1", number: 1, totalPages: 1))
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .book(Self.book), client: client, userID: "user-1")
+
+    await model.load()
+    #expect(model.bookPages.map(\.id) == ["page-1"])
+    await model.setBookPageFilter(.completed)
+
+    #expect(model.bookPageFilter == .completed)
+    #expect(model.bookPages.isEmpty)
+    #expect(model.errorMessage != nil)
   }
 
   private func signedInClient(
