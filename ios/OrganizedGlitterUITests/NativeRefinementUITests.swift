@@ -127,7 +127,7 @@ final class NativeRefinementUITests: XCTestCase {
     let addPhoto = button("detail.page.addPhoto", in: app)
     XCTAssertTrue(addPhoto.waitForExistence(timeout: 5))
     addPhoto.tap()
-    let photo = app.collectionViews.cells.firstMatch
+    let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
     XCTAssertTrue(photo.waitForExistence(timeout: 5))
     photo.tap()
 
