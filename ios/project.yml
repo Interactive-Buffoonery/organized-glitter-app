@@ -32,6 +32,7 @@ targets:
       base:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_ASSET_PATHS: OrganizedGlitter/Preview/FixtureAssets.xcassets
         GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: OrganizedGlitter/Resources/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.interactivebuffoonery.organizedglitter
