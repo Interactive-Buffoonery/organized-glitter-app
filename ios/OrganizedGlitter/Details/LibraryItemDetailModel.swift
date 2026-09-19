@@ -328,7 +328,7 @@ final class LibraryItemDetailModel {
       return true
     } catch APIError.offline, APIError.server {
       unresolvedWriteState = .needsRefresh
-      await reconcileUnresolvedWrite()
+      _ = await reconcileUnresolvedWrite()
       return false
     } catch {
       mutationErrorMessage = error.userMessage(
@@ -371,7 +371,7 @@ final class LibraryItemDetailModel {
       return true
     } catch APIError.offline, APIError.server {
       unresolvedWriteState = .needsRefresh
-      await reconcileUnresolvedWrite()
+      _ = await reconcileUnresolvedWrite()
       return false
     } catch {
       mutationErrorMessage = error.userMessage(
