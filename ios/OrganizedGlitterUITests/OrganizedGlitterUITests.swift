@@ -139,7 +139,7 @@ final class OrganizedGlitterUITests: XCTestCase {
       }
     }
 
-    app.descendants(matching: .any)["detail.edit"].tap()
+    app.buttons.matching(identifier: "detail.edit").firstMatch.tap()
     XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
     let editedTitle = "\(currentTitle) edited"
     replaceText(in: app.textFields["Title"], with: editedTitle)
@@ -188,8 +188,8 @@ final class OrganizedGlitterUITests: XCTestCase {
   }
 
   private func deleteOpenProject(in app: XCUIApplication) {
-    app.descendants(matching: .any)["detail.more"].tap()
-    app.descendants(matching: .any)["detail.delete"].tap()
+    app.buttons.matching(identifier: "detail.more").firstMatch.tap()
+    app.buttons.matching(identifier: "detail.delete").firstMatch.tap()
     let sheetButton = app.sheets.buttons["Delete Project"]
     let confirmation = sheetButton.exists
       ? sheetButton : app.buttons.matching(identifier: "Delete Project").firstMatch

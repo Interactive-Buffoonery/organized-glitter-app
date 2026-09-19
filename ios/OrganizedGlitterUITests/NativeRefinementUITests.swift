@@ -38,13 +38,13 @@ final class NativeRefinementUITests: XCTestCase {
     openCard(named: "Peony garden", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
-    element("detail.edit", in: app).tap()
+    button("detail.edit", in: app).tap()
     XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
     app.buttons["Cancel"].tap()
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Peony garden"].exists)
 
-    element("detail.edit", in: app).tap()
+    button("detail.edit", in: app).tap()
     let title = app.textFields["Title"]
     XCTAssertTrue(title.waitForExistence(timeout: 5))
     replaceText(in: title, with: "Peony garden updated")
@@ -52,8 +52,8 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Peony garden updated"].waitForExistence(timeout: 5))
 
-    element("detail.more", in: app).tap()
-    element("detail.delete", in: app).tap()
+    button("detail.more", in: app).tap()
+    button("detail.delete", in: app).tap()
     let confirmation = confirmationButton(named: "Delete Project", in: app)
     if confirmation.waitForExistence(timeout: 2) {
       confirmation.tap()
@@ -82,7 +82,7 @@ final class NativeRefinementUITests: XCTestCase {
   func testPagePhotoPickerCanCancelWithoutChangingThePage() {
     let app = launchFixture()
     openFirstDesignPage(in: app)
-    let addPhoto = element("detail.page.addPhoto", in: app)
+    let addPhoto = button("detail.page.addPhoto", in: app)
     XCTAssertTrue(addPhoto.waitForExistence(timeout: 5))
 
     addPhoto.tap()
@@ -103,23 +103,18 @@ final class NativeRefinementUITests: XCTestCase {
 
     let app = launchFixture()
     openFirstDesignPage(in: app)
-    let addPhoto = element("detail.page.addPhoto", in: app)
+    let addPhoto = button("detail.page.addPhoto", in: app)
     XCTAssertTrue(addPhoto.waitForExistence(timeout: 5))
-    let gallery = element("detail.photos", in: app)
-    let initialPhotoCount = gallery.images.count
     addPhoto.tap()
     let photo = app.collectionViews.cells.firstMatch
     XCTAssertTrue(photo.waitForExistence(timeout: 5))
     photo.tap()
 
-    let detail = element("detail.page", in: app)
-    let uploaded = XCTNSPredicateExpectation(
-      predicate: NSPredicate { _, _ in
-        detail.exists && gallery.images.count > initialPhotoCount
-      },
-      object: app
-    )
-    XCTAssertEqual(XCTWaiter.wait(for: [uploaded], timeout: 10), .completed)
+    let uploadedPhoto = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label == %@", "Page photo 2: Moonlit garden")
+    ).firstMatch
+    XCTAssertTrue(uploadedPhoto.waitForExistence(timeout: 10))
+    XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
   private func launchFixture() -> XCUIApplication {
@@ -186,6 +181,10 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
     app.descendants(matching: .any)[identifier]
+  }
+
+  private func button(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+    app.buttons.matching(identifier: identifier).firstMatch
   }
 
   private func confirmationButton(named label: String, in app: XCUIApplication) -> XCUIElement {
