@@ -306,27 +306,52 @@ struct RecordArtwork: View {
   let url: URL?
   var maxHeight: CGFloat = 124
   var emptyMinHeight: CGFloat = 96
+  var maxPixelDimension: CGFloat = 1_200
+  var successAccessibilityLabel: String?
 
   var body: some View {
-    AsyncImage(url: url) { phase in
-      if let image = phase.image {
-        image.resizable().scaledToFit()
-      } else if url != nil, phase.error == nil {
+    RemoteArtwork(url: url, maxPixelDimension: maxPixelDimension) { phase in
+      switch phase {
+      case .success(let image):
+        loadedImage(image)
+      case .empty where url != nil:
         ProgressView()
-      } else {
-        VStack(spacing: 8) {
-          Image(systemName: "photo")
-            .font(.title2)
-          Text("No artwork")
-            .font(.caption)
-            .multilineTextAlignment(.center)
-        }
-        .foregroundStyle(theme.mutedForeground)
-        .padding(8)
-        .frame(minHeight: emptyMinHeight)
+          .accessibilityLabel("Loading artwork")
+      case .empty, .failure:
+        unavailableArtwork
+      @unknown default:
+        unavailableArtwork
       }
     }
     .frame(maxWidth: .infinity, maxHeight: maxHeight)
+  }
+
+  @ViewBuilder
+  private func loadedImage(_ image: Image) -> some View {
+    if let successAccessibilityLabel {
+      image
+        .resizable()
+        .scaledToFit()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(successAccessibilityLabel)
+    } else {
+      image.resizable().scaledToFit()
+    }
+  }
+
+  private var unavailableArtwork: some View {
+    VStack(spacing: 8) {
+      Image(systemName: "photo")
+        .font(.title2)
+      Text("No artwork")
+        .font(.caption)
+        .multilineTextAlignment(.center)
+    }
+    .foregroundStyle(theme.mutedForeground)
+    .padding(8)
+    .frame(minHeight: emptyMinHeight)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("No artwork")
   }
 }
 
