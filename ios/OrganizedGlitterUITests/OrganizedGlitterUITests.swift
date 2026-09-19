@@ -100,7 +100,7 @@ final class OrganizedGlitterUITests: XCTestCase {
       app.buttons["signInButton"].tap()
     }
 
-    let library = app.descendants(matching: .any)["Library"]
+    let library = app.tabBars.buttons["Library"].firstMatch
     XCTAssertTrue(library.waitForExistence(timeout: 5))
     library.tap()
     XCTAssertTrue(app.staticTexts["Local Active Kit"].waitForExistence(timeout: 5))
@@ -118,7 +118,7 @@ final class OrganizedGlitterUITests: XCTestCase {
     app.launch()
     signInIfNeeded(app, identity: identity, password: password)
 
-    let library = app.descendants(matching: .any)["Library"]
+    let library = app.tabBars.buttons["Library"].firstMatch
     XCTAssertTrue(library.waitForExistence(timeout: 5))
     library.tap()
     let addProject = app.buttons["Add diamond painting project"]
@@ -176,7 +176,12 @@ final class OrganizedGlitterUITests: XCTestCase {
       passwordField.tap()
       passwordField.typeText(password)
       app.buttons["signInButton"].tap()
+      let notNow = app.buttons["Not Now"].firstMatch
+      if notNow.waitForExistence(timeout: 5) {
+        notNow.tap()
+      }
     }
+    XCTAssertTrue(app.tabBars.buttons["Library"].firstMatch.waitForExistence(timeout: 8))
   }
 
   private func replaceText(in field: XCUIElement, with value: String) {
