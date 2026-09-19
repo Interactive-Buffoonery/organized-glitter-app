@@ -48,9 +48,13 @@ extension LibraryItem {
   }
 
   var galleryCaption: String {
-    if case .book(let book) = self {
+    switch self {
+    case .diamond:
+      return ""
+    case .book(let book):
       return "\(book.totalPages) \(book.totalPages == 1 ? "page" : "pages")"
+    case .page:
+      return libraryCaption
     }
-    return libraryCaption
   }
 }

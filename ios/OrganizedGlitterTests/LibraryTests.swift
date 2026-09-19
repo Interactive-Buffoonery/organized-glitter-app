@@ -528,7 +528,7 @@ struct LibraryTests {
   }
 
   @Test
-  func galleryCaptionsPreferCompanyPublisherAndParentBook() {
+  func galleryCaptionsUseOnlyUsefulBrowsingMetadata() {
     let diamond = LibraryItem.diamond(
       DiamondProjectRecord(
         id: "project-1", title: "Moon Garden", user: "user-1", company: nil,
@@ -564,7 +564,7 @@ struct LibraryTests {
     #expect(diamond.libraryCaption == "Fictional atelier")
     #expect(book.libraryCaption == "Fictional Press")
     #expect(page.libraryCaption == "Quiet pages")
-    #expect(diamond.galleryCaption == "Fictional atelier")
+    #expect(diamond.galleryCaption.isEmpty)
     #expect(book.galleryCaption == "12 pages")
     #expect(page.galleryCaption == "Quiet pages")
   }
