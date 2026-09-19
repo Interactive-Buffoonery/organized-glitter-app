@@ -32,13 +32,16 @@ struct LibraryTests {
       filter(from: LibraryURLProtocol.requests.last)
         == #"user = "user-1" && (title ~ "Moon" || artist.name ~ "Moon" || company.name ~ "Moon") && status = "wishlist""#)
 
+    model.sort = .titleAscending
     model.apply(LibraryRequest(section: .diamonds, status: "wishlist"))
     await loadIfListingChanged(model, token: &listingIdentity)
 
     #expect(model.searchText.isEmpty)
+    #expect(model.sort == .recentlyUpdated)
     #expect(model.projects.map(\.title) == ["Moon Garden", "Star Quilt"])
     #expect(
       filter(from: LibraryURLProtocol.requests.last) == #"user = "user-1" && status = "wishlist""#)
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "-updated")
     #expect(LibraryURLProtocol.requests.count == 4)
   }
 
@@ -63,6 +66,97 @@ struct LibraryTests {
     #expect(model.projects.map(\.title) == ["Moon Garden", "Star Quilt", "River Path"])
     #expect(!model.canLoadMore)
     #expect(query(from: LibraryURLProtocol.requests.last, name: "page") == "2")
+  }
+
+  @Test
+  func defaultsEveryCraftToRecentlyUpdatedSort() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Moon Garden"])),
+        (200, bookList(["Quiet pages"])),
+        (200, pageList([(1, "Quiet pages")])),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+
+    await model.load()
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "-updated")
+
+    model.select(.books)
+    await model.load()
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "-updated")
+
+    model.select(.pages)
+    await model.load()
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "-updated")
+  }
+
+  @Test
+  func sortUsesSchemaFieldsForTheSelectedCraft() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Moon Garden"])),
+        (200, bookList(["Quiet pages"])),
+        (200, pageList([(1, "Quiet pages")])),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+
+    model.sort = .titleAscending
+    await model.load()
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "+title_sort")
+
+    model.select(.books)
+    model.sort = .titleDescending
+    await model.load()
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "-title")
+
+    model.select(.pages)
+    model.sort = .pageAscending
+    await model.load()
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "+page_number")
+  }
+
+  @Test
+  func changingSortRestartsPaginationAndChangesListingIdentity() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Moon Garden"], page: 1, totalPages: 2, totalItems: 2)),
+        (
+          200,
+          projectList(["Star Quilt"], page: 2, totalPages: 2, totalItems: 2, idOffset: 1)
+        ),
+        (200, projectList(["Moon Garden"], page: 1, totalPages: 1, totalItems: 1)),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    await model.load()
+    await model.load(reset: false)
+    let priorIdentity = model.listingIdentity
+
+    model.sort = .titleAscending
+    await model.load()
+
+    #expect(model.listingIdentity != priorIdentity)
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "page") == "1")
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "+title_sort")
+    #expect(model.projects.map(\.title) == ["Moon Garden"])
+  }
+
+  @Test
+  func delayedResponsesDoNotReplaceANewerSortListing() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Recently updated"]), 0.2),
+        (200, projectList(["Alphabetical"]), 0),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    let recent = Task { await model.load() }
+    try await Task.sleep(for: .milliseconds(40))
+    model.sort = .titleAscending
+    await model.load()
+    await recent.value
+
+    #expect(model.sort == .titleAscending)
+    #expect(model.projects.map(\.title) == ["Alphabetical"])
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "+title_sort")
   }
 
   @Test
@@ -326,6 +420,31 @@ struct LibraryTests {
   }
 
   @Test
+  func clearingSearchReloadsWithoutChangingStatusOrSort() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Moon Garden"], status: "progress")),
+        (200, projectList(["Moon Garden", "Star Quilt"], status: "progress")),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.searchText = "Moon"
+    model.statusFilter = "progress"
+    model.sort = .titleDescending
+    await model.load()
+
+    await model.clearSearch()
+
+    #expect(model.searchText.isEmpty)
+    #expect(model.statusFilter == "progress")
+    #expect(model.sort == .titleDescending)
+    #expect(model.projects.map(\.title) == ["Moon Garden", "Star Quilt"])
+    #expect(
+      filter(from: LibraryURLProtocol.requests.last)
+        == #"user = "user-1" && status = "progress""#)
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "sort") == "-title_sort")
+  }
+
+  @Test
   func bookSearchMatchesTitlePublisherAndIllustrator() async throws {
     let client = try await signedInClient(responses: [(200, bookList(["Quiet pages"]))])
     let model = LibraryModel(client: client, userID: "user-1")
@@ -445,6 +564,9 @@ struct LibraryTests {
     #expect(diamond.libraryCaption == "Fictional atelier")
     #expect(book.libraryCaption == "Fictional Press")
     #expect(page.libraryCaption == "Quiet pages")
+    #expect(diamond.galleryCaption == "Fictional atelier")
+    #expect(book.galleryCaption == "12 pages")
+    #expect(page.galleryCaption == "Quiet pages")
   }
 
   private func loadIfListingChanged(_ model: LibraryModel, token: inout String) async {

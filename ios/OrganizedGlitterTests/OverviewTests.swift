@@ -77,6 +77,20 @@ struct OverviewPresentationTests {
     #expect([items[0]].filter(OverviewCraft.coloring.includes).isEmpty)
   }
 
+  @Test func completedShortcutsFollowCraftAndEnabledPreferences() {
+    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
+    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
+    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
+
+    #expect(OverviewCraft.all.completedSections(for: both) == [.diamonds, .pages])
+    #expect(OverviewCraft.diamonds.completedSections(for: both) == [.diamonds])
+    #expect(OverviewCraft.coloring.completedSections(for: both) == [.pages])
+    #expect(OverviewCraft.all.completedSections(for: diamondsOnly) == [.diamonds])
+    #expect(OverviewCraft.all.completedSections(for: coloringOnly) == [.pages])
+    #expect(OverviewCraft.coloring.completedSections(for: diamondsOnly).isEmpty)
+    #expect(OverviewCraft.diamonds.completedSections(for: coloringOnly).isEmpty)
+  }
+
   @Test func artworkUsesTheFileAccessBoundary() {
     let client = client()
     let model = OverviewModel(client: client, userID: "fictional-user")
