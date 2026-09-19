@@ -1,0 +1,349 @@
+import PhotosUI
+import SwiftUI
+import UIKit
+
+struct DiamondProjectDetailView: View {
+  @Environment(\.theme) private var theme
+
+  let project: DiamondProjectRecord
+  let model: LibraryItemDetailModel
+  let onCollectionChanged: @MainActor @Sendable () async -> Void
+
+  @State private var isAddingNote = false
+
+  var body: some View {
+    ScrollView {
+      LazyVStack(alignment: .leading, spacing: 24) {
+        RecordArtwork(
+          url: LibraryItem.diamond(project).artworkURL(using: model.client),
+          maxHeight: 440,
+          emptyMinHeight: 220
+        )
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+        .clipShape(.rect(cornerRadius: Theme.Radius.medium))
+        .accessibilityLabel("Project artwork")
+        .accessibilityIdentifier("detail.hero")
+
+        VStack(alignment: .leading, spacing: 6) {
+          Text(project.title)
+            .font(.largeTitle.bold())
+            .foregroundStyle(theme.foreground)
+            .accessibilityAddTraits(.isHeader)
+          if !LibraryItem.diamond(project).subtitle.isEmpty {
+            Text(LibraryItem.diamond(project).subtitle)
+              .font(.body)
+              .foregroundStyle(theme.pageSecondaryForeground)
+          }
+        }
+
+        DetailMetadataCard {
+          DetailMetadataRow(label: "Status") {
+            StatusBadge(status: project.status, presentation: .quiet)
+          }
+          DetailMetadataRow(
+            label: "Kit",
+            value: project.kitCategory.organizedGlitterLabel
+          )
+          DetailMetadataRow(
+            label: "Drills",
+            value: project.drillShape?.nonEmpty?.organizedGlitterLabel ?? "Not set"
+          )
+          if let width = project.width, let height = project.height {
+            DetailMetadataRow(
+              label: "Size",
+              value: "\(width.formatted()) × \(height.formatted()) cm"
+            )
+          }
+        }
+
+        if let notes = project.generalNotes?.nonEmpty {
+          detailSection("Notes") {
+            Text(notes)
+              .foregroundStyle(theme.foreground)
+              .frame(maxWidth: .infinity, alignment: .leading)
+          }
+        }
+
+        detailSection("Photos") {
+          if progressPhotos.isEmpty {
+            ContentUnavailableView(
+              "No progress photos",
+              systemImage: "photo.on.rectangle",
+              description: Text("Add a dated photo as your project changes.")
+            )
+            .frame(maxWidth: .infinity)
+          } else {
+            DetailPhotoGallery(photos: progressPhotos)
+          }
+
+          Button {
+            isAddingNote = true
+          } label: {
+            Label("Add photo", systemImage: "plus")
+              .frame(maxWidth: .infinity)
+          }
+          .buttonStyle(.borderedProminent)
+          .controlSize(.large)
+          .disabled(model.isMutating)
+          .accessibilityIdentifier("detail.diamond.addNote")
+        }
+
+        if !model.progressNotes.isEmpty {
+          detailSection("Progress notes") {
+            ForEach(model.progressNotes) { note in
+              VStack(alignment: .leading, spacing: 6) {
+                Text(noteDate(note.date))
+                  .font(.subheadline.weight(.semibold))
+                  .foregroundStyle(theme.pageSecondaryForeground)
+                if let content = note.content.nonEmpty {
+                  Text(content)
+                    .foregroundStyle(theme.foreground)
+                }
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(14)
+              .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+            }
+
+            if model.canLoadMoreProgressNotes {
+              Button("Load more notes") {
+                Task { await model.loadMoreProgressNotes() }
+              }
+              .disabled(model.isLoadingMore)
+              .frame(maxWidth: .infinity)
+            }
+          }
+        }
+
+        if let errorMessage = model.errorMessage {
+          VStack(alignment: .leading, spacing: 12) {
+            AccessibleErrorLabel(message: errorMessage)
+            Button("Try again") {
+              Task { await model.load() }
+            }
+          }
+        }
+
+        if let mutationErrorMessage = model.mutationErrorMessage, !isAddingNote {
+          AccessibleErrorLabel(message: mutationErrorMessage)
+        }
+      }
+      .padding(16)
+    }
+    .background(theme.themedBackground)
+    .refreshable { await model.load() }
+    .sheet(isPresented: $isAddingNote) {
+      DiamondProgressNoteEditor(
+        model: model,
+        onCollectionChanged: onCollectionChanged
+      )
+    }
+  }
+
+  private var progressPhotos: [DetailPhoto] {
+    model.progressNotes.compactMap { note in
+      guard let image = note.image?.nonEmpty else { return nil }
+      return DetailPhoto(
+        id: note.id,
+        url: model.client.fileURL(
+          collection: "progress_notes",
+          recordID: note.id,
+          filename: image
+        ),
+        accessibilityLabel: "Progress photo from \(noteDate(note.date))"
+      )
+    }
+  }
+
+  private func noteDate(_ value: String) -> String {
+    guard let date = PocketBaseDate.date(from: value) else { return value }
+    return date.formatted(date: .abbreviated, time: .omitted)
+  }
+
+  private func detailSection<Content: View>(
+    _ title: String,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text(title)
+        .font(.title2.bold())
+        .foregroundStyle(theme.foreground)
+        .accessibilityAddTraits(.isHeader)
+      content()
+    }
+  }
+}
+
+private struct DiamondProgressNoteEditor: View {
+  @Environment(\.dismiss) private var dismiss
+  @Environment(\.theme) private var theme
+
+  let model: LibraryItemDetailModel
+  let onCollectionChanged: @MainActor @Sendable () async -> Void
+
+  @State private var date = Date()
+  @State private var content = ""
+  @State private var selectedItem: PhotosPickerItem?
+  @State private var processedPhoto: ProcessedDetailPhoto?
+  @State private var previewImage: UIImage?
+  @State private var isPreparingPhoto = false
+  @State private var photoErrorMessage: String?
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        Section("Progress") {
+          DatePicker("Date", selection: $date, displayedComponents: .date)
+          TextField("Caption (optional)", text: $content, axis: .vertical)
+            .lineLimit(3...8)
+        }
+        .listRowBackground(theme.card)
+
+        Section("Photo") {
+          if let previewImage {
+            Image(uiImage: previewImage)
+              .resizable()
+              .scaledToFit()
+              .frame(maxWidth: .infinity, maxHeight: 320)
+              .accessibilityLabel("Selected progress photo")
+              .accessibilityIdentifier("detail.diamond.notePhoto")
+          }
+
+          PhotosPicker(selection: $selectedItem, matching: .images) {
+            Label(
+              processedPhoto == nil ? "Choose photo" : "Choose a different photo",
+              systemImage: "photo.on.rectangle"
+            )
+          }
+          .disabled(isPreparingPhoto || model.isMutating)
+        }
+        .listRowBackground(theme.card)
+
+        if isPreparingPhoto {
+          Section {
+            ProgressView("Preparing photo…")
+          }
+          .listRowBackground(theme.card)
+        }
+
+        if let message = photoErrorMessage ?? model.mutationErrorMessage {
+          Section {
+            AccessibleErrorLabel(message: message)
+          }
+          .listRowBackground(theme.card)
+        }
+      }
+      .themedScrollBackground()
+      .navigationTitle("Add progress photo")
+      .navigationBarTitleDisplayMode(.inline)
+      .interactiveDismissDisabled(isPreparingPhoto || model.isMutating)
+      .accessibilityIdentifier("detail.diamond.noteEditor")
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") { dismiss() }
+            .disabled(isPreparingPhoto || model.isMutating)
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button(model.mutationErrorMessage == nil ? "Add" : "Retry") {
+            Task { await submit() }
+          }
+          .disabled(!canSubmit || isPreparingPhoto || model.isMutating)
+          .accessibilityIdentifier(
+            model.mutationErrorMessage == nil
+              ? "detail.diamond.noteSubmit" : "detail.diamond.noteRetry"
+          )
+        }
+      }
+      .task(id: selectedItem) {
+        await prepareSelectedPhoto()
+      }
+    }
+  }
+
+  private var canSubmit: Bool {
+    processedPhoto != nil || !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
+
+  private func prepareSelectedPhoto() async {
+    guard let selectedItem else { return }
+    isPreparingPhoto = true
+    photoErrorMessage = nil
+    defer { isPreparingPhoto = false }
+    do {
+      guard let data = try await selectedItem.loadTransferable(type: Data.self) else {
+        throw DetailPhotoProcessingError.unsupportedImage
+      }
+      try Task.checkCancellation()
+      let photo = try await DetailPhotoProcessor.process(
+        data: data,
+        contentTypeIdentifier: selectedItem.supportedContentTypes.first?.identifier
+      )
+      try Task.checkCancellation()
+      processedPhoto = photo
+      previewImage = UIImage(data: photo.data)
+    } catch is CancellationError {
+      return
+    } catch let error as DetailPhotoProcessingError {
+      photoErrorMessage = error.message
+    } catch {
+      photoErrorMessage = "That photo could not be prepared. Try another image."
+    }
+  }
+
+  private func submit() async {
+    guard canSubmit else { return }
+    if await model.addDiamondProgressNote(content: content, date: date, photo: processedPhoto) {
+      await onCollectionChanged()
+      dismiss()
+    }
+  }
+}
+
+struct DetailMetadataCard<Content: View>: View {
+  @Environment(\.theme) private var theme
+  let content: Content
+
+  init(@ViewBuilder content: () -> Content) {
+    self.content = content()
+  }
+
+  var body: some View {
+    VStack(spacing: 0) {
+      content
+    }
+    .padding(.horizontal, 16)
+    .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+  }
+}
+
+struct DetailMetadataRow<Content: View>: View {
+  @Environment(\.theme) private var theme
+
+  let label: String
+  let content: Content
+
+  init(label: String, value: String) where Content == Text {
+    self.label = label
+    content = Text(value)
+  }
+
+  init(label: String, @ViewBuilder content: () -> Content) {
+    self.label = label
+    self.content = content()
+  }
+
+  var body: some View {
+    LabeledContent {
+      content
+        .foregroundStyle(theme.foreground)
+    } label: {
+      Text(label)
+        .foregroundStyle(theme.pageSecondaryForeground)
+    }
+    .padding(.vertical, 13)
+    .overlay(alignment: .bottom) {
+      Divider()
+    }
+  }
+}
