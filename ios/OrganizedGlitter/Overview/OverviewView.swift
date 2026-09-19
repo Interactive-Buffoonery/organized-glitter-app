@@ -212,27 +212,7 @@ struct OverviewView: View {
           .buttonStyle(QuietActionStyle())
           .accessibilityIdentifier("overview.collection.wishlist")
 
-          Menu {
-            ForEach(craft.completedSections(for: verticals)) { section in
-              Button(
-                section == .diamonds ? "Completed diamond art" : "Completed coloring pages",
-                systemImage: section.systemImage
-              ) {
-                onLibraryRequest(LibraryRequest(section: section, status: "completed"))
-              }
-            }
-          } label: {
-            HStack(spacing: 12) {
-              Text("Completed")
-              Spacer()
-              Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(theme.pageSecondaryForeground)
-                .accessibilityHidden(true)
-            }
-          }
-          .buttonStyle(QuietActionStyle())
-          .accessibilityIdentifier("overview.collection.completed")
+          completedAction
         }
 
         if model.hasLoaded, model.errorMessage == nil {
@@ -284,6 +264,46 @@ struct OverviewView: View {
       }
     }
     .accessibilityIdentifier("overview.craft")
+  }
+
+  @ViewBuilder
+  private var completedAction: some View {
+    let sections = craft.completedSections(for: verticals)
+    if sections.count == 1, let section = sections.first {
+      Button {
+        onLibraryRequest(LibraryRequest(section: section, status: "completed"))
+      } label: {
+        completedActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.completed")
+    } else if !sections.isEmpty {
+      Menu {
+        ForEach(sections) { section in
+          Button(
+            section == .diamonds ? "Completed diamond art" : "Completed coloring pages",
+            systemImage: section.systemImage
+          ) {
+            onLibraryRequest(LibraryRequest(section: section, status: "completed"))
+          }
+        }
+      } label: {
+        completedActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.completed")
+    }
+  }
+
+  private var completedActionLabel: some View {
+    HStack(spacing: 12) {
+      Text("Completed")
+      Spacer()
+      Image(systemName: "chevron.right")
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .accessibilityHidden(true)
+    }
   }
 
   @ViewBuilder
