@@ -3,7 +3,25 @@ import XCTest
 @MainActor
 final class NativeRefinementUITests: XCTestCase {
   func testCapturesSixApprovedScreensAndBookPageHierarchy() throws {
+    let usesLandscape =
+      ProcessInfo.processInfo.environment["SCREENSHOT_ORIENTATION"] == "landscape"
+    if usesLandscape {
+      XCUIDevice.shared.orientation = .landscapeLeft
+    }
+    defer {
+      if usesLandscape {
+        XCUIDevice.shared.orientation = .portrait
+      }
+    }
+
     let app = launchFixture()
+    if usesLandscape {
+      let landscape = XCTNSPredicateExpectation(
+        predicate: NSPredicate { _, _ in app.frame.width > app.frame.height },
+        object: app
+      )
+      XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
+    }
     XCTAssertTrue(app.staticTexts["Overview"].waitForExistence(timeout: 5))
     try capture("refinement-01-overview")
 
@@ -142,6 +160,15 @@ final class NativeRefinementUITests: XCTestCase {
     let button = app.buttons[title]
     if button.exists {
       button.tap()
+      return
+    }
+
+    let craftMenu = app.buttons.matching(identifier: "library.craft").firstMatch
+    if craftMenu.waitForExistence(timeout: 1) {
+      craftMenu.tap()
+      let option = app.buttons[title]
+      XCTAssertTrue(option.waitForExistence(timeout: 5))
+      option.tap()
       return
     }
 
