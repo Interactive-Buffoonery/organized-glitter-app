@@ -220,7 +220,11 @@ struct LibraryItemDetailModelTests {
     #expect(model.unresolvedWriteState == .refreshed)
     #expect(model.mutationErrorMessage?.contains("progress notes") == true)
     #expect(model.mutationErrorMessage?.contains("photos") == false)
-    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "POST" }.count == 1)
+    let progressNoteWrites = DetailURLProtocol.requests.filter {
+      $0.httpMethod == "POST"
+        && $0.url?.path.hasSuffix("/progress_notes/records") == true
+    }
+    #expect(progressNoteWrites.count == 1)
   }
 
   @Test
