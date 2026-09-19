@@ -37,7 +37,7 @@ struct ColoringBookDetailView: View {
               .pickerStyle(.segmented)
           }
 
-          if model.bookPages.isEmpty, !model.isLoading {
+          if model.bookPages.isEmpty, !model.isLoading, model.errorMessage == nil {
             ContentUnavailableView(
               "No matching pages",
               systemImage: "doc.richtext",
@@ -129,7 +129,8 @@ struct ColoringBookDetailView: View {
       RecordArtwork(
         url: LibraryItem.book(book).artworkURL(using: model.client),
         maxHeight: 150,
-        emptyMinHeight: 150
+        emptyMinHeight: 150,
+        successAccessibilityLabel: "Book cover"
       )
       .frame(
         width: dynamicTypeSize.isAccessibilitySize ? nil : 112,
@@ -137,7 +138,6 @@ struct ColoringBookDetailView: View {
       )
       .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
       .clipShape(.rect(cornerRadius: Theme.Radius.medium))
-      .accessibilityLabel("Book cover")
       .accessibilityIdentifier("detail.hero")
 
       VStack(alignment: .leading, spacing: 8) {

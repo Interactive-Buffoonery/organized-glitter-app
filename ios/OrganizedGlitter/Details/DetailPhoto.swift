@@ -20,26 +20,29 @@ struct DetailPhotoGallery: View {
   var body: some View {
     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
       ForEach(photos) { photo in
-        AsyncImage(url: photo.url) { phase in
+        RemoteArtwork(url: photo.url, maxPixelDimension: 660) { phase in
           switch phase {
           case .success(let image):
             image
               .resizable()
               .scaledToFit()
+              .accessibilityLabel(photo.accessibilityLabel)
           case .failure:
             photoPlaceholder(systemImage: "photo.badge.exclamationmark")
+              .accessibilityLabel("Photo unavailable")
           case .empty:
             photoPlaceholder(systemImage: "photo")
               .overlay { ProgressView() }
+              .accessibilityHidden(true)
           @unknown default:
             photoPlaceholder(systemImage: "photo")
+              .accessibilityHidden(true)
           }
         }
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
         .background(theme.muted.opacity(0.45))
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
-        .accessibilityLabel(photo.accessibilityLabel)
       }
     }
     .accessibilityIdentifier("detail.photos")

@@ -18,12 +18,12 @@ struct DiamondProjectDetailView: View {
         RecordArtwork(
           url: LibraryItem.diamond(project).artworkURL(using: model.client),
           maxHeight: heroHeight,
-          emptyMinHeight: 180
+          emptyMinHeight: 180,
+          successAccessibilityLabel: "Project artwork"
         )
         .frame(maxWidth: .infinity, maxHeight: heroHeight)
         .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
         .clipShape(.rect(cornerRadius: Theme.Radius.medium))
-        .accessibilityLabel("Project artwork")
         .accessibilityIdentifier("detail.hero")
 
         VStack(alignment: .leading, spacing: 6) {
@@ -74,8 +74,12 @@ struct DiamondProjectDetailView: View {
           }
           .buttonStyle(.borderedProminent)
           .controlSize(.large)
-          .disabled(model.isMutating)
+          .disabled(model.isMutating || model.unresolvedWriteState != nil)
           .accessibilityIdentifier("detail.diamond.addNote")
+
+          if !isAddingNote {
+            unresolvedWriteRecovery
+          }
         }
 
         detailSection("Project details") {
@@ -162,8 +166,39 @@ struct DiamondProjectDetailView: View {
           recordID: note.id,
           filename: image
         ),
-        accessibilityLabel: "Progress photo from \(noteDate(note.date))"
+        accessibilityLabel: progressPhotoLabel(for: note)
       )
+    }
+  }
+
+  @ViewBuilder
+  private var unresolvedWriteRecovery: some View {
+    switch model.unresolvedWriteState {
+    case .needsRefresh:
+      if let message = model.mutationErrorMessage {
+        AccessibleErrorLabel(message: message)
+      }
+      Button("Refresh status") {
+        Task {
+          if await model.refreshUnresolvedWriteStatus() {
+            await onCollectionChanged()
+          }
+        }
+      }
+      .buttonStyle(.bordered)
+      .disabled(model.isMutating)
+      .accessibilityIdentifier("detail.diamond.noteRefresh")
+    case .refreshed:
+      if let message = model.mutationErrorMessage {
+        Label(message, systemImage: "checkmark.circle")
+          .foregroundStyle(theme.foreground)
+      }
+      Button("Done reviewing photos") {
+        model.clearUnresolvedWriteRecovery()
+      }
+      .buttonStyle(.bordered)
+    case nil:
+      EmptyView()
     }
   }
 
@@ -172,8 +207,15 @@ struct DiamondProjectDetailView: View {
   }
 
   private func noteDate(_ value: String) -> String {
-    guard let date = PocketBaseDate.date(from: value) else { return value }
-    return date.formatted(date: .abbreviated, time: .omitted)
+    DetailDateOnly.formatted(value) ?? value
+  }
+
+  private func progressPhotoLabel(for note: DiamondProgressNoteRecord) -> String {
+    let base = "Progress photo from \(noteDate(note.date))"
+    let caption = note.content
+      .replacingOccurrences(of: "\n", with: " ")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return caption.isEmpty ? base : "\(base): \(caption)"
   }
 
   private func detailSection<Content: View>(
@@ -217,6 +259,7 @@ private struct DiamondProgressNoteEditor: View {
             .lineLimit(3...8)
         }
         .listRowBackground(theme.card)
+        .disabled(model.unresolvedWriteState != nil)
 
         Section("Photo") {
           if let previewImage {
@@ -237,17 +280,35 @@ private struct DiamondProgressNoteEditor: View {
           .disabled(isPreparingPhoto || model.isMutating)
         }
         .listRowBackground(theme.card)
+        .disabled(model.unresolvedWriteState != nil)
 
         if isPreparingPhoto {
           Section {
             ProgressView("Preparing photo…")
           }
           .listRowBackground(theme.card)
+        } else if model.isMutating {
+          Section {
+            ProgressView(
+              model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…"
+            )
+          }
+          .listRowBackground(theme.card)
         }
 
-        if let message = photoErrorMessage ?? model.mutationErrorMessage {
+        if let message = photoErrorMessage {
           Section {
             AccessibleErrorLabel(message: message)
+          }
+          .listRowBackground(theme.card)
+        } else if let message = model.mutationErrorMessage {
+          Section {
+            if model.unresolvedWriteState == .refreshed {
+              Label(message, systemImage: "checkmark.circle")
+                .foregroundStyle(theme.foreground)
+            } else {
+              AccessibleErrorLabel(message: message)
+            }
           }
           .listRowBackground(theme.card)
         }
@@ -263,14 +324,29 @@ private struct DiamondProgressNoteEditor: View {
             .disabled(isPreparingPhoto || model.isMutating)
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button(model.mutationErrorMessage == nil ? "Add" : "Retry") {
-            Task { await submit() }
+          switch model.unresolvedWriteState {
+          case .needsRefresh:
+            Button("Refresh status") {
+              Task { await refreshUploadStatus() }
+            }
+            .disabled(model.isMutating)
+            .accessibilityIdentifier("detail.diamond.noteRefresh")
+          case .refreshed:
+            Button("Back to photos") {
+              model.clearUnresolvedWriteRecovery()
+              dismiss()
+            }
+            .accessibilityIdentifier("detail.diamond.noteReview")
+          case nil:
+            Button(model.mutationErrorMessage == nil ? "Add" : "Try again") {
+              Task { await submit() }
+            }
+            .disabled(!canSubmit || isPreparingPhoto || model.isMutating)
+            .accessibilityIdentifier(
+              model.mutationErrorMessage == nil
+                ? "detail.diamond.noteSubmit" : "detail.diamond.noteRetry"
+            )
           }
-          .disabled(!canSubmit || isPreparingPhoto || model.isMutating)
-          .accessibilityIdentifier(
-            model.mutationErrorMessage == nil
-              ? "detail.diamond.noteSubmit" : "detail.diamond.noteRetry"
-          )
         }
       }
       .task(id: selectedItem) {
@@ -280,13 +356,18 @@ private struct DiamondProgressNoteEditor: View {
   }
 
   private var canSubmit: Bool {
-    processedPhoto != nil || !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    photoErrorMessage == nil
+      && (processedPhoto != nil || !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
   }
 
   private func prepareSelectedPhoto() async {
     guard let selectedItem else { return }
     isPreparingPhoto = true
     photoErrorMessage = nil
+    model.mutationErrorMessage = nil
+    processedPhoto = nil
+    previewImage = nil
+    AccessibilityNotification.Announcement("Preparing photo").post()
     defer { isPreparingPhoto = false }
     do {
       guard let data = try await selectedItem.loadTransferable(type: Data.self) else {
@@ -304,16 +385,36 @@ private struct DiamondProgressNoteEditor: View {
       return
     } catch let error as DetailPhotoProcessingError {
       photoErrorMessage = error.message
+      self.selectedItem = nil
     } catch {
       photoErrorMessage = "That photo could not be prepared. Try another image."
+      self.selectedItem = nil
     }
   }
 
   private func submit() async {
     guard canSubmit else { return }
+    AccessibilityNotification.Announcement(
+      processedPhoto == nil ? "Adding progress note" : "Uploading photo"
+    ).post()
     if await model.addDiamondProgressNote(content: content, date: date, photo: processedPhoto) {
       await onCollectionChanged()
+      AccessibilityNotification.Announcement(
+        processedPhoto == nil ? "Progress note added" : "Photo added"
+      ).post()
       dismiss()
+    } else if model.unresolvedWriteState == .refreshed {
+      AccessibilityNotification.Announcement(
+        "Photos refreshed. Review them before starting another upload."
+      ).post()
+    }
+  }
+
+  private func refreshUploadStatus() async {
+    AccessibilityNotification.Announcement("Refreshing upload status").post()
+    if await model.refreshUnresolvedWriteStatus() {
+      await onCollectionChanged()
+      AccessibilityNotification.Announcement("Photos refreshed").post()
     }
   }
 }

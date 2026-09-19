@@ -6,6 +6,7 @@ struct LibraryItemDetailDestination: View {
   @State private var model: LibraryItemDetailModel
   @State private var editor: DetailEditor?
   @State private var isConfirmingDelete = false
+  @State private var deleteErrorMessage: String?
 
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
@@ -92,12 +93,26 @@ struct LibraryItemDetailDestination: View {
           if await model.deleteItem() {
             await onCollectionChanged()
             dismiss()
+          } else if let message = model.mutationErrorMessage {
+            deleteErrorMessage = message
+            model.mutationErrorMessage = nil
           }
         }
       }
       Button("Cancel", role: .cancel) {}
     } message: {
       Text(model.item.deleteMessage)
+    }
+    .alert(
+      "Couldn’t delete item",
+      isPresented: Binding(
+        get: { deleteErrorMessage != nil },
+        set: { if !$0 { deleteErrorMessage = nil } }
+      )
+    ) {
+      Button("OK") { deleteErrorMessage = nil }
+    } message: {
+      Text(deleteErrorMessage ?? "")
     }
   }
 
