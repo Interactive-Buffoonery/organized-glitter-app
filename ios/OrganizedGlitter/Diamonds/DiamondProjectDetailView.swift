@@ -191,6 +191,9 @@ private struct DiamondProgressNoteEditor: View {
   @State private var photoErrorMessage: String?
 
   var body: some View {
+    let photoPickerTitle =
+      processedPhoto == nil ? "Choose photo" : "Choose a different photo"
+
     NavigationStack {
       Form {
         Section("Progress") {
@@ -212,7 +215,7 @@ private struct DiamondProgressNoteEditor: View {
 
           PhotosPicker(selection: $selectedItem, matching: .images) {
             Label(
-              processedPhoto == nil ? "Choose photo" : "Choose a different photo",
+              photoPickerTitle,
               systemImage: "photo.on.rectangle"
             )
           }
