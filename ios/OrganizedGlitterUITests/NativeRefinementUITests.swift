@@ -248,10 +248,9 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func replaceText(in field: XCUIElement, with value: String) {
     field.tap()
-    if let current = field.value as? String, !current.isEmpty {
-      field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
-    }
+    field.typeKey("a", modifierFlags: .command)
     field.typeText(value)
+    XCTAssertEqual(field.value as? String, value)
   }
 
   private func capture(_ name: String) throws {
