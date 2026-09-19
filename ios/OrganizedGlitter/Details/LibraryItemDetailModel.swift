@@ -162,11 +162,14 @@ final class LibraryItemDetailModel {
       return
     }
 
+    let requestGeneration = generation
+    let requestedFilter = bookPageFilter
     isLoadingMore = true
     errorMessage = nil
     defer { isLoadingMore = false }
     do {
       let result = try await bookPagesResult(bookID: book.id, page: bookPagesPage + 1)
+      guard requestGeneration == generation, requestedFilter == bookPageFilter else { return }
       bookPages.append(contentsOf: result.items)
       bookPagesPage = result.page
       bookPagesTotalPages = result.totalPages
@@ -186,6 +189,7 @@ final class LibraryItemDetailModel {
       return
     }
 
+    let requestGeneration = generation
     isLoadingMore = true
     errorMessage = nil
     defer { isLoadingMore = false }
@@ -200,6 +204,7 @@ final class LibraryItemDetailModel {
         ]),
         sort: "-date,-created"
       )
+      guard requestGeneration == generation else { return }
       progressNotes.append(contentsOf: result.items)
       progressNotesPage = result.page
       progressNotesTotalPages = result.totalPages
