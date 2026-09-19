@@ -146,14 +146,23 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func openLibrary(_ app: XCUIApplication) {
-    let tab = app.tabBars.buttons["Library"]
+    let tab = app.tabBars.buttons["Library"].firstMatch
     if tab.waitForExistence(timeout: 3) {
       tab.tap()
       return
     }
-    let destination = app.buttons["Library"].firstMatch
-    XCTAssertTrue(destination.waitForExistence(timeout: 5))
-    destination.tap()
+
+    let destinations = [
+      app.popUpButtons["Library"].firstMatch,
+      app.buttons["Library"].firstMatch,
+      app.staticTexts["Library"].firstMatch,
+    ]
+    for destination in destinations where destination.exists && destination.isHittable {
+      destination.tap()
+      return
+    }
+
+    XCTFail("The Library destination is unavailable")
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {
