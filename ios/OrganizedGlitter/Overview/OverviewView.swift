@@ -439,13 +439,23 @@ private struct OverviewProjectRow: View {
   @ViewBuilder
   private var artwork: some View {
     if dynamicTypeSize.isAccessibilitySize {
-      RecordArtwork(url: imageURL, maxHeight: 220, emptyMinHeight: 160)
+      RecordArtwork(
+        url: imageURL,
+        maxHeight: 220,
+        emptyMinHeight: 160,
+        maxPixelDimension: 660
+      )
         .background(theme.card, in: .rect(cornerRadius: 10))
         .clipShape(.rect(cornerRadius: 10))
         .accessibilityHidden(true)
         .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 220)
     } else {
-      RecordArtwork(url: imageURL, maxHeight: 104, emptyMinHeight: 104)
+      RecordArtwork(
+        url: imageURL,
+        maxHeight: 104,
+        emptyMinHeight: 104,
+        maxPixelDimension: 360
+      )
         .background(theme.card, in: .rect(cornerRadius: 10))
         .clipShape(.rect(cornerRadius: 10))
         .accessibilityHidden(true)

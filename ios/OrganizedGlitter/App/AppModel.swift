@@ -74,6 +74,7 @@ final class AppModel {
 
     do {
       guard let storedSession = try sessionStore.load() else {
+        await RemoteArtworkLoader.shared.purgeMemoryCache()
         phase = .signedOut
         return
       }
@@ -84,18 +85,19 @@ final class AppModel {
     } catch APIError.offline {
       phase = .offline
     } catch APIError.unauthenticated, APIError.forbidden {
-      clearInvalidSession(using: sessionStore)
+      await clearInvalidSession(using: sessionStore)
     } catch {
       phase = .restorationFailed
     }
   }
 
-  private func clearInvalidSession(using sessionStore: KeychainSessionStore) {
+  private func clearInvalidSession(using sessionStore: KeychainSessionStore) async {
     do {
       try sessionStore.clear()
     } catch {
       Self.logger.error("Unable to clear an invalid local session.")
     }
+    await RemoteArtworkLoader.shared.purgeMemoryCache()
     phase = .signedOut
   }
 
@@ -137,6 +139,7 @@ final class AppModel {
 
     Task {
       await client.signOut()
+      await RemoteArtworkLoader.shared.purgeMemoryCache()
       phase = .signedOut
     }
   }

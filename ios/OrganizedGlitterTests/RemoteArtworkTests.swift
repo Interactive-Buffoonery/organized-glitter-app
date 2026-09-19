@@ -27,6 +27,63 @@ struct RemoteArtworkTests {
   }
 
   @Test
+  func concurrentAndRepeatedLoadsReuseOneFetch() async throws {
+    let store = RemoteArtworkDataStore(maximumByteCount: 1_024)
+    let probe = ArtworkFetchProbe(data: Data(repeating: 7, count: 128))
+    let url = URL(string: "https://artwork.example.test/shared.jpg")!
+
+    async let first = store.data(for: url) { try await probe.fetch() }
+    async let second = store.data(for: url) { try await probe.fetch() }
+    let (firstData, secondData) = try await (first, second)
+    let repeatedData = try await store.data(for: url) { try await probe.fetch() }
+    let fetchCount = await probe.fetchCount
+
+    #expect(firstData == secondData)
+    #expect(repeatedData == firstData)
+    #expect(fetchCount == 1)
+  }
+
+  @Test
+  func encodedCacheStaysWithinItsMemoryLimit() async throws {
+    let store = RemoteArtworkDataStore(maximumByteCount: 10)
+
+    for index in 0..<3 {
+      let url = URL(string: "https://artwork.example.test/\(index).jpg")!
+      _ = try await store.data(for: url) {
+        Data(repeating: UInt8(index), count: 6)
+      }
+    }
+
+    let cachedByteCount = await store.cachedByteCount
+    let cachedEntryCount = await store.cachedEntryCount
+    #expect(cachedByteCount <= 10)
+    #expect(cachedEntryCount == 1)
+  }
+
+  @Test
+  func purgeCancelsAndPreventsAnOldFetchFromRepopulatingMemory() async throws {
+    let store = RemoteArtworkDataStore(maximumByteCount: 1_024)
+    let probe = ArtworkFetchProbe(data: Data(repeating: 3, count: 128), delay: .seconds(10))
+    let url = URL(string: "https://artwork.example.test/private.jpg")!
+    let load = Task {
+      try await store.data(for: url) { try await probe.fetch() }
+    }
+    while await probe.fetchCount == 0 {
+      await Task.yield()
+    }
+
+    await store.removeAll()
+
+    await #expect(throws: CancellationError.self) {
+      try await load.value
+    }
+    let cachedByteCount = await store.cachedByteCount
+    let cachedEntryCount = await store.cachedEntryCount
+    #expect(cachedByteCount == 0)
+    #expect(cachedEntryCount == 0)
+  }
+
+  @Test
   func downsampleBoundsDecodedPixelsAndAppliesOrientation() throws {
     let data = try jpegData(width: 2_400, height: 1_200, orientation: .right)
 
@@ -98,6 +155,23 @@ struct RemoteArtworkTests {
     )
     try #require(CGImageDestinationFinalize(destination))
     return data as Data
+  }
+}
+
+private actor ArtworkFetchProbe {
+  private let data: Data
+  private let delay: Duration
+  private(set) var fetchCount = 0
+
+  init(data: Data, delay: Duration = .milliseconds(50)) {
+    self.data = data
+    self.delay = delay
+  }
+
+  func fetch() async throws -> Data {
+    fetchCount += 1
+    try await Task.sleep(for: delay)
+    return data
   }
 }
 
