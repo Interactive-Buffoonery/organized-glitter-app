@@ -60,6 +60,7 @@
 		9A61E9409D757D3C2660080C /* KeychainSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C4B9656060CFE9B5E72A69 /* KeychainSessionStore.swift */; };
 		9E113B58D90C3FAA2B37DAE5 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F029D79800F22CE6C8BCB60 /* AppShellView.swift */; };
 		A5B239C543296F1A22FD8141 /* VerificationRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84804F12B2E01DD51C4BD891 /* VerificationRequestView.swift */; };
+		A63DF636F85B4FFAD55BF0E7 /* FixtureAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A772994E0DBA96147D63D3F8 /* FixtureAssets.xcassets */; };
 		A7365172AB35A101E89E30AD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C8130E21AA27F12F629A9523 /* PrivacyInfo.xcprivacy */; };
 		A82DBD7DC926114CF5579738 /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6492B3FA9E99979892346890 /* LibraryModel.swift */; };
 		B487C0A1F2EF4330C3511E7E /* PocketBaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */; };
@@ -162,6 +163,7 @@
 		9A3D9D8C588673C2C32B6E0E /* DiamondProjectEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiamondProjectEditor.swift; sourceTree = "<group>"; };
 		A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryTests.swift; sourceTree = "<group>"; };
 		A3277359BD8C95E73E0D0287 /* NumberSectionPickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberSectionPickerTests.swift; sourceTree = "<group>"; };
+		A772994E0DBA96147D63D3F8 /* FixtureAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = FixtureAssets.xcassets; sourceTree = "<group>"; };
 		A9E0AAB8943F1B2ACAA6F424 /* BackendContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendContract.swift; sourceTree = "<group>"; };
 		C006B17BB53EDCD5E2E447F7 /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
 		C2BD9F8AA36F99FBBB93EF73 /* OrganizedGlitterTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = OrganizedGlitterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -232,6 +234,7 @@
 		1DE3B9E7E9288F3DC5A1976F /* Preview */ = {
 			isa = PBXGroup;
 			children = (
+				A772994E0DBA96147D63D3F8 /* FixtureAssets.xcassets */,
 				5FA902DB3B6AA8EFE35CDD98 /* OverviewFixtures.swift */,
 			);
 			path = Preview;
@@ -526,6 +529,7 @@
 				989735742582B75F9F402B94 /* Assets.xcassets in Resources */,
 				EB3F5E51F262CFE28DFBD02A /* BackendContract.json in Resources */,
 				3D6BFE41A3B50BDD4E82CCC5 /* Caveat.ttf in Resources */,
+				A63DF636F85B4FFAD55BF0E7 /* FixtureAssets.xcassets in Resources */,
 				4FB1DD8A2539C2339DCA1E43 /* OFL.txt in Resources */,
 				A7365172AB35A101E89E30AD /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -734,6 +738,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = OrganizedGlitter/Preview/FixtureAssets.xcassets;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OrganizedGlitter/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -772,6 +777,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = OrganizedGlitter/Preview/FixtureAssets.xcassets;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OrganizedGlitter/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
