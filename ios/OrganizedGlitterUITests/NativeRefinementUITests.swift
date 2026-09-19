@@ -141,9 +141,29 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {
-    let craft = app.buttons[title]
-    XCTAssertTrue(craft.waitForExistence(timeout: 5))
-    craft.tap()
+    let button = app.buttons[title]
+    if button.exists {
+      button.tap()
+      return
+    }
+
+    var sidebarRow = app.staticTexts[title]
+    if !sidebarRow.exists {
+      let showSidebar = app.buttons.matching(
+        NSPredicate(
+          format: "label ==[c] %@ OR label ==[c] %@",
+          "Show Sidebar",
+          "Toggle sidebar"
+        )
+      ).firstMatch
+      if showSidebar.exists {
+        showSidebar.tap()
+      }
+      sidebarRow = app.staticTexts[title]
+    }
+
+    XCTAssertTrue(sidebarRow.waitForExistence(timeout: 5))
+    sidebarRow.tap()
   }
 
   private func openCard(named title: String, in app: XCUIApplication) {
