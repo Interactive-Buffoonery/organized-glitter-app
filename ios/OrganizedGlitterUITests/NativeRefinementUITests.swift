@@ -68,7 +68,7 @@ final class NativeRefinementUITests: XCTestCase {
     button("detail.edit", in: app).tap()
     let title = app.textFields["Title"]
     XCTAssertTrue(title.waitForExistence(timeout: 5))
-    replaceText(in: title, with: "Peony garden updated")
+    replaceText(in: title, with: "Peony garden updated", app: app)
     app.buttons["Save"].tap()
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Peony garden updated"].waitForExistence(timeout: 5))
@@ -246,9 +246,12 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element.isHittable)
   }
 
-  private func replaceText(in field: XCUIElement, with value: String) {
+  private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
     field.tap()
-    field.typeKey("a", modifierFlags: .command)
+    field.press(forDuration: 1)
+    let selectAll = app.menuItems["Select All"]
+    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
+    selectAll.tap()
     field.typeText(value)
     XCTAssertEqual(field.value as? String, value)
   }

@@ -142,7 +142,7 @@ final class OrganizedGlitterUITests: XCTestCase {
     app.buttons.matching(identifier: "detail.edit").firstMatch.tap()
     XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
     let editedTitle = "\(currentTitle) edited"
-    replaceText(in: app.textFields["Title"], with: editedTitle)
+    replaceText(in: app.textFields["Title"], with: editedTitle, app: app)
     currentTitle = editedTitle
     let status = app.buttons.matching(
       NSPredicate(format: "label BEGINSWITH[c] %@", "Status")
@@ -184,9 +184,12 @@ final class OrganizedGlitterUITests: XCTestCase {
     XCTAssertTrue(app.tabBars.buttons["Library"].firstMatch.waitForExistence(timeout: 8))
   }
 
-  private func replaceText(in field: XCUIElement, with value: String) {
+  private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
     field.tap()
-    field.typeKey("a", modifierFlags: .command)
+    field.press(forDuration: 1)
+    let selectAll = app.menuItems["Select All"]
+    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
+    selectAll.tap()
     field.typeText(value)
     XCTAssertEqual(field.value as? String, value)
   }
