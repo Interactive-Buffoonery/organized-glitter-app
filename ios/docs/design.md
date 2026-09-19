@@ -186,9 +186,15 @@ Component: `.stickerCard(index)` supplies the current pastel card treatment.
 
 ## Typography
 
-- **Caveat** (bundled, `Font.caveat(size:relativeTo:)`) is the signature
-  display face: the page H1 (`PageHeader`, 40 pt) and section headers. Never
-  for body text, labels, or buttons.
+- The approved native refinement uses system Dynamic Type headings on Overview,
+  Library, and craft details: one bold page title, compact semibold section
+  headings, and no duplicate navigation title on a root screen. Reference boards
+  and fixture provenance live in `design-previews/native-refinement/`.
+- **Caveat** (bundled, `Font.caveat(size:relativeTo:)`) remains the signature
+  display face on existing brand surfaces and screens outside this refinement.
+  The legacy `PageHeader` uses it at 40 pt. Do not change that shared component
+  globally to migrate one working screen. Never use Caveat for body text,
+  labels, or buttons.
 - Everything else is the system font with Dynamic Type styles.
 
 ## Iconography
