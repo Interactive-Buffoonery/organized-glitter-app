@@ -190,7 +190,9 @@ final class OrganizedGlitterUITests: XCTestCase {
   private func deleteOpenProject(in app: XCUIApplication) {
     app.descendants(matching: .any)["detail.more"].tap()
     app.descendants(matching: .any)["detail.delete"].tap()
-    let confirmation = app.buttons["Delete Project"].lastMatch
+    let sheetButton = app.sheets.buttons["Delete Project"]
+    let confirmation = sheetButton.exists
+      ? sheetButton : app.buttons.matching(identifier: "Delete Project").firstMatch
     if confirmation.waitForExistence(timeout: 2) {
       confirmation.tap()
     }
