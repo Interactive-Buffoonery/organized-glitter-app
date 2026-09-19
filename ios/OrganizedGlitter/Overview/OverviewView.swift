@@ -131,7 +131,7 @@ final class OverviewModel {
 }
 
 enum OverviewCraft: String, CaseIterable, Identifiable {
-  case all = "All crafts"
+  case all = "All"
   case diamonds = "Diamond art"
   case coloring = "Coloring"
 
@@ -167,13 +167,13 @@ struct OverviewView: View {
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 24) {
-        PageHeader("Overview")
+      VStack(alignment: .leading, spacing: 22) {
+        OverviewScreenHeader("Overview")
 
         craftPicker
 
-        VStack(alignment: .leading, spacing: 12) {
-          SectionHeader("In progress")
+        VStack(alignment: .leading, spacing: 6) {
+          OverviewSectionHeader("In progress")
           activeWork
         }
 
@@ -186,7 +186,7 @@ struct OverviewView: View {
         }
 
         VStack(alignment: .leading, spacing: 8) {
-          SectionHeader("Quick links")
+          OverviewSectionHeader("Collection")
           Menu {
             ForEach(LibrarySection.available(for: verticals).filter { $0 != .pages }) { section in
               Button(
@@ -197,19 +197,24 @@ struct OverviewView: View {
               }
             }
           } label: {
-            Label("Wishlist", systemImage: "heart")
-              .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 12) {
+              Text("Wishlist")
+              Spacer()
+              Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(theme.pageSecondaryForeground)
+                .accessibilityHidden(true)
+            }
           }
           .buttonStyle(QuietActionStyle())
         }
       }
       .frame(maxWidth: 760, alignment: .leading)
-      .padding()
+      .padding(.horizontal, 20)
+      .padding(.top, 20)
+      .padding(.bottom, 32)
       .frame(maxWidth: .infinity)
     }
-    .navigationTitle("Overview")
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbarBackground(.hidden, for: .navigationBar)
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
@@ -272,12 +277,16 @@ struct OverviewView: View {
         .frame(minHeight: 220)
       } else {
         LazyVStack(spacing: 0) {
-          ForEach(items) { item in
+          ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
             NavigationLink(value: item) {
-              ActiveProjectRow(item: item, imageURL: model.artworkURL(for: item))
+              OverviewProjectRow(item: item, imageURL: model.artworkURL(for: item))
             }
             .buttonStyle(.plain)
-            Divider().overlay(theme.border)
+            if index < items.count - 1 {
+              Divider()
+                .overlay(theme.border)
+                .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 140)
+            }
           }
         }
       }
@@ -290,6 +299,102 @@ struct OverviewView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading)
+  }
+}
+
+private struct OverviewScreenHeader: View {
+  @Environment(\.theme) private var theme
+
+  let title: String
+
+  init(_ title: String) {
+    self.title = title
+  }
+
+  var body: some View {
+    Text(title)
+      .font(.largeTitle.bold())
+      .foregroundStyle(theme.foreground)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .accessibilityAddTraits(.isHeader)
+  }
+}
+
+private struct OverviewSectionHeader: View {
+  @Environment(\.theme) private var theme
+
+  let title: String
+
+  init(_ title: String) {
+    self.title = title
+  }
+
+  var body: some View {
+    Text(title)
+      .font(.title2.weight(.semibold))
+      .foregroundStyle(theme.foreground)
+      .accessibilityAddTraits(.isHeader)
+  }
+}
+
+private struct OverviewProjectRow: View {
+  @Environment(\.theme) private var theme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  let item: LibraryItem
+  let imageURL: URL?
+
+  var body: some View {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+
+    layout {
+      artwork
+
+      HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 4) {
+          Text(item.title)
+            .font(.headline)
+            .foregroundStyle(theme.foreground)
+          if !item.subtitle.isEmpty {
+            Text(item.subtitle)
+              .font(.subheadline)
+              .foregroundStyle(theme.pageSecondaryForeground)
+          }
+          StatusBadge(status: item.status, presentation: .quiet)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        Image(systemName: "chevron.right")
+          .font(.footnote.weight(.semibold))
+          .foregroundStyle(theme.pageSecondaryForeground)
+          .accessibilityHidden(true)
+      }
+    }
+    .padding(.vertical, 7)
+    .contentShape(.rect)
+    .accessibilityElement(children: .combine)
+  }
+
+  @ViewBuilder
+  private var artwork: some View {
+    if dynamicTypeSize.isAccessibilitySize {
+      artworkContent
+        .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 220)
+    } else {
+      artworkContent
+        .frame(width: 124, height: 124)
+    }
+  }
+
+  private var artworkContent: some View {
+    RecordArtwork(url: imageURL, maxHeight: 220, emptyMinHeight: 124)
+      .background(theme.card, in: .rect(cornerRadius: 10))
+      .clipShape(.rect(cornerRadius: 10))
+      .accessibilityHidden(true)
   }
 }
 
