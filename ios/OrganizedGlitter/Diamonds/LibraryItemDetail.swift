@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LibraryItemDetailDestination: View {
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.theme) private var theme
   @State private var model: LibraryItemDetailModel
   @State private var editor: DetailEditor?
   @State private var isConfirmingDelete = false
@@ -45,6 +46,10 @@ struct LibraryItemDetailDestination: View {
     }
     .navigationTitle(model.item.title)
     .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(.hidden, for: .navigationBar)
+    .background {
+      theme.themedBackground.ignoresSafeArea()
+    }
     .toolbar {
       ToolbarItemGroup(placement: .topBarTrailing) {
         Button("Edit") {
