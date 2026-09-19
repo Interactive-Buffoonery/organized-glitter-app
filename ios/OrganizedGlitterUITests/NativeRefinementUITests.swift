@@ -129,7 +129,7 @@ final class NativeRefinementUITests: XCTestCase {
     addPhoto.tap()
     let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
     XCTAssertTrue(photo.waitForExistence(timeout: 5))
-    photo.tap()
+    photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
     let uploadedPhoto = app.descendants(matching: .any).matching(
       NSPredicate(format: "label == %@", "Page photo 2: Moonlit garden")
