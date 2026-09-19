@@ -49,7 +49,7 @@ struct LibraryItemDetailModelTests {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)
       if request.httpMethod == "PATCH", path.hasSuffix("/coloring_pages/records/page-1") {
-        let body = String(decoding: request.httpBody ?? Data(), as: UTF8.self)
+        let body = String(decoding: DetailURLProtocol.bodyData(for: request), as: UTF8.self)
         #expect(body.contains("name=\"photos+\""))
         #expect(body.contains("filename=\"artwork.jpg\""))
         return (200, Self.pageJSON(id: "page-1", number: 1, photos: ["artwork.jpg"]))
@@ -81,7 +81,7 @@ struct LibraryItemDetailModelTests {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)
       if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
-        let body = String(decoding: request.httpBody ?? Data(), as: UTF8.self)
+        let body = String(decoding: DetailURLProtocol.bodyData(for: request), as: UTF8.self)
         #expect(body.contains("name=\"project\"\r\n\r\nproject-1"))
         #expect(body.contains("name=\"content\"\r\n\r\nHalfway done"))
         #expect(body.contains("name=\"date\"\r\n\r\n2026-09-19"))
@@ -246,4 +246,26 @@ private final class DetailURLProtocol: URLProtocol, @unchecked Sendable {
   override func stopLoading() {}
 
   nonisolated(unsafe) static var requests: [URLRequest] = []
+
+  nonisolated static func bodyData(for request: URLRequest) -> Data {
+    if let body = request.httpBody {
+      return body
+    }
+    guard let stream = request.httpBodyStream else {
+      return Data()
+    }
+
+    stream.open()
+    defer { stream.close() }
+
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 1_024)
+    while true {
+      let count = stream.read(&buffer, maxLength: buffer.count)
+      guard count > 0 else {
+        return data
+      }
+      data.append(buffer, count: count)
+    }
+  }
 }
