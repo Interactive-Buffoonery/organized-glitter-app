@@ -145,6 +145,8 @@ struct LibraryView: View {
         } label: {
           Image(systemName: "xmark.circle.fill")
             .foregroundStyle(theme.pageSecondaryForeground)
+            .frame(width: 44, height: 44)
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Clear search")
