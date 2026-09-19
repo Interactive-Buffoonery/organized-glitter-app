@@ -21,6 +21,11 @@ enum BookPageFilter: String, CaseIterable, Identifiable {
   }
 }
 
+enum DetailUnresolvedWriteState: Equatable {
+  case needsRefresh
+  case refreshed
+}
+
 @MainActor
 @Observable
 final class LibraryItemDetailModel {
@@ -40,6 +45,7 @@ final class LibraryItemDetailModel {
   var isMutating = false
   var errorMessage: String?
   var mutationErrorMessage: String?
+  private(set) var unresolvedWriteState: DetailUnresolvedWriteState?
 
   private var bookPagesPage = 0
   private var bookPagesTotalPages = 0
@@ -53,7 +59,8 @@ final class LibraryItemDetailModel {
     self.userID = userID
   }
 
-  func load() async {
+  @discardableResult
+  func load() async -> Bool {
     generation += 1
     let requestGeneration = generation
     isLoading = true
@@ -83,7 +90,7 @@ final class LibraryItemDetailModel {
           ]),
           sort: "-date,-created"
         )
-        guard requestGeneration == generation else { return }
+        guard requestGeneration == generation else { return false }
         item = .diamond(loadedProject)
         progressNotes = loadedNotes.items
         progressNotesPage = loadedNotes.page
@@ -97,7 +104,7 @@ final class LibraryItemDetailModel {
           expand: "publisher,illustrator"
         )
         let loadedPages = try await bookPagesResult(bookID: book.id, page: 1)
-        guard requestGeneration == generation else { return }
+        guard requestGeneration == generation else { return false }
         item = .book(loadedBook)
         bookPages = loadedPages.items
         bookPagesPage = loadedPages.page
@@ -110,20 +117,26 @@ final class LibraryItemDetailModel {
           id: page.id,
           expand: "book"
         )
-        guard requestGeneration == generation else { return }
+        guard requestGeneration == generation else { return false }
         item = .page(loaded)
       }
+      return true
     } catch APIError.cancelled {
-      return
+      return false
     } catch {
-      guard requestGeneration == generation else { return }
+      guard requestGeneration == generation else { return false }
       errorMessage = error.detailLoadMessage
+      return false
     }
   }
 
   func setBookPageFilter(_ filter: BookPageFilter) async {
     guard bookPageFilter != filter else { return }
     bookPageFilter = filter
+    bookPages = []
+    bookPagesPage = 0
+    bookPagesTotalPages = 0
+    canLoadMoreBookPages = false
     await reloadBookPages()
   }
 
@@ -177,6 +190,7 @@ final class LibraryItemDetailModel {
     } catch APIError.cancelled {
       return
     } catch {
+      guard requestGeneration == generation, requestedFilter == bookPageFilter else { return }
       errorMessage = error.detailLoadMessage
     }
   }
@@ -212,6 +226,7 @@ final class LibraryItemDetailModel {
     } catch APIError.cancelled {
       return
     } catch {
+      guard requestGeneration == generation else { return }
       errorMessage = error.detailLoadMessage
     }
   }
@@ -272,7 +287,12 @@ final class LibraryItemDetailModel {
     date: Date,
     photo: ProcessedDetailPhoto?
   ) async -> Bool {
-    guard case .diamond(let project) = item, !isMutating else { return false }
+    guard case .diamond(let project) = item,
+      !isMutating,
+      unresolvedWriteState == nil
+    else {
+      return false
+    }
     isMutating = true
     mutationErrorMessage = nil
     defer { isMutating = false }
@@ -297,16 +317,18 @@ final class LibraryItemDetailModel {
     )
 
     do {
-      let _: DiamondProgressNoteRecord = try await client.create(
+      let saved: DiamondProgressNoteRecord = try await client.create(
         collection: "progress_notes",
         multipart: form
       )
+      if !progressNotes.contains(where: { $0.id == saved.id }) {
+        progressNotes.insert(saved, at: 0)
+      }
       await load()
       return true
     } catch APIError.offline, APIError.server {
-      await load()
-      mutationErrorMessage =
-        "Upload status is unknown. The project was refreshed; check its photos before trying again."
+      unresolvedWriteState = .needsRefresh
+      await reconcileUnresolvedWrite()
       return false
     } catch {
       mutationErrorMessage = error.userMessage(
@@ -318,7 +340,12 @@ final class LibraryItemDetailModel {
   }
 
   func appendPagePhoto(_ photo: ProcessedDetailPhoto) async -> Bool {
-    guard case .page(let page) = item, !isMutating else { return false }
+    guard case .page(let page) = item,
+      !isMutating,
+      unresolvedWriteState == nil
+    else {
+      return false
+    }
     isMutating = true
     mutationErrorMessage = nil
     defer { isMutating = false }
@@ -343,9 +370,8 @@ final class LibraryItemDetailModel {
       await load()
       return true
     } catch APIError.offline, APIError.server {
-      await load()
-      mutationErrorMessage =
-        "Upload status is unknown. The page was refreshed; check its photos before trying again."
+      unresolvedWriteState = .needsRefresh
+      await reconcileUnresolvedWrite()
       return false
     } catch {
       mutationErrorMessage = error.userMessage(
@@ -354,6 +380,36 @@ final class LibraryItemDetailModel {
       )
       return false
     }
+  }
+
+  @discardableResult
+  func refreshUnresolvedWriteStatus() async -> Bool {
+    guard unresolvedWriteState != nil, !isMutating else { return false }
+    isMutating = true
+    defer { isMutating = false }
+
+    return await reconcileUnresolvedWrite()
+  }
+
+  func clearUnresolvedWriteRecovery() {
+    guard unresolvedWriteState == .refreshed else { return }
+    unresolvedWriteState = nil
+    mutationErrorMessage = nil
+  }
+
+  private func reconcileUnresolvedWrite() async -> Bool {
+    let didRefresh = await load()
+    if didRefresh {
+      unresolvedWriteState = .refreshed
+      mutationErrorMessage =
+        "The upload response was lost. Review the refreshed photos before starting a new upload."
+      return true
+    }
+
+    unresolvedWriteState = .needsRefresh
+    mutationErrorMessage =
+      "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
+    return false
   }
 
   private func bookPagesResult(bookID: String, page: Int) async throws

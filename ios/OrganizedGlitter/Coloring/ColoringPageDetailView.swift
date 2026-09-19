@@ -23,12 +23,12 @@ struct ColoringPageDetailView: View {
         RecordArtwork(
           url: LibraryItem.page(page).artworkURL(using: model.client),
           maxHeight: heroHeight,
-          emptyMinHeight: 180
+          emptyMinHeight: 180,
+          successAccessibilityLabel: "Page artwork"
         )
         .frame(maxWidth: .infinity, maxHeight: heroHeight)
         .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
         .clipShape(.rect(cornerRadius: Theme.Radius.medium))
-        .accessibilityLabel("Page artwork")
         .accessibilityIdentifier("detail.hero")
 
         VStack(alignment: .leading, spacing: 6) {
@@ -67,29 +67,68 @@ struct ColoringPageDetailView: View {
           if isPreparingPhoto {
             ProgressView("Preparing photo…")
               .frame(maxWidth: .infinity, alignment: .leading)
+          } else if model.isMutating {
+            ProgressView(
+              model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…"
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
           }
 
-          if let message = photoErrorMessage ?? model.mutationErrorMessage {
+          if let message = photoErrorMessage {
             AccessibleErrorLabel(message: message)
           }
 
           if let pendingPhoto {
-            Button {
-              Task { await upload(pendingPhoto) }
-            } label: {
-              Label("Retry photo upload", systemImage: "arrow.clockwise")
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(isPreparingPhoto || model.isMutating)
-            .accessibilityIdentifier("detail.page.photoRetry")
+            switch model.unresolvedWriteState {
+            case .needsRefresh:
+              if let message = model.mutationErrorMessage {
+                AccessibleErrorLabel(message: message)
+              }
+              Button {
+                Task { await refreshUploadStatus() }
+              } label: {
+                Label("Refresh status", systemImage: "arrow.clockwise")
+                  .frame(maxWidth: .infinity)
+              }
+              .buttonStyle(.borderedProminent)
+              .controlSize(.large)
+              .disabled(model.isMutating)
+              .accessibilityIdentifier("detail.page.photoRefresh")
 
-            Button("Discard pending upload", role: .cancel) {
-              clearPendingPhoto()
+            case .refreshed:
+              if let message = model.mutationErrorMessage {
+                Label(message, systemImage: "checkmark.circle")
+                  .foregroundStyle(theme.foreground)
+              }
+              Button("Back to photos") {
+                clearPendingPhoto(clearRecovery: true)
+              }
+              .buttonStyle(.borderedProminent)
+              .controlSize(.large)
+              .frame(maxWidth: .infinity)
+              .accessibilityIdentifier("detail.page.photoReview")
+
+            case nil:
+              if let message = model.mutationErrorMessage {
+                AccessibleErrorLabel(message: message)
+              }
+              Button {
+                Task { await upload(pendingPhoto) }
+              } label: {
+                Label("Try upload again", systemImage: "arrow.clockwise")
+                  .frame(maxWidth: .infinity)
+              }
+              .buttonStyle(.borderedProminent)
+              .controlSize(.large)
+              .disabled(isPreparingPhoto || model.isMutating)
+              .accessibilityIdentifier("detail.page.photoRetry")
+
+              Button("Discard pending upload", role: .cancel) {
+                clearPendingPhoto()
+              }
+              .frame(maxWidth: .infinity)
+              .disabled(model.isMutating)
             }
-            .frame(maxWidth: .infinity)
-            .disabled(model.isMutating)
           } else {
             PhotosPicker(selection: $selectedItem, matching: .images) {
               Label("Add photo", systemImage: "plus")
@@ -153,41 +192,32 @@ struct ColoringPageDetailView: View {
           filename: filename
         ),
         accessibilityLabel: "Page photo \(index + 1)"
+          + pagePhotoSubjectSuffix
       )
     }
   }
 
   private func formattedDate(_ value: String?) -> String? {
     guard let value = value?.nonEmpty else { return nil }
-    guard let date = parsedDate(value) else { return nil }
-    return date.formatted(date: .abbreviated, time: .omitted)
-  }
-
-  private func parsedDate(_ value: String) -> Date? {
-    if let date = PocketBaseDate.date(from: value) {
-      return date
-    }
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.calendar = Calendar(identifier: .gregorian)
-    formatter.timeZone = .current
-    for format in ["yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd"] {
-      formatter.dateFormat = format
-      if let date = formatter.date(from: value) {
-        return date
-      }
-    }
-    return nil
+    return DetailDateOnly.formatted(value)
   }
 
   private var heroHeight: CGFloat {
     horizontalSizeClass == .regular ? 360 : 280
   }
 
+  private var pagePhotoSubjectSuffix: String {
+    guard let subject = page.revealedSubject?.nonEmpty else { return "" }
+    return ": \(subject)"
+  }
+
   private func prepareAndUploadSelection() async {
     guard let selectedItem else { return }
     isPreparingPhoto = true
     photoErrorMessage = nil
+    model.mutationErrorMessage = nil
+    pendingPhoto = nil
+    AccessibilityNotification.Announcement("Preparing photo").post()
     defer { isPreparingPhoto = false }
     do {
       guard let data = try await selectedItem.loadTransferable(type: Data.self) else {
@@ -205,23 +235,43 @@ struct ColoringPageDetailView: View {
       return
     } catch let error as DetailPhotoProcessingError {
       photoErrorMessage = error.message
+      self.selectedItem = nil
     } catch {
       photoErrorMessage = "That photo could not be prepared. Try another image."
+      self.selectedItem = nil
     }
   }
 
   private func upload(_ photo: ProcessedDetailPhoto) async {
     photoErrorMessage = nil
+    AccessibilityNotification.Announcement("Uploading photo").post()
     if await model.appendPagePhoto(photo) {
       clearPendingPhoto()
       await onCollectionChanged()
+      AccessibilityNotification.Announcement("Photo added").post()
+    } else if model.unresolvedWriteState == .refreshed {
+      AccessibilityNotification.Announcement(
+        "Photos refreshed. Review them before starting another upload."
+      ).post()
     }
   }
 
-  private func clearPendingPhoto() {
+  private func refreshUploadStatus() async {
+    AccessibilityNotification.Announcement("Refreshing upload status").post()
+    if await model.refreshUnresolvedWriteStatus() {
+      await onCollectionChanged()
+      AccessibilityNotification.Announcement("Photos refreshed").post()
+    }
+  }
+
+  private func clearPendingPhoto(clearRecovery: Bool = false) {
     pendingPhoto = nil
     selectedItem = nil
     photoErrorMessage = nil
-    model.mutationErrorMessage = nil
+    if clearRecovery {
+      model.clearUnresolvedWriteRecovery()
+    } else {
+      model.mutationErrorMessage = nil
+    }
   }
 }
