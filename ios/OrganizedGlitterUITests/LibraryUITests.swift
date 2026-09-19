@@ -38,17 +38,23 @@ final class LibraryUITests: XCTestCase {
     try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone peer craft browsing.")
     let app = launch("populated")
     openLibrary(app)
-    XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.textFields["library.search"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Garden of stars"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["Diamond art"].exists)
     XCTAssertTrue(app.buttons["Books"].exists)
     XCTAssertTrue(app.buttons["Pages"].exists)
-    XCTAssertFalse(app.navigationBars["Library"].buttons["Add"].exists)
+    XCTAssertTrue(app.buttons["Add diamond painting project"].exists)
     try capture(app, "library-diamonds")
 
     app.buttons["Books"].tap()
-    XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Fictional Press"].exists)
+    let book = app.buttons.matching(
+      NSPredicate(
+        format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@",
+        "Moonlit meadows",
+        "24 pages"
+      )
+    ).firstMatch
+    XCTAssertTrue(book.waitForExistence(timeout: 5))
     try capture(app, "library-books")
 
     app.buttons["Pages"].tap()
