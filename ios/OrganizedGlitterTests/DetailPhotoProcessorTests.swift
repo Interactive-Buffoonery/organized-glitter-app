@@ -23,7 +23,9 @@ struct DetailPhotoProcessorTests {
   @Test
   func scalesLargeArtworkWithinPixelAndUploadLimits() async throws {
     let sourceSize = CGSize(width: 3_000, height: 1_500)
-    let renderer = UIGraphicsImageRenderer(size: sourceSize)
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let renderer = UIGraphicsImageRenderer(size: sourceSize, format: format)
     let source = renderer.image { context in
       UIColor.systemPink.setFill()
       context.fill(CGRect(origin: .zero, size: sourceSize))
@@ -51,6 +53,7 @@ struct DetailPhotoProcessorTests {
     let size = CGSize(width: 80, height: 120)
     let format = UIGraphicsImageRendererFormat()
     format.opaque = false
+    format.scale = 1
     let renderer = UIGraphicsImageRenderer(size: size, format: format)
     let input = renderer.image { context in
       UIColor.clear.setFill()
@@ -74,7 +77,9 @@ struct DetailPhotoProcessorTests {
   @Test
   func appliesSourceOrientationWhilePreservingAspectRatio() async throws {
     let size = CGSize(width: 120, height: 60)
-    let renderer = UIGraphicsImageRenderer(size: size)
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let renderer = UIGraphicsImageRenderer(size: size, format: format)
     let image = renderer.image { context in
       UIColor.systemBlue.setFill()
       context.fill(CGRect(origin: .zero, size: size))
