@@ -247,10 +247,10 @@ actor RemoteArtworkDataStore {
         }
         request.waiters[waiterID] = continuation
         inFlightRequests[url] = request
-      } onCancel: {
-        Task {
-          await self.cancelWaiter(waiterID, for: url, requestID: requestID)
-        }
+      }
+    } onCancel: {
+      Task {
+        await self.cancelWaiter(waiterID, for: url, requestID: requestID)
       }
     }
   }
