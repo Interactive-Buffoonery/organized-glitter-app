@@ -130,6 +130,7 @@ struct ColoringBookDetailView: View {
         url: LibraryItem.book(book).artworkURL(using: model.client),
         maxHeight: 150,
         emptyMinHeight: 150,
+        maxPixelDimension: 360,
         successAccessibilityLabel: "Book cover"
       )
       .frame(
@@ -211,7 +212,8 @@ private struct ColoringBookPageCard: View {
       RecordArtwork(
         url: LibraryItem.page(page).artworkURL(using: client),
         maxHeight: 220,
-        emptyMinHeight: 150
+        emptyMinHeight: 150,
+        maxPixelDimension: 660
       )
       .frame(maxWidth: .infinity, minHeight: 150, maxHeight: 220)
       .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
