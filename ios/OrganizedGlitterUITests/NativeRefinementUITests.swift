@@ -54,7 +54,7 @@ final class NativeRefinementUITests: XCTestCase {
 
     element("detail.more", in: app).tap()
     element("detail.delete", in: app).tap()
-    let confirmation = app.buttons["Delete Project"].lastMatch
+    let confirmation = confirmationButton(named: "Delete Project", in: app)
     if confirmation.waitForExistence(timeout: 2) {
       confirmation.tap()
     }
@@ -86,7 +86,9 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(addPhoto.waitForExistence(timeout: 5))
 
     addPhoto.tap()
-    let cancel = app.buttons["Cancel"].lastMatch
+    let pickerCancel = app.navigationBars.buttons["Cancel"]
+    let cancel = pickerCancel.exists
+      ? pickerCancel : app.buttons.matching(identifier: "Cancel").firstMatch
     XCTAssertTrue(cancel.waitForExistence(timeout: 5))
     cancel.tap()
     XCTAssertTrue(element("detail.page", in: app).waitForExistence(timeout: 5))
@@ -164,6 +166,12 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
     app.descendants(matching: .any)[identifier]
+  }
+
+  private func confirmationButton(named label: String, in app: XCUIApplication) -> XCUIElement {
+    let sheetButton = app.sheets.buttons[label]
+    return sheetButton.exists
+      ? sheetButton : app.buttons.matching(identifier: label).firstMatch
   }
 
   private func makeHittable(_ element: XCUIElement, in app: XCUIApplication) {
