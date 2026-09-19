@@ -29,7 +29,7 @@
           respond(object: [:], status: 404)
           return
         }
-        respond(data: Self.artwork(), type: "image/png")
+        respond(data: Self.artwork(filename: url.lastPathComponent), type: "image/png")
         return
       }
       if url.path.contains("/auth-with-password") {
@@ -67,11 +67,11 @@
       }
       var items: [[String: Any]] = []
       if url.path.contains("/projects/") {
-        items = Self.diamondItems
+        items = Self.scenario == "design" ? Self.designDiamonds : Self.diamondItems
       } else if url.path.contains("/coloring_books/") {
-        items = Self.bookItems
+        items = Self.scenario == "design" ? Self.designBooks : Self.bookItems
       } else if url.path.contains("/coloring_pages/") {
-        items = Self.pageItems
+        items = Self.scenario == "design" ? Self.designPages : Self.pageItems
       }
       if let status = Self.status(in: filter) {
         items = items.filter { $0["status"] as? String == status }
@@ -188,8 +188,55 @@
       client?.urlProtocolDidFinishLoading(self)
     }
 
-    private static func artwork() -> Data {
-      UIGraphicsImageRenderer(size: CGSize(width: 200, height: 260)).pngData { context in
+    private static var designDiamonds: [[String: Any]] {
+      zip(["Peony garden", "Blue hour", "Citrus grove", "Wildflowers"],
+          ["progress", "stash", "progress", "completed"]).enumerated().map { index, pair in
+        [
+          "id": "design-project-\(index)", "user": "preview-user", "title": pair.0,
+          "status": pair.1, "kit_category": "full", "drill_shape": "square",
+          "width": 40, "height": 50,
+          "image": index == 2 ? "design-citrus.png" : index == 1 ? "design-moon.png" : "design-peony.png",
+          "created": "2026-09-01", "updated": "2026-09-19 12:0\(9 - index * 2):00",
+        ]
+      }
+    }
+
+    private static var designBooks: [[String: Any]] {
+      ["Botanical days", "Small wonders", "The secret woodland", "Garden birds"].enumerated().map { index, title in
+        [
+          "id": "design-book-\(index)", "user": "preview-user", "title": title,
+          "status": "in_progress", "total_pages": 8, "completed_pages": 1,
+          "cover_image": "design-book.png", "created": "2026-09-01",
+          "updated": "2026-09-19 10:00:00",
+        ]
+      }
+    }
+
+    private static var designPages: [[String: Any]] {
+      ["Moonlit garden", "Fern study", "Summer stems", "Magnolias"].enumerated().map { index, title in
+        [
+          "id": "design-page-\(index)", "book": "design-book-0", "page_number": index + 1,
+          "revealed_subject": title,
+          "status": index == 0 ? "in_progress" : index == 1 ? "completed" : "not_started",
+          "photos": [index == 0 ? "design-moon.png" : "design-book.png"],
+          "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
+          "expand": ["book": designBooks[0]],
+        ]
+      }
+    }
+
+    private static func artwork(filename: String) -> Data {
+      if filename.hasPrefix("design-"), let atlas = UIImage(named: "FixtureArtwork")?.cgImage {
+        let right = filename.contains("citrus") || filename.contains("book")
+        let bottom = filename.contains("moon") || filename.contains("book")
+        let width = atlas.width / 2
+        let height = atlas.height / 2
+        let crop = CGRect(x: right ? width : 0, y: bottom ? height : 0, width: width, height: height)
+        if let artwork = atlas.cropping(to: crop), let data = UIImage(cgImage: artwork).pngData() {
+          return data
+        }
+      }
+      return UIGraphicsImageRenderer(size: CGSize(width: 200, height: 260)).pngData { context in
         UIColor(red: 0.18, green: 0.23, blue: 0.34, alpha: 1).setFill()
         context.fill(CGRect(x: 0, y: 0, width: 200, height: 260))
         UIColor(red: 0.93, green: 0.81, blue: 0.57, alpha: 1).setFill()
