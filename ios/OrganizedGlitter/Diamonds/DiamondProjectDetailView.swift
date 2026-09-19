@@ -459,6 +459,7 @@ struct DetailMetadataCard<Content: View>: View {
 }
 
 struct DetailMetadataRow<Content: View>: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.theme) private var theme
 
   let label: String
@@ -475,17 +476,32 @@ struct DetailMetadataRow<Content: View>: View {
   }
 
   var body: some View {
-    LabeledContent {
-      content
-        .foregroundStyle(theme.foreground)
-    } label: {
-      Text(label)
-        .foregroundStyle(theme.pageSecondaryForeground)
+    Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        VStack(alignment: .leading, spacing: 4) {
+          labelView
+          content
+            .foregroundStyle(theme.foreground)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      } else {
+        LabeledContent {
+          content
+            .foregroundStyle(theme.foreground)
+        } label: {
+          labelView
+        }
+      }
     }
     .padding(.vertical, 10)
     .frame(minHeight: 44)
     .overlay(alignment: .bottom) {
       Divider()
     }
+  }
+
+  private var labelView: some View {
+    Text(label)
+      .foregroundStyle(theme.pageSecondaryForeground)
   }
 }
