@@ -69,6 +69,7 @@ final class RemoteArtworkLoader: @unchecked Sendable {
   static let shared = RemoteArtworkLoader()
 
   private let session: URLSession
+  private let dataStore: RemoteArtworkDataStore
 
   convenience init() {
     #if DEBUG
@@ -81,24 +82,17 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     #endif
   }
 
-  init(session: URLSession) {
+  init(
+    session: URLSession,
+    dataStore: RemoteArtworkDataStore = RemoteArtworkDataStore()
+  ) {
     self.session = session
+    self.dataStore = dataStore
   }
 
   func load(from url: URL, maxPixelDimension: CGFloat) async throws -> RemoteArtworkImage {
-    let data: Data
-    let response: URLResponse
-    do {
-      (data, response) = try await session.data(from: url)
-    } catch let error as URLError where error.code == .cancelled {
-      throw CancellationError()
-    }
-
-    guard
-      let httpResponse = response as? HTTPURLResponse,
-      (200..<300).contains(httpResponse.statusCode)
-    else {
-      throw RemoteArtworkError.invalidResponse
+    let data = try await dataStore.data(for: url) { [session] in
+      try await Self.downloadData(from: url, using: session)
     }
     try Task.checkCancellation()
 
@@ -113,6 +107,10 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     } onCancel: {
       decodingTask.cancel()
     }
+  }
+
+  func purgeMemoryCache() async {
+    await dataStore.removeAll()
   }
 
   static func downsample(data: Data, maxPixelDimension: CGFloat) throws -> RemoteArtworkImage {
@@ -145,11 +143,185 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     }
   #endif
 
+  private static func downloadData(from url: URL, using session: URLSession) async throws -> Data {
+    let data: Data
+    let response: URLResponse
+    do {
+      (data, response) = try await session.data(from: url)
+    } catch let error as URLError where error.code == .cancelled {
+      throw CancellationError()
+    }
+
+    guard
+      let httpResponse = response as? HTTPURLResponse,
+      (200..<300).contains(httpResponse.statusCode)
+    else {
+      throw RemoteArtworkError.invalidResponse
+    }
+    return data
+  }
+
   private static func ephemeralSession() -> URLSession {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.urlCache = nil
     configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
     return URLSession(configuration: configuration)
+  }
+}
+
+actor RemoteArtworkDataStore {
+  private struct Entry {
+    let data: Data
+    var lastAccess: UInt64
+  }
+
+  private struct InFlightRequest {
+    let id: UUID
+    let generation: UInt64
+    let task: Task<Data, Error>
+    var waiters: Set<UUID>
+  }
+
+  private let maximumByteCount: Int
+  private var entries: [URL: Entry] = [:]
+  private var inFlightRequests: [URL: InFlightRequest] = [:]
+  private var accessCounter: UInt64 = 0
+  private var generation: UInt64 = 0
+  private(set) var cachedByteCount = 0
+
+  init(maximumByteCount: Int = 24 * 1_024 * 1_024) {
+    self.maximumByteCount = max(0, maximumByteCount)
+  }
+
+  var cachedEntryCount: Int {
+    entries.count
+  }
+
+  func data(
+    for url: URL,
+    fetch: @escaping @Sendable () async throws -> Data
+  ) async throws -> Data {
+    try Task.checkCancellation()
+    if var entry = entries[url] {
+      accessCounter &+= 1
+      entry.lastAccess = accessCounter
+      entries[url] = entry
+      return entry.data
+    }
+
+    let waiterID = UUID()
+    let request: InFlightRequest
+    if var existing = inFlightRequests[url] {
+      existing.waiters.insert(waiterID)
+      inFlightRequests[url] = existing
+      request = existing
+    } else {
+      let task = Task {
+        try await fetch()
+      }
+      request = InFlightRequest(
+        id: UUID(),
+        generation: generation,
+        task: task,
+        waiters: [waiterID]
+      )
+      inFlightRequests[url] = request
+    }
+
+    do {
+      let data = try await withTaskCancellationHandler {
+        let data = try await request.task.value
+        try Task.checkCancellation()
+        return data
+      } onCancel: {
+        Task {
+          await self.cancelWaiter(waiterID, for: url, requestID: request.id)
+        }
+      }
+      completeWaiter(
+        waiterID,
+        for: url,
+        requestID: request.id,
+        requestGeneration: request.generation,
+        data: data
+      )
+      return data
+    } catch {
+      completeWaiter(
+        waiterID,
+        for: url,
+        requestID: request.id,
+        requestGeneration: request.generation,
+        data: nil
+      )
+      throw error
+    }
+  }
+
+  func removeAll() {
+    generation &+= 1
+    for request in inFlightRequests.values {
+      request.task.cancel()
+    }
+    inFlightRequests.removeAll()
+    entries.removeAll()
+    cachedByteCount = 0
+  }
+
+  private func cancelWaiter(_ waiterID: UUID, for url: URL, requestID: UUID) {
+    guard var request = inFlightRequests[url], request.id == requestID else {
+      return
+    }
+    request.waiters.remove(waiterID)
+    if request.waiters.isEmpty {
+      request.task.cancel()
+      inFlightRequests[url] = nil
+    } else {
+      inFlightRequests[url] = request
+    }
+  }
+
+  private func completeWaiter(
+    _ waiterID: UUID,
+    for url: URL,
+    requestID: UUID,
+    requestGeneration: UInt64,
+    data: Data?
+  ) {
+    guard var request = inFlightRequests[url], request.id == requestID else {
+      return
+    }
+    guard request.waiters.remove(waiterID) != nil else {
+      return
+    }
+
+    if let data, requestGeneration == generation {
+      insert(data, for: url)
+    }
+    if request.waiters.isEmpty {
+      inFlightRequests[url] = nil
+    } else {
+      inFlightRequests[url] = request
+    }
+  }
+
+  private func insert(_ data: Data, for url: URL) {
+    guard maximumByteCount > 0, data.count <= maximumByteCount else {
+      return
+    }
+    if let previous = entries[url] {
+      cachedByteCount -= previous.data.count
+    }
+    accessCounter &+= 1
+    entries[url] = Entry(data: data, lastAccess: accessCounter)
+    cachedByteCount += data.count
+
+    while cachedByteCount > maximumByteCount,
+      let oldest = entries.min(by: { $0.value.lastAccess < $1.value.lastAccess })
+    {
+      entries[oldest.key] = nil
+      cachedByteCount -= oldest.value.data.count
+    }
   }
 }
 

@@ -370,7 +370,12 @@ struct ActiveProjectRow: View {
       : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
 
     layout {
-      RecordArtwork(url: imageURL, maxHeight: 124, emptyMinHeight: 96)
+      RecordArtwork(
+        url: imageURL,
+        maxHeight: 124,
+        emptyMinHeight: 96,
+        maxPixelDimension: 360
+      )
         .frame(width: 100, height: 124)
         .background(theme.card, in: .rect(cornerRadius: 10))
         .clipShape(.rect(cornerRadius: 10))
