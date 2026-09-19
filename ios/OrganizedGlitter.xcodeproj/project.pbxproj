@@ -29,6 +29,7 @@
 		415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371EA167F285531DE866936F /* PocketBaseDateTests.swift */; };
 		42DB3225654CE75C370E028F /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */; };
 		4498CBAA20400E17D11E0CF4 /* QuickCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4B8471FD90C20BEA9D0975 /* QuickCreateView.swift */; };
+		457DC3FD1C9AADB965223612 /* PocketBaseMultipart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B9D772610290CBFD91AE91A /* PocketBaseMultipart.swift */; };
 		4D5702666675052439F0CBDA /* PocketBaseClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9D28127350CFA29235E456 /* PocketBaseClientTests.swift */; };
 		4ECAD66E63E4BEDDBFE4A420 /* PasswordResetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F07BA0F2894320D34E13F322 /* PasswordResetView.swift */; };
 		4F140C1DA71C869912465529 /* TaxonomyPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88ABD6C004A9023D728D6A28 /* TaxonomyPicker.swift */; };
@@ -55,6 +56,7 @@
 		A7365172AB35A101E89E30AD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C8130E21AA27F12F629A9523 /* PrivacyInfo.xcprivacy */; };
 		A82DBD7DC926114CF5579738 /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6492B3FA9E99979892346890 /* LibraryModel.swift */; };
 		B487C0A1F2EF4330C3511E7E /* PocketBaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */; };
+		B5BB4EFCD8538737F4DD4D65 /* PocketBaseMultipartTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07EBA56EF84054FB531D0614 /* PocketBaseMultipartTests.swift */; };
 		B5F6DF03D4C7892E8879D9A2 /* OverviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A580F5FC13D7331BCA7E222 /* OverviewTests.swift */; };
 		BB7B58E0D6EBBB8F60113CC3 /* LibraryGalleryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B1313198DCA44E2E027F7EB /* LibraryGalleryCard.swift */; };
 		BCF12EEA076B4ED0113A1363 /* OverviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FA902DB3B6AA8EFE35CDD98 /* OverviewFixtures.swift */; };
@@ -95,6 +97,7 @@
 
 /* Begin PBXFileReference section */
 		0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomizerView.swift; sourceTree = "<group>"; };
+		07EBA56EF84054FB531D0614 /* PocketBaseMultipartTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseMultipartTests.swift; sourceTree = "<group>"; };
 		0847DB73C9A0DD9296BC4729 /* LibraryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryUITests.swift; sourceTree = "<group>"; };
 		13C4B9656060CFE9B5E72A69 /* KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStore.swift; sourceTree = "<group>"; };
 		15A7FD3C8DA9EFE11CA84D25 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -108,6 +111,7 @@
 		33736DFA39E0AD4255D9B3D3 /* OrganizedGlitter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OrganizedGlitter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		371EA167F285531DE866936F /* PocketBaseDateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseDateTests.swift; sourceTree = "<group>"; };
 		39A9F5EB63F7156CCDA9FAB6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		3B9D772610290CBFD91AE91A /* PocketBaseMultipart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseMultipart.swift; sourceTree = "<group>"; };
 		3D847E3F5114BC43A87B1FAC /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		3F029D79800F22CE6C8BCB60 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
 		4286752BA69AD6852C049E5D /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
@@ -261,6 +265,7 @@
 				EBA59ED683A06332B020CA9E /* PocketBaseDate.swift */,
 				911823E33E157F4AA5946C5D /* PocketBaseFilter.swift */,
 				96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */,
+				3B9D772610290CBFD91AE91A /* PocketBaseMultipart.swift */,
 				187EF4472F90566B37B087AF /* PocketBaseRecords.swift */,
 			);
 			path = Networking;
@@ -359,6 +364,7 @@
 				4F9D28127350CFA29235E456 /* PocketBaseClientTests.swift */,
 				371EA167F285531DE866936F /* PocketBaseDateTests.swift */,
 				469E2CDC832BD2CCC3A32EB9 /* PocketBaseFilterTests.swift */,
+				07EBA56EF84054FB531D0614 /* PocketBaseMultipartTests.swift */,
 				446118EA1C4EE132BA9E157A /* ThemeTests.swift */,
 			);
 			path = OrganizedGlitterTests;
@@ -515,6 +521,7 @@
 				4D5702666675052439F0CBDA /* PocketBaseClientTests.swift in Sources */,
 				415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */,
 				342C8490F7BBBA1EB1CE9531 /* PocketBaseFilterTests.swift in Sources */,
+				B5BB4EFCD8538737F4DD4D65 /* PocketBaseMultipartTests.swift in Sources */,
 				BFB8A3D020A12F6D4AAF4DFA /* ThemeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -552,6 +559,7 @@
 				99314484D0CFB4AD1B9F4D28 /* PocketBaseDate.swift in Sources */,
 				194236C29D621F54421005AB /* PocketBaseFilter.swift in Sources */,
 				B487C0A1F2EF4330C3511E7E /* PocketBaseModels.swift in Sources */,
+				457DC3FD1C9AADB965223612 /* PocketBaseMultipart.swift in Sources */,
 				02B1B1F48B151EA280F5E87F /* PocketBaseRecords.swift in Sources */,
 				4498CBAA20400E17D11E0CF4 /* QuickCreateView.swift in Sources */,
 				F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */,
