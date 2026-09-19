@@ -35,8 +35,8 @@ struct AppShellView: View {
       Tab("Overview", systemImage: "house", value: .overview) {
         NavigationStack {
           OverviewView(client: client, userID: user.id, verticals: accountPreferences.verticals) {
-            section in
-            libraryRequest = LibraryRequest(section: section, status: "wishlist")
+            request in
+            libraryRequest = request
             selectedTab = .library
           }
         }

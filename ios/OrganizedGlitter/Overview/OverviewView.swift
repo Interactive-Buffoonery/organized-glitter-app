@@ -143,6 +143,17 @@ enum OverviewCraft: String, CaseIterable, Identifiable {
     default: false
     }
   }
+
+  func completedSections(for verticals: VerticalPreferences) -> [LibrarySection] {
+    switch self {
+    case .all:
+      return LibrarySection.available(for: verticals).filter { $0 != .books }
+    case .diamonds:
+      return verticals.diamondPainting ? [.diamonds] : []
+    case .coloring:
+      return verticals.coloringBooks ? [.pages] : []
+    }
+  }
 }
 
 struct OverviewView: View {
@@ -152,17 +163,17 @@ struct OverviewView: View {
   @State private var model: OverviewModel
   @State private var craft = OverviewCraft.all
   let verticals: VerticalPreferences
-  let onWishlist: (LibrarySection) -> Void
+  let onLibraryRequest: (LibraryRequest) -> Void
 
   init(
     client: PocketBaseClient,
     userID: String,
     verticals: VerticalPreferences,
-    onWishlist: @escaping (LibrarySection) -> Void
+    onLibraryRequest: @escaping (LibraryRequest) -> Void
   ) {
     _model = State(initialValue: OverviewModel(client: client, userID: userID))
     self.verticals = verticals
-    self.onWishlist = onWishlist
+    self.onLibraryRequest = onLibraryRequest
   }
 
   var body: some View {
@@ -185,7 +196,7 @@ struct OverviewView: View {
                 section == .diamonds ? "Diamond art wishlist" : "Coloring book wishlist",
                 systemImage: section.systemImage
               ) {
-                onWishlist(section)
+                onLibraryRequest(LibraryRequest(section: section, status: "wishlist"))
               }
             }
           } label: {
@@ -199,6 +210,29 @@ struct OverviewView: View {
             }
           }
           .buttonStyle(QuietActionStyle())
+          .accessibilityIdentifier("overview.collection.wishlist")
+
+          Menu {
+            ForEach(craft.completedSections(for: verticals)) { section in
+              Button(
+                section == .diamonds ? "Completed diamond art" : "Completed coloring pages",
+                systemImage: section.systemImage
+              ) {
+                onLibraryRequest(LibraryRequest(section: section, status: "completed"))
+              }
+            }
+          } label: {
+            HStack(spacing: 12) {
+              Text("Completed")
+              Spacer()
+              Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(theme.pageSecondaryForeground)
+                .accessibilityHidden(true)
+            }
+          }
+          .buttonStyle(QuietActionStyle())
+          .accessibilityIdentifier("overview.collection.completed")
         }
 
         if model.hasLoaded, model.errorMessage == nil {
@@ -220,7 +254,12 @@ struct OverviewView: View {
     }
     .refreshable { await model.load() }
     .navigationDestination(for: LibraryItem.self) { item in
-      LibraryItemDetail(item: item, imageURL: model.artworkURL(for: item))
+      LibraryItemDetailDestination(
+        item: item,
+        client: model.client,
+        userID: model.userID,
+        onCollectionChanged: { await model.load() }
+      )
     }
     .task { await model.load() }
   }
