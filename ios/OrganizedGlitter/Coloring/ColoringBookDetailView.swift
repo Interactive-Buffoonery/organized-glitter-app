@@ -14,20 +14,7 @@ struct ColoringBookDetailView: View {
         bookHeader
 
         VStack(alignment: .leading, spacing: 14) {
-          HStack(alignment: .firstTextBaseline) {
-            Text("Pages")
-              .font(.title3.weight(.semibold))
-              .foregroundStyle(theme.foreground)
-              .accessibilityAddTraits(.isHeader)
-            Spacer()
-            Button {
-              onEditPageCount()
-            } label: {
-              Label("Edit page count", systemImage: "number")
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("detail.book.editPageCount")
-          }
+          pagesHeader
 
           if dynamicTypeSize.isAccessibilitySize {
             pageFilterPicker
@@ -198,6 +185,39 @@ struct ColoringBookDetailView: View {
       }
     }
     .accessibilityIdentifier("detail.book.filter")
+  }
+
+  @ViewBuilder
+  private var pagesHeader: some View {
+    if dynamicTypeSize.isAccessibilitySize {
+      VStack(alignment: .leading, spacing: 8) {
+        pagesTitle
+        editPageCountButton
+      }
+    } else {
+      HStack(alignment: .firstTextBaseline) {
+        pagesTitle
+        Spacer()
+        editPageCountButton
+      }
+    }
+  }
+
+  private var pagesTitle: some View {
+    Text("Pages")
+      .font(.title3.weight(.semibold))
+      .foregroundStyle(theme.foreground)
+      .accessibilityAddTraits(.isHeader)
+  }
+
+  private var editPageCountButton: some View {
+    Button {
+      onEditPageCount()
+    } label: {
+      Label("Edit page count", systemImage: "number")
+    }
+    .buttonStyle(.bordered)
+    .accessibilityIdentifier("detail.book.editPageCount")
   }
 }
 
