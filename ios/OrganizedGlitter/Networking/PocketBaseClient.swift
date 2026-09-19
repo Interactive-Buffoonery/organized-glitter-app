@@ -270,6 +270,17 @@ actor PocketBaseClient {
     )
   }
 
+  func create<Record: Decodable & Sendable>(
+    collection: String,
+    multipart: PocketBaseMultipartForm
+  ) async throws -> Record {
+    try await requestEncoded(
+      path: "/api/collections/\(collection)/records",
+      method: "POST",
+      body: try PocketBaseRequestBody(multipart: multipart)
+    )
+  }
+
   func update<Record: Decodable & Sendable>(
     collection: String,
     id: String,
@@ -279,6 +290,18 @@ actor PocketBaseClient {
       path: "/api/collections/\(collection)/records/\(id)",
       method: "PATCH",
       body: body
+    )
+  }
+
+  func update<Record: Decodable & Sendable>(
+    collection: String,
+    id: String,
+    multipart: PocketBaseMultipartForm
+  ) async throws -> Record {
+    try await requestEncoded(
+      path: "/api/collections/\(collection)/records/\(id)",
+      method: "PATCH",
+      body: try PocketBaseRequestBody(multipart: multipart)
     )
   }
 
@@ -351,7 +374,23 @@ actor PocketBaseClient {
     body: (any Encodable)? = nil,
     includesAuthentication: Bool = true
   ) async throws -> Response {
-    let data = try await send(
+    try await requestEncoded(
+      path: path,
+      queryItems: queryItems,
+      method: method,
+      body: try body.map(PocketBaseRequestBody.init(json:)),
+      includesAuthentication: includesAuthentication
+    )
+  }
+
+  private func requestEncoded<Response: Decodable>(
+    path: String,
+    queryItems: [URLQueryItem] = [],
+    method: String = "GET",
+    body: PocketBaseRequestBody? = nil,
+    includesAuthentication: Bool = true
+  ) async throws -> Response {
+    let data = try await sendEncoded(
       path: path,
       queryItems: queryItems,
       method: method,
@@ -374,6 +413,24 @@ actor PocketBaseClient {
     includesAuthentication: Bool = true,
     canRefreshAuthentication: Bool = true
   ) async throws -> Data {
+    try await sendEncoded(
+      path: path,
+      queryItems: queryItems,
+      method: method,
+      body: try body.map(PocketBaseRequestBody.init(json:)),
+      includesAuthentication: includesAuthentication,
+      canRefreshAuthentication: canRefreshAuthentication
+    )
+  }
+
+  private func sendEncoded(
+    path: String,
+    queryItems: [URLQueryItem] = [],
+    method: String = "GET",
+    body: PocketBaseRequestBody? = nil,
+    includesAuthentication: Bool = true,
+    canRefreshAuthentication: Bool = true
+  ) async throws -> Data {
     guard
       var components = URLComponents(
         url: baseURL.appending(path: path),
@@ -393,8 +450,8 @@ actor PocketBaseClient {
     request.setValue("application/json", forHTTPHeaderField: "Accept")
 
     if let body {
-      request.httpBody = try JSONEncoder().encode(AnyEncodable(body))
-      request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+      request.httpBody = body.data
+      request.setValue(body.contentType, forHTTPHeaderField: "Content-Type")
     }
 
     if includesAuthentication {
@@ -421,7 +478,7 @@ actor PocketBaseClient {
       canRefreshAuthentication
     {
       _ = try await refreshAuthentication()
-      return try await send(
+      return try await sendEncoded(
         path: path,
         queryItems: queryItems,
         method: method,
@@ -435,6 +492,22 @@ actor PocketBaseClient {
       throw APIError.from(statusCode: httpResponse.statusCode, body: data)
     }
     return data
+  }
+}
+
+private struct PocketBaseRequestBody: Sendable {
+  let data: Data
+  let contentType: String
+
+  init(json: any Encodable) throws {
+    data = try JSONEncoder().encode(AnyEncodable(json))
+    contentType = "application/json"
+  }
+
+  init(multipart: PocketBaseMultipartForm) throws {
+    let encoded = try multipart.encoded()
+    data = encoded.data
+    contentType = encoded.contentType
   }
 }
 
