@@ -203,7 +203,7 @@ struct ColoringPageDetailView: View {
   }
 
   private var heroHeight: CGFloat {
-    horizontalSizeClass == .regular ? 360 : 280
+    horizontalSizeClass == .regular ? 360 : 250
   }
 
   private var pagePhotoSubjectSuffix: String {
