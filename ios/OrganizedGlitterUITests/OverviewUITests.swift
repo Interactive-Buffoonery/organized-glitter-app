@@ -45,7 +45,7 @@ final class OverviewUITests: XCTestCase {
 
   func testWishlistOpensFilteredLibrary() throws {
     let app = launch("populated")
-    let wishlist = app.buttons["Wishlist"]
+    let wishlist = app.buttons["overview.collection.wishlist"]
     XCTAssertTrue(wishlist.waitForExistence(timeout: 5))
     for _ in 0..<10 where !wishlist.isHittable { app.swipeUp() }
     XCTAssertTrue(wishlist.isHittable)
@@ -61,6 +61,19 @@ final class OverviewUITests: XCTestCase {
       ).firstMatch.waitForExistence(timeout: 5))
     let filter = app.buttons["Filter by status"]
     XCTAssertEqual(filter.value as? String, "Wishlist")
+  }
+
+  func testCompletedShortcutOpensTheSelectedLibraryFilter() throws {
+    let app = launch("design")
+    let completed = app.buttons["overview.collection.completed"]
+    XCTAssertTrue(completed.waitForExistence(timeout: 5))
+    completed.tap()
+    app.buttons["Completed diamond art"].tap()
+
+    XCTAssertTrue(app.buttons["library.status"].waitForExistence(timeout: 5))
+    XCTAssertEqual(app.buttons["library.status"].value as? String, "Completed")
+    XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Peony garden"].exists)
   }
 
   func testAccessibleLayoutAndRotation() throws {
