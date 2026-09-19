@@ -167,7 +167,7 @@ struct OverviewView: View {
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 22) {
+      VStack(alignment: .leading, spacing: 18) {
         OverviewScreenHeader("Overview")
 
         craftPicker
@@ -175,14 +175,6 @@ struct OverviewView: View {
         VStack(alignment: .leading, spacing: 6) {
           OverviewSectionHeader("In progress")
           activeWork
-        }
-
-        if model.hasLoaded, model.errorMessage == nil {
-          Text(
-            "Active diamond projects: \(model.activeDiamondCount) · Active coloring pages: \(model.activeColoringPageCount) · Completed this month: \(model.completedThisMonthCount)"
-          )
-          .font(.footnote)
-          .foregroundStyle(theme.pageSecondaryForeground)
         }
 
         VStack(alignment: .leading, spacing: 8) {
@@ -207,6 +199,14 @@ struct OverviewView: View {
             }
           }
           .buttonStyle(QuietActionStyle())
+        }
+
+        if model.hasLoaded, model.errorMessage == nil {
+          Text(
+            "Active diamond projects: \(model.activeDiamondCount) · Active coloring pages: \(model.activeColoringPageCount) · Completed this month: \(model.completedThisMonthCount)"
+          )
+          .font(.footnote)
+          .foregroundStyle(theme.pageSecondaryForeground)
         }
       }
       .frame(maxWidth: 760, alignment: .leading)
@@ -285,7 +285,7 @@ struct OverviewView: View {
             if index < items.count - 1 {
               Divider()
                 .overlay(theme.border)
-                .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 140)
+                .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 120)
             }
           }
         }
@@ -331,7 +331,7 @@ private struct OverviewSectionHeader: View {
 
   var body: some View {
     Text(title)
-      .font(.title2.weight(.semibold))
+      .font(.title3.weight(.semibold))
       .foregroundStyle(theme.foreground)
       .accessibilityAddTraits(.isHeader)
   }
@@ -358,11 +358,9 @@ private struct OverviewProjectRow: View {
           Text(item.title)
             .font(.headline)
             .foregroundStyle(theme.foreground)
-          if !item.subtitle.isEmpty {
-            Text(item.subtitle)
-              .font(.subheadline)
-              .foregroundStyle(theme.pageSecondaryForeground)
-          }
+          Text(item.overviewKindLabel)
+            .font(.subheadline)
+            .foregroundStyle(theme.pageSecondaryForeground)
           StatusBadge(status: item.status, presentation: .quiet)
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -382,19 +380,28 @@ private struct OverviewProjectRow: View {
   @ViewBuilder
   private var artwork: some View {
     if dynamicTypeSize.isAccessibilitySize {
-      artworkContent
+      RecordArtwork(url: imageURL, maxHeight: 220, emptyMinHeight: 160)
+        .background(theme.card, in: .rect(cornerRadius: 10))
+        .clipShape(.rect(cornerRadius: 10))
+        .accessibilityHidden(true)
         .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 220)
     } else {
-      artworkContent
-        .frame(width: 124, height: 124)
+      RecordArtwork(url: imageURL, maxHeight: 104, emptyMinHeight: 104)
+        .background(theme.card, in: .rect(cornerRadius: 10))
+        .clipShape(.rect(cornerRadius: 10))
+        .accessibilityHidden(true)
+        .frame(width: 104, height: 104)
     }
   }
+}
 
-  private var artworkContent: some View {
-    RecordArtwork(url: imageURL, maxHeight: 220, emptyMinHeight: 124)
-      .background(theme.card, in: .rect(cornerRadius: 10))
-      .clipShape(.rect(cornerRadius: 10))
-      .accessibilityHidden(true)
+private extension LibraryItem {
+  var overviewKindLabel: String {
+    switch self {
+    case .diamond: "Diamond painting"
+    case .book: "Coloring book"
+    case .page: "Coloring page"
+    }
   }
 }
 
