@@ -194,7 +194,8 @@ struct DiamondProjectDetailView: View {
   }
 
   private var photoHeader: some View {
-    let layout = dynamicTypeSize.isAccessibilitySize
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
       : AnyLayout(HStackLayout())
     return layout {
