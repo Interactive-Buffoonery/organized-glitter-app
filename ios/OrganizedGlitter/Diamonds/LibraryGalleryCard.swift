@@ -8,9 +8,15 @@ struct LibraryGalleryCard: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      RecordArtwork(url: imageURL, maxHeight: 230, emptyMinHeight: 170)
-        .frame(maxWidth: .infinity, minHeight: 170, maxHeight: 230)
+      RecordArtwork(
+        url: imageURL,
+        maxHeight: item.isColoringBook ? 260 : 230,
+        emptyMinHeight: item.isColoringBook ? 220 : 170
+      )
+        .aspectRatio(item.isColoringBook ? 0.72 : 1, contentMode: .fit)
+        .frame(maxWidth: .infinity)
         .background(theme.card, in: .rect(cornerRadius: 10))
+        .clipShape(.rect(cornerRadius: 10))
         .accessibilityHidden(true)
 
       Text(item.title)
@@ -18,8 +24,8 @@ struct LibraryGalleryCard: View {
         .foregroundStyle(theme.foreground)
         .fixedSize(horizontal: false, vertical: true)
 
-      if !item.libraryCaption.isEmpty {
-        Text(item.libraryCaption)
+      if !item.galleryCaption.isEmpty {
+        Text(item.galleryCaption)
           .font(.subheadline)
           .foregroundStyle(theme.pageSecondaryForeground)
           .fixedSize(horizontal: false, vertical: true)
@@ -30,5 +36,21 @@ struct LibraryGalleryCard: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(.rect)
     .accessibilityElement(children: .combine)
+  }
+}
+
+extension LibraryItem {
+  fileprivate var isColoringBook: Bool {
+    if case .book = self {
+      return true
+    }
+    return false
+  }
+
+  var galleryCaption: String {
+    if case .book(let book) = self {
+      return "\(book.totalPages) \(book.totalPages == 1 ? "page" : "pages")"
+    }
+    return libraryCaption
   }
 }

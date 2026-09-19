@@ -8,7 +8,6 @@ struct LibraryView: View {
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
   @State private var editorTarget: LibraryEditorTarget?
-  @State private var deleteCandidate: LibraryItem?
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -59,41 +58,6 @@ struct LibraryView: View {
     .sheet(item: $editorTarget) { target in
       editor(for: target)
     }
-    .confirmationDialog(
-      deleteConfirmationTitle,
-      isPresented: Binding(
-        get: { deleteCandidate != nil },
-        set: { if !$0 { deleteCandidate = nil } }
-      ),
-      titleVisibility: .visible
-    ) {
-      Button(deleteButtonLabel, role: .destructive) {
-        guard let candidate = deleteCandidate else {
-          return
-        }
-        deleteCandidate = nil
-        path = []
-        Task { await model.delete(candidate) }
-      }
-      Button("Cancel", role: .cancel) {
-        deleteCandidate = nil
-      }
-    } message: {
-      Text(deleteConfirmationMessage)
-    }
-    .alert(
-      "Couldn’t delete item",
-      isPresented: Binding(
-        get: { model.mutationError != nil },
-        set: { if !$0 { model.mutationError = nil } }
-      )
-    ) {
-      Button("OK") {
-        model.mutationError = nil
-      }
-    } message: {
-      Text(model.mutationError ?? "")
-    }
   }
 
   private var phoneLibrary: some View {
@@ -126,27 +90,28 @@ struct LibraryView: View {
   }
 
   private func browsingScroll(showsCraftPicker: Bool) -> some View {
-    @Bindable var model = model
     return ScrollView {
-      VStack(alignment: .leading, spacing: 24) {
-        PageHeader("Library")
+      VStack(alignment: .leading, spacing: 18) {
+        Text("Library")
+          .font(.largeTitle.bold())
+          .foregroundStyle(theme.foreground)
+          .accessibilityAddTraits(.isHeader)
+
+        searchField
+
         if showsCraftPicker {
           craftPicker
         }
-        statusFilter
+
+        filterControls
         libraryBody
         createAction
       }
       .frame(maxWidth: 760, alignment: .leading)
-      .padding()
+      .padding(.horizontal, 20)
+      .padding(.top, 20)
+      .padding(.bottom, 32)
       .frame(maxWidth: .infinity)
-    }
-    .navigationTitle("Library")
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbarBackground(.hidden, for: .navigationBar)
-    .searchable(text: $model.searchText, prompt: searchPrompt)
-    .onSubmit(of: .search) {
-      Task { await model.load() }
     }
     .refreshable { await model.load() }
     .background {
@@ -158,6 +123,27 @@ struct LibraryView: View {
           .padding()
       }
     }
+  }
+
+  private var searchField: some View {
+    @Bindable var model = model
+    return HStack(spacing: 10) {
+      Image(systemName: "magnifyingglass")
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .accessibilityHidden(true)
+      TextField(searchPrompt, text: $model.searchText)
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+        .submitLabel(.search)
+        .accessibilityIdentifier("library.search")
+        .onSubmit {
+          Task { await model.load() }
+        }
+    }
+    .padding(.horizontal, 12)
+    .frame(minHeight: 44)
+    .background(theme.card, in: .rect(cornerRadius: 12))
+    .accessibilityElement(children: .contain)
   }
 
   private var craftPicker: some View {
@@ -186,6 +172,18 @@ struct LibraryView: View {
     .accessibilityIdentifier("library.craft")
   }
 
+  private var filterControls: some View {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+
+    return layout {
+      statusFilter
+      sortMenu
+    }
+  }
+
   private var statusFilter: some View {
     Menu {
       Button("All statuses") {
@@ -207,6 +205,30 @@ struct LibraryView: View {
     .buttonStyle(QuietActionStyle())
     .accessibilityLabel("Filter by status")
     .accessibilityValue(model.statusFilter?.organizedGlitterLabel ?? "All statuses")
+    .accessibilityIdentifier("library.status")
+  }
+
+  private var sortMenu: some View {
+    Menu {
+      ForEach(model.section.sortOptions) { option in
+        Button {
+          model.sort = option
+        } label: {
+          if model.sort == option {
+            Label(option.title, systemImage: "checkmark")
+          } else {
+            Text(option.title)
+          }
+        }
+      }
+    } label: {
+      Label("Sort", systemImage: "arrow.up.arrow.down")
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .buttonStyle(QuietActionStyle())
+    .accessibilityLabel("Sort library")
+    .accessibilityValue(model.sort.title)
+    .accessibilityIdentifier("library.sort")
   }
 
   @ViewBuilder
@@ -309,29 +331,12 @@ struct LibraryView: View {
 
   @ViewBuilder
   private func detail(for item: LibraryItem) -> some View {
-    switch item {
-    case .diamond(let project):
-      LibraryItemDetail(
-        item: item,
-        imageURL: item.artworkURL(using: model.client),
-        onEdit: { editorTarget = .editDiamond(project) },
-        onDelete: { deleteCandidate = item }
-      )
-    case .book(let book):
-      LibraryItemDetail(
-        item: item,
-        imageURL: item.artworkURL(using: model.client),
-        onEdit: { editorTarget = .editBook(book) },
-        onDelete: { deleteCandidate = item },
-        deleteLabel: "Delete Coloring Book"
-      )
-    case .page(let page):
-      LibraryItemDetail(
-        item: item,
-        imageURL: item.artworkURL(using: model.client),
-        onEdit: { editorTarget = .editPage(page) }
-      )
-    }
+    LibraryItemDetailDestination(
+      item: item,
+      client: model.client,
+      userID: model.userID,
+      onCollectionChanged: { await model.load() }
+    )
   }
 
   @ViewBuilder
@@ -345,15 +350,6 @@ struct LibraryView: View {
       ) { saved in
         Task { await selectSaved(.diamond(saved)) }
       }
-    case .editDiamond(let project):
-      DiamondProjectEditor(
-        client: model.client,
-        userID: model.userID,
-        project: project,
-        onLibraryRefresh: { await model.load() }
-      ) { saved in
-        Task { await selectSaved(.diamond(saved)) }
-      }
     case .newBook:
       ColoringBookEditor(
         client: model.client,
@@ -361,23 +357,6 @@ struct LibraryView: View {
         onLibraryRefresh: { await model.load() }
       ) { saved in
         Task { await selectSaved(.book(saved)) }
-      }
-    case .editBook(let book):
-      ColoringBookEditor(
-        client: model.client,
-        userID: model.userID,
-        book: book,
-        onLibraryRefresh: { await model.load() }
-      ) { saved in
-        Task { await selectSaved(.book(saved)) }
-      }
-    case .editPage(let page):
-      ColoringPageEditor(
-        client: model.client,
-        page: page,
-        onLibraryRefresh: { await model.load() }
-      ) { saved in
-        Task { await selectSaved(.page(saved)) }
       }
     }
   }
@@ -387,30 +366,6 @@ struct LibraryView: View {
       path = [selected]
     } else {
       path = []
-    }
-  }
-
-  private var deleteConfirmationTitle: String {
-    if case .book = deleteCandidate {
-      "Delete this coloring book?"
-    } else {
-      "Delete this project?"
-    }
-  }
-
-  private var deleteButtonLabel: String {
-    if case .book = deleteCandidate {
-      "Delete Coloring Book"
-    } else {
-      "Delete Project"
-    }
-  }
-
-  private var deleteConfirmationMessage: String {
-    if case .book = deleteCandidate {
-      "This permanently removes the book and all of its page records after PocketBase confirms the request."
-    } else {
-      "This permanently removes the project after PocketBase confirms the request."
     }
   }
 
@@ -425,18 +380,12 @@ struct LibraryView: View {
 
 private enum LibraryEditorTarget: Identifiable {
   case newDiamond
-  case editDiamond(DiamondProjectRecord)
   case newBook
-  case editBook(ColoringBookRecord)
-  case editPage(ColoringPageRecord)
 
   var id: String {
     switch self {
     case .newDiamond: "new-diamond"
-    case .editDiamond(let project): "diamond-\(project.id)"
     case .newBook: "new-book"
-    case .editBook(let book): "book-\(book.id)"
-    case .editPage(let page): "page-\(page.id)"
     }
   }
 }

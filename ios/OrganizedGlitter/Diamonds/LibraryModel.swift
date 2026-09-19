@@ -48,6 +48,50 @@ enum LibrarySection: String, CaseIterable, Identifiable {
       ["not_started", "palette_chosen", "in_progress", "on_hold", "completed"]
     }
   }
+
+  var sortOptions: [LibrarySort] {
+    switch self {
+    case .diamonds:
+      [.recentlyUpdated, .titleAscending, .titleDescending]
+    case .books:
+      [.recentlyUpdated, .titleAscending, .titleDescending]
+    case .pages:
+      [.recentlyUpdated, .pageAscending, .pageDescending]
+    }
+  }
+}
+
+enum LibrarySort: String, CaseIterable, Identifiable {
+  case recentlyUpdated
+  case titleAscending
+  case titleDescending
+  case pageAscending
+  case pageDescending
+
+  var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .recentlyUpdated: "Recently updated"
+    case .titleAscending: "Title A to Z"
+    case .titleDescending: "Title Z to A"
+    case .pageAscending: "Page number ascending"
+    case .pageDescending: "Page number descending"
+    }
+  }
+
+  func query(for section: LibrarySection) -> String {
+    switch (self, section) {
+    case (.recentlyUpdated, _): "-updated"
+    case (.titleAscending, .diamonds): "+title_sort"
+    case (.titleDescending, .diamonds): "-title_sort"
+    case (.titleAscending, .books): "+title"
+    case (.titleDescending, .books): "-title"
+    case (.pageAscending, .pages): "+page_number"
+    case (.pageDescending, .pages): "-page_number"
+    default: "-updated"
+    }
+  }
 }
 
 struct LibraryRequest: Equatable {
@@ -65,6 +109,7 @@ final class LibraryModel {
   var section = LibrarySection.diamonds
   var searchText = ""
   var statusFilter: String?
+  var sort = LibrarySort.recentlyUpdated
   var isLoading = false
   var hasLoaded = false
   var errorMessage: String?
@@ -99,17 +144,18 @@ final class LibraryModel {
     currentPage < totalPages
   }
 
-  /// Observed by Library's load task. Section and status are included so craft
-  /// and filter changes reload; `listingEpoch` changes when a Wishlist handoff
-  /// clears search without changing either.
+  /// Observed by Library's load task. Section, status, and sort are included so
+  /// browsing changes reload; `listingEpoch` changes when a handoff clears
+  /// search without changing the other request fields.
   var listingIdentity: String {
-    "\(section.rawValue)|\(statusFilter ?? "")|\(listingEpoch)"
+    "\(section.rawValue)|\(statusFilter ?? "")|\(sort.rawValue)|\(listingEpoch)"
   }
 
   func apply(_ request: LibraryRequest) {
     select(request.section)
     searchText = ""
     statusFilter = request.status
+    sort = .recentlyUpdated
     listingEpoch += 1
   }
 
@@ -119,6 +165,7 @@ final class LibraryModel {
     }
     self.section = section
     statusFilter = nil
+    sort = .recentlyUpdated
   }
 
   /// Keeps Library on an enabled craft when preferences load or change.
@@ -156,6 +203,7 @@ final class LibraryModel {
     }
     let requestGeneration = generation
     let requestedSection = section
+    let requestedSort = sort
     let requestedPage = reset ? 1 : currentPage + 1
 
     isLoading = true
@@ -174,7 +222,7 @@ final class LibraryModel {
           collection: "projects",
           page: requestedPage,
           filter: filter(for: requestedSection),
-          sort: "-updated",
+          sort: requestedSort.query(for: requestedSection),
           expand: "company,artist"
         )
         guard requestGeneration == generation, section == requestedSection else {
@@ -187,7 +235,7 @@ final class LibraryModel {
           collection: "coloring_books",
           page: requestedPage,
           filter: filter(for: requestedSection),
-          sort: "-updated",
+          sort: requestedSort.query(for: requestedSection),
           expand: "publisher,illustrator"
         )
         guard requestGeneration == generation, section == requestedSection else {
@@ -200,7 +248,7 @@ final class LibraryModel {
           collection: "coloring_pages",
           page: requestedPage,
           filter: filter(for: requestedSection),
-          sort: "+page_number",
+          sort: requestedSort.query(for: requestedSection),
           expand: "book"
         )
         guard requestGeneration == generation, section == requestedSection else {
