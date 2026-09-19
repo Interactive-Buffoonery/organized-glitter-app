@@ -2,6 +2,7 @@ import PhotosUI
 import SwiftUI
 
 struct ColoringPageDetailView: View {
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
 
   let page: ColoringPageRecord
@@ -14,14 +15,17 @@ struct ColoringPageDetailView: View {
   @State private var photoErrorMessage: String?
 
   var body: some View {
+    let startedDate = formattedDate(page.startedAt)
+    let completedDate = formattedDate(page.completedAt)
+
     ScrollView {
-      LazyVStack(alignment: .leading, spacing: 24) {
+      LazyVStack(alignment: .leading, spacing: 18) {
         RecordArtwork(
           url: LibraryItem.page(page).artworkURL(using: model.client),
-          maxHeight: 480,
-          emptyMinHeight: 260
+          maxHeight: heroHeight,
+          emptyMinHeight: 180
         )
-        .frame(maxWidth: .infinity, minHeight: 260)
+        .frame(maxWidth: .infinity, maxHeight: heroHeight)
         .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
         .clipShape(.rect(cornerRadius: Theme.Radius.medium))
         .accessibilityLabel("Page artwork")
@@ -29,10 +33,10 @@ struct ColoringPageDetailView: View {
 
         VStack(alignment: .leading, spacing: 6) {
           Text(LibraryItem.page(page).title)
-            .font(.largeTitle.bold())
+            .font(.title2.bold())
             .foregroundStyle(theme.foreground)
             .accessibilityAddTraits(.isHeader)
-          Text(page.expand?.book?.title ?? "Coloring book")
+          Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
             .font(.body)
             .foregroundStyle(theme.pageSecondaryForeground)
         }
@@ -41,18 +45,11 @@ struct ColoringPageDetailView: View {
           DetailMetadataRow(label: "Status") {
             StatusBadge(status: page.status, presentation: .quiet)
           }
-          DetailMetadataRow(label: "Page", value: page.pageNumber.formatted())
-          if let startedAt = formattedDate(page.startedAt) {
-            DetailMetadataRow(label: "Started", value: startedAt)
-          }
-          if let completedAt = formattedDate(page.completedAt) {
-            DetailMetadataRow(label: "Completed", value: completedAt)
-          }
         }
 
         VStack(alignment: .leading, spacing: 12) {
           Text("Photos")
-            .font(.title2.bold())
+            .font(.title3.weight(.semibold))
             .foregroundStyle(theme.foreground)
             .accessibilityAddTraits(.isHeader)
 
@@ -105,6 +102,23 @@ struct ColoringPageDetailView: View {
           }
         }
 
+        if startedDate != nil || completedDate != nil {
+          VStack(alignment: .leading, spacing: 12) {
+            Text("Page details")
+              .font(.title3.weight(.semibold))
+              .foregroundStyle(theme.foreground)
+              .accessibilityAddTraits(.isHeader)
+            DetailMetadataCard {
+              if let startedAt = startedDate {
+                DetailMetadataRow(label: "Started", value: startedAt)
+              }
+              if let completedAt = completedDate {
+                DetailMetadataRow(label: "Completed", value: completedAt)
+              }
+            }
+          }
+        }
+
         if let errorMessage = model.errorMessage {
           VStack(alignment: .leading, spacing: 12) {
             AccessibleErrorLabel(message: errorMessage)
@@ -114,9 +128,14 @@ struct ColoringPageDetailView: View {
           }
         }
       }
-      .padding(16)
+      .frame(maxWidth: 760, alignment: .leading)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 16)
+      .frame(maxWidth: .infinity)
     }
-    .background(theme.themedBackground)
+    .background {
+      theme.themedBackground.ignoresSafeArea()
+    }
     .refreshable { await model.load() }
     .task(id: selectedItem) {
       await prepareAndUploadSelection()
@@ -140,8 +159,29 @@ struct ColoringPageDetailView: View {
 
   private func formattedDate(_ value: String?) -> String? {
     guard let value = value?.nonEmpty else { return nil }
-    guard let date = PocketBaseDate.date(from: value) else { return value }
+    guard let date = parsedDate(value) else { return nil }
     return date.formatted(date: .abbreviated, time: .omitted)
+  }
+
+  private func parsedDate(_ value: String) -> Date? {
+    if let date = PocketBaseDate.date(from: value) {
+      return date
+    }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.timeZone = .current
+    for format in ["yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd"] {
+      formatter.dateFormat = format
+      if let date = formatter.date(from: value) {
+        return date
+      }
+    }
+    return nil
+  }
+
+  private var heroHeight: CGFloat {
+    horizontalSizeClass == .regular ? 360 : 280
   }
 
   private func prepareAndUploadSelection() async {

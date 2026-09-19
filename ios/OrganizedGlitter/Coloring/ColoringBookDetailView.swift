@@ -8,42 +8,22 @@ struct ColoringBookDetailView: View {
   let model: LibraryItemDetailModel
   let onEditPageCount: () -> Void
 
-  private let columns = [
-    GridItem(.adaptive(minimum: 142, maximum: 220), spacing: 14)
-  ]
-
   var body: some View {
     ScrollView {
-      LazyVStack(alignment: .leading, spacing: 24) {
+      LazyVStack(alignment: .leading, spacing: 18) {
         bookHeader
-
-        DetailMetadataCard {
-          DetailMetadataRow(label: "Status") {
-            StatusBadge(status: book.status, presentation: .quiet)
-          }
-          DetailMetadataRow(
-            label: "Progress",
-            value: "\(book.completedPages ?? 0) of \(book.totalPages) pages"
-          )
-          if let publisher = book.expand?.publisher?.name.nonEmpty {
-            DetailMetadataRow(label: "Publisher", value: publisher)
-          }
-          if let illustrator = book.expand?.illustrator?.name.nonEmpty {
-            DetailMetadataRow(label: "Illustrator", value: illustrator)
-          }
-        }
 
         VStack(alignment: .leading, spacing: 14) {
           HStack(alignment: .firstTextBaseline) {
             Text("Pages")
-              .font(.title2.bold())
+              .font(.title3.weight(.semibold))
               .foregroundStyle(theme.foreground)
               .accessibilityAddTraits(.isHeader)
             Spacer()
             Button {
               onEditPageCount()
             } label: {
-              Label("Edit page count", systemImage: "plus")
+              Label("Edit page count", systemImage: "number")
             }
             .buttonStyle(.bordered)
             .accessibilityIdentifier("detail.book.editPageCount")
@@ -95,6 +75,25 @@ struct ColoringBookDetailView: View {
           }
         }
 
+        if book.expand?.publisher?.name.nonEmpty != nil
+          || book.expand?.illustrator?.name.nonEmpty != nil
+        {
+          VStack(alignment: .leading, spacing: 12) {
+            Text("Book details")
+              .font(.title3.weight(.semibold))
+              .foregroundStyle(theme.foreground)
+              .accessibilityAddTraits(.isHeader)
+            DetailMetadataCard {
+              if let publisher = book.expand?.publisher?.name.nonEmpty {
+                DetailMetadataRow(label: "Publisher", value: publisher)
+              }
+              if let illustrator = book.expand?.illustrator?.name.nonEmpty {
+                DetailMetadataRow(label: "Illustrator", value: illustrator)
+              }
+            }
+          }
+        }
+
         if let errorMessage = model.errorMessage {
           VStack(alignment: .leading, spacing: 12) {
             AccessibleErrorLabel(message: errorMessage)
@@ -108,9 +107,14 @@ struct ColoringBookDetailView: View {
           AccessibleErrorLabel(message: mutationErrorMessage)
         }
       }
-      .padding(16)
+      .frame(maxWidth: 760, alignment: .leading)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 16)
+      .frame(maxWidth: .infinity)
     }
-    .background(theme.themedBackground)
+    .background {
+      theme.themedBackground.ignoresSafeArea()
+    }
     .refreshable { await model.load() }
   }
 
@@ -118,19 +122,18 @@ struct ColoringBookDetailView: View {
   private var bookHeader: some View {
     let layout =
       dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
-      : AnyLayout(HStackLayout(alignment: .top, spacing: 18))
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+      : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
 
     layout {
       RecordArtwork(
         url: LibraryItem.book(book).artworkURL(using: model.client),
-        maxHeight: 260,
-        emptyMinHeight: 180
+        maxHeight: 150,
+        emptyMinHeight: 150
       )
       .frame(
-        maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 160,
-        minHeight: 180,
-        maxHeight: 260
+        width: dynamicTypeSize.isAccessibilitySize ? nil : 112,
+        height: 150
       )
       .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
       .clipShape(.rect(cornerRadius: Theme.Radius.medium))
@@ -139,7 +142,7 @@ struct ColoringBookDetailView: View {
 
       VStack(alignment: .leading, spacing: 8) {
         Text(book.title)
-          .font(.largeTitle.bold())
+          .font(.title2.bold())
           .foregroundStyle(theme.foreground)
           .accessibilityAddTraits(.isHeader)
         if let series = book.series?.nonEmpty {
@@ -147,6 +150,10 @@ struct ColoringBookDetailView: View {
             .foregroundStyle(theme.pageSecondaryForeground)
         }
         Text("Coloring book")
+          .font(.subheadline)
+          .foregroundStyle(theme.pageSecondaryForeground)
+        StatusBadge(status: book.status, presentation: .quiet)
+        Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
           .font(.subheadline)
           .foregroundStyle(theme.pageSecondaryForeground)
         ProgressView(
@@ -166,6 +173,13 @@ struct ColoringBookDetailView: View {
     } else {
       "No pages have the \(model.bookPageFilter.title.lowercased()) status."
     }
+  }
+
+  private var columns: [GridItem] {
+    if dynamicTypeSize.isAccessibilitySize {
+      return [GridItem(.flexible())]
+    }
+    return [GridItem(.adaptive(minimum: 142, maximum: 220), spacing: 14)]
   }
 
   private var pageFilterPicker: some View {

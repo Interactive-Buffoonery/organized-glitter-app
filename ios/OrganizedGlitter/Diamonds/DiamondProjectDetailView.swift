@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct DiamondProjectDetailView: View {
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
 
   let project: DiamondProjectRecord
@@ -13,13 +14,13 @@ struct DiamondProjectDetailView: View {
 
   var body: some View {
     ScrollView {
-      LazyVStack(alignment: .leading, spacing: 24) {
+      LazyVStack(alignment: .leading, spacing: 18) {
         RecordArtwork(
           url: LibraryItem.diamond(project).artworkURL(using: model.client),
-          maxHeight: 440,
-          emptyMinHeight: 220
+          maxHeight: heroHeight,
+          emptyMinHeight: 180
         )
-        .frame(maxWidth: .infinity, minHeight: 220)
+        .frame(maxWidth: .infinity, maxHeight: heroHeight)
         .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
         .clipShape(.rect(cornerRadius: Theme.Radius.medium))
         .accessibilityLabel("Project artwork")
@@ -27,7 +28,7 @@ struct DiamondProjectDetailView: View {
 
         VStack(alignment: .leading, spacing: 6) {
           Text(project.title)
-            .font(.largeTitle.bold())
+            .font(.title2.bold())
             .foregroundStyle(theme.foreground)
             .accessibilityAddTraits(.isHeader)
           if !LibraryItem.diamond(project).subtitle.isEmpty {
@@ -41,28 +42,16 @@ struct DiamondProjectDetailView: View {
           DetailMetadataRow(label: "Status") {
             StatusBadge(status: project.status, presentation: .quiet)
           }
-          DetailMetadataRow(
-            label: "Kit",
-            value: project.kitCategory.organizedGlitterLabel
-          )
-          DetailMetadataRow(
-            label: "Drills",
-            value: project.drillShape?.nonEmpty?.organizedGlitterLabel ?? "Not set"
-          )
           if let width = project.width, let height = project.height {
             DetailMetadataRow(
               label: "Size",
               value: "\(width.formatted()) × \(height.formatted()) cm"
             )
           }
-        }
-
-        if let notes = project.generalNotes?.nonEmpty {
-          detailSection("Notes") {
-            Text(notes)
-              .foregroundStyle(theme.foreground)
-              .frame(maxWidth: .infinity, alignment: .leading)
-          }
+          DetailMetadataRow(
+            label: "Drills",
+            value: project.drillShape?.nonEmpty?.organizedGlitterLabel ?? "Not set"
+          )
         }
 
         detailSection("Photos") {
@@ -87,6 +76,23 @@ struct DiamondProjectDetailView: View {
           .controlSize(.large)
           .disabled(model.isMutating)
           .accessibilityIdentifier("detail.diamond.addNote")
+        }
+
+        detailSection("Project details") {
+          DetailMetadataCard {
+            DetailMetadataRow(
+              label: "Kit",
+              value: project.kitCategory.organizedGlitterLabel
+            )
+          }
+
+          if let notes = project.generalNotes?.nonEmpty {
+            Text(notes)
+              .foregroundStyle(theme.foreground)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(14)
+              .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+          }
         }
 
         if !model.progressNotes.isEmpty {
@@ -129,9 +135,14 @@ struct DiamondProjectDetailView: View {
           AccessibleErrorLabel(message: mutationErrorMessage)
         }
       }
-      .padding(16)
+      .frame(maxWidth: 760, alignment: .leading)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 16)
+      .frame(maxWidth: .infinity)
     }
-    .background(theme.themedBackground)
+    .background {
+      theme.themedBackground.ignoresSafeArea()
+    }
     .refreshable { await model.load() }
     .sheet(isPresented: $isAddingNote) {
       DiamondProgressNoteEditor(
@@ -156,6 +167,10 @@ struct DiamondProjectDetailView: View {
     }
   }
 
+  private var heroHeight: CGFloat {
+    horizontalSizeClass == .regular ? 360 : 280
+  }
+
   private func noteDate(_ value: String) -> String {
     guard let date = PocketBaseDate.date(from: value) else { return value }
     return date.formatted(date: .abbreviated, time: .omitted)
@@ -167,7 +182,7 @@ struct DiamondProjectDetailView: View {
   ) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       Text(title)
-        .font(.title2.bold())
+        .font(.title3.weight(.semibold))
         .foregroundStyle(theme.foreground)
         .accessibilityAddTraits(.isHeader)
       content()
