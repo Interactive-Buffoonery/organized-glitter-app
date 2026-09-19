@@ -11,7 +11,8 @@ struct LibraryGalleryCard: View {
       RecordArtwork(
         url: imageURL,
         maxHeight: item.isColoringBook ? 260 : 230,
-        emptyMinHeight: item.isColoringBook ? 220 : 170
+        emptyMinHeight: item.isColoringBook ? 220 : 170,
+        maxPixelDimension: 660
       )
         .aspectRatio(item.isColoringBook ? 0.72 : 1, contentMode: .fit)
         .frame(maxWidth: .infinity)
