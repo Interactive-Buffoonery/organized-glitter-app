@@ -22,6 +22,7 @@ final class AppModel {
   @ObservationIgnored let client: PocketBaseClient?
   private let sessionStore: KeychainSessionStore?
   private let themeStore: ThemeStore?
+  @ObservationIgnored private var sessionGeneration = 0
 
   var phase: Phase
   var signInError: String?
@@ -42,11 +43,14 @@ final class AppModel {
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated")
         || UserDefaults.standard.bool(forKey: OverviewFixtureProtocol.sampleDataKey)
       {
+        let generation = beginSessionTransition()
         Task {
           do {
             let session = try await client.signIn(identity: "fixture", password: "fixture")
+            guard generation == sessionGeneration else { return }
             phase = .signedIn(session.user)
           } catch {
+            guard generation == sessionGeneration else { return }
             phase = .restorationFailed
           }
         }
@@ -70,22 +74,30 @@ final class AppModel {
     guard let client, let sessionStore else {
       return
     }
+    let generation = beginSessionTransition()
 
     do {
       guard let storedSession = try sessionStore.load() else {
         await RemoteArtworkLoader.shared.purgeMemoryCache()
+        guard generation == sessionGeneration else { return }
         phase = .signedOut
         return
       }
 
       let session = try await client.restore(storedSession)
+      guard generation == sessionGeneration else { return }
       phase = .signedIn(session.user)
       applyThemePreference(from: session.user)
+    } catch APIError.cancelled {
+      return
     } catch APIError.offline {
+      guard generation == sessionGeneration else { return }
       phase = .offline
     } catch APIError.unauthenticated, APIError.forbidden {
+      guard generation == sessionGeneration else { return }
       await clearInvalidSession(using: sessionStore)
     } catch {
+      guard generation == sessionGeneration else { return }
       phase = .restorationFailed
     }
   }
@@ -117,16 +129,25 @@ final class AppModel {
       signInError = "Enter your email address and password."
       return
     }
+    let generation = beginSessionTransition()
 
     isSubmitting = true
     signInError = nil
-    defer { isSubmitting = false }
+    defer {
+      if generation == sessionGeneration {
+        isSubmitting = false
+      }
+    }
 
     do {
       let session = try await client.signIn(identity: trimmedIdentity, password: password)
+      guard generation == sessionGeneration else { return }
       phase = .signedIn(session.user)
       applyThemePreference(from: session.user)
+    } catch APIError.cancelled {
+      return
     } catch {
+      guard generation == sessionGeneration else { return }
       signInError = error.userFacingMessage
     }
   }
@@ -147,10 +168,14 @@ final class AppModel {
     guard let client else {
       return
     }
+    let generation = beginSessionTransition()
+    isSubmitting = false
+    signInError = nil
 
     Task {
       await client.signOut()
       await RemoteArtworkLoader.shared.purgeMemoryCache()
+      guard generation == sessionGeneration else { return }
       phase = .signedOut
     }
   }
@@ -166,7 +191,11 @@ final class AppModel {
     guard let client else {
       return
     }
+    let generation = beginSessionTransition()
+    isSubmitting = false
+    signInError = nil
     await client.signOut()
+    guard generation == sessionGeneration else { return }
     phase = .signedOut
   }
 
@@ -190,6 +219,11 @@ final class AppModel {
     if let flavor = ThemeFlavor(rawValue: preference) {
       themeStore.flavor = flavor
     }
+  }
+
+  private func beginSessionTransition() -> Int {
+    sessionGeneration &+= 1
+    return sessionGeneration
   }
 }
 

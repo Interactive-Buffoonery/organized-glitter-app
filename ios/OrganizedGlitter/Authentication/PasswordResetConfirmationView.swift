@@ -14,7 +14,9 @@ struct PasswordResetConfirmationView: View {
   @State private var isSubmitting = false
   @State private var presentation: Presentation
   @State private var submitGeneration = 0
+  @State private var confirmationTask: Task<Void, Never>?
   @FocusState private var focusedField: Field?
+  @AccessibilityFocusState private var isOutcomeFocused: Bool
 
   init(
     client: PocketBaseClient?,
@@ -70,7 +72,14 @@ struct PasswordResetConfirmationView: View {
       }
     }
     .interactiveDismissDisabled(isSubmitting)
+    .onAppear {
+      if presentation == .invalidLink {
+        announceInvalidLink()
+      }
+    }
     .onDisappear {
+      confirmationTask?.cancel()
+      confirmationTask = nil
       submitGeneration += 1
       focusedField = nil
     }
@@ -123,7 +132,7 @@ struct PasswordResetConfirmationView: View {
         .textContentType(.newPassword)
         .submitLabel(.go)
         .focused($focusedField, equals: .confirmation)
-        .onSubmit { Task { await confirm() } }
+        .onSubmit(startConfirmation)
         .accessibilityIdentifier("passwordResetNewPasswordConfirmation")
     }
 
@@ -133,7 +142,7 @@ struct PasswordResetConfirmationView: View {
     }
 
     Button {
-      Task { await confirm() }
+      startConfirmation()
     } label: {
       if isSubmitting {
         ProgressView()
@@ -152,6 +161,7 @@ struct PasswordResetConfirmationView: View {
     Text("The link may have expired or already been used. Request a new link and try again.")
       .font(.body)
       .foregroundStyle(theme.foreground)
+      .accessibilityFocused($isOutcomeFocused)
       .accessibilityIdentifier("passwordResetInvalidLink")
 
     Button("Request a new reset link") {
@@ -170,6 +180,7 @@ struct PasswordResetConfirmationView: View {
     )
     .font(.body)
     .foregroundStyle(theme.foreground)
+    .accessibilityFocused($isOutcomeFocused)
     .accessibilityIdentifier("passwordResetComplete")
 
     Button("Continue to sign in") {
@@ -179,13 +190,26 @@ struct PasswordResetConfirmationView: View {
     .accessibilityIdentifier("passwordResetContinue")
   }
 
-  private func confirm() async {
+  private func startConfirmation() {
+    guard confirmationTask == nil else { return }
+    submitGeneration += 1
+    let generation = submitGeneration
+    confirmationTask = Task {
+      await confirm(generation: generation)
+      if generation == submitGeneration {
+        confirmationTask = nil
+      }
+    }
+  }
+
+  private func confirm(generation: Int) async {
     guard let client else {
       errorMessage = "Organized Glitter is not configured for password reset."
       return
     }
     guard case .confirmation(let token) = link else {
       presentation = .invalidLink
+      announceInvalidLink()
       return
     }
     if let validationMessage = PasswordResetFormValidator.message(
@@ -196,8 +220,6 @@ struct PasswordResetConfirmationView: View {
       return
     }
 
-    submitGeneration += 1
-    let generation = submitGeneration
     isSubmitting = true
     errorMessage = nil
     defer {
@@ -218,6 +240,10 @@ struct PasswordResetConfirmationView: View {
       await onConfirmed()
       guard generation == submitGeneration else { return }
       presentation = .complete
+      isOutcomeFocused = true
+      AccessibilityNotification.Announcement(
+        "Password updated. Your password has been reset. Sign in with your new password."
+      ).post()
     } catch let error as APIError {
       guard generation == submitGeneration else { return }
       switch error {
@@ -227,6 +253,7 @@ struct PasswordResetConfirmationView: View {
         password = ""
         passwordConfirmation = ""
         presentation = .invalidLink
+        announceInvalidLink()
       case .offline:
         errorMessage = "You appear to be offline. Reconnect and try again."
       case .server, .decoding, .emailUnverified:
@@ -236,5 +263,12 @@ struct PasswordResetConfirmationView: View {
       guard generation == submitGeneration else { return }
       errorMessage = "Your password could not be reset. Try again."
     }
+  }
+
+  private func announceInvalidLink() {
+    isOutcomeFocused = true
+    AccessibilityNotification.Announcement(
+      "This reset link can’t be used. It may have expired or already been used."
+    ).post()
   }
 }
