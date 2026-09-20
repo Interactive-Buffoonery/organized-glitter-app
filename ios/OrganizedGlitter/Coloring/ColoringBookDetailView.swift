@@ -13,53 +13,54 @@ struct ColoringBookDetailView: View {
       LazyVStack(alignment: .leading, spacing: 18) {
         bookHeader
 
-        VStack(alignment: .leading, spacing: 14) {
-          pagesHeader
+        pagesHeader
 
-          if dynamicTypeSize.isAccessibilitySize {
-            pageFilterPicker
-              .pickerStyle(.menu)
-          } else {
-            pageFilterPicker
-              .pickerStyle(.segmented)
-          }
+        if dynamicTypeSize.isAccessibilitySize {
+          pageFilterPicker
+            .pickerStyle(.menu)
+        } else {
+          pageFilterPicker
+            .pickerStyle(.segmented)
+        }
 
-          if model.bookPages.isEmpty, !model.isLoading, model.errorMessage == nil {
-            ContentUnavailableView(
-              "No matching pages",
-              systemImage: "doc.richtext",
-              description: Text(emptyPagesMessage)
-            )
-            .frame(maxWidth: .infinity)
-          } else {
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
-              ForEach(model.bookPages) { page in
-                NavigationLink(value: LibraryItem.page(page)) {
-                  ColoringBookPageCard(page: page, client: model.client)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("detail.book.page.\(page.id)")
+        if model.bookPages.isEmpty, !model.isLoading, model.errorMessage == nil {
+          ContentUnavailableView(
+            "No matching pages",
+            systemImage: "doc.richtext",
+            description: Text(emptyPagesMessage)
+          )
+          .frame(maxWidth: .infinity)
+        } else {
+          LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+            ForEach(model.bookPages) { page in
+              NavigationLink(value: LibraryItem.page(page)) {
+                ColoringBookPageCard(page: page, client: model.client)
               }
+              .buttonStyle(.plain)
+              .accessibilityIdentifier("detail.book.page.\(page.id)")
             }
-            .accessibilityIdentifier("detail.book.pages")
           }
+          .accessibilityIdentifier("detail.book.pages")
+        }
 
-          if model.canLoadMoreBookPages {
-            Button {
-              Task { await model.loadMoreBookPages() }
-            } label: {
+        if model.canLoadMoreBookPages {
+          Button {
+            Task { await model.loadMoreBookPages() }
+          } label: {
+            HStack {
               if model.isLoadingMore {
                 ProgressView()
-                  .frame(maxWidth: .infinity)
-              } else {
-                Text("Load more pages")
-                  .frame(maxWidth: .infinity)
               }
+              Text(model.isLoadingMore ? "Loading more pages" : "Load more pages")
             }
-            .buttonStyle(.bordered)
-            .disabled(model.isLoadingMore)
-            .accessibilityIdentifier("detail.book.loadMore")
+            .frame(maxWidth: .infinity, minHeight: 44)
           }
+          .buttonStyle(.bordered)
+          .disabled(model.isLoadingMore)
+          .accessibilityLabel(
+            model.isLoadingMore ? "Loading more pages" : "Load more pages"
+          )
+          .accessibilityIdentifier("detail.book.loadMore")
         }
 
         if book.expand?.publisher?.name.nonEmpty != nil
@@ -114,7 +115,8 @@ struct ColoringBookDetailView: View {
 
     layout {
       RecordArtwork(
-        url: LibraryItem.book(book).artworkURL(using: model.client),
+        url: LibraryItem.book(book).artworkURL(
+          using: model.client, thumb: ArtworkThumb.gallery),
         maxHeight: 150,
         emptyMinHeight: 150,
         maxPixelDimension: 360,
@@ -132,7 +134,6 @@ struct ColoringBookDetailView: View {
         Text(book.title)
           .font(.title2.bold())
           .foregroundStyle(theme.foreground)
-          .accessibilityAddTraits(.isHeader)
         if let series = book.series?.nonEmpty {
           Text(series)
             .foregroundStyle(theme.pageSecondaryForeground)
@@ -230,7 +231,7 @@ private struct ColoringBookPageCard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       RecordArtwork(
-        url: LibraryItem.page(page).artworkURL(using: client),
+        url: LibraryItem.page(page).artworkURL(using: client, thumb: ArtworkThumb.gallery),
         maxHeight: 220,
         emptyMinHeight: 150,
         maxPixelDimension: 660

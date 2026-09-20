@@ -69,6 +69,51 @@ struct LibraryTests {
   }
 
   @Test
+  func loadMoreKeepsTheCommittedSearchWhenTheFieldChanges() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Moon Garden", "Star Quilt"], page: 1, totalPages: 2, totalItems: 3)),
+        (
+          200,
+          projectList(
+            ["River Path"], page: 2, totalPages: 2, totalItems: 3, idOffset: 2)
+        ),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.searchText = "Moon"
+    await model.load()
+    model.searchText = "Star"
+    await model.load(reset: false)
+
+    #expect(model.committedSearch == "Moon")
+    #expect(model.projects.map(\.title) == ["Moon Garden", "Star Quilt", "River Path"])
+    #expect(
+      filter(from: LibraryURLProtocol.requests.last)
+        == #"user = "user-1" && (title ~ "Moon" || artist.name ~ "Moon" || company.name ~ "Moon")"#)
+    #expect(query(from: LibraryURLProtocol.requests.last, name: "page") == "2")
+  }
+
+  @Test
+  func switchingCraftClearsSearch() async throws {
+    let client = try await signedInClient(
+      responses: [
+        (200, projectList(["Moon Garden"])),
+        (200, bookList(["Quiet pages"])),
+      ])
+    let model = LibraryModel(client: client, userID: "user-1")
+    model.searchText = "Moon"
+    await model.load()
+    #expect(model.committedSearch == "Moon")
+
+    model.select(.books)
+    await model.load()
+
+    #expect(model.searchText.isEmpty)
+    #expect(model.committedSearch.isEmpty)
+    #expect(filter(from: LibraryURLProtocol.requests.last) == #"user = "user-1""#)
+  }
+
+  @Test
   func defaultsEveryCraftToRecentlyUpdatedSort() async throws {
     let client = try await signedInClient(
       responses: [

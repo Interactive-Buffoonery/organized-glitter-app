@@ -338,6 +338,44 @@ actor PocketBaseClient {
     return url
   }
 
+  /// Downloads a PocketBase file through the authenticated session.
+  ///
+  /// File tokens are not on the URL yet; sending `Authorization` here means a
+  /// later header-based or query-token migration can land in `fileURL` plus
+  /// this method without teaching `RemoteArtwork` a second session.
+  func fileData(at url: URL, maximumByteCount: Int) async throws -> Data {
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.cachePolicy = .reloadIgnoringLocalCacheData
+    if let authentication {
+      request.setValue(authentication.token, forHTTPHeaderField: "Authorization")
+    }
+
+    let fileURL: URL
+    let response: URLResponse
+    do {
+      (fileURL, response) = try await urlSession.download(for: request)
+    } catch {
+      throw APIError.from(error)
+    }
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw APIError.server
+    }
+    guard (200..<300).contains(httpResponse.statusCode) else {
+      throw APIError.from(statusCode: httpResponse.statusCode, body: Data())
+    }
+
+    let size =
+      (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int)
+      ?? 0
+    guard size <= maximumByteCount else {
+      throw RemoteArtworkError.payloadTooLarge
+    }
+    return try Data(contentsOf: fileURL)
+  }
+
   private func persist(_ session: AuthenticatedSession) throws -> AuthenticatedSession {
     sessionGeneration &+= 1
     refreshTask?.cancel()

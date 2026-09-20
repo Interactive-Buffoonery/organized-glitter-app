@@ -132,6 +132,15 @@ final class AppModel {
     }
   }
 
+  func expireSession() async {
+    guard let client else {
+      return
+    }
+    await client.signOut()
+    await RemoteArtworkLoader.shared.purgeMemoryCache()
+    phase = .signedOut
+  }
+
   func signOut() {
     guard let client else {
       return

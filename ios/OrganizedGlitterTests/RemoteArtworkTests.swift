@@ -168,6 +168,22 @@ struct RemoteArtworkTests {
     }
   }
 
+  @Test
+  func decodedCacheReusesTheDownsampledImage() async throws {
+    let decoded = RemoteArtworkDecodedStore(maximumEntryCount: 4)
+    let url = URL(string: "https://artwork.example.test/reuse.jpg")!
+    let image = try RemoteArtworkLoader.downsample(
+      data: jpegData(width: 40, height: 40, orientation: .up),
+      maxPixelDimension: 32
+    )
+
+    await decoded.insert(image, for: url, maxPixelDimension: 32)
+    let cached = await decoded.image(for: url, maxPixelDimension: 32)
+
+    #expect(cached?.cgImage.width == image.cgImage.width)
+    #expect(cached?.cgImage.height == image.cgImage.height)
+  }
+
   private func jpegData(
     width: Int,
     height: Int,

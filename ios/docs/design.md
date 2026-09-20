@@ -36,7 +36,7 @@ implementation contracts.
 Current verification is recorded in
 [Native refinement validation](native-refinement-validation.md).
 Overview uses a single system heading, compact craft selection, artwork rows,
-Wishlist and Completed shortcuts, then its count summary. Library keeps peer
+See all in progress, Wishlist, and Completed shortcuts, then its count summary. Library keeps peer
 craft segments on iPhone and the craft sidebar on iPad. Search, status, and sort
 operate on the server; the grid shows title and written status, with page counts
 for books. Company and artist credits remain available in detail.
@@ -55,8 +55,9 @@ Earlier runtime checks and screenshots are recorded in
 
 At that revision, Library used peer craft
 segments (Diamond art / Books / Pages), native search, a quiet status menu,
-and an artwork-led two-column gallery. Captions prefer company, publisher, or
-parent book title. Create stays in the scroll content, not the navigation bar.
+and an artwork-led two-column gallery. Captions then preferred company,
+publisher, or parent book title. Create stays in the scroll content, not the
+navigation bar.
 iPad keeps a craft sidebar and opens item details on the content stack.
 Artwork uses `RecordArtwork` and `PocketBaseClient.fileURL`, with a shared
 missing/failed fallback. `listingIdentity` includes a handoff epoch so
@@ -74,18 +75,20 @@ shadow, or decorative icon tile. Status retains its written label and icon.
 Large accessibility text changes rows to a vertical layout and craft selection
 to a native menu. Quiet controls have no custom movement or animation.
 
-Overview places craft selection and active work before a compact count summary.
+The earlier Overview placed craft selection and active work before a compact
+count summary.
 Its background belongs to the scroll viewport and extends through safe areas,
 not the content stack, so content height does not determine the glow geometry.
 Content has a readable maximum width on iPad while the background fills the screen.
 Loading, retry, empty, refresh, and detail navigation remain available; failed
 refreshes also show an error while retaining in-memory rows.
 
-Wishlist opens the existing Library tab with the selected craft's wishlist
-filter and clears old search text. The menu follows enabled Library crafts.
-A combined Wishlist screen and native Notes feed are follow-up work; Overview
-has no placeholder Notes control. The existing per-craft limit of five recently
-updated active records remains unchanged; the summary uses server totals.
+See all in progress, Wishlist, and Completed open the existing Library tab
+with the selected craft's matching filter and clear old search text. The menus
+follow enabled Library crafts. A combined Wishlist screen and native Notes feed
+are follow-up work; Overview has no placeholder Notes control. The existing
+per-craft limit of five recently updated active records remains unchanged; the
+summary uses server totals.
 
 Account entry was migrated against the same studio revision while keeping
 ADR 0001 backgrounds. The system launch screen uses a solid brand

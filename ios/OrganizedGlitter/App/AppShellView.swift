@@ -34,11 +34,14 @@ struct AppShellView: View {
     TabView(selection: $selectedTab) {
       Tab("Overview", systemImage: "house", value: .overview) {
         NavigationStack {
-          OverviewView(client: client, userID: user.id, verticals: accountPreferences.verticals) {
-            request in
-            libraryRequest = request
-            selectedTab = .library
-          }
+          OverviewView(
+            client: client, userID: user.id, verticals: accountPreferences.verticals,
+            onLibraryRequest: { request in
+              libraryRequest = request
+              selectedTab = .library
+            },
+            onSessionExpired: { await model.expireSession() }
+          )
         }
       }
 
@@ -48,7 +51,8 @@ struct AppShellView: View {
           userID: user.id,
           libraryRefresh: libraryRefresh,
           verticals: accountPreferences.verticals,
-          request: libraryRequest
+          request: libraryRequest,
+          onSessionExpired: { await model.expireSession() }
         )
       }
 
@@ -80,6 +84,7 @@ struct AppShellView: View {
       }
     }
     .tabViewStyle(.sidebarAdaptable)
+    .environment(\.pocketBaseClient, client)
     .task { await accountPreferences.load() }
   }
 }

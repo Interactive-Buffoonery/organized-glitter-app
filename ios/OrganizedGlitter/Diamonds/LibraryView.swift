@@ -18,9 +18,11 @@ struct LibraryView: View {
     userID: String,
     libraryRefresh: LibraryRefresh,
     verticals: VerticalPreferences = .defaultValue,
-    request: LibraryRequest? = nil
+    request: LibraryRequest? = nil,
+    onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
     let model = LibraryModel(client: client, userID: userID)
+    model.onSessionExpired = onSessionExpired
     if let request {
       model.apply(request)
     }
@@ -90,7 +92,7 @@ struct LibraryView: View {
 
   private func browsingScroll(showsCraftPicker: Bool) -> some View {
     return ScrollView {
-      VStack(alignment: .leading, spacing: 12) {
+      LazyVStack(alignment: .leading, spacing: 12) {
         Text("Library")
           .font(.largeTitle.bold())
           .foregroundStyle(theme.foreground)
@@ -118,8 +120,14 @@ struct LibraryView: View {
     }
     .overlay(alignment: .bottom) {
       if model.isLoading, model.hasLoaded {
-        ProgressView()
+        ProgressView("Loading more library items")
           .padding()
+          .accessibilityAddTraits(.updatesFrequently)
+      }
+    }
+    .onChange(of: model.isLoading) { _, isLoading in
+      if isLoading, model.hasLoaded {
+        AccessibilityNotification.Announcement("Loading more library items").post()
       }
     }
   }
@@ -203,13 +211,25 @@ struct LibraryView: View {
 
   private func statusFilter(showsIcon: Bool) -> some View {
     Menu {
-      Button("All statuses") {
+      Button {
         model.statusFilter = nil
+      } label: {
+        if model.statusFilter == nil {
+          Label("All statuses", systemImage: "checkmark")
+        } else {
+          Text("All statuses")
+        }
       }
       Divider()
       ForEach(model.section.statusOptions, id: \.self) { status in
-        Button(status.organizedGlitterLabel) {
+        Button {
           model.statusFilter = status
+        } label: {
+          if model.statusFilter == status {
+            Label(status.organizedGlitterLabel, systemImage: "checkmark")
+          } else {
+            Text(status.organizedGlitterLabel)
+          }
         }
       }
     } label: {
@@ -319,7 +339,8 @@ struct LibraryView: View {
   @ViewBuilder
   private func galleryItem(_ item: LibraryItem) -> some View {
     NavigationLink(value: item) {
-      LibraryGalleryCard(item: item, imageURL: item.artworkURL(using: model.client))
+      LibraryGalleryCard(
+        item: item, imageURL: item.artworkURL(using: model.client, thumb: ArtworkThumb.gallery))
     }
     .buttonStyle(.plain)
   }

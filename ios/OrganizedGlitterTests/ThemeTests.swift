@@ -79,6 +79,12 @@ struct ThemeTests {
   }
 
   @Test
+  func errorTextMeetsMinimumContrastOnTheCard() {
+    #expect(contrastRatio(Theme.light.foreground, Theme.light.card) >= 4.5)
+    #expect(contrastRatio(Theme.dark.foreground, Theme.dark.card) >= 4.5)
+  }
+
+  @Test
   func accentSurfaceCyclesPastTheEnd() {
     #expect(Theme.light.accentSurface(5) == Theme.light.accentSurfaces[0])
     #expect(Theme.light.accentSurface(7) == Theme.light.accentSurfaces[2])

@@ -15,7 +15,7 @@ struct OverviewTests {
       ISO8601DateFormatter().date(from: "2026-07-15T12:00:00Z")
     )
 
-    #expect(OverviewModel.startOfMonth(containing: july) == "2026-07-01")
+    #expect(OverviewModel.startOfMonth(containing: july, timeZone: .gmt) == "2026-07-01")
   }
 
   @Test("month end is the exclusive first day of the next month")
@@ -24,7 +24,7 @@ struct OverviewTests {
       ISO8601DateFormatter().date(from: "2026-07-15T12:00:00Z")
     )
 
-    #expect(OverviewModel.startOfNextMonth(containing: july) == "2026-08-01")
+    #expect(OverviewModel.startOfNextMonth(containing: july, timeZone: .gmt) == "2026-08-01")
   }
 
   @Test("boundary rolls to the correct month across a year boundary")
@@ -33,8 +33,23 @@ struct OverviewTests {
       ISO8601DateFormatter().date(from: "2026-12-05T08:00:00Z")
     )
 
-    #expect(OverviewModel.startOfMonth(containing: december) == "2026-12-01")
-    #expect(OverviewModel.startOfNextMonth(containing: december) == "2027-01-01")
+    #expect(OverviewModel.startOfMonth(containing: december, timeZone: .gmt) == "2026-12-01")
+    #expect(OverviewModel.startOfNextMonth(containing: december, timeZone: .gmt) == "2027-01-01")
+  }
+
+  @Test("this month uses the local calendar, not the UTC month")
+  func localEveningStaysInTheLocalMonth() throws {
+    let timeZone = try #require(TimeZone(identifier: "America/Los_Angeles"))
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let localEvening = try #require(
+      calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 20))
+    )
+
+    #expect(OverviewModel.startOfMonth(containing: localEvening, timeZone: timeZone) == "2026-10-01")
+    #expect(
+      OverviewModel.startOfNextMonth(containing: localEvening, timeZone: timeZone) == "2026-11-01")
+    #expect(OverviewModel.startOfMonth(containing: localEvening, timeZone: .gmt) == "2026-11-01")
   }
 }
 
@@ -91,18 +106,51 @@ struct OverviewPresentationTests {
     #expect(OverviewCraft.diamonds.completedSections(for: coloringOnly).isEmpty)
   }
 
+  @Test func inProgressShortcutsFollowCraftAndEnabledPreferences() {
+    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
+    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
+    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
+
+    #expect(OverviewCraft.all.inProgressSections(for: both) == [.diamonds, .pages])
+    #expect(OverviewCraft.diamonds.inProgressSections(for: both) == [.diamonds])
+    #expect(OverviewCraft.coloring.inProgressSections(for: both) == [.pages])
+    #expect(OverviewCraft.all.inProgressSections(for: diamondsOnly) == [.diamonds])
+    #expect(OverviewCraft.all.inProgressSections(for: coloringOnly) == [.pages])
+    #expect(OverviewCraft.coloring.inProgressSections(for: diamondsOnly).isEmpty)
+    #expect(OverviewCraft.diamonds.inProgressSections(for: coloringOnly).isEmpty)
+    #expect(OverviewCraft.all.inProgressStatus(for: .diamonds) == "progress")
+    #expect(OverviewCraft.all.inProgressStatus(for: .pages) == "in_progress")
+    #expect(OverviewCraft.all.inProgressStatus(for: .books) == nil)
+  }
+
+  @Test func wishlistShortcutsFollowCraftAndEnabledPreferences() {
+    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
+    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
+    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
+
+    #expect(OverviewCraft.all.wishlistSections(for: both) == [.diamonds, .books])
+    #expect(OverviewCraft.diamonds.wishlistSections(for: both) == [.diamonds])
+    #expect(OverviewCraft.coloring.wishlistSections(for: both) == [.books])
+    #expect(OverviewCraft.all.wishlistSections(for: diamondsOnly) == [.diamonds])
+    #expect(OverviewCraft.all.wishlistSections(for: coloringOnly) == [.books])
+    #expect(OverviewCraft.coloring.wishlistSections(for: diamondsOnly).isEmpty)
+    #expect(OverviewCraft.diamonds.wishlistSections(for: coloringOnly).isEmpty)
+  }
+
   @Test func artworkUsesTheFileAccessBoundary() {
     let client = client()
     let model = OverviewModel(client: client, userID: "fictional-user")
     #expect(
       model.artworkURL(for: project(image: "garden image.png"))
         == client.fileURL(
-          collection: "projects", recordID: "fictional-project", filename: "garden image.png"
+          collection: "projects", recordID: "fictional-project", filename: "garden image.png",
+          thumb: ArtworkThumb.compact
         ))
     #expect(
       model.artworkURL(for: page(photos: ["", "page.png", "later.png"]))
         == client.fileURL(
-          collection: "coloring_pages", recordID: "fictional-page", filename: "page.png"
+          collection: "coloring_pages", recordID: "fictional-page", filename: "page.png",
+          thumb: ArtworkThumb.compact
         ))
     #expect(model.artworkURL(for: project()) == nil)
     #expect(model.artworkURL(for: project(image: "")) == nil)

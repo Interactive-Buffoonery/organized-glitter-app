@@ -131,6 +131,10 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(photo.waitForExistence(timeout: 5))
     photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
+    let confirm = button("detail.page.photoSubmit", in: app)
+    XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+    confirm.tap()
+
     let uploadedPhoto = app.descendants(matching: .any).matching(
       NSPredicate(format: "label == %@", "Page photo 2: Moonlit garden")
     ).firstMatch

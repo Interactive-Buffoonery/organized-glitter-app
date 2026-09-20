@@ -78,7 +78,7 @@ struct LibraryItemDetailDestination: View {
     }
     .onAppear {
       guard model.hasLoaded, case .book = model.item else { return }
-      Task { await model.load() }
+      Task { await model.load(preservingLoadedBookPages: true) }
     }
     .sheet(item: $editor) { editor in
       editorView(for: editor)

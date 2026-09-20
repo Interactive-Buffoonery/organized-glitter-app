@@ -1,9 +1,9 @@
 import SwiftUI
 
 extension Font {
-  /// Caveat is the personal-library signature: the page H1 and section headers,
-  /// never body text or controls (docs/design.md). `relativeTo` keeps Dynamic
-  /// Type scaling.
+  /// Caveat is the signature display face on remaining brand surfaces and
+  /// `PageHeader`, never body text or controls (docs/design.md). `relativeTo`
+  /// keeps Dynamic Type scaling.
   static func caveat(size: CGFloat, relativeTo textStyle: Font.TextStyle = .largeTitle) -> Font {
     .custom("Caveat", size: size, relativeTo: textStyle)
   }
@@ -86,6 +86,7 @@ struct StickerCard: ViewModifier {
 struct PillButtonStyle: ButtonStyle {
   @Environment(\.theme) private var theme
   @Environment(\.isEnabled) private var isEnabled
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
@@ -113,7 +114,7 @@ struct PillButtonStyle: ButtonStyle {
         y: configuration.isPressed ? Theme.Sticker.shadowOffset.height : 0
       )
       .opacity(isEnabled ? 1 : 0.5)
-      .animation(Theme.motion, value: configuration.isPressed)
+      .animation(reduceMotion ? nil : Theme.motion, value: configuration.isPressed)
   }
 }
 
@@ -213,7 +214,10 @@ struct AccessibleErrorLabel: View {
 
   var body: some View {
     Label(message, systemImage: "exclamationmark.triangle")
-      .foregroundStyle(theme.destructive)
+      .foregroundStyle(theme.foreground)
+      .padding(12)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
       .accessibilityLabel("Error: \(message)")
       .task(id: message) {
         AccessibilityNotification.Announcement("Error: \(message)").post()
