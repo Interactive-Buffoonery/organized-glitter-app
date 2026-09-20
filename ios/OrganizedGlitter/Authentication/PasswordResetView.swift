@@ -14,7 +14,9 @@ struct PasswordResetView: View {
   @State private var didRequest = false
   @State private var errorMessage: String?
   @State private var submitGeneration = 0
+  @State private var sendTask: Task<Void, Never>?
   @FocusState private var isEmailFocused: Bool
+  @AccessibilityFocusState private var isOutcomeFocused: Bool
 
   var body: some View {
     AuthEntryContainer(alignment: .center) {
@@ -46,6 +48,8 @@ struct PasswordResetView: View {
       }
     }
     .onDisappear {
+      sendTask?.cancel()
+      sendTask = nil
       submitGeneration += 1
       isEmailFocused = false
     }
@@ -65,6 +69,8 @@ struct PasswordResetView: View {
         .multilineTextAlignment(.center)
         .foregroundStyle(theme.mutedForeground)
     }
+    .accessibilityElement(children: .combine)
+    .accessibilityFocused($isOutcomeFocused)
   }
 
   @ViewBuilder
@@ -82,7 +88,7 @@ struct PasswordResetView: View {
         .autocorrectionDisabled()
         .submitLabel(.send)
         .focused($isEmailFocused)
-        .onSubmit { Task { await send() } }
+        .onSubmit(startSending)
         .accessibilityLabel("Password reset email address")
         .accessibilityIdentifier("passwordResetEmail")
     }
@@ -93,7 +99,7 @@ struct PasswordResetView: View {
     }
 
     Button {
-      Task { await send() }
+      startSending()
     } label: {
       if isSending {
         ProgressView()
@@ -108,7 +114,19 @@ struct PasswordResetView: View {
     .accessibilityIdentifier("passwordResetSend")
   }
 
-  private func send() async {
+  private func startSending() {
+    guard sendTask == nil else { return }
+    submitGeneration += 1
+    let generation = submitGeneration
+    sendTask = Task {
+      await send(generation: generation)
+      if generation == submitGeneration {
+        sendTask = nil
+      }
+    }
+  }
+
+  private func send(generation: Int) async {
     let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     guard normalized.range(of: #"^[^\s@]+@[^\s@]+\.[^\s@]+$"#, options: .regularExpression) != nil
     else {
@@ -116,8 +134,6 @@ struct PasswordResetView: View {
       return
     }
 
-    submitGeneration += 1
-    let generation = submitGeneration
     isSending = true
     errorMessage = nil
     defer {
@@ -130,6 +146,10 @@ struct PasswordResetView: View {
       try await client.requestPasswordReset(email: normalized)
       guard generation == submitGeneration else { return }
       didRequest = true
+      isOutcomeFocused = true
+      AccessibilityNotification.Announcement(
+        "Check your inbox. If an account exists for that address, you will receive reset instructions."
+      ).post()
     } catch APIError.cancelled {
       return
     } catch APIError.offline {

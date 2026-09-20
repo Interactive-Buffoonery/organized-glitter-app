@@ -26,15 +26,24 @@ actor PocketBaseClient {
       let password: String
     }
 
-    let response: AuthResponse = try await request(
-      path: "/api/collections/users/auth-with-password",
-      method: "POST",
-      body: Body(identity: identity, password: password),
-      includesAuthentication: false
-    )
+    let generation = sessionGeneration
+    let response: AuthResponse
+    do {
+      response = try await request(
+        path: "/api/collections/users/auth-with-password",
+        method: "POST",
+        body: Body(identity: identity, password: password),
+        includesAuthentication: false
+      )
+    } catch APIError.forbidden {
+      throw APIError.emailUnverified
+    }
 
     guard response.record.verified == true else {
       throw APIError.emailUnverified
+    }
+    guard generation == sessionGeneration else {
+      throw APIError.cancelled
     }
     return try persist(response.session)
   }
