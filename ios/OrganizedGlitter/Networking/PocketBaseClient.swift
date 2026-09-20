@@ -92,6 +92,29 @@ actor PocketBaseClient {
     )
   }
 
+  func confirmPasswordReset(
+    token: String,
+    password: String,
+    passwordConfirmation: String
+  ) async throws {
+    struct Body: Encodable {
+      let token: String
+      let password: String
+      let passwordConfirm: String
+    }
+
+    _ = try await send(
+      path: "/api/collections/users/confirm-password-reset",
+      method: "POST",
+      body: Body(
+        token: token,
+        password: password,
+        passwordConfirm: passwordConfirmation
+      ),
+      includesAuthentication: false
+    )
+  }
+
   func restore(_ stored: StoredSession) async throws -> AuthenticatedSession {
     authentication = AuthenticatedSession(
       token: stored.token,

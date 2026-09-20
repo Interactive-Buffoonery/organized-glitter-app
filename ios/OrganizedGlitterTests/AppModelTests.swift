@@ -87,6 +87,31 @@ struct AppModelTests {
     #expect(model.signInError == "Enter your email address and password.")
     #expect(model.isSubmitting == false)
   }
+
+  @Test
+  func routesOnlyCanonicalPasswordResetLinks() async throws {
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    model.phase = .signedOut
+
+    model.open(
+      try #require(
+        URL(string: "https://example.test/auth/confirm-password-reset/not-ours")
+      ))
+    #expect(model.passwordResetDestination == nil)
+
+    model.open(
+      try #require(
+        URL(string: "https://organizedglitter.app/auth/confirm-password-reset/opaque.token")
+      ))
+    #expect(model.passwordResetDestination?.link == .confirmation(token: "opaque.token"))
+  }
 }
 
 private final class MochaUserURLProtocol: URLProtocol, @unchecked Sendable {

@@ -3,7 +3,7 @@ import SwiftUI
 struct RootView: View {
   @Environment(\.theme) private var theme
 
-  let model: AppModel
+  @Bindable var model: AppModel
 
   var body: some View {
     Group {
@@ -35,6 +35,13 @@ struct RootView: View {
       }
     }
     .background(theme.themedBackground.ignoresSafeArea())
+    .sheet(item: $model.passwordResetDestination) { destination in
+      PasswordResetConfirmationView(
+        client: model.client,
+        link: destination.link,
+        onConfirmed: model.passwordResetConfirmed
+      )
+    }
   }
 }
 

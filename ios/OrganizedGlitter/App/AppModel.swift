@@ -26,6 +26,7 @@ final class AppModel {
   var phase: Phase
   var signInError: String?
   var isSubmitting = false
+  var passwordResetDestination: PasswordResetDestination?
 
   init(client: PocketBaseClient, sessionStore: KeychainSessionStore, themeStore: ThemeStore) {
     self.client = client
@@ -154,6 +155,21 @@ final class AppModel {
     }
   }
 
+  func open(_ url: URL) {
+    guard let link = PasswordResetLink.parse(url) else {
+      return
+    }
+    passwordResetDestination = PasswordResetDestination(link: link)
+  }
+
+  func passwordResetConfirmed() async {
+    guard let client else {
+      return
+    }
+    await client.signOut()
+    phase = .signedOut
+  }
+
   func replaceSignedInUser(_ user: UserRecord) {
     guard case .signedIn = phase else {
       return
@@ -187,7 +203,8 @@ extension Error {
     case .unauthenticated:
       return "That email address and password do not match."
     case .emailUnverified:
-      return "Verify your email address before signing in. You can request a new verification email below."
+      return
+        "Verify your email address before signing in. You can request a new verification email below."
     case .forbidden:
       return "This account does not have permission to sign in."
     case .validation(let message):

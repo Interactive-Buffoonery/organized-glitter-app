@@ -56,6 +56,7 @@ struct OrganizedGlitterApp: App {
           #endif
       }
       .environment(themeStore)
+      .onOpenURL(perform: model.open)
     }
   }
 }
