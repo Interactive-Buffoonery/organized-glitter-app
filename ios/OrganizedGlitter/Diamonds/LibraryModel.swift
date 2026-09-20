@@ -108,6 +108,7 @@ final class LibraryModel {
 
   var section = LibrarySection.diamonds
   var searchText = ""
+  private(set) var committedSearch = ""
   var statusFilter: String?
   var sort = LibrarySort.recentlyUpdated
   var isLoading = false
@@ -123,6 +124,7 @@ final class LibraryModel {
   private var totalPages = 0
   private var generation = 0
   private var listingEpoch = 0
+  var onSessionExpired: (@MainActor @Sendable () async -> Void)?
 
   init(client: PocketBaseClient, userID: String) {
     self.client = client
@@ -144,16 +146,17 @@ final class LibraryModel {
     currentPage < totalPages
   }
 
-  /// Observed by Library's load task. Section, status, and sort are included so
-  /// browsing changes reload; `listingEpoch` changes when a handoff clears
-  /// search without changing the other request fields.
+  /// Observed by Library's load task. Section, status, sort, and the committed
+  /// search query are included so browsing changes reload; `listingEpoch`
+  /// changes when a handoff clears search without changing the other fields.
   var listingIdentity: String {
-    "\(section.rawValue)|\(statusFilter ?? "")|\(sort.rawValue)|\(listingEpoch)"
+    "\(section.rawValue)|\(statusFilter ?? "")|\(sort.rawValue)|\(committedSearch)|\(listingEpoch)"
   }
 
   func apply(_ request: LibraryRequest) {
     select(request.section)
     searchText = ""
+    committedSearch = ""
     statusFilter = request.status
     sort = .recentlyUpdated
     listingEpoch += 1
@@ -164,15 +167,18 @@ final class LibraryModel {
       return
     }
     self.section = section
+    searchText = ""
+    committedSearch = ""
     statusFilter = nil
     sort = .recentlyUpdated
   }
 
   func clearSearch() async {
-    guard !searchText.isEmpty else {
+    guard !searchText.isEmpty || !committedSearch.isEmpty else {
       return
     }
     searchText = ""
+    committedSearch = ""
     await load()
   }
 
@@ -207,11 +213,13 @@ final class LibraryModel {
     }
 
     if reset {
+      committedSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
       generation += 1
     }
     let requestGeneration = generation
     let requestedSection = section
     let requestedSort = sort
+    let requestedSearch = committedSearch
     let requestedPage = reset ? 1 : currentPage + 1
 
     isLoading = true
@@ -229,7 +237,7 @@ final class LibraryModel {
         let result: RecordList<DiamondProjectRecord> = try await client.list(
           collection: "projects",
           page: requestedPage,
-          filter: filter(for: requestedSection),
+          filter: filter(for: requestedSection, search: requestedSearch),
           sort: requestedSort.query(for: requestedSection),
           expand: "company,artist"
         )
@@ -242,7 +250,7 @@ final class LibraryModel {
         let result: RecordList<ColoringBookRecord> = try await client.list(
           collection: "coloring_books",
           page: requestedPage,
-          filter: filter(for: requestedSection),
+          filter: filter(for: requestedSection, search: requestedSearch),
           sort: requestedSort.query(for: requestedSection),
           expand: "publisher,illustrator"
         )
@@ -255,7 +263,7 @@ final class LibraryModel {
         let result: RecordList<ColoringPageRecord> = try await client.list(
           collection: "coloring_pages",
           page: requestedPage,
-          filter: filter(for: requestedSection),
+          filter: filter(for: requestedSection, search: requestedSearch),
           sort: requestedSort.query(for: requestedSection),
           expand: "book"
         )
@@ -267,6 +275,12 @@ final class LibraryModel {
       }
     } catch APIError.cancelled {
       return
+    } catch APIError.unauthenticated {
+      guard requestGeneration == generation else {
+        return
+      }
+      errorMessage = APIError.unauthenticated.libraryMessage
+      await onSessionExpired?()
     } catch {
       guard requestGeneration == generation else {
         return
@@ -318,12 +332,12 @@ final class LibraryModel {
     }
   }
 
-  private func filter(for section: LibrarySection) -> String {
+  private func filter(for section: LibrarySection, search: String? = nil) -> String {
     var filters = [
       PocketBaseFilter.equals(section == .pages ? .bookUser : .user, userID)
     ]
 
-    let search = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let search = (search ?? committedSearch).trimmingCharacters(in: .whitespacesAndNewlines)
     if !search.isEmpty {
       if section == .pages, let pageNumber = Int(search) {
         filters.append(PocketBaseFilter.equals(.pageNumber, pageNumber))
@@ -353,7 +367,7 @@ final class LibraryModel {
       return false
     }
 
-    let search = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let search = committedSearch.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !search.isEmpty else {
       return true
     }

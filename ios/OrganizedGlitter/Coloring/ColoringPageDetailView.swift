@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct ColoringPageDetailView: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -12,6 +13,7 @@ struct ColoringPageDetailView: View {
 
   @State private var selectedItem: PhotosPickerItem?
   @State private var pendingPhoto: ProcessedDetailPhoto?
+  @State private var pendingPreview: UIImage?
   @State private var isPreparingPhoto = false
   @State private var photoErrorMessage: String?
 
@@ -22,7 +24,8 @@ struct ColoringPageDetailView: View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 18) {
         RecordArtwork(
-          url: LibraryItem.page(page).artworkURL(using: model.client),
+          url: LibraryItem.page(page).artworkURL(
+            using: model.client, thumb: ArtworkThumb.gallery),
           maxHeight: heroHeight,
           emptyMinHeight: 180,
           successAccessibilityLabel: "Page artwork"
@@ -36,7 +39,6 @@ struct ColoringPageDetailView: View {
           Text(LibraryItem.page(page).title)
             .font(.title2.bold())
             .foregroundStyle(theme.foreground)
-            .accessibilityAddTraits(.isHeader)
           Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
             .font(.body)
             .foregroundStyle(theme.pageSecondaryForeground)
@@ -77,6 +79,15 @@ struct ColoringPageDetailView: View {
           }
 
           if let pendingPhoto {
+            if let preview = pendingPreview {
+              Image(uiImage: preview)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: 240)
+                .clipShape(.rect(cornerRadius: Theme.Radius.medium))
+                .accessibilityLabel("Selected page photo")
+                .accessibilityIdentifier("detail.page.photoPreview")
+            }
             switch model.unresolvedWriteState {
             case .needsRefresh:
               if let message = model.mutationErrorMessage {
@@ -113,18 +124,25 @@ struct ColoringPageDetailView: View {
               Button {
                 Task { await upload(pendingPhoto) }
               } label: {
-                Label("Try upload again", systemImage: "arrow.clockwise")
-                  .frame(maxWidth: .infinity)
+                Label(
+                  model.mutationErrorMessage == nil ? "Add photo" : "Try upload again",
+                  systemImage: model.mutationErrorMessage == nil ? "plus" : "arrow.clockwise"
+                )
+                .frame(maxWidth: .infinity)
               }
               .buttonStyle(.borderedProminent)
               .controlSize(.large)
               .disabled(isPreparingPhoto || model.isMutating)
-              .accessibilityIdentifier("detail.page.photoRetry")
+              .accessibilityIdentifier(
+                model.mutationErrorMessage == nil
+                  ? "detail.page.photoSubmit" : "detail.page.photoRetry"
+              )
 
               Button("Discard pending upload", role: .cancel) {
                 clearPendingPhoto()
               }
-              .frame(maxWidth: .infinity)
+              .controlSize(.large)
+              .frame(maxWidth: .infinity, minHeight: 44)
               .disabled(model.isMutating)
             }
           }
@@ -166,7 +184,7 @@ struct ColoringPageDetailView: View {
     }
     .refreshable { await model.load() }
     .task(id: selectedItem) {
-      await prepareAndUploadSelection()
+      await prepareSelection()
     }
   }
 
@@ -178,7 +196,8 @@ struct ColoringPageDetailView: View {
         url: model.client.fileURL(
           collection: "coloring_pages",
           recordID: page.id,
-          filename: filename
+          filename: filename,
+          thumb: ArtworkThumb.compact
         ),
         accessibilityLabel: "Page photo \(index + 1)"
           + pagePhotoSubjectSuffix
@@ -207,7 +226,8 @@ struct ColoringPageDetailView: View {
       if pendingPhoto == nil {
         PhotosPicker(selection: $selectedItem, matching: .images) {
           Label("Add photo", systemImage: "plus")
-            .frame(minHeight: 32)
+            .frame(minHeight: 44)
+            .contentShape(.rect)
         }
         .buttonStyle(.bordered)
         .disabled(isPreparingPhoto || model.isMutating)
@@ -225,26 +245,22 @@ struct ColoringPageDetailView: View {
     return ": \(subject)"
   }
 
-  private func prepareAndUploadSelection() async {
+  private func prepareSelection() async {
     guard let selectedItem else { return }
     isPreparingPhoto = true
     photoErrorMessage = nil
     model.mutationErrorMessage = nil
     pendingPhoto = nil
+    pendingPreview = nil
     AccessibilityNotification.Announcement("Preparing photo").post()
     defer { isPreparingPhoto = false }
     do {
-      guard let data = try await selectedItem.loadTransferable(type: Data.self) else {
-        throw DetailPhotoProcessingError.unsupportedImage
-      }
-      try Task.checkCancellation()
-      let photo = try await DetailPhotoProcessor.process(
-        data: data,
-        contentTypeIdentifier: selectedItem.supportedContentTypes.first?.identifier
-      )
+      let photo = try await DetailPhotoProcessor.process(item: selectedItem)
       try Task.checkCancellation()
       pendingPhoto = photo
-      await upload(photo)
+      pendingPreview = await Task.detached(priority: .userInitiated) {
+        UIImage(data: photo.data)
+      }.value
     } catch is CancellationError {
       return
     } catch let error as DetailPhotoProcessingError {
@@ -280,6 +296,7 @@ struct ColoringPageDetailView: View {
 
   private func clearPendingPhoto(clearRecovery: Bool = false) {
     pendingPhoto = nil
+    pendingPreview = nil
     selectedItem = nil
     photoErrorMessage = nil
     if clearRecovery {

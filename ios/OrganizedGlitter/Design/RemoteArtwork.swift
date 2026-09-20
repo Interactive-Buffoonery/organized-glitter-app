@@ -2,7 +2,25 @@ import Foundation
 import ImageIO
 import SwiftUI
 
+enum ArtworkThumb {
+  static let gallery = "320x420"
+  static let compact = "160x160"
+}
+
+private struct PocketBaseClientEnvironmentKey: EnvironmentKey {
+  static let defaultValue: PocketBaseClient? = nil
+}
+
+extension EnvironmentValues {
+  var pocketBaseClient: PocketBaseClient? {
+    get { self[PocketBaseClientEnvironmentKey.self] }
+    set { self[PocketBaseClientEnvironmentKey.self] = newValue }
+  }
+}
+
 struct RemoteArtwork<Content: View>: View {
+  @Environment(\.pocketBaseClient) private var client
+
   let url: URL?
   let maxPixelDimension: CGFloat
   private let content: (AsyncImagePhase) -> Content
@@ -32,16 +50,21 @@ struct RemoteArtwork<Content: View>: View {
   private func load() async {
     let currentRequestID = UUID()
     requestID = currentRequestID
+    let urlChanged = url != activeURL
     activeURL = url
-    phase = .empty
+    if urlChanged {
+      phase = .empty
+    }
     guard let url else {
+      phase = .empty
       return
     }
 
     do {
       let artwork = try await RemoteArtworkLoader.shared.load(
         from: url,
-        maxPixelDimension: maxPixelDimension
+        maxPixelDimension: maxPixelDimension,
+        client: client
       )
       try Task.checkCancellation()
       guard requestID == currentRequestID, activeURL == url else {
@@ -67,9 +90,11 @@ struct RemoteArtworkImage: @unchecked Sendable {
 
 final class RemoteArtworkLoader: @unchecked Sendable {
   static let shared = RemoteArtworkLoader()
+  static let maximumDownloadByteCount = 24 * 1_024 * 1_024
 
   private let session: URLSession
   private let dataStore: RemoteArtworkDataStore
+  private let decodedStore: RemoteArtworkDecodedStore
 
   convenience init() {
     #if DEBUG
@@ -84,15 +109,38 @@ final class RemoteArtworkLoader: @unchecked Sendable {
 
   init(
     session: URLSession,
-    dataStore: RemoteArtworkDataStore = RemoteArtworkDataStore()
+    dataStore: RemoteArtworkDataStore = RemoteArtworkDataStore(),
+    decodedStore: RemoteArtworkDecodedStore = RemoteArtworkDecodedStore()
   ) {
     self.session = session
     self.dataStore = dataStore
+    self.decodedStore = decodedStore
   }
 
-  func load(from url: URL, maxPixelDimension: CGFloat) async throws -> RemoteArtworkImage {
+  func load(
+    from url: URL,
+    maxPixelDimension: CGFloat,
+    client: PocketBaseClient? = nil
+  ) async throws -> RemoteArtworkImage {
+    let pixelSize = Int(maxPixelDimension.rounded(.up))
+    if let cached = await decodedStore.image(for: url, maxPixelDimension: pixelSize) {
+      return cached
+    }
+
+    let fileClient: PocketBaseClient?
+    #if DEBUG
+      fileClient = OverviewFixtureProtocol.scenario == nil ? client : nil
+    #else
+      fileClient = client
+    #endif
+
     let data = try await dataStore.data(for: url) { [session] in
-      try await Self.downloadData(from: url, using: session)
+      if let fileClient {
+        return try await fileClient.fileData(
+          at: url, maximumByteCount: Self.maximumDownloadByteCount)
+      }
+      return try await Self.downloadData(
+        from: url, using: session, maximumByteCount: Self.maximumDownloadByteCount)
     }
     try Task.checkCancellation()
 
@@ -102,15 +150,18 @@ final class RemoteArtworkLoader: @unchecked Sendable {
       try Task.checkCancellation()
       return image
     }
-    return try await withTaskCancellationHandler {
+    let image = try await withTaskCancellationHandler {
       try await decodingTask.value
     } onCancel: {
       decodingTask.cancel()
     }
+    await decodedStore.insert(image, for: url, maxPixelDimension: pixelSize)
+    return image
   }
 
   func purgeMemoryCache() async {
     await dataStore.removeAll()
+    await decodedStore.removeAll()
   }
 
   static func downsample(data: Data, maxPixelDimension: CGFloat) throws -> RemoteArtworkImage {
@@ -143,14 +194,19 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     }
   #endif
 
-  private static func downloadData(from url: URL, using session: URLSession) async throws -> Data {
-    let data: Data
+  private static func downloadData(
+    from url: URL,
+    using session: URLSession,
+    maximumByteCount: Int
+  ) async throws -> Data {
+    let fileURL: URL
     let response: URLResponse
     do {
-      (data, response) = try await session.data(from: url)
+      (fileURL, response) = try await session.download(from: url)
     } catch let error as URLError where error.code == .cancelled {
       throw CancellationError()
     }
+    defer { try? FileManager.default.removeItem(at: fileURL) }
 
     guard
       let httpResponse = response as? HTTPURLResponse,
@@ -158,7 +214,12 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     else {
       throw RemoteArtworkError.invalidResponse
     }
-    return data
+    let size =
+      (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int) ?? 0
+    guard size <= maximumByteCount else {
+      throw RemoteArtworkError.payloadTooLarge
+    }
+    return try Data(contentsOf: fileURL)
   }
 
   private static func ephemeralSession() -> URLSession {
@@ -327,8 +388,58 @@ actor RemoteArtworkDataStore {
   }
 }
 
-private enum RemoteArtworkError: Error {
+enum RemoteArtworkError: Error {
   case invalidImage
   case invalidPixelDimension
   case invalidResponse
+  case payloadTooLarge
+}
+
+actor RemoteArtworkDecodedStore {
+  private struct Key: Hashable {
+    let url: URL
+    let maxPixelDimension: Int
+  }
+
+  private struct Entry {
+    let image: RemoteArtworkImage
+    var lastAccess: UInt64
+  }
+
+  private let maximumEntryCount: Int
+  private var entries: [Key: Entry] = [:]
+  private var accessCounter: UInt64 = 0
+
+  init(maximumEntryCount: Int = 48) {
+    self.maximumEntryCount = max(0, maximumEntryCount)
+  }
+
+  func image(for url: URL, maxPixelDimension: Int) -> RemoteArtworkImage? {
+    let key = Key(url: url, maxPixelDimension: maxPixelDimension)
+    guard var entry = entries[key] else {
+      return nil
+    }
+    accessCounter &+= 1
+    entry.lastAccess = accessCounter
+    entries[key] = entry
+    return entry.image
+  }
+
+  func insert(_ image: RemoteArtworkImage, for url: URL, maxPixelDimension: Int) {
+    guard maximumEntryCount > 0 else {
+      return
+    }
+    accessCounter &+= 1
+    entries[Key(url: url, maxPixelDimension: maxPixelDimension)] = Entry(
+      image: image, lastAccess: accessCounter)
+    while entries.count > maximumEntryCount,
+      let oldest = entries.min(by: { $0.value.lastAccess < $1.value.lastAccess })
+    {
+      entries[oldest.key] = nil
+    }
+  }
+
+  func removeAll() {
+    entries.removeAll()
+  }
 }

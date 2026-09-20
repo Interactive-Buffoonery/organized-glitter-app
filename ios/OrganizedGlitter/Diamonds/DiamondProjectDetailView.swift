@@ -17,7 +17,8 @@ struct DiamondProjectDetailView: View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 18) {
         RecordArtwork(
-          url: LibraryItem.diamond(project).artworkURL(using: model.client),
+          url: LibraryItem.diamond(project).artworkURL(
+            using: model.client, thumb: ArtworkThumb.gallery),
           maxHeight: heroHeight,
           emptyMinHeight: 180,
           successAccessibilityLabel: "Project artwork"
@@ -31,7 +32,6 @@ struct DiamondProjectDetailView: View {
           Text(project.title)
             .font(.title2.bold())
             .foregroundStyle(theme.foreground)
-            .accessibilityAddTraits(.isHeader)
           if !LibraryItem.diamond(project).subtitle.isEmpty {
             Text(LibraryItem.diamond(project).subtitle)
               .font(.body)
@@ -126,7 +126,9 @@ struct DiamondProjectDetailView: View {
           }
         }
 
-        if let mutationErrorMessage = model.mutationErrorMessage, !isAddingNote {
+        if let mutationErrorMessage = model.mutationErrorMessage,
+          !isAddingNote, model.unresolvedWriteState == nil
+        {
           AccessibleErrorLabel(message: mutationErrorMessage)
         }
       }
@@ -155,7 +157,8 @@ struct DiamondProjectDetailView: View {
         url: model.client.fileURL(
           collection: "progress_notes",
           recordID: note.id,
-          filename: image
+          filename: image,
+          thumb: ArtworkThumb.compact
         ),
         accessibilityLabel: progressPhotoLabel(for: note)
       )
@@ -210,7 +213,8 @@ struct DiamondProjectDetailView: View {
         isAddingNote = true
       } label: {
         Label("Add photo", systemImage: "plus")
-          .frame(minHeight: 32)
+          .frame(minHeight: 44)
+          .contentShape(.rect)
       }
       .buttonStyle(.bordered)
       .disabled(model.isMutating || model.unresolvedWriteState != nil)
@@ -273,6 +277,9 @@ private struct DiamondProgressNoteEditor: View {
           DatePicker("Date", selection: $date, displayedComponents: .date)
           TextField("Caption (optional)", text: $content, axis: .vertical)
             .lineLimit(3...8)
+          Text("Add a photo, a caption, or both.")
+            .font(.footnote)
+            .foregroundStyle(theme.pageSecondaryForeground)
         }
         .listRowBackground(theme.card)
         .disabled(model.unresolvedWriteState != nil)
@@ -334,12 +341,12 @@ private struct DiamondProgressNoteEditor: View {
       .themedScrollBackground()
       .navigationTitle("Add progress note")
       .navigationBarTitleDisplayMode(.inline)
-      .interactiveDismissDisabled(isPreparingPhoto || model.isMutating)
+      .interactiveDismissDisabled(model.isMutating)
       .accessibilityIdentifier("detail.diamond.noteEditor")
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button("Cancel") { dismiss() }
-            .disabled(isPreparingPhoto || model.isMutating)
+            .disabled(model.isMutating)
         }
         ToolbarItem(placement: .confirmationAction) {
           switch model.unresolvedWriteState {
@@ -388,17 +395,14 @@ private struct DiamondProgressNoteEditor: View {
     AccessibilityNotification.Announcement("Preparing photo").post()
     defer { isPreparingPhoto = false }
     do {
-      guard let data = try await selectedItem.loadTransferable(type: Data.self) else {
-        throw DetailPhotoProcessingError.unsupportedImage
-      }
-      try Task.checkCancellation()
       let photo = try await DetailPhotoProcessor.process(
-        data: data,
-        contentTypeIdentifier: selectedItem.supportedContentTypes.first?.identifier
+        item: selectedItem
       )
       try Task.checkCancellation()
       processedPhoto = photo
-      previewImage = UIImage(data: photo.data)
+      previewImage = await Task.detached(priority: .userInitiated) {
+        UIImage(data: photo.data)
+      }.value
     } catch is CancellationError {
       return
     } catch let error as DetailPhotoProcessingError {
@@ -484,13 +488,15 @@ struct DetailMetadataRow<Content: View>: View {
             .foregroundStyle(theme.foreground)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-      } else {
+        .accessibilityElement(children: .combine)
+        } else {
         LabeledContent {
           content
             .foregroundStyle(theme.foreground)
         } label: {
           labelView
         }
+        .accessibilityElement(children: .combine)
       }
     }
     .padding(.vertical, 10)

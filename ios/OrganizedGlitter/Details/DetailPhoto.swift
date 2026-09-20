@@ -1,4 +1,6 @@
+import CoreTransferable
 import ImageIO
+import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -18,7 +20,10 @@ struct DetailPhotoGallery: View {
     ScrollView(.horizontal) {
       LazyHStack(spacing: 12) {
         ForEach(photos) { photo in
-          RemoteArtwork(url: photo.url, maxPixelDimension: 660) { phase in
+          RemoteArtwork(
+            url: photo.url,
+            maxPixelDimension: thumbnailSize * 3
+          ) { phase in
             switch phase {
             case .success(let image):
               image
@@ -90,6 +95,16 @@ enum DetailPhotoProcessor {
   static let maximumOutputBytes = 5 * 1_024 * 1_024
   static let maximumPixelDimension = 2_048
 
+  static func process(item: PhotosPickerItem) async throws -> ProcessedDetailPhoto {
+    guard let transfer = try await item.loadTransferable(type: SizedImageTransfer.self) else {
+      throw DetailPhotoProcessingError.unsupportedImage
+    }
+    return try await process(
+      data: transfer.data,
+      contentTypeIdentifier: item.supportedContentTypes.first?.identifier
+    )
+  }
+
   static func process(
     data: Data,
     contentTypeIdentifier: String?,
@@ -119,7 +134,10 @@ enum DetailPhotoProcessor {
     contentTypeIdentifier: String?,
     originalFileName: String?
   ) throws -> ProcessedDetailPhoto {
-    guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+    guard let source = CGImageSourceCreateWithData(
+      data as CFData,
+      [kCGImageSourceShouldCache: false] as CFDictionary
+    ),
       CGImageSourceGetCount(source) > 0
     else {
       throw DetailPhotoProcessingError.unsupportedImage
@@ -221,5 +239,26 @@ enum DetailPhotoProcessor {
       .map { allowed.contains($0) ? Character(String($0)) : "-" }
     let value = sanitized.map { String($0) }?.nonEmpty ?? "artwork"
     return String(value.prefix(60))
+  }
+}
+
+struct SizedImageTransfer: Transferable {
+  let data: Data
+
+  static var transferRepresentation: some TransferRepresentation {
+    FileRepresentation(importedContentType: .image) { received in
+      let size =
+        try received.file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+      guard size <= DetailPhotoProcessor.maximumInputBytes else {
+        throw DetailPhotoProcessingError.inputTooLarge
+      }
+      return SizedImageTransfer(data: try Data(contentsOf: received.file))
+    }
+    DataRepresentation(importedContentType: .image) { data in
+      guard data.count <= DetailPhotoProcessor.maximumInputBytes else {
+        throw DetailPhotoProcessingError.inputTooLarge
+      }
+      return SizedImageTransfer(data: data)
+    }
   }
 }

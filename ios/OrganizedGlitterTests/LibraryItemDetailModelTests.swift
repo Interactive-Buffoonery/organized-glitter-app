@@ -148,6 +148,70 @@ struct LibraryItemDetailModelTests {
   }
 
   @Test
+  func cancelledPageUploadEntersUnresolvedWriteRecovery() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_pages/records/page-1") {
+        throw URLError(.cancelled)
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records/page-1") {
+        return (200, Self.pageJSON(id: "page-1", number: 1, photos: ["artwork.jpg"]))
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .page(Self.page), client: client, userID: "user-1")
+    let photo = ProcessedDetailPhoto(
+      data: Data([0xff, 0xd8, 0xff]),
+      fileName: "artwork.jpg",
+      contentType: "image/jpeg"
+    )
+
+    #expect(!(await model.appendPagePhoto(photo)))
+    #expect(model.unresolvedWriteState == .refreshed)
+    #expect(!(await model.appendPagePhoto(photo)))
+    let patchCount = DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count
+    #expect(patchCount == 1)
+  }
+
+  @Test
+  func returningToABookKeepsAlreadyLoadedPages() async throws {
+    let client = try await signedInClient { request in
+      let components = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)
+      let path = try #require(request.url?.path)
+      if path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, Self.bookJSON)
+      }
+      if path.hasSuffix("/coloring_pages/records") {
+        let page = components?.queryItems?.first(where: { $0.name == "page" })?.value
+        let perPage = components?.queryItems?.first(where: { $0.name == "perPage" })?.value
+        if page == "2" {
+          return (200, Self.pageListJSON(id: "page-2", number: 2, page: 2, totalPages: 2))
+        }
+        if perPage == "2" {
+          return (
+            200,
+            #"{"page":1,"perPage":2,"totalItems":2,"totalPages":1,"items":[\#(Self.pageJSON(id: "page-1", number: 1, photos: [])),\#(Self.pageJSON(id: "page-2", number: 2, photos: []))]}"#
+          )
+        }
+        return (200, Self.pageListJSON(id: "page-1", number: 1, page: 1, totalPages: 2))
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .book(Self.book), client: client, userID: "user-1")
+
+    await model.load()
+    await model.loadMoreBookPages()
+    #expect(model.bookPages.map(\.id) == ["page-1", "page-2"])
+
+    await model.load(preservingLoadedBookPages: true)
+    #expect(model.bookPages.map(\.id) == ["page-1", "page-2"])
+  }
+
+  @Test
   func confirmedBackdatedDiamondNoteKeepsServerSortWhenRefreshFails() async throws {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)

@@ -61,7 +61,7 @@ final class LibraryItemDetailModel {
   }
 
   @discardableResult
-  func load() async -> Bool {
+  func load(preservingLoadedBookPages: Bool = false) async -> Bool {
     generation += 1
     let requestGeneration = generation
     isLoading = true
@@ -109,6 +109,8 @@ final class LibraryItemDetailModel {
           filters.append(PocketBaseFilter.equals(.status, status))
         }
         let pagesFilter = PocketBaseFilter.all(filters)
+        let loadedPageCount =
+          preservingLoadedBookPages && !bookPages.isEmpty ? max(bookPages.count, 1) : 24
         async let bookRequest: ColoringBookRecord = client.get(
           collection: "coloring_books",
           id: book.id,
@@ -117,7 +119,7 @@ final class LibraryItemDetailModel {
         async let pagesRequest: RecordList<ColoringPageRecord> = client.list(
           collection: "coloring_pages",
           page: 1,
-          perPage: 24,
+          perPage: loadedPageCount,
           filter: pagesFilter,
           sort: "+page_number",
           expand: "book"
@@ -343,7 +345,7 @@ final class LibraryItemDetailModel {
       mergeProgressNote(saved)
       await load()
       return true
-    } catch APIError.offline, APIError.server {
+    } catch APIError.offline, APIError.server, APIError.cancelled {
       unresolvedDiamondWriteIncludesPhoto = photo != nil
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -387,7 +389,7 @@ final class LibraryItemDetailModel {
       item = .page(saved.withExpand(page.expand))
       await load()
       return true
-    } catch APIError.offline, APIError.server {
+    } catch APIError.offline, APIError.server, APIError.cancelled {
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
       return false
