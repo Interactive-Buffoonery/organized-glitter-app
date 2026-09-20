@@ -53,14 +53,14 @@ Before App Store submission, the release owner must separately verify:
 - Backup retention and isolated restoration.
 - Account deletion and provider revocation.
 
-The app supports native email/password registration and verification-email
-requests through the pinned PocketBase contract. Password-reset confirmation
-and email-verification confirmation remain blocked until the backend defines and
-ships an Associated Domains file, stable HTTPS universal-link routes, the exact
-token path/query format, and safe fallback behavior for older app versions and
-the web app. Only then should the iOS app add the matching Associated Domains
-entitlement, route those links to native token confirmation screens, and verify
-expired, reused, malformed, and cross-environment tokens.
+The source includes native email/password registration, verification-email
+requests, and password-reset confirmation. Password reset uses the canonical
+HTTPS route documented in `password-reset-links.md` and keeps the web route as
+the fallback when the app is not installed. The native code and Associated
+Domains entitlement are preparatory until the matching AASA file is deployed
+and verified. Do not update `BackendContract.json` or claim production link
+handling before that deployed revision is known. Email-verification
+confirmation remains blocked on its own universal-link contract.
 
 Account deletion is a backend-first App Store release blocker. The existing web
 flow lets the client write its own audit record and then delete the user, so the

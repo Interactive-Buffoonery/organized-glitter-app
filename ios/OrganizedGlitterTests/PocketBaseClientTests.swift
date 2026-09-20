@@ -122,10 +122,71 @@ struct PocketBaseClientTests {
     #expect(
       PocketBaseClientURLProtocol.requests.first?.url?.path
         == "/api/collections/users/request-password-reset")
-    #expect(PocketBaseClientURLProtocol.requests.first?.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(
+      PocketBaseClientURLProtocol.requests.first?.value(forHTTPHeaderField: "Authorization") == nil)
     #expect(
       try JSONSerialization.jsonObject(with: PocketBaseClientURLProtocol.requestBodies[0])
         as? [String: String] == ["email": "sarah@example.test"])
+  }
+
+  @Test
+  func confirmsPasswordResetWithoutAuthentication() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [(204, "")]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    try await client.confirmPasswordReset(
+      token: "opaque.reset.token",
+      password: "ValidPass1",
+      passwordConfirmation: "ValidPass1"
+    )
+
+    let request = try #require(PocketBaseClientURLProtocol.requests.first)
+    #expect(request.httpMethod == "POST")
+    #expect(request.url?.path == "/api/collections/users/confirm-password-reset")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(
+      try JSONSerialization.jsonObject(with: PocketBaseClientURLProtocol.requestBodies[0])
+        as? [String: String] == [
+          "token": "opaque.reset.token",
+          "password": "ValidPass1",
+          "passwordConfirm": "ValidPass1",
+        ])
+  }
+
+  @Test
+  func mapsRejectedPasswordResetTokenWithoutExposingIt() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (400, #"{"message":"Failed to confirm password reset."}"#)
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: APIError.validation("Failed to confirm password reset.")) {
+      try await client.confirmPasswordReset(
+        token: "rejected.reset.token",
+        password: "ValidPass1",
+        passwordConfirmation: "ValidPass1"
+      )
+    }
   }
 
   @Test

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Requests a password-reset email. Token confirmation stays blocked until the
-/// backend ships Associated Domains and universal-link routes.
+/// Requests a password-reset email. Confirmation opens from the canonical
+/// universal link when the deployed web contract is available.
 struct PasswordResetView: View {
   @Environment(\.theme) private var theme
   @Environment(\.dismiss) private var dismiss
@@ -60,12 +60,10 @@ struct PasswordResetView: View {
         .foregroundStyle(theme.foreground)
         .accessibilityIdentifier("passwordResetConfirmation")
 
-      Text(
-        "Opening the reset link inside this app requires a backend universal-link contract that is not available yet. Use the link from email in a browser for now."
-      )
-      .font(.footnote)
-      .multilineTextAlignment(.center)
-      .foregroundStyle(theme.mutedForeground)
+      Text("Open the link in the email to choose a new password.")
+        .font(.footnote)
+        .multilineTextAlignment(.center)
+        .foregroundStyle(theme.mutedForeground)
     }
   }
 
