@@ -141,20 +141,21 @@ struct OverviewPresentationTests {
     let client = client()
     let model = OverviewModel(client: client, userID: "fictional-user")
     #expect(
-      model.artworkURL(for: project(image: "garden image.png"))
+      model.artworkURL(for: project(image: "garden image.png"), token: "file-token")
         == client.fileURL(
           collection: "projects", recordID: "fictional-project", filename: "garden image.png",
-          thumb: ArtworkThumb.compact
+          thumb: ArtworkThumb.compact, token: "file-token"
         ))
     #expect(
-      model.artworkURL(for: page(photos: ["", "page.png", "later.png"]))
+      model.artworkURL(for: page(photos: ["", "page.png", "later.png"]), token: "file-token")
         == client.fileURL(
           collection: "coloring_pages", recordID: "fictional-page", filename: "page.png",
-          thumb: ArtworkThumb.compact
+          thumb: ArtworkThumb.compact, token: "file-token"
         ))
-    #expect(model.artworkURL(for: project()) == nil)
-    #expect(model.artworkURL(for: project(image: "")) == nil)
-    #expect(model.artworkURL(for: page()) == nil)
-    #expect(model.artworkURL(for: page(photos: [""])) == nil)
+    #expect(model.artworkURL(for: project(), token: "file-token") == nil)
+    #expect(model.artworkURL(for: project(image: ""), token: "file-token") == nil)
+    #expect(model.artworkURL(for: page(), token: "file-token") == nil)
+    #expect(model.artworkURL(for: page(photos: [""]), token: "file-token") == nil)
+    #expect(model.artworkURL(for: project(image: "garden image.png"), token: nil) == nil)
   }
 }
