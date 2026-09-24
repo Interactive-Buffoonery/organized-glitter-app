@@ -274,16 +274,17 @@ struct LibraryTests {
         expand: nil))
 
     #expect(
-      diamond.artworkURL(using: client)
-        == client.fileURL(collection: "projects", recordID: "project-1", filename: "garden.png"))
+      diamond.artworkURL(using: client, token: "file-token")
+        == client.fileURL(collection: "projects", recordID: "project-1", filename: "garden.png", token: "file-token"))
     #expect(
-      book.artworkURL(using: client)
+      book.artworkURL(using: client, token: "file-token")
         == client.fileURL(
-          collection: "coloring_books", recordID: "book-1", filename: "cover.png"))
+          collection: "coloring_books", recordID: "book-1", filename: "cover.png", token: "file-token"))
     #expect(
-      page.artworkURL(using: client)
+      page.artworkURL(using: client, token: "file-token")
         == client.fileURL(
-          collection: "coloring_pages", recordID: "page-1", filename: "page.png"))
+          collection: "coloring_pages", recordID: "page-1", filename: "page.png", token: "file-token"))
+    #expect(diamond.artworkURL(using: client, token: nil) == nil)
     #expect(
       LibraryItem.diamond(
         DiamondProjectRecord(
@@ -292,7 +293,7 @@ struct LibraryTests {
           generalNotes: nil, width: nil, height: nil, image: "",
           dateStarted: nil, dateCompleted: nil, created: "2026-01-01",
           updated: "2026-01-02", expand: nil)
-      ).artworkURL(using: client) == nil)
+      ).artworkURL(using: client, token: "file-token") == nil)
     #expect(diamond.artworkAccessibilityLabel == "Project photo")
     #expect(book.artworkAccessibilityLabel == "Book cover")
     #expect(page.artworkAccessibilityLabel == "Page photo")

@@ -111,8 +111,8 @@ final class OverviewModel {
     }
   }
 
-  func artworkURL(for item: LibraryItem) -> URL? {
-    item.artworkURL(using: client, thumb: ArtworkThumb.compact)
+  func artworkURL(for item: LibraryItem, token: String?) -> URL? {
+    item.artworkURL(using: client, thumb: ArtworkThumb.compact, token: token)
   }
 
   // Month bounds are PocketBase date-only strings (YYYY-MM-DD) in the user's
@@ -201,6 +201,7 @@ enum OverviewCraft: String, CaseIterable, Identifiable {
 }
 
 struct OverviewView: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -450,7 +451,8 @@ struct OverviewView: View {
         LazyVStack(spacing: 0) {
           ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
             NavigationLink(value: item) {
-              OverviewProjectRow(item: item, imageURL: model.artworkURL(for: item))
+              OverviewProjectRow(
+                item: item, imageURL: model.artworkURL(for: item, token: protectedFiles?.token))
             }
             .buttonStyle(.plain)
             if index < items.count - 1 {

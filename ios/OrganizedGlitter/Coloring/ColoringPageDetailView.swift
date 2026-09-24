@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct ColoringPageDetailView: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
@@ -25,7 +26,7 @@ struct ColoringPageDetailView: View {
       LazyVStack(alignment: .leading, spacing: 18) {
         RecordArtwork(
           url: LibraryItem.page(page).artworkURL(
-            using: model.client, thumb: ArtworkThumb.gallery),
+            using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
           maxHeight: heroHeight,
           emptyMinHeight: 180,
           successAccessibilityLabel: "Page artwork"
@@ -190,15 +191,14 @@ struct ColoringPageDetailView: View {
 
   private var photos: [DetailPhoto] {
     page.photos.enumerated().compactMap { index, filename in
-      guard !filename.isEmpty else { return nil }
+      guard !filename.isEmpty,
+        let url = protectedFiles?.url(
+          collection: "coloring_pages", recordID: page.id, filename: filename,
+          thumb: ArtworkThumb.compact)
+      else { return nil }
       return DetailPhoto(
         id: filename,
-        url: model.client.fileURL(
-          collection: "coloring_pages",
-          recordID: page.id,
-          filename: filename,
-          thumb: ArtworkThumb.compact
-        ),
+        url: url,
         accessibilityLabel: "Page photo \(index + 1)"
           + pagePhotoSubjectSuffix
       )

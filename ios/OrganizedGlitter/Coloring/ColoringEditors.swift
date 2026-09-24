@@ -35,6 +35,7 @@ struct ColoringBookDraft: Equatable {
 }
 
 struct ColoringBookEditor: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   let client: PocketBaseClient
   let userID: String
   let book: ColoringBookRecord?
@@ -72,24 +73,25 @@ struct ColoringBookEditor: View {
       Form {
         if let book, let cover = book.coverImage?.nonEmpty {
           Section {
-            AsyncImage(
-              url: client.fileURL(
+            RemoteArtwork(
+              url: protectedFiles?.url(
                 collection: "coloring_books",
                 recordID: book.id,
                 filename: cover,
-                thumb: "320x420"
-              )
-            ) { image in
-              image
-                .resizable()
-                .scaledToFill()
-            } placeholder: {
-              RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                .fill(theme.muted)
-                .overlay {
-                  Image(systemName: "book.closed")
-                    .foregroundStyle(theme.mutedForeground)
-                }
+                thumb: ArtworkThumb.gallery
+              ),
+              maxPixelDimension: 480
+            ) { phase in
+              if case .success(let image) = phase {
+                image.resizable().scaledToFill()
+              } else {
+                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                  .fill(theme.muted)
+                  .overlay {
+                    Image(systemName: "book.closed")
+                      .foregroundStyle(theme.mutedForeground)
+                  }
+              }
             }
             .frame(width: 160, height: 220)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
@@ -301,6 +303,7 @@ struct ColoringPageDraft: Equatable {
 }
 
 struct ColoringPageEditor: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   let client: PocketBaseClient
   let page: ColoringPageRecord
   let onLibraryRefresh: () async -> Void
@@ -335,24 +338,25 @@ struct ColoringPageEditor: View {
       Form {
         Section("Page \(page.pageNumber)") {
           if let photo = page.photos.first {
-            AsyncImage(
-              url: client.fileURL(
+            RemoteArtwork(
+              url: protectedFiles?.url(
                 collection: "coloring_pages",
                 recordID: page.id,
                 filename: photo,
-                thumb: "160x160"
-              )
-            ) { image in
-              image
-                .resizable()
-                .scaledToFill()
-            } placeholder: {
-              RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                .fill(theme.muted)
-                .overlay {
-                  Image(systemName: "doc.richtext")
-                    .foregroundStyle(theme.mutedForeground)
-                }
+                thumb: ArtworkThumb.compact
+              ),
+              maxPixelDimension: 360
+            ) { phase in
+              if case .success(let image) = phase {
+                image.resizable().scaledToFill()
+              } else {
+                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                  .fill(theme.muted)
+                  .overlay {
+                    Image(systemName: "doc.richtext")
+                      .foregroundStyle(theme.mutedForeground)
+                  }
+              }
             }
             .frame(width: 120, height: 120)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ColoringBookDetailView: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.theme) private var theme
 
@@ -127,7 +128,7 @@ struct ColoringBookDetailView: View {
     layout {
       RecordArtwork(
         url: LibraryItem.book(book).artworkURL(
-          using: model.client, thumb: ArtworkThumb.gallery),
+          using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
         maxHeight: 150,
         emptyMinHeight: 150,
         maxPixelDimension: 360,
@@ -234,6 +235,7 @@ struct ColoringBookDetailView: View {
 }
 
 private struct ColoringBookPageCard: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
 
   let page: ColoringPageRecord
@@ -242,7 +244,8 @@ private struct ColoringBookPageCard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       RecordArtwork(
-        url: LibraryItem.page(page).artworkURL(using: client, thumb: ArtworkThumb.gallery),
+        url: LibraryItem.page(page).artworkURL(
+          using: client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
         maxHeight: 220,
         emptyMinHeight: 150,
         maxPixelDimension: 660

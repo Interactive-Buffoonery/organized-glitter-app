@@ -23,14 +23,10 @@ The application does not own backend schema or server behavior. Those remain in
 - Concurrent edits use PocketBase last-write-wins behavior.
 - A write with unknown completion must be refreshed before retry.
 - Library search, status filters, sorting, and pagination execute on PocketBase.
-- File images are displayed via direct file URLs
-  (`/api/files/{collection}/{recordID}/{filename}?thumb=WxH`) while file fields
-  remain unprotected. The backend `docs/FILE_ACCESS_CONTRACT.md` (status:
-  blocked by privacy audit, 2026-07-27) treats the unprotected state as a
-  native public-release blocker requiring migration to protected fields plus
-  short-lived file tokens. All file URL construction goes through
-  `PocketBaseClient.fileURL` so the token flow lands in one place when that
-  migration ships.
+- File images use short-lived PocketBase file tokens fetched for the signed-in
+  account. The app renews the token while its signed-in shell is visible and
+  updates original and thumbnail URLs together. A missing token suppresses
+  image requests. All file URL construction goes through `PocketBaseClient.fileURL`.
 
 ## Dependency policy
 
