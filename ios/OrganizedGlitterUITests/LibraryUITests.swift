@@ -38,17 +38,23 @@ final class LibraryUITests: XCTestCase {
     try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone peer craft browsing.")
     let app = launch("populated")
     openLibrary(app)
-    XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.textFields["library.search"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Garden of stars"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["Diamond art"].exists)
     XCTAssertTrue(app.buttons["Books"].exists)
     XCTAssertTrue(app.buttons["Pages"].exists)
-    XCTAssertFalse(app.navigationBars["Library"].buttons["Add"].exists)
+    XCTAssertTrue(app.buttons["Add diamond painting project"].exists)
     try capture(app, "library-diamonds")
 
     app.buttons["Books"].tap()
-    XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Fictional Press"].exists)
+    let book = app.buttons.matching(
+      NSPredicate(
+        format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@",
+        "Moonlit meadows",
+        "24 pages"
+      )
+    ).firstMatch
+    XCTAssertTrue(book.waitForExistence(timeout: 5))
     try capture(app, "library-books")
 
     app.buttons["Pages"].tap()
@@ -123,5 +129,38 @@ final class LibraryUITests: XCTestCase {
       predicate: NSPredicate { _, _ in app.frame.width > app.frame.height }, object: app)
     XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
     try capture(app, "library-accessibility-landscape")
+  }
+
+  func testSearchStatusAndSortUseServerBackedControls() throws {
+    let app = launch("design")
+    openLibrary(app)
+    XCTAssertTrue(app.staticTexts["Peony garden"].waitForExistence(timeout: 5))
+
+    app.buttons["library.status"].tap()
+    app.buttons["Completed"].tap()
+    XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Peony garden"].exists)
+
+    app.buttons["library.status"].tap()
+    app.buttons["All statuses"].tap()
+    app.buttons["library.sort"].tap()
+    app.buttons["Title A to Z"].tap()
+    let blueHour = app.staticTexts["Blue hour"]
+    let citrusGrove = app.staticTexts["Citrus grove"]
+    XCTAssertTrue(blueHour.waitForExistence(timeout: 5))
+    XCTAssertTrue(citrusGrove.exists)
+    XCTAssertTrue(
+      blueHour.frame.minY < citrusGrove.frame.minY
+        || (blueHour.frame.minY == citrusGrove.frame.minY
+          && blueHour.frame.minX < citrusGrove.frame.minX)
+    )
+
+    let search = app.textFields["library.search"]
+    search.tap()
+    search.typeText("Citrus\n")
+    XCTAssertTrue(citrusGrove.waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Blue hour"].exists)
+    app.buttons["library.search.clear"].tap()
+    XCTAssertTrue(app.staticTexts["Blue hour"].waitForExistence(timeout: 5))
   }
 }

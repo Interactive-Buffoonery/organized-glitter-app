@@ -177,6 +177,152 @@ struct PocketBaseClientTests {
   }
 
   @Test
+  func sendsMultipartCreateAndUpdateRequests() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (
+        200,
+        #"{"token":"token-1","record":{"id":"user-1","email":"sarah@example.test","verified":true}}"#
+      ),
+      (200, #"{"id":"note-1","title":"Created"}"#),
+      (200, #"{"id":"page-1","title":"Updated"}"#),
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    _ = try await client.signIn(identity: "sarah@example.test", password: "password")
+    let created: TestProject = try await client.create(
+      collection: "progress_notes",
+      multipart: PocketBaseMultipartForm(
+        fields: ["project": "project-1", "date": "2026-09-19"],
+        files: [
+          PocketBaseMultipartFile(
+            fieldName: "image",
+            fileName: "note.png",
+            contentType: "image/png",
+            data: Data([0x01, 0x02])
+          )
+        ]
+      )
+    )
+    let updated: TestProject = try await client.update(
+      collection: "coloring_pages",
+      id: "page-1",
+      multipart: PocketBaseMultipartForm(
+        files: [
+          PocketBaseMultipartFile(
+            fieldName: "photos+",
+            fileName: "first.png",
+            contentType: "image/png",
+            data: Data([0x03])
+          ),
+          PocketBaseMultipartFile(
+            fieldName: "photos+",
+            fileName: "second.png",
+            contentType: "image/png",
+            data: Data([0x04])
+          ),
+        ]
+      )
+    )
+
+    #expect(created == TestProject(id: "note-1", title: "Created"))
+    #expect(updated == TestProject(id: "page-1", title: "Updated"))
+    #expect(PocketBaseClientURLProtocol.requests.map(\.httpMethod) == ["POST", "POST", "PATCH"])
+    let createContentType = try #require(
+      PocketBaseClientURLProtocol.requests[1].value(forHTTPHeaderField: "Content-Type")
+    )
+    let updateContentType = try #require(
+      PocketBaseClientURLProtocol.requests[2].value(forHTTPHeaderField: "Content-Type")
+    )
+    #expect(createContentType.hasPrefix("multipart/form-data; boundary="))
+    #expect(updateContentType.hasPrefix("multipart/form-data; boundary="))
+    #expect(
+      String(decoding: PocketBaseClientURLProtocol.requestBodies[1], as: UTF8.self)
+        .contains("name=\"image\"; filename=\"note.png\""))
+    let updateBody = String(
+      decoding: PocketBaseClientURLProtocol.requestBodies[2],
+      as: UTF8.self
+    )
+    #expect(updateBody.components(separatedBy: "name=\"photos+\"").count - 1 == 2)
+
+    await client.signOut()
+  }
+
+  @Test
+  func replaysIdenticalMultipartBytesAfterAuthenticationRefresh() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (
+        200,
+        #"{"token":"token-1","record":{"id":"user-1","email":"sarah@example.test","verified":true}}"#
+      ),
+      (401, #"{"message":"Unauthenticated."}"#),
+      (
+        200,
+        #"{"token":"token-2","record":{"id":"user-1","email":"sarah@example.test"}}"#
+      ),
+      (200, #"{"id":"note-1","title":"Created"}"#),
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    _ = try await client.signIn(identity: "sarah@example.test", password: "password")
+    let _: TestProject = try await client.create(
+      collection: "progress_notes",
+      multipart: PocketBaseMultipartForm(
+        fields: ["project": "project-1", "date": "2026-09-19"],
+        files: [
+          PocketBaseMultipartFile(
+            fieldName: "image",
+            fileName: "note.png",
+            contentType: "image/png",
+            data: Data([0x01, 0x02, 0x03])
+          )
+        ]
+      )
+    )
+
+    #expect(
+      PocketBaseClientURLProtocol.requests.map(\.url?.path) == [
+        "/api/collections/users/auth-with-password",
+        "/api/collections/progress_notes/records",
+        "/api/collections/users/auth-refresh",
+        "/api/collections/progress_notes/records",
+      ])
+    #expect(
+      PocketBaseClientURLProtocol.requests[3].value(forHTTPHeaderField: "Authorization")
+        == "token-2"
+    )
+    #expect(
+      PocketBaseClientURLProtocol.requests[1].value(forHTTPHeaderField: "Content-Type")
+        == PocketBaseClientURLProtocol.requests[3].value(forHTTPHeaderField: "Content-Type")
+    )
+    #expect(
+      PocketBaseClientURLProtocol.requestBodies[1]
+        == PocketBaseClientURLProtocol.requestBodies[3]
+    )
+
+    await client.signOut()
+  }
+
+  @Test
   func refreshesOnceAndRetriesAnExpiredAuthenticatedRequest() async throws {
     PocketBaseClientURLProtocol.requests = []
     PocketBaseClientURLProtocol.requestBodies = []
@@ -361,7 +507,7 @@ struct PocketBaseClientTests {
   }
 
   @Test
-  func seededBackendRoundTripsADisposableProject() async throws {
+  func seededBackendRoundTripsDisposableRecordsAndMultipartFiles() async throws {
     let environment = ProcessInfo.processInfo.environment
     guard environment["RUN_SEEDED_POCKETBASE"] == "1" else {
       return
@@ -377,7 +523,9 @@ struct PocketBaseClientTests {
     )
     let client = PocketBaseClient(baseURL: baseURL, sessionStore: store)
     let session = try await client.signIn(identity: identity, password: password)
-    var createdID: String?
+    var projectID: String?
+    var progressNoteID: String?
+    var coloringBookID: String?
 
     do {
       let title = "Native integration \(UUID().uuidString)"
@@ -390,7 +538,7 @@ struct PocketBaseClientTests {
           "kit_category": "full",
         ]
       )
-      createdID = created.id
+      projectID = created.id
       #expect(created.title == title)
 
       let updated: DiamondProjectRecord = try await client.update(
@@ -400,11 +548,108 @@ struct PocketBaseClientTests {
       )
       #expect(updated.title.hasSuffix(" updated"))
 
+      let imageData = try #require(
+        Data(
+          base64Encoded:
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+      )
+      let note: DiamondProgressNoteRecord = try await client.create(
+        collection: "progress_notes",
+        multipart: PocketBaseMultipartForm(
+          fields: [
+            "project": created.id,
+            "date": "2026-09-19",
+            "content": "Native integration note",
+          ],
+          files: [
+            PocketBaseMultipartFile(
+              fieldName: "image",
+              fileName: "native-note.png",
+              contentType: "image/png",
+              data: imageData
+            )
+          ]
+        )
+      )
+      progressNoteID = note.id
+      #expect(note.project == created.id)
+      #expect(note.image?.isEmpty == false)
+
+      let book: ColoringBookRecord = try await client.create(
+        collection: "coloring_books",
+        body: SeededColoringBookCreate(
+          user: session.user.id,
+          title: "Native integration coloring \(UUID().uuidString)",
+          status: "in_stash",
+          totalPages: 1
+        )
+      )
+      coloringBookID = book.id
+      let pages: RecordList<ColoringPageRecord> = try await client.list(
+        collection: "coloring_pages",
+        perPage: 1,
+        filter: #"book = "\#(book.id)""#,
+        sort: "page_number"
+      )
+      let page = try #require(pages.items.first)
+      #expect(page.pageNumber == 1)
+
+      let firstUpload: ColoringPageRecord = try await client.update(
+        collection: "coloring_pages",
+        id: page.id,
+        multipart: PocketBaseMultipartForm(
+          files: [
+            PocketBaseMultipartFile(
+              fieldName: "photos+",
+              fileName: "native-page-first.png",
+              contentType: "image/png",
+              data: imageData
+            )
+          ]
+        )
+      )
+      let firstFilename = try #require(firstUpload.photos.first)
+
+      let secondUpload: ColoringPageRecord = try await client.update(
+        collection: "coloring_pages",
+        id: page.id,
+        multipart: PocketBaseMultipartForm(
+          files: [
+            PocketBaseMultipartFile(
+              fieldName: "photos+",
+              fileName: "native-page-second.png",
+              contentType: "image/png",
+              data: imageData
+            )
+          ]
+        )
+      )
+      #expect(secondUpload.photos.count == 2)
+      #expect(secondUpload.photos.contains(firstFilename))
+
+      let refetchedPage: ColoringPageRecord = try await client.get(
+        collection: "coloring_pages",
+        id: page.id
+      )
+      #expect(refetchedPage.photos.count == 2)
+      #expect(refetchedPage.photos.contains(firstFilename))
+
+      try await client.delete(collection: "progress_notes", id: note.id)
+      progressNoteID = nil
       try await client.delete(collection: "projects", id: created.id)
-      createdID = nil
+      projectID = nil
+      try await client.delete(collection: "coloring_books", id: book.id)
+      coloringBookID = nil
     } catch {
-      if let createdID {
-        try? await client.delete(collection: "projects", id: createdID)
+      if let progressNoteID {
+        try? await client.delete(collection: "progress_notes", id: progressNoteID)
+      }
+      if let projectID {
+        try? await client.delete(collection: "projects", id: projectID)
+      }
+      if let coloringBookID {
+        try? await client.delete(collection: "coloring_books", id: coloringBookID)
       }
       await client.signOut()
       throw error
@@ -421,6 +666,18 @@ private struct TestProject: Decodable, Equatable {
 
 private struct TestProjectUpdate: Codable, Equatable {
   let title: String
+}
+
+private struct SeededColoringBookCreate: Encodable {
+  let user: String
+  let title: String
+  let status: String
+  let totalPages: Int
+
+  enum CodingKeys: String, CodingKey {
+    case user, title, status
+    case totalPages = "total_pages"
+  }
 }
 
 private final class PocketBaseClientURLProtocol: URLProtocol, @unchecked Sendable {

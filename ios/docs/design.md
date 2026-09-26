@@ -2,12 +2,21 @@
 
 The iOS app uses the native Berry Cream palette in light and dark appearances.
 [ADR 0001](adr/0001-retain-native-backgrounds.md) controls the palette and
-screen backgrounds. The selected D direction controls the new presentation:
-artwork-led content, quiet actions, clear headings, and native interactions.
+screen backgrounds. The approved native refinement controls Overview, Library,
+and craft details: artwork-led content, compact controls, system headings, and
+native interactions. The five destinations remain unchanged.
 
 ## Current design reference
 
-Overview was migrated against `Interactive-Buffoonery/organized-glitter`,
+The current six-screen references are in
+[native refinement](design-previews/native-refinement/README.md). Generated
+boards guide hierarchy and composition; real model values and native platform
+behavior take precedence over their illustrative labels and tab bars.
+
+## Historical D reference
+
+The earlier Overview and Library migration used
+`Interactive-Buffoonery/organized-glitter`,
 branch `design/ios-mockup-studio`, revision
 `0135e6d3caa73ea01224bda27c8e0abbb954fd19`:
 
@@ -16,30 +25,46 @@ branch `design/ios-mockup-studio`, revision
 - `docs/design-previews/organized-glitter-ios.html`, the standalone refinement
   named by the README, including its compact actions and Notes refinements.
 
-The current preview is D-only. A–C comparisons and the successive treatments
+That historical preview is D-only. A–C comparisons and the successive treatments
 in `STYLE.md` are historical experiments. Neither the studio's diagonal
 background nor the standalone's flat ordinary screens supersedes ADR 0001.
 Prototype saving, Notes, sharing, and other simulated actions are not native
 implementation contracts.
 
-## Migration status
+## Native refinement
 
-Runtime checks and current screenshots are recorded in
+Current verification is recorded in
+[Native refinement validation](native-refinement-validation.md).
+Overview uses a single system heading, compact craft selection, artwork rows,
+See all in progress, Wishlist, and Completed shortcuts, then its count summary. Library keeps peer
+craft segments on iPhone and the craft sidebar on iPad. Search, status, and sort
+operate on the server; the grid shows title and written status, with page counts
+for books. Company and artist credits remain available in detail.
+
+Overview and Library share the same interactive detail destination. Diamond
+photos are dated progress-note images. Coloring-page photos append to the
+existing multi-file field. Book details query their own pages and edit the book's
+page count through the existing editor; they do not directly create page records.
+
+## Historical migration evidence
+
+Earlier runtime checks and screenshots are recorded in
 [Overview validation](overview-validation.md),
 [Library validation](library-validation.md), and
 [Account entry validation](account-entry-validation.md).
 
-Library was migrated against the same studio revision. iPhone uses peer craft
+At that revision, Library used peer craft
 segments (Diamond art / Books / Pages), native search, a quiet status menu,
-and an artwork-led two-column gallery. Captions prefer company, publisher, or
-parent book title. Create stays in the scroll content, not the navigation bar.
+and an artwork-led two-column gallery. Captions then preferred company,
+publisher, or parent book title. Create stays in the scroll content, not the
+navigation bar.
 iPad keeps a craft sidebar and opens item details on the content stack.
 Artwork uses `RecordArtwork` and `PocketBaseClient.fileURL`, with a shared
 missing/failed fallback. `listingIdentity` includes a handoff epoch so
 returning to the same craft's Wishlist clears search and reloads the
 unsearched listing without `apply` starting a second competing load.
 
-Overview now reuses `PageHeader` and `SectionHeader`, adds `QuietActionStyle`
+The earlier Overview reused `PageHeader` and `SectionHeader`, `QuietActionStyle`
 and `ActiveProjectRow`, and uses the quiet presentation of `StatusBadge`.
 Rows show uncropped project artwork or the first nonempty page photo through
 `PocketBaseClient.fileURL`; missing and failed images have a neutral fallback.
@@ -50,18 +75,20 @@ shadow, or decorative icon tile. Status retains its written label and icon.
 Large accessibility text changes rows to a vertical layout and craft selection
 to a native menu. Quiet controls have no custom movement or animation.
 
-Overview places craft selection and active work before a compact count summary.
+The earlier Overview placed craft selection and active work before a compact
+count summary.
 Its background belongs to the scroll viewport and extends through safe areas,
 not the content stack, so content height does not determine the glow geometry.
 Content has a readable maximum width on iPad while the background fills the screen.
 Loading, retry, empty, refresh, and detail navigation remain available; failed
 refreshes also show an error while retaining in-memory rows.
 
-Wishlist opens the existing Library tab with the selected craft's wishlist
-filter and clears old search text. The menu follows enabled Library crafts.
-A combined Wishlist screen and native Notes feed are follow-up work; Overview
-has no placeholder Notes control. The existing per-craft limit of five recently
-updated active records remains unchanged; the summary uses server totals.
+See all in progress, Wishlist, and Completed open the existing Library tab
+with the selected craft's matching filter and clear old search text. The menus
+follow enabled Library crafts. A combined Wishlist screen and native Notes feed
+are follow-up work; Overview has no placeholder Notes control. The existing
+per-craft limit of five recently updated active records remains unchanged; the
+summary uses server totals.
 
 Account entry was migrated against the same studio revision while keeping
 ADR 0001 backgrounds. The system launch screen uses a solid brand
@@ -186,9 +213,15 @@ Component: `.stickerCard(index)` supplies the current pastel card treatment.
 
 ## Typography
 
-- **Caveat** (bundled, `Font.caveat(size:relativeTo:)`) is the signature
-  display face: the page H1 (`PageHeader`, 40 pt) and section headers. Never
-  for body text, labels, or buttons.
+- The approved native refinement uses system Dynamic Type headings on Overview,
+  Library, and craft details: one bold page title, compact semibold section
+  headings, and no duplicate navigation title on a root screen. Reference boards
+  and fixture provenance live in `design-previews/native-refinement/`.
+- **Caveat** (bundled, `Font.caveat(size:relativeTo:)`) remains the signature
+  display face on existing brand surfaces and screens outside this refinement.
+  The legacy `PageHeader` uses it at 40 pt. Do not change that shared component
+  globally to migrate one working screen. Never use Caveat for body text,
+  labels, or buttons.
 - Everything else is the system font with Dynamic Type styles.
 
 ## Iconography
