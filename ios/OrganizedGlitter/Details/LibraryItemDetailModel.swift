@@ -53,6 +53,7 @@ final class LibraryItemDetailModel {
   private var progressNotesTotalPages = 0
   private var generation = 0
   private var unresolvedDiamondWriteIncludesPhoto = false
+  private static let bookPagesPerPage = 24
 
   init(item: LibraryItem, client: PocketBaseClient, userID: String) {
     self.item = item
@@ -109,28 +110,37 @@ final class LibraryItemDetailModel {
           filters.append(PocketBaseFilter.equals(.status, status))
         }
         let pagesFilter = PocketBaseFilter.all(filters)
-        let loadedPageCount =
-          preservingLoadedBookPages && !bookPages.isEmpty ? max(bookPages.count, 1) : 24
+        let pagesToReload =
+          preservingLoadedBookPages && !bookPages.isEmpty ? max(bookPagesPage, 1) : 1
         async let bookRequest: ColoringBookRecord = client.get(
           collection: "coloring_books",
           id: book.id,
           expand: "publisher,illustrator"
         )
-        async let pagesRequest: RecordList<ColoringPageRecord> = client.list(
-          collection: "coloring_pages",
-          page: 1,
-          perPage: loadedPageCount,
-          filter: pagesFilter,
-          sort: "+page_number",
-          expand: "book"
-        )
-        let (loadedBook, loadedPages) = try await (bookRequest, pagesRequest)
+        var loadedPages: [ColoringPageRecord] = []
+        var loadedPage = 0
+        var totalPages = 0
+        for page in 1...pagesToReload {
+          let result: RecordList<ColoringPageRecord> = try await client.list(
+            collection: "coloring_pages",
+            page: page,
+            perPage: Self.bookPagesPerPage,
+            filter: pagesFilter,
+            sort: "+page_number",
+            expand: "book"
+          )
+          loadedPages.append(contentsOf: result.items)
+          loadedPage = result.page
+          totalPages = result.totalPages
+          if page >= result.totalPages { break }
+        }
+        let loadedBook = try await bookRequest
         guard requestGeneration == generation else { return false }
         item = .book(loadedBook)
-        bookPages = loadedPages.items
-        bookPagesPage = loadedPages.page
-        bookPagesTotalPages = loadedPages.totalPages
-        canLoadMoreBookPages = loadedPages.page < loadedPages.totalPages
+        bookPages = loadedPages
+        bookPagesPage = loadedPage
+        bookPagesTotalPages = totalPages
+        canLoadMoreBookPages = loadedPage < totalPages
 
       case .page(let page):
         let loaded: ColoringPageRecord = try await client.get(
@@ -483,7 +493,7 @@ final class LibraryItemDetailModel {
     return try await client.list(
       collection: "coloring_pages",
       page: page,
-      perPage: 24,
+      perPage: Self.bookPagesPerPage,
       filter: PocketBaseFilter.all(filters),
       sort: "+page_number",
       expand: "book"
