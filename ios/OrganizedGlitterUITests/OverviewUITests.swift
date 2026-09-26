@@ -97,9 +97,12 @@ final class OverviewUITests: XCTestCase {
     }
     XCUIDevice.shared.orientation = .landscapeLeft
     defer { XCUIDevice.shared.orientation = .portrait }
-    let landscape = XCTNSPredicateExpectation(
-      predicate: NSPredicate { _, _ in app.frame.width > app.frame.height }, object: app)
-    XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
+    // iPadOS 26 can run the app windowed, where its frame ignores rotation.
+    if UIDevice.current.userInterfaceIdiom == .phone {
+      let landscape = XCTNSPredicateExpectation(
+        predicate: NSPredicate { _, _ in app.frame.width > app.frame.height }, object: app)
+      XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
+    }
     app.swipeUp()
     app.swipeDown()
     XCTAssertTrue(page.waitForExistence(timeout: 5))
