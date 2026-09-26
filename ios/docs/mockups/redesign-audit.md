@@ -1,6 +1,6 @@
 # iOS UI audit
 
-Snapshot of `main` at `6689a6a` (after #6, native refinement). Mockups are in `redesign-options.html`, next to this file. Web parity lives in `../audits/web-dev-feature-parity.md` and `../audits/native-build-sequence.md`.
+Snapshot of `main` at `7956a44` (after #6, native refinement, and #7, protected file tokens). Mockups are in `redesign-options.html`, next to this file. Web parity lives in `../audits/web-dev-feature-parity.md` and `../audits/native-build-sequence.md`.
 
 ## Direction
 
@@ -42,7 +42,7 @@ A first run with an empty library shows one "Add your first kit" prompt instead 
 ## Backend-dependent
 
 17. **Thumbs don't match the allowlist.** iOS now asks for `ArtworkThumb.gallery` (`320x420`) and `.compact` (`160x160`), but on backend `dev` only `projects.image` has thumbs (`300x200`, `600x400`), and neither size matches. PocketBase serves originals. Add matching thumb sizes in an `organized-glitter` migration first.
-18. **Protected files.** Backend #289 (merged to `dev` 2026-09-26) protects every file field. iOS file tokens are in app PR #7. Both must reach production before public release.
+18. **Protected files.** Backend #289 (merged to `dev` 2026-09-26) protects every file field. iOS file tokens shipped in #7. The backend change must reach production before public release.
 19. **`BackendContract.json` still pins `6aff8ce`.** Re-pin to `3651feba` or later in its own PR once that revision is verified against production.
 
 ## Code hygiene
@@ -51,14 +51,13 @@ A first run with an empty library shows one "Add your first kit" prompt instead 
 21. **`EmptyFeatureView`** is a one-line wrapper around `ContentUnavailableView`. Inline it.
 22. **Statuses are stringly typed.** Use one `enum` per collection, with `label` and `systemImage`.
 
-Resolved by #6: the `LibraryView` split (model, gallery, and detail are now separate files), the ragged gallery, thumb plumbing through `PocketBaseClient.fileURL(thumb:)`, detail screens, and the log-progress path.
+Resolved by #6 and #7: file tokens on every image request, the `LibraryView` split (model, gallery, and detail are now separate files), the ragged gallery, thumb plumbing through `PocketBaseClient.fileURL(thumb:)`, detail screens, and the log-progress path.
 
 ## Suggested order
 
-1. Land #7 (file tokens) so images keep loading once #289 deploys (18).
-2. Shelf: generated covers, the covers grid, and the hero detail (8). Drop duplicate titles and filler copy along the way (1, 10, 11).
-3. Collapse the tabs, turn Create into a menu, and delete the sticker system (3, 6, 7).
-4. Add in-app account deletion (15), which blocks release.
-5. Fill out detail fields and the editor (13, 14).
-6. Thumb sizes, backend first (17).
-7. iPad `TabSection` (4).
+1. Shelf: generated covers, the covers grid, and the hero detail (8). Drop duplicate titles and filler copy along the way (1, 10, 11).
+2. Collapse the tabs, turn Create into a menu, and delete the sticker system (3, 6, 7).
+3. Add in-app account deletion (15), which blocks release.
+4. Fill out detail fields and the editor (13, 14).
+5. Thumb sizes, backend first (17).
+6. iPad `TabSection` (4).
