@@ -320,6 +320,32 @@ actor PocketBaseClient {
     return response.token
   }
 
+  /// Latest progress-note date per target, keyed by target id. `craft` is
+  /// `diamond` (projects) or `coloring` (coloring pages); at most 100 ids.
+  func latestNoteDates(craft: String, userID: String, targetIDs: [String]) async throws
+    -> [String: String]
+  {
+    struct Body: Encodable {
+      let userId: String
+      let craft: String
+      let targetIds: [String]
+    }
+    struct Response: Decodable {
+      struct Item: Decodable {
+        let targetId: String
+        let date: String
+      }
+      let items: [Item]
+    }
+    guard !targetIDs.isEmpty else { return [:] }
+    let response: Response = try await request(
+      path: "/api/notes/latest",
+      method: "POST",
+      body: Body(userId: userID, craft: craft, targetIds: Array(targetIDs.prefix(100)))
+    )
+    return Dictionary(response.items.map { ($0.targetId, $0.date) }, uniquingKeysWith: max)
+  }
+
   /// Builds an authenticated URL for a record's file field.
   nonisolated func fileURL(
     collection: String,

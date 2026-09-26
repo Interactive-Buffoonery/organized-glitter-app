@@ -219,6 +219,14 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
     }
   }
 
+  var recordID: String {
+    switch self {
+    case .diamond(let project): project.id
+    case .book(let book): book.id
+    case .page(let page): page.id
+    }
+  }
+
   var title: String {
     switch self {
     case .diamond(let project):
