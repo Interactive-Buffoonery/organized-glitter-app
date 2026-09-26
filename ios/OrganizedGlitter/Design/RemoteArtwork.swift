@@ -51,7 +51,7 @@ struct RemoteArtwork<Content: View>: View {
 
   var body: some View {
     content(phase)
-      .task(id: url) {
+      .task(id: url.map(RemoteArtworkCacheKey.url(for:))) {
         await load()
       }
   }
