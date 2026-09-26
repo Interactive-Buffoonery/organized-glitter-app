@@ -176,6 +176,10 @@ final class LibraryUITests: XCTestCase {
     app.buttons["Search"].firstMatch.tap()
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
     let search = app.searchFields.firstMatch
+    // iPadOS collapses the field into a toolbar button at accessibility sizes.
+    if !search.waitForExistence(timeout: 2) {
+      app.navigationBars["Search"].buttons["Search"].tap()
+    }
     XCTAssertTrue(search.waitForExistence(timeout: 5))
     search.tap()
     search.typeText("Divine\n")
