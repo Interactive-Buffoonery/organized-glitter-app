@@ -37,7 +37,7 @@ Product intent for this plan: CRUD into PocketBase plus Discord sign-in. Randomi
 
 | Gap | Why it still waits |
 | --- | --- |
-| Legacy file fields protected on `dev`, not yet in production | `users.avatar`, `projects.image`, notes images, book covers, page photos. Backend #289 merged to `dev` on 2026-09-26. iOS tokens land in app PR #7. Public-release blocker until both ship (`FILE_ACCESS_CONTRACT.md`). |
+| Legacy file fields protected on `dev`, not yet in production | `users.avatar`, `projects.image`, notes images, book covers, page photos. Backend #289 merged to `dev` on 2026-09-26. iOS tokens shipped in app #7. Public-release blocker until the backend ships to production (`FILE_ACCESS_CONTRACT.md`). |
 | Server-owned account deletion | Web still writes `account_deletions` from the client. Do not copy that. |
 | Associated Domains / token confirm links | Not defined for native |
 | Apple OAuth | Typed; not enabled |

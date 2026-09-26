@@ -41,7 +41,7 @@ These are not iOS feature PRs. They gate later slices. Owner: backend repo.
 | ID | Work | Unblocks | Notes |
 | --- | --- | --- | --- |
 | B1 | Re-pin `BackendContract.json` to `3651feba` / schema `e9d2569d…` / PocketBase 0.40.1 in its own PR once verified against production. Re-pin when `dev` moves. | Contract file matches the backend this plan uses | Not a feature gate. Notes, photos, swatches, stats, Discord provider already exist on this revision. |
-| B2 | File-access contract: protect **legacy** fields + short-lived tokens | App Store image privacy (H1) | Backend #289 merged to `dev` 2026-09-26; iOS tokens in app PR #7. Remaining: production deploy. |
+| B2 | File-access contract: protect **legacy** fields + short-lived tokens | App Store image privacy (H1) | Backend #289 merged to `dev` 2026-09-26; iOS tokens shipped in app #7. Remaining: production deploy. |
 | B3 | Associated Domains file, HTTPS token routes, token format, web + old-app fallback | Verify email, confirm reset, confirm email change | Architecture already forbids guessing this. |
 | B4 | Server-owned account deletion endpoint (no client-written audit) | In-app delete (H1) | Do not port the web `account_deletions` client flow. |
 | B5a | Register native Discord OAuth redirect URL(s) for `ASWebAuthenticationSession` (custom scheme or HTTPS) on the **existing** Discord provider | Era 0 Discord button | Provider is already live. Same PocketBase user as web; never merge accounts by email on the client. |
