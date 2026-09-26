@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		02B1B1F48B151EA280F5E87F /* PocketBaseRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 187EF4472F90566B37B087AF /* PocketBaseRecords.swift */; };
 		0382C749EC050E1904711CAB /* ColoringEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7976C3250DB200B8D6BC78 /* ColoringEditorTests.swift */; };
+		04AACF892E6DAB35BDE4B427 /* ProtectedFileAccessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05CD6F576A55CBFC96BBDE7 /* ProtectedFileAccessTests.swift */; };
 		05FEBA42EEF5E16E150CE2BC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A7FD3C8DA9EFE11CA84D25 /* Theme.swift */; };
 		066CE80A7FDA85EE9BB78663 /* LibraryItemDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C8FD32FA9733C6C54C75F0D /* LibraryItemDetail.swift */; };
 		0B146CB8F788DA26C94E17F5 /* KeychainSessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B9784FB12A1B3910B9397C /* KeychainSessionStoreTests.swift */; };
@@ -48,6 +49,7 @@
 		696B08DE9F3F7CED1DE9815D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53BE7051E60073DC0E722076 /* RootView.swift */; };
 		6C69CA216788621BE1C82429 /* DiamondProjectEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3D9D8C588673C2C32B6E0E /* DiamondProjectEditor.swift */; };
 		6DAC08701FC034DF9D696B58 /* OrganizedGlitterUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58BD72A7B122B24BAD21755A /* OrganizedGlitterUITests.swift */; };
+		7597BB520C596F016BB189A1 /* ProtectedFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24460756B5AEB105F2D459F5 /* ProtectedFileAccess.swift */; };
 		7EFBD5D056D07BC5637C0068 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6514166844D26328882B320 /* ThemeStore.swift */; };
 		81A535F58978295A957C45AE /* ColoringBookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2B4F3D4BDDCE126CECB107 /* ColoringBookDetailView.swift */; };
 		81B74D4319E12928F38EE396 /* OrganizedGlitterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87432C7595D56F6A212DA34D /* OrganizedGlitterApp.swift */; };
@@ -120,6 +122,7 @@
 		187EF4472F90566B37B087AF /* PocketBaseRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseRecords.swift; sourceTree = "<group>"; };
 		1A580F5FC13D7331BCA7E222 /* OverviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewTests.swift; sourceTree = "<group>"; };
 		1C78FAD72AC3EDC971685C2A /* AccountPreferencesModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPreferencesModel.swift; sourceTree = "<group>"; };
+		24460756B5AEB105F2D459F5 /* ProtectedFileAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtectedFileAccess.swift; sourceTree = "<group>"; };
 		257F0863604513177CB207BE /* OrganizedGlitterTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizedGlitterTheme.swift; sourceTree = "<group>"; };
 		2A4A440302CEFD156DEABCDC /* DetailPhotoProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailPhotoProcessorTests.swift; sourceTree = "<group>"; };
 		2C2B4F3D4BDDCE126CECB107 /* ColoringBookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringBookDetailView.swift; sourceTree = "<group>"; };
@@ -186,6 +189,7 @@
 		D6514166844D26328882B320 /* ThemeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeStore.swift; sourceTree = "<group>"; };
 		D9AF6A3CC8D0561397DBC098 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		DA27606235E3389778F8BBEA /* LibraryItemDetailModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetailModelTests.swift; sourceTree = "<group>"; };
+		E05CD6F576A55CBFC96BBDE7 /* ProtectedFileAccessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtectedFileAccessTests.swift; sourceTree = "<group>"; };
 		E841D3F9B09655375C7BFEEB /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModelTests.swift; sourceTree = "<group>"; };
 		E8B9784FB12A1B3910B9397C /* KeychainSessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStoreTests.swift; sourceTree = "<group>"; };
@@ -299,6 +303,7 @@
 				96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */,
 				3B9D772610290CBFD91AE91A /* PocketBaseMultipart.swift */,
 				187EF4472F90566B37B087AF /* PocketBaseRecords.swift */,
+				24460756B5AEB105F2D459F5 /* ProtectedFileAccess.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -402,6 +407,7 @@
 				371EA167F285531DE866936F /* PocketBaseDateTests.swift */,
 				469E2CDC832BD2CCC3A32EB9 /* PocketBaseFilterTests.swift */,
 				07EBA56EF84054FB531D0614 /* PocketBaseMultipartTests.swift */,
+				E05CD6F576A55CBFC96BBDE7 /* ProtectedFileAccessTests.swift */,
 				54D26744B389FC6CAD1C8367 /* RemoteArtworkTests.swift */,
 				446118EA1C4EE132BA9E157A /* ThemeTests.swift */,
 			);
@@ -576,6 +582,7 @@
 				415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */,
 				342C8490F7BBBA1EB1CE9531 /* PocketBaseFilterTests.swift in Sources */,
 				B5BB4EFCD8538737F4DD4D65 /* PocketBaseMultipartTests.swift in Sources */,
+				04AACF892E6DAB35BDE4B427 /* ProtectedFileAccessTests.swift in Sources */,
 				1AE39E32015803B4674450AE /* RemoteArtworkTests.swift in Sources */,
 				BFB8A3D020A12F6D4AAF4DFA /* ThemeTests.swift in Sources */,
 			);
@@ -622,6 +629,7 @@
 				B487C0A1F2EF4330C3511E7E /* PocketBaseModels.swift in Sources */,
 				457DC3FD1C9AADB965223612 /* PocketBaseMultipart.swift in Sources */,
 				02B1B1F48B151EA280F5E87F /* PocketBaseRecords.swift in Sources */,
+				7597BB520C596F016BB189A1 /* ProtectedFileAccess.swift in Sources */,
 				4498CBAA20400E17D11E0CF4 /* QuickCreateView.swift in Sources */,
 				F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */,
 				2B08EFD3E1C235B8594CC292 /* RegistrationView.swift in Sources */,
