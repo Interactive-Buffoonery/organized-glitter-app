@@ -44,6 +44,38 @@ struct RemoteArtworkTests {
   }
 
   @Test
+  func renewedTokenReusesArtworkCacheAndInflightFetch() async throws {
+    let store = RemoteArtworkDataStore(maximumByteCount: 1_024)
+    let gate = ArtworkFetchGate(data: Data(repeating: 5, count: 128))
+    let firstURL = URL(
+      string: "https://artwork.example.test/image.jpg?thumb=160x160&token=first")!
+    let renewedURL = URL(
+      string: "https://artwork.example.test/image.jpg?thumb=160x160&token=renewed")!
+    let otherThumb = URL(
+      string: "https://artwork.example.test/image.jpg?thumb=320x420&token=renewed")!
+
+    let first = Task { try await store.data(for: firstURL) { try await gate.fetch() } }
+    while await store.inFlightWaiterCount(for: firstURL) < 1 {
+      await Task.yield()
+    }
+    let second = Task { try await store.data(for: renewedURL) { try await gate.fetch() } }
+    while await store.inFlightWaiterCount(for: renewedURL) < 2 {
+      await Task.yield()
+    }
+    await gate.finish()
+
+    let firstData = try await first.value
+    let secondData = try await second.value
+    let cachedData = try await store.data(for: renewedURL) { try await gate.fetch() }
+    #expect(firstData == secondData)
+    #expect(cachedData == firstData)
+    #expect(await gate.fetchCount == 1)
+    #expect(await store.cachedEntryCount == 1)
+    #expect(RemoteArtworkCacheKey.url(for: firstURL) == RemoteArtworkCacheKey.url(for: renewedURL))
+    #expect(RemoteArtworkCacheKey.url(for: firstURL) != RemoteArtworkCacheKey.url(for: otherThumb))
+  }
+
+  @Test
   func cancellingOneWaiterReturnsPromptlyWithoutCancellingTheSharedFetch() async throws {
     let store = RemoteArtworkDataStore(maximumByteCount: 1_024)
     let gate = ArtworkFetchGate(data: Data(repeating: 9, count: 128))
@@ -171,7 +203,8 @@ struct RemoteArtworkTests {
   @Test
   func decodedCacheReusesTheDownsampledImage() async throws {
     let decoded = RemoteArtworkDecodedStore(maximumEntryCount: 4)
-    let url = URL(string: "https://artwork.example.test/reuse.jpg")!
+    let url = URL(string: "https://artwork.example.test/reuse.jpg?token=first")!
+    let renewedURL = URL(string: "https://artwork.example.test/reuse.jpg?token=renewed")!
     let image = try RemoteArtworkLoader.downsample(
       data: jpegData(width: 40, height: 40, orientation: .up),
       maxPixelDimension: 32
@@ -179,7 +212,7 @@ struct RemoteArtworkTests {
 
     let generation = await decoded.generation
     await decoded.insert(image, for: url, maxPixelDimension: 32, generation: generation)
-    let cached = await decoded.image(for: url, maxPixelDimension: 32)
+    let cached = await decoded.image(for: renewedURL, maxPixelDimension: 32)
 
     #expect(cached?.cgImage.width == image.cgImage.width)
     #expect(cached?.cgImage.height == image.cgImage.height)

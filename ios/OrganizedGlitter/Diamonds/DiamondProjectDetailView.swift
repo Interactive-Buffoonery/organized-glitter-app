@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct DiamondProjectDetailView: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
@@ -18,7 +19,7 @@ struct DiamondProjectDetailView: View {
       LazyVStack(alignment: .leading, spacing: 18) {
         RecordArtwork(
           url: LibraryItem.diamond(project).artworkURL(
-            using: model.client, thumb: ArtworkThumb.gallery),
+            using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
           maxHeight: heroHeight,
           emptyMinHeight: 180,
           successAccessibilityLabel: "Project artwork"
@@ -151,15 +152,14 @@ struct DiamondProjectDetailView: View {
 
   private var progressPhotos: [DetailPhoto] {
     model.progressNotes.compactMap { note in
-      guard let image = note.image?.nonEmpty else { return nil }
+      guard let image = note.image?.nonEmpty,
+        let url = protectedFiles?.url(
+          collection: "progress_notes", recordID: note.id, filename: image,
+          thumb: ArtworkThumb.compact)
+      else { return nil }
       return DetailPhoto(
         id: note.id,
-        url: model.client.fileURL(
-          collection: "progress_notes",
-          recordID: note.id,
-          filename: image,
-          thumb: ArtworkThumb.compact
-        ),
+        url: url,
         accessibilityLabel: progressPhotoLabel(for: note)
       )
     }

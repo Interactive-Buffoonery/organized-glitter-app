@@ -17,11 +17,13 @@ struct AppShellView: View {
   @State private var libraryRefresh = LibraryRefresh()
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
+  @State private var protectedFiles: ProtectedFileAccess
 
   init(model: AppModel, client: PocketBaseClient, user: UserRecord) {
     self.model = model
     self.client = client
     self.user = user
+    _protectedFiles = State(initialValue: ProtectedFileAccess(client: client))
     _accountPreferences = State(
       initialValue: AccountPreferencesModel(
         client: client,
@@ -85,6 +87,8 @@ struct AppShellView: View {
     }
     .tabViewStyle(.sidebarAdaptable)
     .environment(\.pocketBaseClient, client)
+    .environment(\.protectedFiles, protectedFiles)
+    .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
   }
 }

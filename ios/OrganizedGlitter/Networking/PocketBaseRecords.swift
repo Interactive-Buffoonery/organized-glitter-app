@@ -289,7 +289,8 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
     }
   }
 
-  func artworkURL(using client: PocketBaseClient, thumb: String? = nil) -> URL? {
+  func artworkURL(using client: PocketBaseClient, thumb: String? = nil, token: String?) -> URL? {
+    guard let token else { return nil }
     let collection: String
     let recordID: String
     let filename: String?
@@ -309,7 +310,7 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
     }
     return filename.map {
       client.fileURL(
-        collection: collection, recordID: recordID, filename: $0, thumb: thumb)
+        collection: collection, recordID: recordID, filename: $0, thumb: thumb, token: token)
     }
   }
 

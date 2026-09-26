@@ -312,19 +312,21 @@ actor PocketBaseClient {
     )
   }
 
-  /// Builds the URL for a record's file field.
-  ///
-  /// Contract status: file fields are currently unprotected, so tokenless URLs
-  /// resolve — but the backend `docs/FILE_ACCESS_CONTRACT.md` (status: blocked
-  /// by privacy audit, 2026-07-27) treats that as a native public-release
-  /// blocker. When the backend migrates to protected fields plus short-lived
-  /// file tokens, this method becomes `async` and attaches a token. Keep this
-  /// the only place in the app that constructs file URLs.
+  /// Fetches a short-lived token for protected file URLs.
+  func fileToken() async throws -> String {
+    struct Response: Decodable { let token: String }
+    let response: Response = try await request(path: "/api/files/token", method: "POST")
+    guard !response.token.isEmpty else { throw APIError.decoding }
+    return response.token
+  }
+
+  /// Builds an authenticated URL for a record's file field.
   nonisolated func fileURL(
     collection: String,
     recordID: String,
     filename: String,
-    thumb: String? = nil
+    thumb: String? = nil,
+    token: String
   ) -> URL {
     var url =
       baseURL
@@ -332,17 +334,13 @@ actor PocketBaseClient {
       .appending(path: collection)
       .appending(path: recordID)
       .appending(path: filename)
-    if let thumb {
-      url.append(queryItems: [URLQueryItem(name: "thumb", value: thumb)])
-    }
+    var queryItems = [URLQueryItem(name: "token", value: token)]
+    if let thumb { queryItems.append(URLQueryItem(name: "thumb", value: thumb)) }
+    url.append(queryItems: queryItems)
     return url
   }
 
-  /// Downloads a PocketBase file through the authenticated session.
-  ///
-  /// File tokens are not on the URL yet; sending `Authorization` here means a
-  /// later header-based or query-token migration can land in `fileURL` plus
-  /// this method without teaching `RemoteArtwork` a second session.
+  /// Downloads a protected PocketBase file using the token-bearing URL.
   func fileData(at url: URL, maximumByteCount: Int) async throws -> Data {
     var request = URLRequest(url: url)
     request.httpMethod = "GET"

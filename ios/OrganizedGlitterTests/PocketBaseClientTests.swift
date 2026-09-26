@@ -481,29 +481,62 @@ struct PocketBaseClientTests {
     let url = client.fileURL(
       collection: "coloring_books",
       recordID: "rec1",
-      filename: "cover.jpg"
+      filename: "cover.jpg",
+      token: "file-token"
     )
-    #expect(url.absoluteString == "http://127.0.0.1:8090/api/files/coloring_books/rec1/cover.jpg")
-    #expect(url.query() == nil)
+    #expect(
+      url.absoluteString
+        == "http://127.0.0.1:8090/api/files/coloring_books/rec1/cover.jpg?token=file-token")
+    #expect(url.query() == "token=file-token")
 
     let thumbURL = client.fileURL(
       collection: "coloring_books",
       recordID: "rec1",
       filename: "cover.jpg",
-      thumb: "320x420"
+      thumb: "320x420",
+      token: "file-token"
     )
     #expect(
       thumbURL.absoluteString
-        == "http://127.0.0.1:8090/api/files/coloring_books/rec1/cover.jpg?thumb=320x420"
+        == "http://127.0.0.1:8090/api/files/coloring_books/rec1/cover.jpg?token=file-token&thumb=320x420"
     )
 
     let encodedURL = client.fileURL(
       collection: "coloring_books",
       recordID: "rec1",
-      filename: "cover image.jpg"
+      filename: "cover image.jpg",
+      token: "file-token"
     )
     #expect(!encodedURL.absoluteString.contains(" "))
-    #expect(encodedURL.absoluteString.hasSuffix("/cover%20image.jpg"))
+    #expect(encodedURL.absoluteString.contains("/cover%20image.jpg?token=file-token"))
+  }
+
+  @Test
+  func requestsFileTokenWithCurrentAuthentication() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (200, #"{"token":"auth-token","record":{"id":"user-1","verified":true}}"#),
+      (200, #"{"token":"short-lived-file-token"}"#),
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    _ = try await client.signIn(identity: "user", password: "password")
+    #expect(try await client.fileToken() == "short-lived-file-token")
+    #expect(PocketBaseClientURLProtocol.requests.last?.url?.path == "/api/files/token")
+    #expect(PocketBaseClientURLProtocol.requests.last?.httpMethod == "POST")
+    #expect(
+      PocketBaseClientURLProtocol.requests.last?.value(forHTTPHeaderField: "Authorization")
+        == "auth-token")
+    await client.signOut()
   }
 
   @Test
