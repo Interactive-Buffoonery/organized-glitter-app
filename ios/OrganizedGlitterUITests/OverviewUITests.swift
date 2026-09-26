@@ -52,15 +52,15 @@ final class OverviewUITests: XCTestCase {
     try capture(app, "overview-bottom")
     wishlist.tap()
     app.buttons["Coloring book wishlist"].tap()
-    XCTAssertTrue(app.buttons["Filter by status"].waitForExistence(timeout: 5))
+    let wishlistChip = app.buttons["library.status.wishlist"]
+    XCTAssertTrue(wishlistChip.waitForExistence(timeout: 5))
     let booksCraft = app.buttons["Books"].exists ? app.buttons["Books"] : app.staticTexts["Books"]
     XCTAssertTrue(booksCraft.waitForExistence(timeout: 3))
     XCTAssertTrue(
       app.descendants(matching: .any).matching(
         NSPredicate(format: "label CONTAINS %@", "Wishlist coloring book")
       ).firstMatch.waitForExistence(timeout: 5))
-    let filter = app.buttons["Filter by status"]
-    XCTAssertEqual(filter.value as? String, "Wishlist")
+    XCTAssertTrue(wishlistChip.isSelected)
   }
 
   func testCompletedShortcutOpensTheSelectedLibraryFilter() throws {
@@ -70,8 +70,8 @@ final class OverviewUITests: XCTestCase {
     completed.tap()
     app.buttons["Completed diamond art"].tap()
 
-    XCTAssertTrue(app.buttons["library.status"].waitForExistence(timeout: 5))
-    XCTAssertEqual(app.buttons["library.status"].value as? String, "Completed")
+    XCTAssertTrue(app.buttons["library.status.completed"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["library.status.completed"].isSelected)
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
   }
