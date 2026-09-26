@@ -32,9 +32,12 @@ struct LibraryItemDetailDestination: View {
         )
         .accessibilityIdentifier("detail.diamond")
       case .book(let book):
-        ColoringBookDetailView(book: book, model: model) {
-          editor = .book(book)
-        }
+        ColoringBookDetailView(
+          book: book,
+          model: model,
+          onEditPageCount: { editor = .book(book) },
+          onCollectionChanged: onCollectionChanged
+        )
         .accessibilityIdentifier("detail.book")
       case .page(let page):
         ColoringPageDetailView(
@@ -74,11 +77,20 @@ struct LibraryItemDetailDestination: View {
       }
     }
     .task {
-      await model.load()
+      if !model.hasLoaded {
+        await model.load()
+      }
     }
     .onAppear {
-      guard model.hasLoaded, case .book = model.item else { return }
-      Task { await model.load(preservingLoadedBookPages: true) }
+      guard model.hasLoaded, model.needsBookPageRefresh, case .book = model.item else {
+        return
+      }
+      model.needsBookPageRefresh = false
+      Task {
+        if !(await model.load(preservingLoadedBookPages: true)) {
+          model.needsBookPageRefresh = true
+        }
+      }
     }
     .sheet(item: $editor) { editor in
       editorView(for: editor)

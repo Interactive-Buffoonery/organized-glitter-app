@@ -7,6 +7,7 @@ struct ColoringBookDetailView: View {
   let book: ColoringBookRecord
   let model: LibraryItemDetailModel
   let onEditPageCount: () -> Void
+  let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   var body: some View {
     ScrollView {
@@ -33,7 +34,17 @@ struct ColoringBookDetailView: View {
         } else {
           LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
             ForEach(model.bookPages) { page in
-              NavigationLink(value: LibraryItem.page(page)) {
+              NavigationLink {
+                LibraryItemDetailDestination(
+                  item: .page(page),
+                  client: model.client,
+                  userID: model.userID,
+                  onCollectionChanged: {
+                    model.needsBookPageRefresh = true
+                    await onCollectionChanged()
+                  }
+                )
+              } label: {
                 ColoringBookPageCard(page: page, client: model.client)
               }
               .buttonStyle(.plain)

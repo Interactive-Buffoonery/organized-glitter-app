@@ -35,6 +35,7 @@ final class LibraryItemDetailModel {
   private(set) var item: LibraryItem
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
   private(set) var bookPages: [ColoringPageRecord] = []
+  var needsBookPageRefresh = false
   private(set) var canLoadMoreBookPages = false
   private(set) var canLoadMoreProgressNotes = false
 
