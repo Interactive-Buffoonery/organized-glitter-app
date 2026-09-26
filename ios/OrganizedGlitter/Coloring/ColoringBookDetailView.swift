@@ -126,20 +126,14 @@ struct ColoringBookDetailView: View {
       : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
 
     layout {
-      RecordArtwork(
+      CoverArtwork(
+        item: .book(book),
         url: LibraryItem.book(book).artworkURL(
           using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
-        maxHeight: 150,
-        emptyMinHeight: 150,
         maxPixelDimension: 360,
-        successAccessibilityLabel: "Book cover"
+        loadedAccessibilityLabel: "Book cover"
       )
-      .frame(
-        width: dynamicTypeSize.isAccessibilitySize ? nil : 112,
-        height: 150
-      )
-      .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-      .clipShape(.rect(cornerRadius: Theme.Radius.medium))
+      .frame(width: dynamicTypeSize.isAccessibilitySize ? 200 : 120)
       .accessibilityIdentifier("detail.hero")
 
       VStack(alignment: .leading, spacing: 8) {
@@ -153,7 +147,9 @@ struct ColoringBookDetailView: View {
         Text("Coloring book")
           .font(.subheadline)
           .foregroundStyle(theme.pageSecondaryForeground)
-        StatusBadge(status: book.status, presentation: .quiet)
+        StatusBadge(
+          label: BookStatus.label(for: book.status),
+          systemImage: BookStatus.systemImage(for: book.status))
         Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
           .font(.subheadline)
           .foregroundStyle(theme.pageSecondaryForeground)
@@ -243,23 +239,19 @@ private struct ColoringBookPageCard: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      RecordArtwork(
+      CoverArtwork(
+        item: .page(page),
         url: LibraryItem.page(page).artworkURL(
-          using: client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
-        maxHeight: 220,
-        emptyMinHeight: 150,
-        maxPixelDimension: 660
+          using: client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token)
       )
-      .frame(maxWidth: .infinity, minHeight: 150, maxHeight: 220)
-      .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-      .clipShape(.rect(cornerRadius: Theme.Radius.medium))
-      .accessibilityHidden(true)
 
       Text(LibraryItem.page(page).title)
         .font(.headline)
         .foregroundStyle(theme.foreground)
         .fixedSize(horizontal: false, vertical: true)
-      StatusBadge(status: page.status, presentation: .quiet)
+      StatusBadge(
+        label: PageStatus.label(for: page.status),
+        systemImage: PageStatus.systemImage(for: page.status))
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(.rect)

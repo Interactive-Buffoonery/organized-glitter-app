@@ -1,31 +1,38 @@
 import SwiftUI
+import UIKit
 
 extension Font {
-  /// Caveat is the signature display face on remaining brand surfaces and
-  /// `PageHeader`, never body text or controls (docs/design.md). `relativeTo`
-  /// keeps Dynamic Type scaling.
+  /// Caveat is the large-title face and the generated-cover title, never body
+  /// text or controls (docs/design.md). `relativeTo` keeps Dynamic Type scaling.
   static func caveat(size: CGFloat, relativeTo textStyle: Font.TextStyle = .largeTitle) -> Font {
     .custom("Caveat", size: size, relativeTo: textStyle)
   }
 }
 
-/// Caveat section header, one size below `PageHeader`.
-struct SectionHeader: View {
-  @Environment(\.theme) private var theme
-
-  let title: String
-
-  init(_ title: String) {
-    self.title = title
-  }
-
-  var body: some View {
-    // Caveat's final stroke can extend beyond the measured text width.
-    Text(title + "\u{2002}")
-      .accessibilityLabel(title)
-      .font(.caveat(size: 28, relativeTo: .title2))
-      .foregroundStyle(theme.foreground)
-      .accessibilityAddTraits(.isHeader)
+extension UINavigationBar {
+  /// Caveat large titles, once per screen. The legacy proxy attribute alone is
+  /// lost after a pop, so every appearance carries it. Backgrounds keep the
+  /// system defaults: transparent on iOS 26 (Liquid Glass and the scroll edge
+  /// effect draw the bar) and at the scroll edge on iOS 18.
+  static func applyCaveatLargeTitles() {
+    guard let caveat = UIFont(name: "Caveat", size: 44) else { return }
+    let attributes: [NSAttributedString.Key: Any] = [
+      .font: UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: caveat),
+      .foregroundColor: UIColor { traits in
+        UIColor(traits.userInterfaceStyle == .dark ? Theme.dark.foreground : Theme.light.foreground)
+      },
+    ]
+    let standard = UINavigationBarAppearance()
+    let scrollEdge = UINavigationBarAppearance()
+    scrollEdge.configureWithTransparentBackground()
+    if #available(iOS 26, *) {
+      standard.configureWithTransparentBackground()
+    }
+    standard.largeTitleTextAttributes = attributes
+    scrollEdge.largeTitleTextAttributes = attributes
+    appearance().standardAppearance = standard
+    appearance().compactAppearance = standard
+    appearance().scrollEdgeAppearance = scrollEdge
   }
 }
 
@@ -163,47 +170,21 @@ extension View {
   }
 }
 
-struct PageHeader: View {
+/// Icon plus written label; hue is never the only signal (docs/design.md).
+struct StatusBadge: View {
   @Environment(\.theme) private var theme
 
-  let title: String
-  let subtitle: String?
-
-  init(_ title: String, subtitle: String? = nil) {
-    self.title = title
-    self.subtitle = subtitle
-  }
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-      // Leave room for Caveat's final glyph overhang.
-      Text(title + "\u{2002}")
-        .accessibilityLabel(title)
-        .font(.caveat(size: 40))
-        .foregroundStyle(theme.foreground)
-      if let subtitle {
-        Text(subtitle)
-          .font(.body)
-          .foregroundStyle(theme.mutedForeground)
-      }
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
-    .accessibilityAddTraits(.isHeader)
-  }
-}
-
-struct EmptyFeatureView: View {
-  let title: String
+  let label: String
   let systemImage: String
-  let message: String
 
   var body: some View {
-    ContentUnavailableView {
-      Label(title, systemImage: systemImage)
-    } description: {
-      Text(message)
-    }
+    Label(label, systemImage: systemImage)
+      // ponytail: .titleAndIcon is load-bearing inside a List row, which otherwise
+      // supplies .iconOnly and drops the written status VoiceOver depends on.
+      .labelStyle(.titleAndIcon)
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(theme.pageSecondaryForeground)
+      .fixedSize(horizontal: false, vertical: true)
   }
 }
 
@@ -225,63 +206,6 @@ struct AccessibleErrorLabel: View {
   }
 }
 
-struct StatusBadge: View {
-  @Environment(\.theme) private var theme
-
-  enum Presentation {
-    case capsule
-    case quiet
-  }
-
-  let status: String
-  var presentation: Presentation = .capsule
-
-  var body: some View {
-    Label(status.organizedGlitterLabel, systemImage: systemImage)
-      // ponytail: both modifiers are load-bearing inside a List row. A bare Label
-      // inherits the ambient style, and List rows supply .iconOnly, which drops the
-      // written status text the accessibility contract below depends on. Fixing only
-      // the horizontal axis keeps legacy capsules at their natural height.
-      // Quiet status text can wrap with Dynamic Type.
-      .labelStyle(.titleAndIcon)
-      .font(.caption.weight(.semibold))
-      .foregroundStyle(tint)
-      .padding(.horizontal, presentation == .capsule ? 9 : 0)
-      .padding(.vertical, presentation == .capsule ? 6 : 0)
-      .background(tint.opacity(presentation == .capsule ? 0.12 : 0), in: .capsule)
-      .fixedSize(horizontal: presentation == .capsule, vertical: presentation == .quiet)
-  }
-
-  private var systemImage: String {
-    switch status {
-    case "completed": "checkmark.circle.fill"
-    case "progress", "in_progress": "play.circle.fill"
-    case "onhold", "on_hold": "pause.circle.fill"
-    case "wishlist": "heart.circle.fill"
-    case "archived", "destashed": "archivebox.circle.fill"
-    case "kitted", "palette_chosen": "checkmark.circle"
-    default: "circle.fill"
-    }
-  }
-
-  /// Hue is never the only signal here: every case pairs with a distinct icon and
-  /// its written label, as required by docs/design.md.
-  private var tint: Color {
-    if presentation == .quiet {
-      return theme.pageSecondaryForeground
-    }
-    return switch status {
-    case "completed": theme.accent
-    case "progress", "in_progress": theme.primary
-    case "onhold", "on_hold": theme.destructive
-    case "wishlist": theme.primary
-    case "archived", "destashed": theme.mutedForeground
-    case "kitted", "palette_chosen": theme.accent
-    default: theme.mutedForeground
-    }
-  }
-}
-
 /// A quiet native control without sticker chrome or movement on press.
 struct QuietActionStyle: ButtonStyle {
   @Environment(\.theme) private var theme
@@ -300,107 +224,5 @@ struct QuietActionStyle: ButtonStyle {
         in: .rect(cornerRadius: 12)
       )
       .opacity(isEnabled ? 1 : 0.5)
-  }
-}
-
-/// Uncropped artwork with a shared missing and failed-image fallback.
-struct RecordArtwork: View {
-  @Environment(\.theme) private var theme
-
-  let url: URL?
-  var maxHeight: CGFloat = 124
-  var emptyMinHeight: CGFloat = 96
-  var maxPixelDimension: CGFloat = 1_200
-  var successAccessibilityLabel: String?
-
-  var body: some View {
-    RemoteArtwork(url: url, maxPixelDimension: maxPixelDimension) { phase in
-      switch phase {
-      case .success(let image):
-        loadedImage(image)
-      case .empty where url != nil:
-        ProgressView()
-          .accessibilityLabel("Loading artwork")
-      case .empty, .failure:
-        unavailableArtwork
-      @unknown default:
-        unavailableArtwork
-      }
-    }
-    .frame(maxWidth: .infinity, maxHeight: maxHeight)
-  }
-
-  @ViewBuilder
-  private func loadedImage(_ image: Image) -> some View {
-    if let successAccessibilityLabel {
-      image
-        .resizable()
-        .scaledToFit()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(successAccessibilityLabel)
-    } else {
-      image.resizable().scaledToFit()
-    }
-  }
-
-  private var unavailableArtwork: some View {
-    VStack(spacing: 8) {
-      Image(systemName: "photo")
-        .font(.title2)
-      Text("No artwork")
-        .font(.caption)
-        .multilineTextAlignment(.center)
-    }
-    .foregroundStyle(theme.mutedForeground)
-    .padding(8)
-    .frame(minHeight: emptyMinHeight)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("No artwork")
-  }
-}
-
-/// Artwork leads; text and status can grow without truncation.
-struct ActiveProjectRow: View {
-  @Environment(\.theme) private var theme
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-  let item: LibraryItem
-  let imageURL: URL?
-
-  var body: some View {
-    let layout =
-      dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-      : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
-
-    layout {
-      RecordArtwork(
-        url: imageURL,
-        maxHeight: 124,
-        emptyMinHeight: 96,
-        maxPixelDimension: 360
-      )
-        .frame(width: 100, height: 124)
-        .background(theme.card, in: .rect(cornerRadius: 10))
-        .clipShape(.rect(cornerRadius: 10))
-        .accessibilityHidden(true)
-
-      VStack(alignment: .leading, spacing: 8) {
-        Text(item.title)
-          .font(.headline)
-          .foregroundStyle(theme.foreground)
-        if !item.subtitle.isEmpty {
-          Text(item.subtitle)
-            .font(.subheadline)
-            .foregroundStyle(theme.pageSecondaryForeground)
-        }
-        StatusBadge(status: item.status, presentation: .quiet)
-      }
-      .fixedSize(horizontal: false, vertical: true)
-      .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    .padding(.vertical, 16)
-    .contentShape(.rect)
-    .accessibilityElement(children: .combine)
   }
 }

@@ -24,16 +24,14 @@ struct ColoringPageDetailView: View {
 
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 18) {
-        RecordArtwork(
+        CoverArtwork(
+          item: .page(page),
           url: LibraryItem.page(page).artworkURL(
             using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
-          maxHeight: heroHeight,
-          emptyMinHeight: 180,
-          successAccessibilityLabel: "Page artwork"
+          maxPixelDimension: 1_200,
+          loadedAccessibilityLabel: "Page artwork"
         )
         .frame(maxWidth: .infinity, maxHeight: heroHeight)
-        .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-        .clipShape(.rect(cornerRadius: Theme.Radius.medium))
         .accessibilityIdentifier("detail.hero")
 
         VStack(alignment: .leading, spacing: 6) {
@@ -47,7 +45,9 @@ struct ColoringPageDetailView: View {
 
         DetailMetadataCard {
           DetailMetadataRow(label: "Status") {
-            StatusBadge(status: page.status, presentation: .quiet)
+            StatusBadge(
+        label: PageStatus.label(for: page.status),
+        systemImage: PageStatus.systemImage(for: page.status))
           }
         }
 

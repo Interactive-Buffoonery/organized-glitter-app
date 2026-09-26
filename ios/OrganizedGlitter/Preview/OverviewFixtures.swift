@@ -587,7 +587,8 @@
           "status": pair.1, "kit_category": "full", "drill_shape": "square",
           "company": "design-company", "artist": "design-artist",
           "width": 40, "height": 50,
-          "image": index == 2 ? "design-citrus.png" : index == 1 ? "design-moon.png" : "design-peony.png",
+          "image": index == 3
+            ? "" : index == 2 ? "design-citrus.png" : index == 1 ? "design-moon.png" : "design-peony.png",
           "created": "2026-09-01", "updated": "2026-09-19 12:0\(9 - index * 2):00",
           "expand": [
             "company": ["id": "design-company", "name": "Fictional Atelier"],

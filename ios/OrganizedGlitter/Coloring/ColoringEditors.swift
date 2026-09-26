@@ -71,92 +71,90 @@ struct ColoringBookEditor: View {
   var body: some View {
     NavigationStack {
       Form {
-        if let book, let cover = book.coverImage?.nonEmpty {
-          Section {
-            RemoteArtwork(
-              url: protectedFiles?.url(
-                collection: "coloring_books",
-                recordID: book.id,
-                filename: cover,
-                thumb: ArtworkThumb.gallery
-              ),
-              maxPixelDimension: 480
-            ) { phase in
-              if case .success(let image) = phase {
-                image.resizable().scaledToFill()
-              } else {
-                RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                  .fill(theme.muted)
-                  .overlay {
-                    Image(systemName: "book.closed")
-                      .foregroundStyle(theme.mutedForeground)
-                  }
+        Group {
+          if let book, let cover = book.coverImage?.nonEmpty {
+            Section {
+              RemoteArtwork(
+                url: protectedFiles?.url(
+                  collection: "coloring_books",
+                  recordID: book.id,
+                  filename: cover,
+                  thumb: ArtworkThumb.gallery
+                ),
+                maxPixelDimension: 480
+              ) { phase in
+                if case .success(let image) = phase {
+                  image.resizable().scaledToFill()
+                } else {
+                  RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                    .fill(theme.muted)
+                    .overlay {
+                      Image(systemName: "book.closed")
+                        .foregroundStyle(theme.mutedForeground)
+                    }
+                }
+              }
+              .frame(width: 160, height: 220)
+              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
+              .accessibilityLabel("Book cover")
+
+              Text("Cover upload is coming soon.")
+                .font(.footnote)
+                .foregroundStyle(theme.mutedForeground)
+            }
+          }
+
+          Section("Book") {
+            TextField("Title", text: $draft.title)
+            TextField("Series", text: $draft.series)
+
+            Picker("Status", selection: $draft.status) {
+              ForEach(BookStatus.allCases, id: \.self) { status in
+                Text(status.label).tag(status.rawValue)
               }
             }
-            .frame(width: 160, height: 220)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
-            .accessibilityLabel("Book cover")
 
-            Text("Cover upload is coming soon.")
+            TextField("Total pages", value: $draft.totalPages, format: .number)
+              .keyboardType(.numberPad)
+          }
+
+          Section("Credits") {
+            TaxonomyPicker(
+              client: client,
+              userID: userID,
+              collection: "book_publishers",
+              label: "Publisher",
+              initialName: book?.expand?.publisher?.name,
+              selection: $draft.publisher
+            )
+            TaxonomyPicker(
+              client: client,
+              userID: userID,
+              collection: "book_illustrators",
+              label: "Illustrator",
+              initialName: book?.expand?.illustrator?.name,
+              selection: $draft.illustrator
+            )
+          }
+
+          if book != nil {
+            Section {
+              Text(
+                "Changing the total updates the generated pages after save. Pages above the new total are removed only if you never touched them."
+              )
               .font(.footnote)
               .foregroundStyle(theme.mutedForeground)
-          }
-          .listRowBackground(theme.card)
-        }
-
-        Section("Book") {
-          TextField("Title", text: $draft.title)
-          TextField("Series", text: $draft.series)
-
-          Picker("Status", selection: $draft.status) {
-            ForEach(LibrarySection.books.statusOptions, id: \.self) { status in
-              Text(status.organizedGlitterLabel).tag(status)
             }
           }
 
-          TextField("Total pages", value: $draft.totalPages, format: .number)
-            .keyboardType(.numberPad)
+          if let errorMessage {
+            Section {
+              AccessibleErrorLabel(message: errorMessage)
+                .accessibilityIdentifier("bookSaveError")
+            }
+          }
         }
         .listRowBackground(theme.card)
-
-        Section("Credits") {
-          TaxonomyPicker(
-            client: client,
-            userID: userID,
-            collection: "book_publishers",
-            label: "Publisher",
-            initialName: book?.expand?.publisher?.name,
-            selection: $draft.publisher
-          )
-          TaxonomyPicker(
-            client: client,
-            userID: userID,
-            collection: "book_illustrators",
-            label: "Illustrator",
-            initialName: book?.expand?.illustrator?.name,
-            selection: $draft.illustrator
-          )
-        }
-        .listRowBackground(theme.card)
-
-        if book != nil {
-          Section {
-            Text(
-              "Changing the total updates the generated pages after save. Pages above the new total are removed only if you never touched them."
-            )
-            .font(.footnote)
-            .foregroundStyle(theme.mutedForeground)
-          }
-          .listRowBackground(theme.card)
-        }
-
-        if let errorMessage {
-          Section {
-            AccessibleErrorLabel(message: errorMessage)
-              .accessibilityIdentifier("bookSaveError")
-          }
-          .listRowBackground(theme.card)
-        }
       }
       .themedScrollBackground()
       .navigationTitle(book == nil ? "New Coloring Book" : "Edit Coloring Book")
@@ -336,59 +334,59 @@ struct ColoringPageEditor: View {
   var body: some View {
     NavigationStack {
       Form {
-        Section("Page \(page.pageNumber)") {
-          if let photo = page.photos.first {
-            RemoteArtwork(
-              url: protectedFiles?.url(
-                collection: "coloring_pages",
-                recordID: page.id,
-                filename: photo,
-                thumb: ArtworkThumb.compact
-              ),
-              maxPixelDimension: 360
-            ) { phase in
-              if case .success(let image) = phase {
-                image.resizable().scaledToFill()
-              } else {
-                RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                  .fill(theme.muted)
-                  .overlay {
-                    Image(systemName: "doc.richtext")
-                      .foregroundStyle(theme.mutedForeground)
-                  }
+        Group {
+          Section("Page \(page.pageNumber)") {
+            if let photo = page.photos.first {
+              RemoteArtwork(
+                url: protectedFiles?.url(
+                  collection: "coloring_pages",
+                  recordID: page.id,
+                  filename: photo,
+                  thumb: ArtworkThumb.compact
+                ),
+                maxPixelDimension: 360
+              ) { phase in
+                if case .success(let image) = phase {
+                  image.resizable().scaledToFill()
+                } else {
+                  RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                    .fill(theme.muted)
+                    .overlay {
+                      Image(systemName: "doc.richtext")
+                        .foregroundStyle(theme.mutedForeground)
+                    }
+                }
+              }
+              .frame(width: 120, height: 120)
+              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
+              .accessibilityLabel("Page photo")
+            }
+
+            LabeledContent("Book", value: page.expand?.book?.title ?? "Unknown book")
+          }
+
+          Section {
+            Picker("Status", selection: $draft.status) {
+              ForEach(PageStatus.allCases, id: \.self) { status in
+                Text(status.label).tag(status.rawValue)
               }
             }
-            .frame(width: 120, height: 120)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
-            .accessibilityLabel("Page photo")
+
+            TextField("Revealed subject", text: $draft.revealedSubject)
+
+            Text("Started and completed dates are set automatically from status.")
+              .font(.footnote)
+              .foregroundStyle(theme.mutedForeground)
           }
 
-          LabeledContent("Book", value: page.expand?.book?.title ?? "Unknown book")
-        }
-        .listRowBackground(theme.card)
-
-        Section {
-          Picker("Status", selection: $draft.status) {
-            ForEach(LibrarySection.pages.statusOptions, id: \.self) { status in
-              Text(status.organizedGlitterLabel).tag(status)
+          if let errorMessage {
+            Section {
+              AccessibleErrorLabel(message: errorMessage)
+                .accessibilityIdentifier("pageSaveError")
             }
           }
-
-          TextField("Revealed subject", text: $draft.revealedSubject)
-
-          Text("Started and completed dates are set automatically from status.")
-            .font(.footnote)
-            .foregroundStyle(theme.mutedForeground)
         }
         .listRowBackground(theme.card)
-
-        if let errorMessage {
-          Section {
-            AccessibleErrorLabel(message: errorMessage)
-              .accessibilityIdentifier("pageSaveError")
-          }
-          .listRowBackground(theme.card)
-        }
       }
       .themedScrollBackground()
       .navigationTitle("Edit Page")
