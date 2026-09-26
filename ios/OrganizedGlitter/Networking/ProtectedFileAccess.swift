@@ -48,7 +48,9 @@ final class ProtectedFileAccess {
       let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
       let expiration = claims["exp"] as? TimeInterval
     else { return 30 }
-    return max(1, min(60, expiration - now.timeIntervalSince1970 - 30))
+    let timeUntilExpiry = expiration - now.timeIntervalSince1970
+    guard timeUntilExpiry > 0 else { return 30 }
+    return max(30, timeUntilExpiry - 30)
   }
 
   func url(
