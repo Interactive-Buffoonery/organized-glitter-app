@@ -9,13 +9,13 @@
 | --- | --- | --- | --- | --- |
 | Web product + backend | `Interactive-Buffoonery/organized-glitter` | `origin/dev` | `3651feba64885af3b59f8232de2ed0d2653ce2ba` | 2026-09-08 |
 | iOS app UI | this repository | `main` at audit start | `ab385b737fa24f4bc8ce74450ff85155489137ca` | 2026-09-07 |
-| iOS `BackendContract.json` | this repository | same as `origin/dev` after this revision | `3651feba64885af3b59f8232de2ed0d2653ce2ba` | 2026-09-08 |
+| iOS `BackendContract.json` | this repository | pinned, pending verification | `6aff8ce42e7360513131a10ceb1c9478afb828f8` | 2026-07-22 |
 
 This review uses **current `origin/dev`** as the backend source in git. Schema SHA-256 of `docs/pocketbase/collections.schema.json` on that commit is `e9d2569d1399e4bbb13f27468c97d126fb78ae664d54ff190aa3e5732c737abc`. PocketBase version documented on that branch is **0.40.1**.
 
 The live PocketBase is **`https://data.organizedglitter.app`**. That host has been production for a long time. The web app and this iOS app both talk to it (Debug/Release default). Native CRUD, Discord, notes, and photos hit the same user data as the website. There is no separate native backend.
 
-The previous contract file pointed at `6aff8ce` (2026-07-22, PocketBase 0.37.5). That was stale metadata in this repo, not a missing server. Color references, stats routes, notes-latest, and Discord OAuth are on this PocketBase and can be called from iOS.
+The contract file still points at `6aff8ce` (2026-07-22, PocketBase 0.37.5). That is stale metadata in this repo, not a missing server; re-pinning waits until `3651feba` is verified against production. Color references, stats routes, notes-latest, and Discord OAuth are on this PocketBase and can be called from iOS.
 
 Evidence is from source inspection, not a live dual-client walkthrough. Web inventory also used `docs/feature-inventory.csv` (generated 2026-06-21) and was re-checked against `origin/dev` routes and pages. Color Codes & Swatches shipped on web after that CSV (`c54aa95`, 2026-09-07) and is included here.
 
@@ -37,7 +37,7 @@ Product intent for this plan: CRUD into PocketBase plus Discord sign-in. Randomi
 
 | Gap | Why it still waits |
 | --- | --- |
-| Legacy file fields unprotected | `users.avatar`, `projects.image`, notes images, book covers, page photos. Public-release blocker (`FILE_ACCESS_CONTRACT.md`). Swatch photos are already protected. |
+| Legacy file fields protected on `dev`, not yet in production | `users.avatar`, `projects.image`, notes images, book covers, page photos. Backend #289 merged to `dev` on 2026-09-26. iOS tokens land in app PR #7. Public-release blocker until both ship (`FILE_ACCESS_CONTRACT.md`). |
 | Server-owned account deletion | Web still writes `account_deletions` from the client. Do not copy that. |
 | Associated Domains / token confirm links | Not defined for native |
 | Apple OAuth | Typed; not enabled |

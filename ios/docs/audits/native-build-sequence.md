@@ -15,7 +15,7 @@
 
 - Work **one slice at a time**. Each slice should leave the app shippable: no disabled “Soon” that the slice was supposed to retire, no timer placeholders, no half-wired Create rows.
 - Run **Track B (backend)** in parallel with **Track A (iOS)**. Do not stall daily-craft work on universal links or catalog billing.
-- This plan targets **`origin/dev` `3651feba`** (PocketBase **0.40.1**) as the git contract. `ios/BackendContract.json` records that revision. The live server is **`https://data.organizedglitter.app`**, the same PocketBase the website has used for a long time. iOS already points there; there is no separate native backend.
+- This plan targets **`origin/dev` `3651feba`** (PocketBase **0.40.1**) as the git contract. `ios/BackendContract.json` still pins `6aff8ce` (PocketBase 0.37.5) until this revision is verified against production. The live server is **`https://data.organizedglitter.app`**, the same PocketBase the website has used for a long time. iOS already points there; there is no separate native backend.
 - Backend *code* changes still land in `Interactive-Buffoonery/organized-glitter` first. Do not copy hooks, migrations, or schema into this repo.
 - Keep `PocketBaseClient` as the only transport. Add methods there (multipart, confirm-token, custom routes). Do not add a repository protocol.
 - Records stay in memory. Writes require connectivity. Last-write-wins; refresh after unknown completion (already the editor pattern).
@@ -40,8 +40,8 @@ These are not iOS feature PRs. They gate later slices. Owner: backend repo.
 
 | ID | Work | Unblocks | Notes |
 | --- | --- | --- | --- |
-| B1 | Record `origin/dev` in `BackendContract.json` (done for `3651feba` / schema `e9d2569d…` / PocketBase 0.40.1). Re-pin when `dev` moves. | Contract file matches the backend this plan uses | Not a feature gate. Notes, photos, swatches, stats, Discord provider already exist on this revision. |
-| B2 | File-access contract: protect **legacy** fields + short-lived tokens | App Store image privacy (H1) | Swatch photos are already protected. iOS already builds URLs in `PocketBaseClient.fileURL`. |
+| B1 | Re-pin `BackendContract.json` to `3651feba` / schema `e9d2569d…` / PocketBase 0.40.1 in its own PR once verified against production. Re-pin when `dev` moves. | Contract file matches the backend this plan uses | Not a feature gate. Notes, photos, swatches, stats, Discord provider already exist on this revision. |
+| B2 | File-access contract: protect **legacy** fields + short-lived tokens | App Store image privacy (H1) | Backend #289 merged to `dev` 2026-09-26; iOS tokens in app PR #7. Remaining: production deploy. |
 | B3 | Associated Domains file, HTTPS token routes, token format, web + old-app fallback | Verify email, confirm reset, confirm email change | Architecture already forbids guessing this. |
 | B4 | Server-owned account deletion endpoint (no client-written audit) | In-app delete (H1) | Do not port the web `account_deletions` client flow. |
 | B5a | Register native Discord OAuth redirect URL(s) for `ASWebAuthenticationSession` (custom scheme or HTTPS) on the **existing** Discord provider | Era 0 Discord button | Provider is already live. Same PocketBase user as web; never merge accounts by email on the client. |
