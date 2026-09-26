@@ -212,6 +212,49 @@ struct LibraryItemDetailModelTests {
   }
 
   @Test
+  func reloadingMultipleBookPagesKeepsLoadMoreOffset() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, Self.bookJSON)
+      }
+      if path.hasSuffix("/coloring_pages/records") {
+        let components = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)
+        let query = components?.queryItems ?? []
+        let page = try #require(Int(query.first { $0.name == "page" }?.value ?? ""))
+        let perPage = try #require(Int(query.first { $0.name == "perPage" }?.value ?? ""))
+        let first = (page - 1) * perPage + 1
+        let last = min(page * perPage, 60)
+        let items = (first...last).map {
+          Self.pageJSON(id: "page-\($0)", number: $0, photos: [])
+        }.joined(separator: ",")
+        return (
+          200,
+          """
+          {"page":\(page),"perPage":\(perPage),"totalItems":60,"totalPages":\((60 + perPage - 1) / perPage),"items":[\(items)]}
+          """
+        )
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .book(Self.book), client: client, userID: "user-1")
+
+    await model.load()
+    await model.loadMoreBookPages()
+    #expect(model.bookPages.count == 48)
+
+    await model.load(preservingLoadedBookPages: true)
+    await model.loadMoreBookPages()
+
+    let ids = model.bookPages.map(\.id)
+    #expect(ids.count == 60)
+    #expect(Set(ids).count == ids.count)
+    #expect(ids == (1...60).map { "page-\($0)" })
+  }
+
+  @Test
   func confirmedBackdatedDiamondNoteKeepsServerSortWhenRefreshFails() async throws {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)
