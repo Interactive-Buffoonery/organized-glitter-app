@@ -84,57 +84,28 @@ struct OverviewPresentationTests {
       ))
   }
 
-  @Test func craftFilterPreservesRecordIdentityAndOrder() {
-    let items = [project(), page()]
-    #expect(items.filter(OverviewCraft.all.includes) == items)
-    #expect(items.filter(OverviewCraft.diamonds.includes) == [items[0]])
-    #expect(items.filter(OverviewCraft.coloring.includes) == [items[1]])
-    #expect([items[0]].filter(OverviewCraft.coloring.includes).isEmpty)
+  @Test func continueOrdersByLatestNoteThenUpdated() {
+    let noted = project()
+    let recent = page()
+    // The page was updated later, but the project was logged the same day.
+    #expect(
+      OverviewModel.continueOrder([recent, noted], latestNoteDates: ["fictional-project": "2026-09-06 00:00:00.000Z"])
+        == [noted, recent])
+    #expect(OverviewModel.continueOrder([noted, recent], latestNoteDates: [:]) == [noted, recent])
+    #expect(
+      OverviewModel.continueOrder([noted, recent], latestNoteDates: ["fictional-page": "2026-09-01"])
+        == [noted, recent])
   }
 
-  @Test func completedShortcutsFollowCraftAndEnabledPreferences() {
-    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
-    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
-    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
-
-    #expect(OverviewCraft.all.completedSections(for: both) == [.diamonds, .pages])
-    #expect(OverviewCraft.diamonds.completedSections(for: both) == [.diamonds])
-    #expect(OverviewCraft.coloring.completedSections(for: both) == [.pages])
-    #expect(OverviewCraft.all.completedSections(for: diamondsOnly) == [.diamonds])
-    #expect(OverviewCraft.all.completedSections(for: coloringOnly) == [.pages])
-    #expect(OverviewCraft.coloring.completedSections(for: diamondsOnly).isEmpty)
-    #expect(OverviewCraft.diamonds.completedSections(for: coloringOnly).isEmpty)
-  }
-
-  @Test func inProgressShortcutsFollowCraftAndEnabledPreferences() {
-    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
-    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
-    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
-
-    #expect(OverviewCraft.all.inProgressSections(for: both) == [.diamonds, .pages])
-    #expect(OverviewCraft.diamonds.inProgressSections(for: both) == [.diamonds])
-    #expect(OverviewCraft.coloring.inProgressSections(for: both) == [.pages])
-    #expect(OverviewCraft.all.inProgressSections(for: diamondsOnly) == [.diamonds])
-    #expect(OverviewCraft.all.inProgressSections(for: coloringOnly) == [.pages])
-    #expect(OverviewCraft.coloring.inProgressSections(for: diamondsOnly).isEmpty)
-    #expect(OverviewCraft.diamonds.inProgressSections(for: coloringOnly).isEmpty)
-    #expect(OverviewCraft.all.inProgressStatus(for: .diamonds) == "progress")
-    #expect(OverviewCraft.all.inProgressStatus(for: .pages) == "in_progress")
-    #expect(OverviewCraft.all.inProgressStatus(for: .books) == nil)
-  }
-
-  @Test func wishlistShortcutsFollowCraftAndEnabledPreferences() {
-    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
-    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
-    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
-
-    #expect(OverviewCraft.all.wishlistSections(for: both) == [.diamonds, .books])
-    #expect(OverviewCraft.diamonds.wishlistSections(for: both) == [.diamonds])
-    #expect(OverviewCraft.coloring.wishlistSections(for: both) == [.books])
-    #expect(OverviewCraft.all.wishlistSections(for: diamondsOnly) == [.diamonds])
-    #expect(OverviewCraft.all.wishlistSections(for: coloringOnly) == [.books])
-    #expect(OverviewCraft.coloring.wishlistSections(for: diamondsOnly).isEmpty)
-    #expect(OverviewCraft.diamonds.wishlistSections(for: coloringOnly).isEmpty)
+  @Test func loggedCaptionIsRelativeForAWeek() throws {
+    let zone = try #require(TimeZone(identifier: "America/New_York"))
+    // 2026-09-20 23:30 in New York, already the 21st in UTC.
+    let now = try #require(ISO8601DateFormatter().date(from: "2026-09-21T03:30:00Z"))
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-20", now: now, timeZone: zone) == "Logged today")
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-19 00:00:00.000Z", now: now, timeZone: zone) == "Logged yesterday")
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-15", now: now, timeZone: zone) == "Logged 5 days ago")
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-13", now: now, timeZone: zone)?.hasPrefix("Logged Sep") == true)
+    #expect(OverviewModel.loggedCaption(noteDate: "not a date", now: now, timeZone: zone) == nil)
   }
 
   @Test func artworkUsesTheFileAccessBoundary() {
@@ -144,13 +115,13 @@ struct OverviewPresentationTests {
       model.artworkURL(for: project(image: "garden image.png"), token: "file-token")
         == client.fileURL(
           collection: "projects", recordID: "fictional-project", filename: "garden image.png",
-          thumb: ArtworkThumb.compact, token: "file-token"
+          thumb: ArtworkThumb.gallery, token: "file-token"
         ))
     #expect(
       model.artworkURL(for: page(photos: ["", "page.png", "later.png"]), token: "file-token")
         == client.fileURL(
           collection: "coloring_pages", recordID: "fictional-page", filename: "page.png",
-          thumb: ArtworkThumb.compact, token: "file-token"
+          thumb: ArtworkThumb.gallery, token: "file-token"
         ))
     #expect(model.artworkURL(for: project(), token: "file-token") == nil)
     #expect(model.artworkURL(for: project(image: ""), token: "file-token") == nil)

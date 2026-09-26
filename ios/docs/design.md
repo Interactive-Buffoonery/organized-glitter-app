@@ -19,6 +19,12 @@ screen backgrounds. The Shelf redesign (Option B in
   backend status). Sort is a toolbar menu next to `+`. A craft with nothing in
   it hides chips and sort and shows one "Add your first kit" (or book) prompt
   that opens the editor.
+- **Home.** A Continue carousel of in-progress covers, most recently logged
+  first (`/api/notes/latest`, falling back to `updated`), each diamond cover
+  carrying a glass Log button. "Up next from your stash" shows Kitted up then
+  In stash covers. A single "N finished this month" row opens Completed.
+  Section titles open the matching Library filter; a menu picks the craft when
+  both are enabled.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
   clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient
   seeded by record id, the title in Caveat, and a craft glyph.
