@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organized Glitter · iOS 26 redesign options</title>
+<style>
+@font-face { font-family: Caveat; src: url("../../OrganizedGlitter/Resources/Fonts/Caveat.ttf"); }
+
+:root {
+  --bg-top: #FDEEF3; --bg-mid: #F8E9F6; --bg-bot: #E7DEFA;
+  --page: linear-gradient(#FDEEF3, #F8E9F6 50%, #E7DEFA);
+  --base: #F8E9F6;
+  --fg: #46323E; --fg2: #765669; --fg3: rgba(70,50,62,.38);
+  --primary: #D23C77; --on-primary: #fff; --accent: #8535D4;
+  --cell: rgba(253,245,248,.86); --sep: rgba(70,50,62,.13);
+  --fill: rgba(118,90,110,.12); --seg-on: #fff;
+  --glass: rgba(255,255,255,.58); --glass-edge: rgba(255,255,255,.9); --glass-hi: rgba(255,255,255,.95);
+  --lens: rgba(210,60,119,.11); --sheet: #FDF5F8; --scrim: rgba(40,20,40,.22);
+  --chrome: #fff7fb; --ink: #1b1320;
+}
+[data-theme="dark"] {
+  --page: radial-gradient(ellipse 120% 70% at 56% 116%, #5C27B5 0, #371475 38%, transparent 73%), #05051A;
+  --base: #05051A;
+  --fg: #F7F2F7; --fg2: #BEB1C3; --fg3: rgba(247,242,247,.35);
+  --primary: #F58AB5; --on-primary: #381423; --accent: #CAA4F9;
+  --cell: rgba(20,16,40,.82); --sep: rgba(255,255,255,.1);
+  --fill: rgba(190,177,195,.14); --seg-on: rgba(255,255,255,.2);
+  --glass: rgba(34,26,66,.52); --glass-edge: rgba(255,255,255,.14); --glass-hi: rgba(255,255,255,.18);
+  --lens: rgba(255,255,255,.12); --sheet: #141028; --scrim: rgba(0,0,0,.5);
+  --chrome: #0d0a1f; --ink: #f4eef6;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; background: var(--chrome); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; }
+
+/* ---------- Page chrome ---------- */
+.top { position: sticky; top: 0; z-index: 20; display: flex; gap: 20px; align-items: center; padding: 14px 40px; background: color-mix(in srgb, var(--chrome) 85%, transparent); backdrop-filter: blur(16px); border-bottom: 1px solid var(--sep); }
+.top b { font-size: 15px; }
+.top nav { display: flex; gap: 16px; flex: 1; }
+.top nav a { color: var(--fg2); text-decoration: none; font-weight: 500; }
+.top nav a:hover { color: var(--primary); }
+.toggle { padding: 6px 14px; border-radius: 99px; background: var(--fill); font-weight: 600; cursor: pointer; }
+header.intro, section { padding: 56px 40px 8px; max-width: 1900px; }
+header.intro h1 { font-size: 40px; letter-spacing: -.02em; }
+header.intro p, .lede { max-width: 780px; color: var(--fg2); font-size: 17px; margin-top: 10px; }
+section h2 { font-size: 30px; letter-spacing: -.015em; }
+section h2 small { font-size: 15px; font-weight: 600; color: var(--primary); display: block; letter-spacing: .02em; text-transform: uppercase; margin-bottom: 4px; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 32px; max-width: 1300px; margin-top: 18px; }
+.notes div { font-size: 14px; color: var(--fg2); }
+.notes h4 { font-size: 13px; color: var(--ink); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.notes ul { padding-left: 18px; }
+.row-of-phones { display: flex; gap: 32px; flex-wrap: wrap; margin: 34px 0 40px; align-items: flex-start; }
+figure { display: flex; flex-direction: column; gap: 14px; }
+figcaption { font-size: 14px; font-weight: 600; color: var(--ink); padding-left: 6px; }
+figcaption span { display: block; font-weight: 400; color: var(--fg2); max-width: 393px; }
+.before { display: flex; gap: 28px; margin-top: 24px; flex-wrap: wrap; }
+.before img { width: 220px; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+.findings { margin-top: 20px; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px 40px; font-size: 14px; color: var(--fg2); counter-reset: f; }
+.findings p { counter-increment: f; }
+.findings p::before { content: counter(f) ". "; font-weight: 700; color: var(--primary); }
+.findings b { color: var(--ink); }
+
+/* ---------- Device ---------- */
+.phone { position: relative; width: 393px; height: 852px; border-radius: 58px; overflow: hidden; background: var(--page); background-color: var(--base); color: var(--fg); box-shadow: 0 0 0 11px #121016, 0 0 0 12px #2c2830, 0 30px 60px rgba(0,0,0,.28); font-size: 17px; line-height: 1.3; letter-spacing: -.01em; flex: none; }
+.phone::before { content: ""; position: absolute; z-index: 30; top: 11px; left: 50%; width: 124px; height: 36px; margin-left: -62px; border-radius: 20px; background: #000; }
+.phone::after { content: ""; position: absolute; z-index: 30; bottom: 8px; left: 50%; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: var(--fg); opacity: .85; }
+.sb { position: absolute; z-index: 25; top: 0; left: 0; right: 0; height: 54px; display: flex; justify-content: space-between; align-items: center; padding: 6px 34px 0 50px; font-size: 17px; font-weight: 600; }
+.sb .icons { display: flex; gap: 6px; align-items: center; }
+.sb .batt { width: 27px; height: 13px; border-radius: 4px; border: 1.5px solid currentColor; opacity: .9; position: relative; }
+.sb .batt::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; border-radius: 2px; background: currentColor; }
+.content { position: absolute; inset: 0; padding-top: 54px; overflow: hidden; }
+
+/* ---------- Icons ---------- */
+i[data-i] { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; flex: none; font-style: normal; }
+i[data-i] svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fillicon svg { fill: currentColor; stroke: none; }
+
+/* ---------- Navigation ---------- */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 56px; padding: 4px 16px 0; position: relative; }
+.bar .ctr { position: absolute; left: 90px; right: 90px; text-align: center; font-weight: 600; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gb, .gbs { height: 44px; min-width: 44px; border-radius: 22px; display: inline-flex; align-items: center; justify-content: center; gap: 2px; background: var(--glass); backdrop-filter: blur(14px) saturate(1.8); -webkit-backdrop-filter: blur(14px) saturate(1.8); border: .5px solid var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 16px rgba(40,10,40,.08); font-size: 17px; font-weight: 500; color: var(--fg); }
+.gb i { font-size: 21px; }
+.gbs > span { width: 44px; height: 44px; display: grid; place-items: center; font-size: 21px; }
+.gb.txt { padding: 0 16px; }
+.gb.pro { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+.spacer { flex: 1; }
+.lt { font-size: 34px; font-weight: 700; letter-spacing: .005em; padding: 2px 20px 10px; }
+.lt.cav { font: 600 46px/1.05 Caveat, cursive; letter-spacing: 0; padding: 0 20px 8px; }
+.eyebrow { padding: 4px 20px 0; font-size: 13px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .02em; }
+
+.tabs { position: absolute; z-index: 10; left: 20px; right: 20px; bottom: 26px; display: flex; gap: 10px; }
+.tb { flex: 1; display: flex; height: 62px; padding: 4px; border-radius: 31px; }
+.tb, .tsearch, .accbar { background: var(--glass); backdrop-filter: blur(18px) saturate(1.8); -webkit-backdrop-filter: blur(18px) saturate(1.8); border: .5px solid var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 26px rgba(40,10,40,.14); }
+.tb a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 10px; font-weight: 600; border-radius: 27px; letter-spacing: 0; }
+.tb a i { font-size: 25px; }
+.tb a.on { color: var(--primary); background: var(--lens); }
+.tsearch { width: 62px; height: 62px; border-radius: 31px; display: grid; place-items: center; font-size: 24px; flex: none; }
+.accbar { position: absolute; z-index: 10; left: 20px; right: 20px; bottom: 98px; height: 50px; border-radius: 25px; display: flex; align-items: center; gap: 10px; padding: 0 6px; font-size: 15px; }
+.accbar .th { width: 38px; height: 38px; border-radius: 19px; }
+.accbar b { font-weight: 600; display: block; }
+.accbar small { color: var(--fg2); font-size: 13px; }
+.accbar .gb { height: 38px; min-width: 38px; }
+
+/* ---------- Lists ---------- */
+.gh { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 36px 7px; font-size: 13px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .02em; }
+.gh a { text-transform: none; color: var(--primary); font-size: 15px; font-weight: 400; letter-spacing: 0; }
+.sh { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 20px 10px; font-size: 22px; font-weight: 700; }
+.sh a { font-size: 17px; font-weight: 400; color: var(--primary); }
+.group { background: var(--cell); border-radius: 26px; margin: 0 16px 8px; overflow: hidden; }
+.gf { padding: 2px 36px 12px; font-size: 13px; color: var(--fg2); }
+.r { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 16px; position: relative; }
+.r + .r::before { content: ""; position: absolute; top: 0; right: 0; left: var(--inset, 16px); border-top: .5px solid var(--sep); }
+.r.ti { --inset: 58px; }
+.r.tt { --inset: 72px; }
+.tx { flex: 1; min-width: 0; }
+.t1 { font-size: 17px; }
+.t1.b { font-weight: 600; }
+.t2 { font-size: 15px; color: var(--fg2); margin-top: 1px; }
+.val { color: var(--fg2); white-space: nowrap; }
+.chev { color: var(--fg3); font-size: 15px; }
+.tint { color: var(--primary); }
+.danger { color: #d93b52; }
+[data-theme="dark"] .danger { color: #ff6b7d; }
+.ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 17px; flex: none; }
+.ic.p { background: #D23C77; } .ic.a { background: #8535D4; } .ic.b { background: #3E7BD6; } .ic.g { background: #2E9D6A; } .ic.o { background: #E08A2E; } .ic.n { background: #8E8093; } .ic.rd { background: #C93A4C; } .ic.t { background: #1F9AA8; }
+.th { width: 44px; height: 56px; border-radius: 8px; flex: none; position: relative; overflow: hidden; }
+.th.sq { height: 44px; }
+.toggle-sw { width: 51px; height: 31px; border-radius: 16px; background: #34C759; position: relative; flex: none; }
+.toggle-sw::after { content: ""; position: absolute; top: 2px; right: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.toggle-sw.off { background: var(--fill); }
+.toggle-sw.off::after { right: auto; left: 2px; }
+
+.seg { display: flex; margin: 0 16px 12px; padding: 3px; border-radius: 99px; background: var(--fill); }
+.seg span { flex: 1; text-align: center; padding: 7px 0; font-size: 14px; font-weight: 500; border-radius: 99px; }
+.seg .on { background: var(--seg-on); font-weight: 600; box-shadow: 0 2px 8px rgba(40,10,40,.12); }
+.chips { display: flex; gap: 8px; padding: 0 16px 14px; overflow: hidden; white-space: nowrap; }
+.chip { padding: 8px 14px; border-radius: 99px; background: var(--cell); font-size: 15px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+.chip.on { background: var(--primary); color: var(--on-primary); }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 99px; background: var(--fill); font-size: 13px; font-weight: 600; color: var(--fg2); }
+.st { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--fg2); }
+.st i { font-size: 15px; }
+.st.progress i { color: var(--primary); } .st.done i { color: var(--accent); } .st.kit i { color: #2E9D6A; } .st.wish i { color: var(--primary); } .st.stash i { color: var(--fg2); }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 50px; border-radius: 25px; font-weight: 600; font-size: 17px; background: var(--primary); color: var(--on-primary); }
+.btn.gl { background: var(--glass); color: var(--fg); border: .5px solid var(--glass-edge); backdrop-filter: blur(14px); }
+.meter { height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--primary); border-radius: 3px; }
+.muted { color: var(--fg2); }
+.small { font-size: 13px; }
+
+/* ---------- Artwork ---------- */
+.art { position: relative; overflow: hidden; background-size: cover; }
+.dia::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,255,255,.26) .8px, transparent 1.3px) 0 0 / 4px 4px; }
+.a1 { background: radial-gradient(circle at 70% 22%, #F2D48A 0 10%, transparent 10.5%), radial-gradient(ellipse 12% 30% at 20% 78%, #5FA884 0 98%, transparent), radial-gradient(ellipse 12% 34% at 42% 82%, #6CB592 0 98%, transparent), radial-gradient(ellipse 12% 30% at 64% 80%, #5FA884 0 98%, transparent), radial-gradient(ellipse 12% 34% at 86% 84%, #6CB592 0 98%, transparent), linear-gradient(#2E3A5C, #1B2240); }
+.a2 { background: radial-gradient(ellipse 18% 9% at 32% 62%, #F08A4B 0 97%, transparent), radial-gradient(ellipse 14% 7% at 66% 38%, #F6EFE6 0 97%, transparent), radial-gradient(ellipse 10% 5% at 58% 74%, #E85D3A 0 97%, transparent), linear-gradient(160deg, #2A7C8E, #164764 60%, #0B2239); }
+.a3 { background: linear-gradient(#F7C6A3 0 34%, transparent 34%), radial-gradient(circle at 70% 22%, #FFE9B8 0 7%, transparent 7.5%), repeating-linear-gradient(100deg, #7D5BB5 0 7px, #A98BDA 7px 13px); }
+.a4 { background: radial-gradient(circle at 30% 34%, #E86A92 0 15%, transparent 15.5%), radial-gradient(circle at 68% 60%, #F4A6BF 0 18%, transparent 18.5%), radial-gradient(circle at 36% 78%, #F9D66B 0 9%, transparent 9.5%), radial-gradient(circle at 78% 22%, #8FC7A0 0 11%, transparent 11.5%), radial-gradient(circle at 16% 60%, #9FD0B3 0 8%, transparent 8.5%), #FFF1E8; }
+.a5 { background: radial-gradient(circle at 50% 40%, #FFF4D6 0 6%, transparent 6.5%), repeating-radial-gradient(circle at 50% 130%, #2F6FB0 0 11px, #4B90CF 11px 21px); }
+.a6 { background: radial-gradient(ellipse 70% 40% at 25% 100%, #4A2A5E 0 98%, transparent), radial-gradient(ellipse 70% 45% at 85% 104%, #6B3A70 0 98%, transparent), radial-gradient(circle at 55% 52%, #FFD27A 0 11%, transparent 11.5%), linear-gradient(#F58AB5, #F7B27A); }
+.a7 { background: linear-gradient(#D6ECDC 0 28%, transparent 28%), repeating-linear-gradient(75deg, #2F6B4F 0 14px, #3E8A63 14px 26px); }
+.a8 { background: radial-gradient(circle at 50% 62%, #1B1030 0 22%, transparent 22.5%), radial-gradient(circle at 20% 20%, #fff 0 1%, transparent 1.5%), radial-gradient(circle at 82% 30%, #fff 0 .8%, transparent 1.3%), radial-gradient(circle at 70% 82%, #fff 0 .8%, transparent 1.3%), linear-gradient(135deg, #5C27B5, #D23C77); }
+.bk1 { background: radial-gradient(circle at 28% 38%, #E86A92 0 12%, transparent 12.5%), radial-gradient(circle at 70% 52%, #5FB3A2 0 14%, transparent 14.5%), radial-gradient(circle at 44% 72%, #F2C46B 0 8%, transparent 8.5%), linear-gradient(#1C1B33, #2C2350); }
+.bk2 { background: repeating-radial-gradient(circle at 50% 50%, transparent 0 9px, rgba(60,40,50,.4) 9px 10px), #F4EADB; }
+.bk3 { background: radial-gradient(circle at 50% 45%, #F5E9C8 0 20%, transparent 20.5%), repeating-conic-gradient(from 0deg at 50% 45%, #3E7BD6 0 15deg, #2B5CA8 15deg 30deg); }
+.pg { background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 13deg, rgba(40,30,40,.45) 13deg 14deg), repeating-radial-gradient(circle at 50% 50%, transparent 0 15px, rgba(40,30,40,.45) 15px 16px), #FFFDF9; }
+.pg.c1 { background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 13deg, rgba(40,30,40,.45) 13deg 14deg), repeating-radial-gradient(circle at 50% 50%, transparent 0 15px, rgba(40,30,40,.45) 15px 16px), radial-gradient(circle at 50% 50%, #E86A92 0 16px, #F4A6BF 16px 32px, #8FC7A0 32px 48px, #F9D66B 48px 64px, transparent 64px), #FFFDF9; }
+.pg.c2 { background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 13deg, rgba(40,30,40,.45) 13deg 14deg), repeating-radial-gradient(circle at 50% 50%, transparent 0 15px, rgba(40,30,40,.45) 15px 16px), conic-gradient(from 0deg at 50% 50%, #8535D4 0 90deg, #5FB3A2 90deg 170deg, transparent 170deg), #FFFDF9; }
+.mys { background: var(--fill); display: grid; place-items: center; color: var(--fg2); font-size: 22px; }
+
+/* ---------- Sheets ---------- */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 12; }
+.sheet { position: absolute; z-index: 14; left: 0; right: 0; bottom: 0; top: 58px; border-radius: 38px 38px 0 0; background: var(--sheet); overflow: hidden; }
+.sheet.float { left: 8px; right: 8px; bottom: 8px; top: 330px; border-radius: 42px; }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--fg3); margin: 6px auto 0; }
+.sheet .group { background: color-mix(in srgb, var(--fill) 60%, transparent); }
+[data-theme="dark"] .sheet .group { background: rgba(255,255,255,.06); }
+.field { color: var(--fg3); }
+.well { margin: 8px 16px 16px; height: 150px; border-radius: 26px; border: 1.5px dashed var(--fg3); display: flex; align-items: center; justify-content: center; gap: 28px; color: var(--primary); font-weight: 600; font-size: 15px; }
+.well div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.well i { font-size: 28px; }
+
+/* ---------- iPad ---------- */
+.ipad { width: 1180px; height: 820px; border-radius: 34px; position: relative; overflow: hidden; background: var(--page); background-color: var(--base); color: var(--fg); box-shadow: 0 0 0 14px #121016, 0 0 0 15px #2c2830, 0 30px 60px rgba(0,0,0,.28); zoom: .72; font-size: 17px; line-height: 1.3; }
+.side { position: absolute; top: 12px; left: 12px; bottom: 12px; width: 300px; border-radius: 26px; padding: 56px 12px 12px; }
+.side, .ipad .gb { background: var(--glass); backdrop-filter: blur(18px) saturate(1.8); border: .5px solid var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 26px rgba(40,10,40,.1); }
+.side h5 { font-size: 13px; color: var(--fg2); padding: 16px 12px 6px; text-transform: uppercase; letter-spacing: .03em; }
+.side a { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; font-size: 17px; }
+.side a i { color: var(--primary); font-size: 20px; }
+.side a.on { background: var(--primary); color: var(--on-primary); }
+.side a.on i { color: inherit; }
+.side a .val { margin-left: auto; font-size: 15px; }
+.side a.on .val { color: inherit; opacity: .8; }
+.pad-main { position: absolute; left: 324px; right: 0; top: 0; bottom: 0; padding-top: 24px; }
+.grid { display: grid; gap: 22px 18px; padding: 0 20px; }
+.grid .cov { aspect-ratio: 4 / 5; border-radius: 12px; box-shadow: 0 6px 16px rgba(30,10,30,.16); }
+.grid .t1 { font-size: 15px; font-weight: 600; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid .st { margin-top: 3px; }
+.carousel { display: flex; gap: 14px; padding: 0 20px; overflow: hidden; }
+.carousel .cov { border-radius: 14px; box-shadow: 0 8px 20px rgba(30,10,30,.18); position: relative; }
+
+/* ---------- Chart ---------- */
+.chart { padding: 16px 16px 12px; }
+.chart .plot { position: relative; height: 150px; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid var(--sep); }
+.chart .plot::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--sep); }
+.chart .bar-v { flex: 1; margin: 0 5px; background: var(--primary); border-radius: 4px 4px 0 0; position: relative; }
+.chart .bar-v:hover { filter: brightness(1.1); }
+.chart .bar-v:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--fg); color: var(--base); font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 8px; }
+.chart .axis { display: flex; gap: 2px; margin-top: 6px; }
+.chart .axis span { flex: 1; margin: 0 5px; text-align: center; font-size: 11px; color: var(--fg2); }
+.chart .ytick { position: absolute; right: 0; top: calc(50% - 16px); font-size: 11px; color: var(--fg2); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="house" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol>
+  <symbol id="books" viewBox="0 0 24 24"><rect x="3" y="4" width="4.5" height="16" rx="1"/><rect x="9.5" y="4" width="4.5" height="16" rx="1"/><path d="m16 5.2 3.4-.9 3 14.6-3.4.9z"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="person" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.2"/><path d="M6.3 18.6a6.5 6.5 0 0 1 11.4 0"/></symbol>
+  <symbol id="chev-r" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="chev-l" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="updown" viewBox="0 0 24 24"><path d="m7 9 5-5 5 5M7 15l5 5 5-5"/></symbol>
+  <symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 7.5 2.8C19.5 15.4 12 20 12 20z"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M10 8.5v7l5.5-3.5z" fill="currentColor"/></symbol>
+  <symbol id="pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M10 9v6M14 9v6"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m8.2 12.4 2.6 2.6 5-5.4"/></symbol>
+  <symbol id="checkmark" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="xmark" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4.5" rx="1.2"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 12.5h4"/></symbol>
+  <symbol id="box" viewBox="0 0 24 24"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></symbol>
+  <symbol id="gem" viewBox="0 0 24 24"><path d="M6.5 3.5h11l3.5 5.5L12 20.5 3 9z"/><path d="M3 9h18M12 20.5 8.5 9l2.5-5.5M12 20.5 15.5 9 13 3.5"/></symbol>
+  <symbol id="page" viewBox="0 0 24 24"><path d="M6 3h8.5L19 7.5V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="camera" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="m8.5 7 1.5-3h4l1.5 3"/></symbol>
+  <symbol id="photo" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 15.5-5-5L5 19.5"/></symbol>
+  <symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="chart" viewBox="0 0 24 24"><path d="M5 20v-8M10 20V5M15 20v-6M20 20V9"/></symbol>
+  <symbol id="filter" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
+  <symbol id="calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="tag" viewBox="0 0 24 24"><path d="M3.5 12V4.5a1 1 0 0 1 1-1H12l8.5 8.5-8 8z"/><circle cx="8" cy="8" r="1.4"/></symbol>
+  <symbol id="eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="sparkle" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16v4M17 18h4"/></symbol>
+  <symbol id="swatch" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 2-2s-1-1.6-1-2.6c0-1.2 1-2 2.4-2H18a3 3 0 0 0 3-3C21 6.8 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-4h6v4M8.5 7.5h2M13.5 7.5h2M8.5 11.5h2M13.5 11.5h2"/></symbol>
+  <symbol id="brush" viewBox="0 0 24 24"><path d="M18.5 3.5 10 12l2 2 8.5-8.5a1.4 1.4 0 0 0-2-2z"/><path d="M10 12c-2.5 0-4 1.5-4 4 0 1.5-1 2.5-2.5 3 3.5 1.5 8.5 1 8.5-5z"/></symbol>
+  <symbol id="upload" viewBox="0 0 24 24"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5"/></symbol>
+  <symbol id="download" viewBox="0 0 24 24"><path d="M12 3.5V15M7.5 10.5 12 15l4.5-4.5M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+  <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.6M12 17h.01"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.5 2.7 3.8 5.9 3.8 9.5s-1.3 6.8-3.8 9.5c-2.5-2.7-3.8-5.9-3.8-9.5s1.3-6.8 3.8-9.5z"/></symbol>
+  <symbol id="link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3A4.5 4.5 0 0 0 13 4.6l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
+  <symbol id="ruler" viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="1.5"/><path d="M6.5 8v3M10.5 8v4M14.5 8v3M18.5 8v4"/></symbol>
+</svg>
+
+<div class="top">
+  <b>Organized Glitter · iOS 26</b>
+  <nav>
+    <a href="#audit">Audit</a><a href="#a">A · Settled</a><a href="#b">B · Shelf</a><a href="#c">C · Journal</a><a href="#shared">Shared screens</a><a href="#ipad">iPad</a>
+  </nav>
+  <button class="toggle" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'">Light / Dark</button>
+</div>
+
+<header class="intro">
+  <h1>Redesign options</h1>
+  <p>Three directions for the native app. All keep Berry Cream (the ADR 0001 backgrounds and tokens), target iOS 26 Liquid Glass chrome, and cover the full Organized Glitter feature set except the randomizer. Each one maps to stock SwiftUI views: <code>TabView</code> with a search tab, large-title <code>NavigationStack</code>, <code>List(.insetGrouped)</code>, <code>Menu</code>, <code>Form</code> sheets with detents, and <code>ContentUnavailableView</code>. None needs a custom card system.</p>
+</header>
+
+<!-- ======================= AUDIT ======================= -->
+<section id="audit">
+  <h2><small>Where it is today</small>Audit highlights</h2>
+  <p class="lede">The full write-up is in <code>redesign-audit.md</code>, next to this file. These are the problems that make the app feel janky.</p>
+  <div class="before">
+    <img src="../screenshots/overview-d/iphone-light.png" alt="Current Overview, light">
+    <img src="../screenshots/library-d/iphone-light.png" alt="Current Library, light">
+    <img src="../screenshots/light-create.png" alt="Current Create tab, light">
+    <img src="../screenshots/overview-d/iphone-dark.png" alt="Current Overview, dark">
+  </div>
+  <div class="findings">
+    <p><b>Every screen has two titles.</b> The inline nav title and the Caveat <code>PageHeader</code> both say "Library", and together they use about 150pt before any content appears.</p>
+    <p><b>Search sits above the page title.</b> <code>.searchable</code> puts the field in the nav bar, and the Caveat title is scroll content, so the order reads upside down.</p>
+    <p><b>Five tabs, and two of them aren't destinations.</b> Create is an action, and three of its four rows are disabled "Soon" stubs. Randomizer is out of scope for v1.</p>
+    <p><b>Two design languages.</b> Create still uses sticker cards with hard offset shadows and outlines, while Overview and Library are flat and quiet.</p>
+    <p><b>The gallery is ragged.</b> Artwork is scaled to fit inside a 170–230pt flexible frame, so tiles end up different heights, and "No artwork" boxes take up as much space as real art.</p>
+    <p><b>Filters look like text fields.</b> "All statuses" and "Wishlist" are full-width menu buttons that read as form inputs instead of controls.</p>
+    <p><b>The detail screen is thin.</b> It shows a 160pt crop, a second large title, and three rows. There are no progress notes, dates, company, artist, or tags, and changing status means opening the full editor.</p>
+    <p><b>iPad has two sidebars.</b> Library's <code>NavigationSplitView</code> sidebar sits inside a <code>.sidebarAdaptable</code> <code>TabView</code>, which already has its own sidebar.</p>
+    <p><b>Grids download full-size originals.</b> <code>artworkURL</code> doesn't pass a <code>thumb</code>, and the thumb sizes the editors ask for aren't on the backend's allowlist.</p>
+    <p><b>Account deletion is a mailto link.</b> App Store guideline 5.1.1(v) requires deletion to start inside the app. This is already listed as a release blocker.</p>
+  </div>
+</section>
+
+<!-- ======================= OPTION A ======================= -->
+<section id="a">
+  <h2><small>Option A</small>Settled: Settings and Notes native</h2>
+  <p class="lede">Closest to Apple's own apps and cheapest to build. System type everywhere, with Caveat kept only for the wordmark. Lists instead of cards, and artwork as thumbnails. It's calm, dense, and fast for a crafter checking in between rows. The risk is that it can feel plain for a hobby app.</p>
+  <div class="notes">
+    <div><h4>Tabs</h4>Home · Library · Notes, plus a search tab (<code>Tab(role: .search)</code>). Account opens from the avatar button on Home.</div>
+    <div><h4>Create</h4>A <code>+</code> toolbar <code>Menu</code> on Home and Library: New diamond project, New coloring book, Log progress.</div>
+    <div><h4>SwiftUI</h4>Stock <code>List</code>, <code>.navigationTitle</code> large, <code>Picker(.segmented)</code>, <code>Menu</code> for status. Almost no custom views.</div>
+    <div><h4>Deletes</h4><code>PageHeader</code>, <code>SectionHeader</code>, <code>QuietActionStyle</code>, the whole sticker system, <code>LibraryGalleryCard</code>.</div>
+  </div>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="person"></i></span><span class="spacer"></span><span class="gb"><i data-i="plus"></i></span></div>
+          <h1 class="lt">Home</h1>
+          <div class="gh">In progress <a>See all 7</a></div>
+          <div class="group">
+            <div class="r tt"><span class="th art a1 dia"></span><div class="tx"><div class="t1">Moonlit Garden</div><div class="t2">Sparkle Studio · 40 × 50 cm</div></div><span class="val small">2d</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art pg c1"></span><div class="tx"><div class="t1">Page 14 · Hummingbird</div><div class="t2">Midnight Botanica</div></div><span class="val small">Today</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art a2 dia"></span><div class="tx"><div class="t1">Koi Pond at Dusk</div><div class="t2">Glimmer &amp; Co. · 30 × 40 cm</div></div><span class="val small">1w</span><i data-i="chev-r" class="chev"></i></div>
+          </div>
+          <div class="gh">September</div>
+          <div class="group">
+            <div class="r ti"><span class="ic a"><i data-i="checkmark"></i></span><span class="tx t1">Finished</span><span class="val">3</span></div>
+            <div class="r ti"><span class="ic p"><i data-i="pencil"></i></span><span class="tx t1">Progress notes</span><span class="val">12</span></div>
+            <div class="r ti"><span class="ic t"><i data-i="page"></i></span><span class="tx t1">Pages colored</span><span class="val">5</span></div>
+          </div>
+          <div class="gh">Library</div>
+          <div class="group">
+            <div class="r ti"><span class="ic p"><i data-i="heart"></i></span><span class="tx t1">Wishlist</span><span class="val">12</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic g"><i data-i="box"></i></span><span class="tx t1">Kitted up</span><span class="val">2</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic a"><i data-i="chart"></i></span><span class="tx t1">Stats</span><i data-i="chev-r" class="chev"></i></div>
+          </div>
+        </div>
+        <nav class="tabs"><div class="tb"><a class="on"><i data-i="house"></i>Home</a><a><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Home<span>The "In progress" rows show time since the last note, which matters more than status here. The month summary is a plain row list, not KPI tiles.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="spacer"></span><span class="gbs"><span><i data-i="filter"></i></span><span><i data-i="plus"></i></span></span></div>
+          <h1 class="lt">Library</h1>
+          <div class="seg"><span class="on">Diamond art</span><span>Books</span><span>Pages</span></div>
+          <div class="gh">In progress · 4</div>
+          <div class="group">
+            <div class="r tt"><span class="th art a1 dia"></span><div class="tx"><div class="t1">Moonlit Garden</div><div class="t2">Sparkle Studio</div></div><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art a2 dia"></span><div class="tx"><div class="t1">Koi Pond at Dusk</div><div class="t2">Glimmer &amp; Co.</div></div><i data-i="chev-r" class="chev"></i></div>
+          </div>
+          <div class="gh">Kitted up · 2</div>
+          <div class="group">
+            <div class="r tt"><span class="th art a3 dia"></span><div class="tx"><div class="t1">Lavender Fields</div><div class="t2">Sparkle Studio</div></div><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art a8 dia"></span><div class="tx"><div class="t1">Cosmic Cat</div><div class="t2">Hana Mori</div></div><i data-i="chev-r" class="chev"></i></div>
+          </div>
+          <div class="gh">In stash · 31</div>
+          <div class="group">
+            <div class="r tt"><span class="th art a6 dia"></span><div class="tx"><div class="t1">Desert Sunset</div><div class="t2">Glimmer &amp; Co.</div></div><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art a7 dia"></span><div class="tx"><div class="t1">Whispering Pines</div><div class="t2">Northlight Kits</div></div><i data-i="chev-r" class="chev"></i></div>
+          </div>
+        </div>
+        <nav class="tabs"><div class="tb"><a><i data-i="house"></i>Home</a><a class="on"><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Library<span>Sections follow the status spine, so there's no status filter to set. The filter menu holds company, artist, tags, and sort. Search moves to its own tab.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gbs"><span style="width:auto;padding:0 14px;font-size:17px">Edit</span><span><i data-i="more"></i></span></span></div>
+          <div style="display:flex;gap:16px;padding:6px 20px 18px;align-items:flex-end">
+            <span class="art a1 dia" style="width:118px;height:148px;border-radius:12px;box-shadow:0 8px 22px rgba(30,10,30,.22);flex:none"></span>
+            <div>
+              <div style="font-size:24px;font-weight:700;line-height:1.15">Moonlit Garden</div>
+              <div class="muted" style="font-size:15px;margin:4px 0 12px">Sparkle Studio · Hana Mori</div>
+              <span class="pill" style="font-size:15px;padding:6px 12px"><span class="st progress"><i data-i="play"></i></span>In progress <i data-i="updown" style="font-size:12px"></i></span>
+            </div>
+          </div>
+          <div style="padding:0 16px 14px"><div class="btn"><i data-i="pencil"></i>Log progress</div></div>
+          <div class="gh">Details</div>
+          <div class="group">
+            <div class="r"><span class="tx t1">Size</span><span class="val">40 × 50 cm</span></div>
+            <div class="r"><span class="tx t1">Drill shape</span><span class="val">Square</span></div>
+            <div class="r"><span class="tx t1">Diamonds</span><span class="val">48,212 · 42 colors</span></div>
+            <div class="r"><span class="tx t1">Started</span><span class="val">Aug 14, 2026</span></div>
+          </div>
+          <div class="gh">Progress notes <a>See all 9</a></div>
+          <div class="group">
+            <div class="r ti" style="--inset:72px"><span class="th sq art a1 dia"></span><div class="tx"><div class="t1 b" style="font-size:15px">Sep 24</div><div class="t2">Finished the moon and first row of trees.</div></div></div>
+            <div class="r" style="--inset:72px"><span class="th sq art a1 dia" style="filter:saturate(.5)"></span><div class="tx"><div class="t1 b" style="font-size:15px">Sep 18</div><div class="t2">Sky done. 3 bags of 310 left.</div></div></div>
+          </div>
+        </div>
+        <nav class="tabs"><div class="tb"><a><i data-i="house"></i>Home</a><a class="on"><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Diamond project<span>Status is a <code>Menu</code> you can change in one tap. Log progress is the one prominent action. The artwork keeps its real aspect ratio.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gbs"><span style="width:auto;padding:0 14px;font-size:17px">Edit</span><span><i data-i="more"></i></span></span></div>
+          <div style="display:flex;gap:16px;padding:6px 20px 16px;align-items:flex-end">
+            <span class="art bk1" style="width:104px;height:136px;border-radius:6px 12px 12px 6px;box-shadow:0 8px 22px rgba(30,10,30,.22);flex:none"></span>
+            <div>
+              <div style="font-size:24px;font-weight:700;line-height:1.15">Midnight Botanica</div>
+              <div class="muted" style="font-size:15px;margin:4px 0 10px">Paperlight Press · M. Okafor</div>
+              <div style="display:flex;gap:6px"><span class="pill"><span class="st progress"><i data-i="play"></i></span>In progress</span><span class="pill"><i data-i="sparkle"></i>Mystery</span></div>
+            </div>
+          </div>
+          <div class="group" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px"><b>12 of 48 pages</b><span class="muted">25%</span></div><div class="meter"><span style="width:25%"></span></div></div>
+          <div class="gh" style="padding-top:18px">Pages <a>Show all</a></div>
+          <div class="group">
+            <div class="r tt"><span class="th art pg c1"></span><div class="tx"><div class="t1">14 · Hummingbird</div><div class="t2"><span class="st progress"><i data-i="play"></i>In progress</span></div></div><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art pg c2"></span><div class="tx"><div class="t1">15 · Owl at night</div><div class="t2"><span class="st"><i data-i="swatch" style="color:var(--accent)"></i>Palette chosen</span></div></div><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th mys"><i data-i="eye-off"></i></span><div class="tx"><div class="t1">16 · Not revealed</div><div class="t2"><span class="st"><i data-i="pause"></i>Not started</span></div></div><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art pg"></span><div class="tx"><div class="t1">17 · Garden gate</div><div class="t2"><span class="st"><i data-i="pause"></i>Not started</span></div></div><i data-i="chev-r" class="chev"></i></div>
+          </div>
+        </div>
+        <nav class="tabs"><div class="tb"><a><i data-i="house"></i>Home</a><a class="on"><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Coloring book<span>Book progress is a native linear <code>ProgressView</code>. Unrevealed mystery pages get a neutral tile while the cover stays visible, as <code>CONTEXT.md</code> specifies.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= OPTION B ======================= -->
+<section id="b">
+  <h2><small>Option B</small>Shelf: artwork first, like Books and Music</h2>
+  <p class="lede">Your kits and books are the interface. Covers get consistent 4:5 frames, carousels, and a full-bleed detail hero with glass controls floating over it. Caveat is the large-title face, used once per screen and never twice. This is the warmest and most "Organized Glitter" option. It depends on good artwork, so the no-artwork state needs care.</p>
+  <div class="notes">
+    <div><h4>Tabs</h4>Home · Library · Notes, plus search. Account opens from the avatar button.</div>
+    <div><h4>Create</h4>A <code>+</code> toolbar menu, plus a glass "Log" button on each cover in Continue.</div>
+    <div><h4>SwiftUI</h4><code>ScrollView(.horizontal)</code> with <code>.scrollTargetBehavior(.viewAligned)</code>, <code>LazyVGrid</code>, and <code>.backgroundExtensionEffect()</code> (iOS 26, availability-gated) for the hero.</div>
+    <div><h4>Cost</h4>Caveat large titles need <code>UINavigationBarAppearance</code>. Otherwise keep system large titles and drop Caveat.</div>
+  </div>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="person"></i></span><span class="spacer"></span><span class="gb"><i data-i="plus"></i></span></div>
+          <h1 class="lt cav">Home</h1>
+          <div class="sh">Continue <a><i data-i="chev-r"></i></a></div>
+          <div class="carousel">
+            <div><div class="cov art a1 dia" style="width:196px;height:245px"><span class="gb" style="position:absolute;right:10px;bottom:10px;height:38px;padding:0 14px;font-size:15px;font-weight:600"><i data-i="pencil" style="font-size:16px"></i>&nbsp;Log</span></div><div class="t1 b" style="font-size:15px;margin-top:9px">Moonlit Garden</div><div class="st progress" style="margin-top:2px"><i data-i="play"></i>Logged 2 days ago</div></div>
+            <div><div class="cov art pg c1" style="width:196px;height:245px"></div><div class="t1 b" style="font-size:15px;margin-top:9px">Page 14 · Hummingbird</div><div class="st progress" style="margin-top:2px"><i data-i="play"></i>Logged today</div></div>
+          </div>
+          <div class="sh" style="padding-top:22px">Up next from your stash <a><i data-i="chev-r"></i></a></div>
+          <div class="carousel">
+            <div class="cov art a3 dia" style="width:112px;height:140px;flex:none"></div>
+            <div class="cov art a8 dia" style="width:112px;height:140px;flex:none"></div>
+            <div class="cov art bk3" style="width:112px;height:140px;flex:none"></div>
+            <div class="cov art a6 dia" style="width:112px;height:140px;flex:none"></div>
+          </div>
+          <div class="group" style="margin-top:22px"><div class="r ti"><span class="ic a"><i data-i="checkmark"></i></span><span class="tx t1">3 finished in September</span><i data-i="chev-r" class="chev"></i></div></div>
+        </div>
+        <nav class="tabs"><div class="tb"><a class="on"><i data-i="house"></i>Home</a><a><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Home<span>Continue carousel with a one-tap Log on each cover. "Up next" pulls from Kitted up and Stash, so the randomizer can join later without a layout change.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="spacer"></span><span class="gbs"><span><i data-i="updown"></i></span><span><i data-i="plus"></i></span></span></div>
+          <h1 class="lt cav">Library</h1>
+          <div class="seg"><span class="on">Diamond art</span><span>Books</span><span>Pages</span></div>
+          <div class="chips"><span class="chip on">All</span><span class="chip">In progress</span><span class="chip">Kitted up</span><span class="chip">Stash</span><span class="chip">Wishlist</span></div>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <div><div class="cov art a1 dia"></div><div class="t1">Moonlit Garden</div><div class="st progress"><i data-i="play"></i>In progress</div></div>
+            <div><div class="cov art a2 dia"></div><div class="t1">Koi Pond at Dusk</div><div class="st progress"><i data-i="play"></i>In progress</div></div>
+            <div><div class="cov art a3 dia"></div><div class="t1">Lavender Fields</div><div class="st kit"><i data-i="box"></i>Kitted up</div></div>
+            <div><div class="cov mys" style="aspect-ratio:4/5;border-radius:12px"><i data-i="gem" style="font-size:34px;opacity:.6"></i></div><div class="t1">Untitled mini kit</div><div class="st stash"><i data-i="archive"></i>In stash</div></div>
+          </div>
+        </div>
+        <nav class="tabs"><div class="tb"><a><i data-i="house"></i>Home</a><a class="on"><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Library<span>Every cover gets the same 4:5 frame, filled and clipped, so the grid lines up. Status chips replace the menu that looked like a text field. Covers without art get a quiet craft glyph instead of a large "No artwork" box.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb" style="color:#fff">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content" style="padding-top:0">
+          <div class="art a1 dia" style="height:420px;-webkit-mask-image:linear-gradient(#000 45%,transparent 88%);mask-image:linear-gradient(#000 45%,transparent 88%)"></div>
+          <div class="bar" style="position:absolute;top:54px;left:0;right:0"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gbs"><span style="width:auto;padding:0 14px;font-size:17px">Edit</span><span><i data-i="more"></i></span></span></div>
+          <div style="margin-top:-78px;position:relative;padding:0 20px">
+            <div style="font-size:28px;font-weight:700">Moonlit Garden</div>
+            <div class="muted" style="font-size:15px;margin:2px 0 14px">Sparkle Studio · Hana Mori</div>
+            <div style="display:flex;gap:10px"><span class="btn gl" style="flex:1"><span class="st progress" style="font-size:15px"><i data-i="play"></i></span>In progress <i data-i="chev-d" style="font-size:14px"></i></span><span class="btn" style="flex:1"><i data-i="pencil"></i>Log</span></div>
+          </div>
+          <div style="display:flex;margin:18px 16px 0;padding:12px 0;border-top:.5px solid var(--sep);border-bottom:.5px solid var(--sep);text-align:center">
+            <div style="flex:1"><div class="small muted">SIZE</div><b>40×50</b><div class="small muted">cm</div></div>
+            <div style="flex:1;border-left:.5px solid var(--sep)"><div class="small muted">DRILL</div><b>Square</b><div class="small muted">full kit</div></div>
+            <div style="flex:1;border-left:.5px solid var(--sep)"><div class="small muted">DIAMONDS</div><b>48.2k</b><div class="small muted">42 colors</div></div>
+            <div style="flex:1;border-left:.5px solid var(--sep)"><div class="small muted">STARTED</div><b>Aug 14</b><div class="small muted">6 weeks</div></div>
+          </div>
+          <div class="sh" style="font-size:20px">Progress <a>See all</a></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:0 16px">
+            <div class="art a1 dia" style="aspect-ratio:1;border-radius:10px"></div><div class="art a1 dia" style="aspect-ratio:1;border-radius:10px;filter:saturate(.6) brightness(.9)"></div><div class="art a1 dia" style="aspect-ratio:1;border-radius:10px;filter:saturate(.3) brightness(.8)"></div>
+          </div>
+        </div>
+        <nav class="tabs"><div class="tb"><a><i data-i="house"></i>Home</a><a class="on"><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Diamond project<span>A full-bleed hero with glass controls on top. The spec strip borrows the App Store info row, and progress photos form a contact sheet. Company, artist, tags, and notes sit below the fold.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gbs"><span style="width:auto;padding:0 14px;font-size:17px">Edit</span><span><i data-i="more"></i></span></span></div>
+          <div style="text-align:center;padding:0 20px">
+            <span class="art bk1" style="display:inline-block;width:138px;height:180px;border-radius:6px 14px 14px 6px;box-shadow:0 14px 30px rgba(30,10,30,.28)"></span>
+            <div style="font-size:24px;font-weight:700;margin-top:14px">Midnight Botanica</div>
+            <div class="muted" style="font-size:15px">Paperlight Press · M. Okafor</div>
+            <div style="display:flex;gap:6px;justify-content:center;margin:10px 0 14px"><span class="pill"><span class="st progress"><i data-i="play"></i></span>In progress</span><span class="pill"><i data-i="sparkle"></i>Mystery</span><span class="pill">12 of 48</span></div>
+          </div>
+          <div class="seg"><span class="on">All</span><span>In progress</span><span>Colored</span><span>Mystery</span></div>
+          <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px 8px;padding:0 16px">
+            <div><div class="art pg c1" style="aspect-ratio:3/4;border-radius:8px"></div><div class="small" style="text-align:center;margin-top:4px">14 <span class="st progress"><i data-i="play"></i></span></div></div>
+            <div><div class="art pg c2" style="aspect-ratio:3/4;border-radius:8px"></div><div class="small" style="text-align:center;margin-top:4px">15</div></div>
+            <div><div class="mys" style="aspect-ratio:3/4;border-radius:8px"><i data-i="eye-off"></i></div><div class="small" style="text-align:center;margin-top:4px">16</div></div>
+            <div><div class="art pg" style="aspect-ratio:3/4;border-radius:8px"></div><div class="small" style="text-align:center;margin-top:4px">17</div></div>
+            <div><div class="art pg c1" style="aspect-ratio:3/4;border-radius:8px;filter:hue-rotate(70deg)"></div><div class="small" style="text-align:center;margin-top:4px">18 <span class="st done"><i data-i="check"></i></span></div></div>
+            <div><div class="mys" style="aspect-ratio:3/4;border-radius:8px"><i data-i="eye-off"></i></div><div class="small" style="text-align:center;margin-top:4px">19</div></div>
+            <div><div class="art pg" style="aspect-ratio:3/4;border-radius:8px"></div><div class="small" style="text-align:center;margin-top:4px">20</div></div>
+            <div><div class="art pg c2" style="aspect-ratio:3/4;border-radius:8px;filter:hue-rotate(-60deg)"></div><div class="small" style="text-align:center;margin-top:4px">21 <span class="st done"><i data-i="check"></i></span></div></div>
+          </div>
+        </div>
+        <nav class="tabs"><div class="tb"><a><i data-i="house"></i>Home</a><a class="on"><i data-i="books"></i>Library</a><a><i data-i="journal"></i>Notes</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Coloring book<span>Pages as a contact sheet, like the web's <code>ContactSheetCell</code>. Page status appears as an icon plus the page number, and VoiceOver reads the full label.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= OPTION C ======================= -->
+<section id="c">
+  <h2><small>Option C</small>Journal: progress first, like Journal and Reminders</h2>
+  <p class="lede">Built around what <code>PRODUCT.md</code> says users do most: short, frequent sessions to log progress. A persistent "Log progress" accessory sits above the tab bar. Projects uses Reminders-style smart lists for the status spine. Caveat appears only as month headers in the journal, which feels personal without looking like a craft store.</p>
+  <div class="notes">
+    <div><h4>Tabs</h4>Today · Projects · Journal, plus search. Account opens from the avatar button.</div>
+    <div><h4>Log accessory</h4><code>.tabViewBottomAccessory</code> is iOS 26 only. On iOS 18, gate it with <code>#available</code> and fall back to a toolbar <code>+</code>.</div>
+    <div><h4>SwiftUI</h4><code>LazyVGrid</code> smart-list tiles, a <code>List</code> with a custom month <code>Section</code> header, and a timeline built with plain <code>HStack</code>s.</div>
+    <div><h4>Risk</h4>Browsing the stash and wishlist is one tap deeper than in A or B.</div>
+  </div>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="spacer"></span><span class="gb"><i data-i="person"></i></span></div>
+          <div class="eyebrow">Saturday, September 26</div>
+          <h1 class="lt">Today</h1>
+          <div class="group" style="padding:16px 0 14px">
+            <div style="padding:0 16px 12px;font-weight:600">Pick up where you left off</div>
+            <div style="display:flex;gap:14px;padding:0 16px">
+              <div style="text-align:center;width:66px"><span class="art a1 dia" style="display:block;width:66px;height:66px;border-radius:33px;box-shadow:0 0 0 2.5px var(--primary)"></span><div class="small" style="margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Moonlit…</div></div>
+              <div style="text-align:center;width:66px"><span class="art pg c1" style="display:block;width:66px;height:66px;border-radius:33px"></span><div class="small" style="margin-top:6px">Page 14</div></div>
+              <div style="text-align:center;width:66px"><span class="art a2 dia" style="display:block;width:66px;height:66px;border-radius:33px"></span><div class="small" style="margin-top:6px">Koi Pond</div></div>
+              <div style="text-align:center;width:66px"><span class="mys" style="display:grid;width:66px;height:66px;border-radius:33px"><i data-i="plus"></i></span><div class="small muted" style="margin-top:6px">Other</div></div>
+            </div>
+          </div>
+          <div class="gh">Working on</div>
+          <div class="group">
+            <div class="r tt"><span class="th art a1 dia"></span><div class="tx"><div class="t1">Moonlit Garden</div><div class="t2">Logged 2 days ago</div></div><i data-i="chev-r" class="chev"></i></div>
+            <div class="r tt"><span class="th art bk1"></span><div class="tx"><div class="t1">Midnight Botanica</div><div class="t2">12 of 48 pages · Page 14 today</div></div><svg width="30" height="30" viewBox="0 0 36 36" aria-label="25 percent"><circle cx="18" cy="18" r="15" fill="none" stroke="var(--fill)" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="var(--primary)" stroke-width="4" stroke-dasharray="23.6 94.2" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg></div>
+            <div class="r tt"><span class="th art a2 dia"></span><div class="tx"><div class="t1">Koi Pond at Dusk</div><div class="t2">Logged last week</div></div><i data-i="chev-r" class="chev"></i></div>
+          </div>
+        </div>
+        <div class="accbar"><span class="gb pro" style="height:38px;min-width:38px"><i data-i="pencil"></i></span><div class="tx"><b>Log progress</b><small>Moonlit Garden</small></div><i data-i="camera" class="muted" style="font-size:20px;margin-right:10px"></i></div>
+        <nav class="tabs"><div class="tb"><a class="on"><i data-i="sparkle"></i>Today</a><a><i data-i="books"></i>Projects</a><a><i data-i="journal"></i>Journal</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Today<span>One-handed logging: tap a recent project, then snap or write. The accessory stays pinned on every tab and collapses into the tab bar when you scroll.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="spacer"></span><span class="gb"><i data-i="plus"></i></span></div>
+          <h1 class="lt">Projects</h1>
+          <div class="seg"><span class="on">Diamond art</span><span>Coloring</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 6px">
+            <div class="group" style="margin:0;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span class="ic p" style="border-radius:15px"><i data-i="play" class="fillicon"></i></span><b style="font-size:26px">4</b></div><div style="font-weight:600;margin-top:6px;color:var(--fg2)">In progress</div></div>
+            <div class="group" style="margin:0;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span class="ic g" style="border-radius:15px"><i data-i="box"></i></span><b style="font-size:26px">2</b></div><div style="font-weight:600;margin-top:6px;color:var(--fg2)">Kitted up</div></div>
+            <div class="group" style="margin:0;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span class="ic n" style="border-radius:15px"><i data-i="archive"></i></span><b style="font-size:26px">31</b></div><div style="font-weight:600;margin-top:6px;color:var(--fg2)">In stash</div></div>
+            <div class="group" style="margin:0;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span class="ic rd" style="border-radius:15px"><i data-i="heart"></i></span><b style="font-size:26px">12</b></div><div style="font-weight:600;margin-top:6px;color:var(--fg2)">Wishlist</div></div>
+          </div>
+          <div class="gh">More</div>
+          <div class="group">
+            <div class="r ti"><span class="ic a"><i data-i="checkmark"></i></span><span class="tx t1">Completed</span><span class="val">58</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic o"><i data-i="pause"></i></span><span class="tx t1">On hold</span><span class="val">1</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic b"><i data-i="download"></i></span><span class="tx t1">Purchased</span><span class="val">2</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic n"><i data-i="archive"></i></span><span class="tx t1">Archived</span><span class="val">9</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic n"><i data-i="upload"></i></span><span class="tx t1">Destashed</span><span class="val">3</span><i data-i="chev-r" class="chev"></i></div>
+          </div>
+        </div>
+        <div class="accbar"><span class="gb pro" style="height:38px;min-width:38px"><i data-i="pencil"></i></span><div class="tx"><b>Log progress</b><small>Moonlit Garden</small></div><i data-i="camera" class="muted" style="font-size:20px;margin-right:10px"></i></div>
+        <nav class="tabs"><div class="tb"><a><i data-i="sparkle"></i>Today</a><a class="on"><i data-i="books"></i>Projects</a><a><i data-i="journal"></i>Journal</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Projects<span>The whole ownership spine, Wishlist through Destashed, fits on one screen. Counts come from <code>user_dashboard_stats</code>. These tiles navigate like Reminders smart lists; they aren't KPI cards.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="spacer"></span><span class="gb"><i data-i="filter"></i></span></div>
+          <h1 class="lt">Journal</h1>
+          <div style="font:600 32px/1 Caveat, cursive;padding:4px 20px 10px">September</div>
+          <div style="display:flex;gap:14px;padding:0 20px 18px">
+            <div style="width:34px;text-align:center;flex:none"><div class="small muted">WED</div><b style="font-size:22px">24</b></div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600"><span class="art a1 dia" style="width:20px;height:20px;border-radius:5px"></span>Moonlit Garden</div>
+              <div style="font-size:15px;margin:4px 0 8px">Finished the moon and first row of trees. The AB drills on the water are gorgeous.</div>
+              <div class="art a1 dia" style="height:150px;border-radius:14px"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;padding:0 20px 18px">
+            <div style="width:34px;text-align:center;flex:none"><div class="small muted">MON</div><b style="font-size:22px">22</b></div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600"><span class="art pg c1" style="width:20px;height:20px;border-radius:5px"></span>Midnight Botanica · Page 14</div>
+              <div style="font-size:15px;margin:4px 0 0">Blended the petals with Polychromos 125 and 133.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;padding:0 20px">
+            <div style="width:34px;text-align:center;flex:none"><div class="small muted">THU</div><b style="font-size:22px">18</b></div>
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600"><span class="art a2 dia" style="width:20px;height:20px;border-radius:5px"></span>Koi Pond at Dusk</div>
+              <div style="font-size:15px;margin:4px 0 0">Started the second koi.</div>
+            </div>
+          </div>
+        </div>
+        <div class="accbar"><span class="gb pro" style="height:38px;min-width:38px"><i data-i="pencil"></i></span><div class="tx"><b>Log progress</b><small>Moonlit Garden</small></div><i data-i="camera" class="muted" style="font-size:20px;margin-right:10px"></i></div>
+        <nav class="tabs"><div class="tb"><a><i data-i="sparkle"></i>Today</a><a><i data-i="books"></i>Projects</a><a class="on"><i data-i="journal"></i>Journal</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Journal<span>The web Notes feed, grouped by month like <code>groupItemsByMonth</code>. It merges <code>progress_notes</code> and <code>coloring_page_progress_notes</code> into one timeline.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gbs"><span style="width:auto;padding:0 14px;font-size:17px">Edit</span><span><i data-i="more"></i></span></span></div>
+          <div style="display:flex;gap:14px;align-items:center;padding:4px 20px 16px">
+            <span class="art a1 dia" style="width:72px;height:90px;border-radius:10px;flex:none"></span>
+            <div><div style="font-size:24px;font-weight:700">Moonlit Garden</div><div class="muted" style="font-size:15px">Sparkle Studio · 40 × 50 cm</div><div style="margin-top:6px"><span class="pill"><span class="st progress"><i data-i="play"></i></span>In progress <i data-i="chev-d" style="font-size:11px"></i></span></div></div>
+          </div>
+          <div class="seg"><span class="on">Timeline</span><span>Details</span></div>
+          <div style="padding:6px 20px 0 20px;position:relative">
+            <div style="position:absolute;left:31px;top:14px;bottom:0;border-left:2px solid var(--sep)"></div>
+            <div style="display:flex;gap:14px;margin-bottom:18px"><span style="width:24px;height:24px;border-radius:12px;background:var(--primary);flex:none;position:relative;display:grid;place-items:center;color:var(--on-primary);font-size:12px"><i data-i="pencil"></i></span><div style="flex:1"><div class="small muted">Sep 24 · 9:12 PM</div><div style="font-size:15px;margin:2px 0 8px">Finished the moon and first row of trees.</div><div class="art a1 dia" style="height:120px;border-radius:12px"></div></div></div>
+            <div style="display:flex;gap:14px;margin-bottom:18px"><span style="width:24px;height:24px;border-radius:12px;background:var(--cell);border:2px solid var(--primary);flex:none"></span><div style="flex:1"><div class="small muted">Sep 18</div><div style="font-size:15px;margin-top:2px">Sky done. Three bags of 310 left.</div></div></div>
+            <div style="display:flex;gap:14px"><span style="width:24px;height:24px;border-radius:12px;background:var(--accent);flex:none;display:grid;place-items:center;color:#fff;font-size:12px"><i data-i="play"></i></span><div style="flex:1"><div class="small muted">Aug 14</div><div style="font-size:15px;margin-top:2px;font-weight:600">Started</div></div></div>
+          </div>
+        </div>
+        <div class="accbar"><span class="gb pro" style="height:38px;min-width:38px"><i data-i="pencil"></i></span><div class="tx"><b>Log progress</b><small>This project</small></div><i data-i="camera" class="muted" style="font-size:20px;margin-right:10px"></i></div>
+        <nav class="tabs"><div class="tb"><a><i data-i="sparkle"></i>Today</a><a class="on"><i data-i="books"></i>Projects</a><a><i data-i="journal"></i>Journal</a></div><span class="tsearch"><i data-i="search"></i></span></nav>
+      </div>
+      <figcaption>Diamond project<span>The timeline mixes notes with status dates (started, completed) taken from <code>date_*</code> fields. Details holds the same grouped rows as Option A.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= SHARED ======================= -->
+<section id="shared">
+  <h2><small>Any option</small>Shared screens</h2>
+  <p class="lede">These screens look the same whichever direction you pick. Forms, settings, and sheets should be stock iOS, with the Berry Cream background behind them.</p>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div style="filter:blur(1px);opacity:.9"><div class="bar"></div><h1 class="lt">Library</h1></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="bar" style="height:52px"><span class="gb"><i data-i="xmark"></i></span><span class="ctr">New Project</span><span class="gb pro"><i data-i="checkmark"></i></span></div>
+          <div class="well"><div><i data-i="camera"></i>Take photo</div><div><i data-i="photo"></i>Choose photo</div></div>
+          <div class="group">
+            <div class="r"><span class="t1 field">Title</span></div>
+            <div class="r"><span class="tx t1">Company</span><span class="val">Sparkle Studio</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r"><span class="tx t1">Artist</span><span class="val field">None</span><i data-i="chev-r" class="chev"></i></div>
+          </div>
+          <div class="gh">Kit</div>
+          <div class="group">
+            <div class="r"><span class="tx t1">Status</span><span class="tint">In stash <i data-i="updown" style="font-size:13px"></i></span></div>
+            <div class="r"><span class="tx t1">Kit</span><span class="seg" style="margin:0;width:150px"><span class="on">Full</span><span>Mini</span></span></div>
+            <div class="r"><span class="tx t1">Drill shape</span><span class="seg" style="margin:0;width:150px"><span>Round</span><span class="on">Square</span></span></div>
+            <div class="r"><span class="tx t1">Size (cm)</span><span class="val">40 × 50</span></div>
+            <div class="r"><span class="tx t1">Diamonds</span><span class="val field">Optional</span></div>
+          </div>
+          <div class="gh">Dates</div>
+          <div class="group">
+            <div class="r"><span class="tx t1">Purchased</span><span class="pill" style="font-size:15px;padding:6px 11px;color:var(--fg)">Mar 2, 2026</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>New / edit diamond project<span>A <code>Form</code> in a large-detent sheet with glass cancel and confirm buttons. Company and artist use the existing <code>TaxonomyPicker</code> with inline add. Tags, source link, and notes come after dates.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"></div><h1 class="lt">Home</h1>
+          <div class="group">
+            <div class="r tt"><span class="th art a1 dia"></span><div class="tx"><div class="t1">Moonlit Garden</div><div class="t2">Sparkle Studio</div></div></div>
+            <div class="r tt"><span class="th art pg c1"></span><div class="tx"><div class="t1">Page 14 · Hummingbird</div><div class="t2">Midnight Botanica</div></div></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet float">
+          <div class="grab"></div>
+          <div class="bar" style="height:52px"><span class="gb"><i data-i="xmark"></i></span><span class="ctr">Log Progress</span><span class="gb pro"><i data-i="checkmark"></i></span></div>
+          <div class="group" style="margin-top:6px"><div class="r tt"><span class="th sq art a1 dia"></span><div class="tx"><div class="t1 b">Moonlit Garden</div><div class="t2">Diamond art · In progress</div></div><i data-i="updown" class="chev"></i></div></div>
+          <div style="display:flex;gap:8px;padding:8px 16px">
+            <div class="art a1 dia" style="width:92px;height:92px;border-radius:16px"></div>
+            <div class="mys" style="width:92px;height:92px;border-radius:16px;color:var(--primary)"><i data-i="camera"></i></div>
+            <div class="mys" style="width:92px;height:92px;border-radius:16px;color:var(--primary)"><i data-i="photo"></i></div>
+          </div>
+          <div class="group"><div class="r" style="min-height:84px;align-items:flex-start"><span class="t1 field">What did you work on?</span></div><div class="r"><span class="tx t1">Date</span><span class="pill" style="font-size:15px;padding:6px 11px;color:var(--fg)">Today</span></div></div>
+        </div>
+      </div>
+      <figcaption>Log progress<span>A floating medium-detent sheet. It creates a <code>progress_notes</code> or <code>coloring_page_progress_notes</code> record with one photo, and tapping the project row switches the target.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gbs"><span style="width:auto;padding:0 14px;font-size:17px">Edit</span><span><i data-i="more"></i></span></span></div>
+          <div class="art pg c1" style="height:250px;margin:0 16px;border-radius:20px"></div>
+          <div style="display:flex;justify-content:center;gap:6px;margin:10px 0 4px"><span style="width:7px;height:7px;border-radius:4px;background:var(--fg)"></span><span style="width:7px;height:7px;border-radius:4px;background:var(--fg3)"></span><span style="width:7px;height:7px;border-radius:4px;background:var(--fg3)"></span></div>
+          <div style="padding:6px 20px 12px;display:flex;justify-content:space-between;align-items:flex-end"><div><div class="small muted">MIDNIGHT BOTANICA · PAGE 14</div><div style="font-size:24px;font-weight:700">Hummingbird</div></div><span class="pill" style="font-size:15px;padding:6px 12px"><span class="st progress"><i data-i="play"></i></span>In progress <i data-i="updown" style="font-size:11px"></i></span></div>
+          <div class="gh">Mediums</div>
+          <div class="group">
+            <div class="r ti"><span class="ic o"><i data-i="brush"></i></span><div class="tx"><div class="t1">Polychromos</div><div class="t2">Colored pencil · 120 colors</div></div></div>
+            <div class="r ti"><span class="ic t"><i data-i="brush"></i></span><div class="tx"><div class="t1">Posca</div><div class="t2">Paint pen · 16 colors</div></div></div>
+          </div>
+          <div class="gh">Color reference</div>
+          <div class="group"><div class="r"><div style="display:flex;gap:6px"><span style="width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#E86A92 25%,#F4A6BF 25% 50%,#8FC7A0 50% 75%,#F9D66B 75%)"></span><span style="width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#8535D4 33%,#5FB3A2 33% 66%,#2B5CA8 66%)"></span></div><div class="tx t2" style="margin:0">125, 133, 162 on petals. Keep the leaves cool.</div></div></div>
+          <div class="gh">Mystery</div>
+          <div class="group"><div class="r"><span class="tx t1">Revealed</span><span class="val">Sep 12</span></div></div>
+        </div>
+      </div>
+      <figcaption>Coloring page<span>Covers what web page detail shows: photo carousel, status, mediums, color reference (protected files need a file token), mystery reveal, and progress notes below.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="spacer"></span><span class="gb txt" style="font-weight:600">Done</span></div>
+          <h1 class="lt">Account</h1>
+          <div class="group"><div class="r"><span class="ic a" style="width:56px;height:56px;border-radius:28px;font-size:26px"><i data-i="person"></i></span><div class="tx"><div class="t1 b">Your profile name</div><div class="t2">Profile, email, password</div></div><i data-i="chev-r" class="chev"></i></div></div>
+          <div class="gh">Preferences</div>
+          <div class="group">
+            <div class="r ti"><span class="ic n"><i data-i="moon"></i></span><span class="tx t1">Appearance</span><span class="val">System</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic p"><i data-i="gem"></i></span><span class="tx t1">Diamond art</span><span class="toggle-sw"></span></div>
+            <div class="r ti"><span class="ic t"><i data-i="swatch"></i></span><span class="tx t1">Coloring</span><span class="toggle-sw"></span></div>
+          </div>
+          <div class="gh">Library data</div>
+          <div class="group">
+            <div class="r ti"><span class="ic b"><i data-i="building"></i></span><span class="tx t1">Companies &amp; artists</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic o"><i data-i="brush"></i></span><span class="tx t1">Publishers, illustrators, mediums</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic g"><i data-i="tag"></i></span><span class="tx t1">Tags</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic a"><i data-i="chart"></i></span><span class="tx t1">Stats</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic n"><i data-i="upload"></i></span><span class="tx t1">Export library</span><i data-i="chev-r" class="chev"></i></div>
+          </div>
+          <div class="gh">Help</div>
+          <div class="group">
+            <div class="r ti"><span class="ic b"><i data-i="help"></i></span><span class="tx t1">Support &amp; feedback</span><i data-i="chev-r" class="chev"></i></div>
+            <div class="r ti"><span class="ic n"><i data-i="lock"></i></span><span class="tx t1">Privacy &amp; terms</span><i data-i="chev-r" class="chev"></i></div>
+          </div>
+          <div class="group" style="margin-top:20px"><div class="r" style="justify-content:center"><span class="danger">Sign Out</span></div></div>
+        </div>
+      </div>
+      <figcaption>Account (sheet)<span>Settings-style rows with colored icon tiles. Taxonomy management gets a home here. Profile holds change email, change password, and in-app <b>Delete account</b>. Time zone moves to a searchable list instead of a 600-item menu.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb txt">2026 <i data-i="chev-d" style="font-size:14px"></i></span></div>
+          <h1 class="lt">Stats</h1>
+          <div class="gh">Completed per month</div>
+          <div class="group chart" role="img" aria-label="Completed projects per month in 2026: Jan 1, Feb 2, Mar 1, Apr 3, May 2, Jun 1, Jul 4, Aug 2, Sep 3">
+            <div class="plot">
+              <span class="ytick">2</span>
+              <div class="bar-v" style="height:25%" data-tip="Jan · 1"></div><div class="bar-v" style="height:50%" data-tip="Feb · 2"></div><div class="bar-v" style="height:25%" data-tip="Mar · 1"></div><div class="bar-v" style="height:75%" data-tip="Apr · 3"></div><div class="bar-v" style="height:50%" data-tip="May · 2"></div><div class="bar-v" style="height:25%" data-tip="Jun · 1"></div><div class="bar-v" style="height:100%" data-tip="Jul · 4"></div><div class="bar-v" style="height:50%" data-tip="Aug · 2"></div><div class="bar-v" style="height:75%" data-tip="Sep · 3"></div>
+            </div>
+            <div class="axis"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span></div>
+          </div>
+          <div class="gh">2026</div>
+          <div class="group">
+            <div class="r"><span class="tx t1">Completed</span><span class="val">19</span></div>
+            <div class="r"><span class="tx t1">Started</span><span class="val">11</span></div>
+            <div class="r"><span class="tx t1">Diamonds placed</span><span class="val">≈ 612,400</span></div>
+            <div class="r"><span class="tx t1">Pages colored</span><span class="val">43</span></div>
+          </div>
+          <div class="gf">Diamond totals are estimates from each kit's diamond count.</div>
+        </div>
+      </div>
+      <figcaption>Stats<span>Swift Charts <code>BarMark</code> in a single berry hue, reading <code>user_yearly_stats</code>. Numbers are plain rows, not hero tiles. Hover a bar to see its value.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= IPAD ======================= -->
+<section id="ipad">
+  <h2><small>iPad</small>One sidebar, not two</h2>
+  <p class="lede">Use <code>TabSection("Library")</code> inside the <code>.sidebarAdaptable</code> <code>TabView</code>, so the craft list becomes sidebar rows and the nested <code>NavigationSplitView</code> goes away. Shown with Option B's grid; A and C swap in their own content.</p>
+  <div class="row-of-phones">
+    <div class="ipad">
+      <div class="sb" style="padding:10px 28px 0">9:41 Sat Sep 26<span class="icons"><span class="batt"></span></span></div>
+      <nav class="side">
+        <a><i data-i="house"></i>Home</a>
+        <a><i data-i="search"></i>Search</a>
+        <a><i data-i="journal"></i>Notes</a>
+        <h5>Library</h5>
+        <a class="on"><i data-i="gem"></i>Diamond art<span class="val">68</span></a>
+        <a><i data-i="books"></i>Coloring books<span class="val">14</span></a>
+        <a><i data-i="page"></i>Pages<span class="val">112</span></a>
+        <h5>Lists</h5>
+        <a><i data-i="heart"></i>Wishlist<span class="val">12</span></a>
+        <a><i data-i="chart"></i>Stats</a>
+        <a style="position:absolute;bottom:14px;left:12px;right:12px"><i data-i="person"></i>Account</a>
+      </nav>
+      <div class="pad-main">
+        <div class="bar" style="padding:18px 24px 0"><span class="spacer"></span><span class="gbs"><span><i data-i="updown"></i></span><span><i data-i="plus"></i></span></span></div>
+        <h1 class="lt cav" style="padding-left:24px">Diamond art</h1>
+        <div class="chips" style="padding-left:24px"><span class="chip on">All</span><span class="chip">In progress</span><span class="chip">Kitted up</span><span class="chip">Stash</span><span class="chip">Wishlist</span><span class="chip">Completed</span></div>
+        <div class="grid" style="grid-template-columns:repeat(5,1fr);padding:0 24px">
+          <div><div class="cov art a1 dia"></div><div class="t1">Moonlit Garden</div><div class="st progress"><i data-i="play"></i>In progress</div></div>
+          <div><div class="cov art a2 dia"></div><div class="t1">Koi Pond at Dusk</div><div class="st progress"><i data-i="play"></i>In progress</div></div>
+          <div><div class="cov art a3 dia"></div><div class="t1">Lavender Fields</div><div class="st kit"><i data-i="box"></i>Kitted up</div></div>
+          <div><div class="cov art a8 dia"></div><div class="t1">Cosmic Cat</div><div class="st kit"><i data-i="box"></i>Kitted up</div></div>
+          <div><div class="cov art a6 dia"></div><div class="t1">Desert Sunset</div><div class="st stash"><i data-i="archive"></i>In stash</div></div>
+          <div><div class="cov art a7 dia"></div><div class="t1">Whispering Pines</div><div class="st stash"><i data-i="archive"></i>In stash</div></div>
+          <div><div class="cov art a4 dia"></div><div class="t1">Peony Garden</div><div class="st wish"><i data-i="heart"></i>Wishlist</div></div>
+          <div><div class="cov art a5 dia"></div><div class="t1">Lighthouse Waves</div><div class="st done"><i data-i="check"></i>Completed</div></div>
+          <div><div class="cov art a2 dia" style="filter:hue-rotate(90deg)"></div><div class="t1">Emerald Koi</div><div class="st done"><i data-i="check"></i>Completed</div></div>
+          <div><div class="cov art a6 dia" style="filter:hue-rotate(-40deg)"></div><div class="t1">Rose Dunes</div><div class="st done"><i data-i="check"></i>Completed</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+for (const el of document.querySelectorAll('i[data-i]')) {
+  el.innerHTML = `<svg aria-hidden="true"><use href="#${el.dataset.i}"/></svg>`;
+}
+if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.dataset.theme = 'dark';
+</script>
+</body>
+</html>
