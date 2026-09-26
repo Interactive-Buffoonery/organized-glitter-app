@@ -100,10 +100,131 @@ final class OrganizedGlitterUITests: XCTestCase {
       app.buttons["signInButton"].tap()
     }
 
-    let library = app.descendants(matching: .any)["Library"]
+    let library = app.tabBars.buttons["Library"].firstMatch
     XCTAssertTrue(library.waitForExistence(timeout: 5))
     library.tap()
     XCTAssertTrue(app.staticTexts["Local Active Kit"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Couldn’t load your library"].exists)
+  }
+
+  func testSeededBackendCreatesEditsAndDeletesDiamondProject() throws {
+    let environment = ProcessInfo.processInfo.environment
+    guard environment["RUN_SEEDED_POCKETBASE"] == "1" else {
+      throw XCTSkip("Seeded PocketBase writes are opt-in.")
+    }
+    let identity = try XCTUnwrap(environment["SEEDED_PB_IDENTITY"])
+    let password = try XCTUnwrap(environment["SEEDED_PB_PASSWORD"])
+    let app = XCUIApplication()
+    app.launch()
+    signInIfNeeded(app, identity: identity, password: password)
+
+    let library = app.tabBars.buttons["Library"].firstMatch
+    XCTAssertTrue(library.waitForExistence(timeout: 5))
+    library.tap()
+    let addProject = app.buttons["Add diamond painting project"]
+    XCTAssertTrue(addProject.waitForExistence(timeout: 5))
+    addProject.tap()
+
+    var currentTitle = "Native UI integration \(UUID().uuidString.prefix(8))"
+    let title = app.textFields["Title"]
+    XCTAssertTrue(title.waitForExistence(timeout: 5))
+    title.tap()
+    title.typeText(currentTitle)
+    app.buttons["Save"].tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond"].waitForExistence(timeout: 8))
+    var needsCleanup = true
+    defer {
+      if needsCleanup {
+        deleteProjectIfPresent(named: currentTitle, in: app)
+      }
+    }
+
+    app.buttons.matching(identifier: "detail.edit").firstMatch.tap()
+    XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
+    let editedTitle = "\(currentTitle) edited"
+    replaceText(in: app.textFields["Title"], with: editedTitle, app: app)
+    currentTitle = editedTitle
+    let status = app.buttons.matching(
+      NSPredicate(format: "label BEGINSWITH[c] %@", "Status")
+    ).firstMatch
+    XCTAssertTrue(status.waitForExistence(timeout: 5))
+    status.tap()
+    app.buttons["In progress"].tap()
+    app.buttons["Save"].tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond"].waitForExistence(timeout: 8))
+    XCTAssertTrue(app.staticTexts[currentTitle].waitForExistence(timeout: 5))
+
+    deleteOpenProject(in: app)
+    XCTAssertFalse(app.staticTexts[currentTitle].waitForExistence(timeout: 3))
+    needsCleanup = false
+  }
+
+  private func signInIfNeeded(
+    _ app: XCUIApplication,
+    identity: String,
+    password: String
+  ) {
+    if app.buttons["welcomeSignIn"].waitForExistence(timeout: 2) {
+      app.buttons["welcomeSignIn"].tap()
+      app.buttons["continueWithEmail"].tap()
+    }
+    let identityField = app.textFields["signInEmail"]
+    if identityField.waitForExistence(timeout: 2) {
+      identityField.tap()
+      identityField.typeText(identity)
+      let passwordField = app.secureTextFields["signInPassword"]
+      passwordField.tap()
+      passwordField.typeText(password)
+      app.buttons["signInButton"].tap()
+      let notNow = app.buttons["Not Now"].firstMatch
+      if notNow.waitForExistence(timeout: 5) {
+        notNow.tap()
+      }
+    }
+    XCTAssertTrue(app.tabBars.buttons["Library"].firstMatch.waitForExistence(timeout: 8))
+  }
+
+  private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
+    field.tap()
+    field.press(forDuration: 1)
+    let selectAll = app.menuItems["Select All"]
+    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
+    selectAll.tap()
+    field.typeText(value)
+    XCTAssertEqual(field.value as? String, value)
+  }
+
+  private func deleteOpenProject(in app: XCUIApplication) {
+    app.buttons.matching(identifier: "detail.more").firstMatch.tap()
+    app.buttons.matching(identifier: "detail.delete").firstMatch.tap()
+    let sheetButton = app.sheets.buttons["Delete Project"]
+    let confirmation = sheetButton.exists
+      ? sheetButton : app.buttons.matching(identifier: "Delete Project").firstMatch
+    if confirmation.waitForExistence(timeout: 2) {
+      confirmation.tap()
+    }
+  }
+
+  private func deleteProjectIfPresent(named title: String, in app: XCUIApplication) {
+    app.activate()
+    if app.descendants(matching: .any)["detail.diamond"].exists {
+      deleteOpenProject(in: app)
+      return
+    }
+    let library = app.tabBars.buttons["Library"]
+    if library.exists {
+      library.tap()
+    }
+    let search = app.textFields["library.search"]
+    guard search.waitForExistence(timeout: 3) else { return }
+    search.tap()
+    search.typeText("\(title)\n")
+    let card = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", title)).firstMatch
+    guard card.waitForExistence(timeout: 3) else { return }
+    card.tap()
+    guard app.descendants(matching: .any)["detail.diamond"].waitForExistence(timeout: 3) else {
+      return
+    }
+    deleteOpenProject(in: app)
   }
 }

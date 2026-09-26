@@ -15,6 +15,8 @@ final class OverviewModel {
   var isLoading = false
   var hasLoaded = false
   var errorMessage: String?
+  var onSessionExpired: (@MainActor @Sendable () async -> Void)?
+  private var pendingReload = false
 
   init(client: PocketBaseClient, userID: String) {
     self.client = client
@@ -22,17 +24,25 @@ final class OverviewModel {
   }
 
   func load() async {
+    pendingReload = true
     guard !isLoading else {
       return
     }
 
     isLoading = true
-    errorMessage = nil
     defer {
       isLoading = false
       hasLoaded = true
     }
 
+    while pendingReload {
+      pendingReload = false
+      errorMessage = nil
+      await performLoad()
+    }
+  }
+
+  private func performLoad() async {
     let projectOwner = PocketBaseFilter.equals(.user, userID)
     let pageOwner = PocketBaseFilter.equals(.bookUser, userID)
     let now = Date()
@@ -93,28 +103,35 @@ final class OverviewModel {
         .sorted { $0.updated > $1.updated }
     } catch APIError.cancelled {
       return
+    } catch APIError.unauthenticated {
+      errorMessage = APIError.unauthenticated.overviewMessage
+      await onSessionExpired?()
     } catch {
       errorMessage = error.overviewMessage
     }
   }
 
   func artworkURL(for item: LibraryItem) -> URL? {
-    item.artworkURL(using: client)
+    item.artworkURL(using: client, thumb: ArtworkThumb.compact)
   }
 
-  // ponytail: month boundaries use PocketBase date strings (YYYY-MM-DD) in UTC so
-  // the filter matches date_completed and completed_at field storage.
-  static func startOfMonth(containing date: Date) -> String {
-    monthBoundary(containing: date, monthOffset: 0)
+  // Month bounds are PocketBase date-only strings (YYYY-MM-DD) in the user's
+  // calendar so "this month" matches locally encoded date_completed values.
+  static func startOfMonth(containing date: Date, timeZone: TimeZone = .current) -> String {
+    monthBoundary(containing: date, monthOffset: 0, timeZone: timeZone)
   }
 
-  static func startOfNextMonth(containing date: Date) -> String {
-    monthBoundary(containing: date, monthOffset: 1)
+  static func startOfNextMonth(containing date: Date, timeZone: TimeZone = .current) -> String {
+    monthBoundary(containing: date, monthOffset: 1, timeZone: timeZone)
   }
 
-  private static func monthBoundary(containing date: Date, monthOffset: Int) -> String {
+  private static func monthBoundary(
+    containing date: Date,
+    monthOffset: Int,
+    timeZone: TimeZone
+  ) -> String {
     var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = .gmt
+    calendar.timeZone = timeZone
     let components = calendar.dateComponents([.year, .month], from: date)
     guard
       let monthStart = calendar.date(from: components),
@@ -131,7 +148,7 @@ final class OverviewModel {
 }
 
 enum OverviewCraft: String, CaseIterable, Identifiable {
-  case all = "All crafts"
+  case all = "All"
   case diamonds = "Diamond art"
   case coloring = "Coloring"
 
@@ -143,6 +160,44 @@ enum OverviewCraft: String, CaseIterable, Identifiable {
     default: false
     }
   }
+
+  func completedSections(for verticals: VerticalPreferences) -> [LibrarySection] {
+    projectAndPageSections(for: verticals)
+  }
+
+  func inProgressSections(for verticals: VerticalPreferences) -> [LibrarySection] {
+    projectAndPageSections(for: verticals)
+  }
+
+  func wishlistSections(for verticals: VerticalPreferences) -> [LibrarySection] {
+    switch self {
+    case .all:
+      return LibrarySection.available(for: verticals).filter { $0 != .pages }
+    case .diamonds:
+      return verticals.diamondPainting ? [.diamonds] : []
+    case .coloring:
+      return verticals.coloringBooks ? [.books] : []
+    }
+  }
+
+  func inProgressStatus(for section: LibrarySection) -> String? {
+    switch section {
+    case .diamonds: "progress"
+    case .pages: "in_progress"
+    case .books: nil
+    }
+  }
+
+  private func projectAndPageSections(for verticals: VerticalPreferences) -> [LibrarySection] {
+    switch self {
+    case .all:
+      return LibrarySection.available(for: verticals).filter { $0 != .books }
+    case .diamonds:
+      return verticals.diamondPainting ? [.diamonds] : []
+    case .coloring:
+      return verticals.coloringBooks ? [.pages] : []
+    }
+  }
 }
 
 struct OverviewView: View {
@@ -152,29 +207,39 @@ struct OverviewView: View {
   @State private var model: OverviewModel
   @State private var craft = OverviewCraft.all
   let verticals: VerticalPreferences
-  let onWishlist: (LibrarySection) -> Void
+  let onLibraryRequest: (LibraryRequest) -> Void
 
   init(
     client: PocketBaseClient,
     userID: String,
     verticals: VerticalPreferences,
-    onWishlist: @escaping (LibrarySection) -> Void
+    onLibraryRequest: @escaping (LibraryRequest) -> Void,
+    onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
-    _model = State(initialValue: OverviewModel(client: client, userID: userID))
+    let model = OverviewModel(client: client, userID: userID)
+    model.onSessionExpired = onSessionExpired
+    _model = State(initialValue: model)
     self.verticals = verticals
-    self.onWishlist = onWishlist
+    self.onLibraryRequest = onLibraryRequest
   }
 
   var body: some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 24) {
-        PageHeader("Overview")
+      VStack(alignment: .leading, spacing: 18) {
+        OverviewScreenHeader("Overview")
 
         craftPicker
 
-        VStack(alignment: .leading, spacing: 12) {
-          SectionHeader("In progress")
+        VStack(alignment: .leading, spacing: 6) {
+          OverviewSectionHeader("In progress")
           activeWork
+        }
+
+        VStack(alignment: .leading, spacing: 8) {
+          OverviewSectionHeader("Collection")
+          inProgressAction
+          wishlistAction
+          completedAction
         }
 
         if model.hasLoaded, model.errorMessage == nil {
@@ -184,38 +249,24 @@ struct OverviewView: View {
           .font(.footnote)
           .foregroundStyle(theme.pageSecondaryForeground)
         }
-
-        VStack(alignment: .leading, spacing: 8) {
-          SectionHeader("Quick links")
-          Menu {
-            ForEach(LibrarySection.available(for: verticals).filter { $0 != .pages }) { section in
-              Button(
-                section == .diamonds ? "Diamond art wishlist" : "Coloring book wishlist",
-                systemImage: section.systemImage
-              ) {
-                onWishlist(section)
-              }
-            }
-          } label: {
-            Label("Wishlist", systemImage: "heart")
-              .frame(maxWidth: .infinity, alignment: .leading)
-          }
-          .buttonStyle(QuietActionStyle())
-        }
       }
       .frame(maxWidth: 760, alignment: .leading)
-      .padding()
+      .padding(.horizontal, 20)
+      .padding(.top, 20)
+      .padding(.bottom, 32)
       .frame(maxWidth: .infinity)
     }
-    .navigationTitle("Overview")
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbarBackground(.hidden, for: .navigationBar)
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
     .refreshable { await model.load() }
     .navigationDestination(for: LibraryItem.self) { item in
-      LibraryItemDetail(item: item, imageURL: model.artworkURL(for: item))
+      LibraryItemDetailDestination(
+        item: item,
+        client: model.client,
+        userID: model.userID,
+        onCollectionChanged: { await model.load() }
+      )
     }
     .task { await model.load() }
   }
@@ -240,6 +291,131 @@ struct OverviewView: View {
       }
     }
     .accessibilityIdentifier("overview.craft")
+  }
+
+  @ViewBuilder
+  private var inProgressAction: some View {
+    let sections = craft.inProgressSections(for: verticals)
+    if sections.count == 1, let section = sections.first,
+      let status = craft.inProgressStatus(for: section)
+    {
+      Button {
+        onLibraryRequest(LibraryRequest(section: section, status: status))
+      } label: {
+        inProgressActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.inProgress")
+    } else if !sections.isEmpty {
+      Menu {
+        ForEach(sections) { section in
+          if let status = craft.inProgressStatus(for: section) {
+            Button(
+              section == .diamonds
+                ? "Diamond art in progress" : "Coloring pages in progress",
+              systemImage: section.systemImage
+            ) {
+              onLibraryRequest(LibraryRequest(section: section, status: status))
+            }
+          }
+        }
+      } label: {
+        inProgressActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.inProgress")
+    }
+  }
+
+  private var inProgressActionLabel: some View {
+    HStack(spacing: 12) {
+      Text("See all in progress")
+      Spacer()
+      Image(systemName: "chevron.right")
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .accessibilityHidden(true)
+    }
+  }
+
+  @ViewBuilder
+  private var wishlistAction: some View {
+    let sections = craft.wishlistSections(for: verticals)
+    if sections.count == 1, let section = sections.first {
+      Button {
+        onLibraryRequest(LibraryRequest(section: section, status: "wishlist"))
+      } label: {
+        wishlistActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.wishlist")
+    } else if !sections.isEmpty {
+      Menu {
+        ForEach(sections) { section in
+          Button(
+            section == .diamonds ? "Diamond art wishlist" : "Coloring book wishlist",
+            systemImage: section.systemImage
+          ) {
+            onLibraryRequest(LibraryRequest(section: section, status: "wishlist"))
+          }
+        }
+      } label: {
+        wishlistActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.wishlist")
+    }
+  }
+
+  private var wishlistActionLabel: some View {
+    HStack(spacing: 12) {
+      Text("Wishlist")
+      Spacer()
+      Image(systemName: "chevron.right")
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .accessibilityHidden(true)
+    }
+  }
+
+  @ViewBuilder
+  private var completedAction: some View {
+    let sections = craft.completedSections(for: verticals)
+    if sections.count == 1, let section = sections.first {
+      Button {
+        onLibraryRequest(LibraryRequest(section: section, status: "completed"))
+      } label: {
+        completedActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.completed")
+    } else if !sections.isEmpty {
+      Menu {
+        ForEach(sections) { section in
+          Button(
+            section == .diamonds ? "Completed diamond art" : "Completed coloring pages",
+            systemImage: section.systemImage
+          ) {
+            onLibraryRequest(LibraryRequest(section: section, status: "completed"))
+          }
+        }
+      } label: {
+        completedActionLabel
+      }
+      .buttonStyle(QuietActionStyle())
+      .accessibilityIdentifier("overview.collection.completed")
+    }
+  }
+
+  private var completedActionLabel: some View {
+    HStack(spacing: 12) {
+      Text("Completed")
+      Spacer()
+      Image(systemName: "chevron.right")
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .accessibilityHidden(true)
+    }
   }
 
   @ViewBuilder
@@ -272,12 +448,16 @@ struct OverviewView: View {
         .frame(minHeight: 220)
       } else {
         LazyVStack(spacing: 0) {
-          ForEach(items) { item in
+          ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
             NavigationLink(value: item) {
-              ActiveProjectRow(item: item, imageURL: model.artworkURL(for: item))
+              OverviewProjectRow(item: item, imageURL: model.artworkURL(for: item))
             }
             .buttonStyle(.plain)
-            Divider().overlay(theme.border)
+            if index < items.count - 1 {
+              Divider()
+                .overlay(theme.border)
+                .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 120)
+            }
           }
         }
       }
@@ -290,6 +470,119 @@ struct OverviewView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading)
+  }
+}
+
+private struct OverviewScreenHeader: View {
+  @Environment(\.theme) private var theme
+
+  let title: String
+
+  init(_ title: String) {
+    self.title = title
+  }
+
+  var body: some View {
+    Text(title)
+      .font(.largeTitle.bold())
+      .foregroundStyle(theme.foreground)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .accessibilityAddTraits(.isHeader)
+  }
+}
+
+private struct OverviewSectionHeader: View {
+  @Environment(\.theme) private var theme
+
+  let title: String
+
+  init(_ title: String) {
+    self.title = title
+  }
+
+  var body: some View {
+    Text(title)
+      .font(.title3.weight(.semibold))
+      .foregroundStyle(theme.foreground)
+      .accessibilityAddTraits(.isHeader)
+  }
+}
+
+private struct OverviewProjectRow: View {
+  @Environment(\.theme) private var theme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  let item: LibraryItem
+  let imageURL: URL?
+
+  var body: some View {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+
+    layout {
+      artwork
+
+      HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 4) {
+          Text(item.title)
+            .font(.headline)
+            .foregroundStyle(theme.foreground)
+          Text(item.overviewKindLabel)
+            .font(.subheadline)
+            .foregroundStyle(theme.pageSecondaryForeground)
+          StatusBadge(status: item.status, presentation: .quiet)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        Image(systemName: "chevron.right")
+          .font(.footnote.weight(.semibold))
+          .foregroundStyle(theme.pageSecondaryForeground)
+          .accessibilityHidden(true)
+      }
+    }
+    .padding(.vertical, 7)
+    .contentShape(.rect)
+    .accessibilityElement(children: .combine)
+  }
+
+  @ViewBuilder
+  private var artwork: some View {
+    if dynamicTypeSize.isAccessibilitySize {
+      RecordArtwork(
+        url: imageURL,
+        maxHeight: 220,
+        emptyMinHeight: 160,
+        maxPixelDimension: 660
+      )
+        .background(theme.card, in: .rect(cornerRadius: 10))
+        .clipShape(.rect(cornerRadius: 10))
+        .accessibilityHidden(true)
+        .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 220)
+    } else {
+      RecordArtwork(
+        url: imageURL,
+        maxHeight: 104,
+        emptyMinHeight: 104,
+        maxPixelDimension: 360
+      )
+        .background(theme.card, in: .rect(cornerRadius: 10))
+        .clipShape(.rect(cornerRadius: 10))
+        .accessibilityHidden(true)
+        .frame(width: 104, height: 104)
+    }
+  }
+}
+
+private extension LibraryItem {
+  var overviewKindLabel: String {
+    switch self {
+    case .diamond: "Diamond painting"
+    case .book: "Coloring book"
+    case .page: "Coloring page"
+    }
   }
 }
 

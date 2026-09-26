@@ -39,18 +39,14 @@ final class AppModel {
         return
       }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated") {
-        if OverviewFixtureProtocol.scenario != nil {
-          Task {
-            do {
-              let session = try await client.signIn(identity: "fixture", password: "fixture")
-              phase = .signedIn(session.user)
-            } catch {
-              phase = .restorationFailed
-            }
+        Task {
+          do {
+            let session = try await client.signIn(identity: "fixture", password: "fixture")
+            phase = .signedIn(session.user)
+          } catch {
+            phase = .restorationFailed
           }
-          return
         }
-        phase = .signedIn(.preview)
         return
       }
     #endif
@@ -74,6 +70,7 @@ final class AppModel {
 
     do {
       guard let storedSession = try sessionStore.load() else {
+        await RemoteArtworkLoader.shared.purgeMemoryCache()
         phase = .signedOut
         return
       }
@@ -84,18 +81,19 @@ final class AppModel {
     } catch APIError.offline {
       phase = .offline
     } catch APIError.unauthenticated, APIError.forbidden {
-      clearInvalidSession(using: sessionStore)
+      await clearInvalidSession(using: sessionStore)
     } catch {
       phase = .restorationFailed
     }
   }
 
-  private func clearInvalidSession(using sessionStore: KeychainSessionStore) {
+  private func clearInvalidSession(using sessionStore: KeychainSessionStore) async {
     do {
       try sessionStore.clear()
     } catch {
       Self.logger.error("Unable to clear an invalid local session.")
     }
+    await RemoteArtworkLoader.shared.purgeMemoryCache()
     phase = .signedOut
   }
 
@@ -130,6 +128,15 @@ final class AppModel {
     }
   }
 
+  func expireSession() async {
+    guard let client else {
+      return
+    }
+    await client.signOut()
+    await RemoteArtworkLoader.shared.purgeMemoryCache()
+    phase = .signedOut
+  }
+
   func signOut() {
     guard let client else {
       return
@@ -137,6 +144,7 @@ final class AppModel {
 
     Task {
       await client.signOut()
+      await RemoteArtworkLoader.shared.purgeMemoryCache()
       phase = .signedOut
     }
   }
