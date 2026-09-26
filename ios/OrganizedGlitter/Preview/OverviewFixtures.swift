@@ -5,19 +5,27 @@
   /// Isolated, fictional responses for Overview runtime review. Never contacts a server.
   final class OverviewFixtureProtocol: URLProtocol, @unchecked Sendable {
     private static let store = FixtureStore()
+    static let sampleDataKey = "use-sample-data"
+
     static var scenario: String? {
       let arguments = ProcessInfo.processInfo.arguments
       guard let index = arguments.firstIndex(of: "-overview-fixture"),
         arguments.indices.contains(index + 1)
-      else { return arguments.contains("-ui-testing-authenticated") ? "populated" : nil }
+      else {
+        if arguments.contains("-ui-testing-authenticated") { return "populated" }
+        if arguments.contains(where: { $0.hasPrefix("-ui-testing") }) { return nil }
+        return UserDefaults.standard.bool(forKey: sampleDataKey) ? "design" : nil
+      }
       return arguments[index + 1]
     }
 
-    static func session() -> URLSession {
+    private static let sharedSession: URLSession = {
       let configuration = URLSessionConfiguration.ephemeral
       configuration.protocolClasses = [OverviewFixtureProtocol.self]
       return URLSession(configuration: configuration)
-    }
+    }()
+
+    static func session() -> URLSession { sharedSession }
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
