@@ -10,7 +10,7 @@
       let arguments = ProcessInfo.processInfo.arguments
       guard let index = arguments.firstIndex(of: "-overview-fixture"),
         arguments.indices.contains(index + 1)
-      else { return nil }
+      else { return arguments.contains("-ui-testing-authenticated") ? "populated" : nil }
       return arguments[index + 1]
     }
 
