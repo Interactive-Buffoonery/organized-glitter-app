@@ -59,43 +59,42 @@ private struct TaxonomyOptionList: View {
 
   var body: some View {
     List {
-      if let options {
-        Section {
-          selectionRow(id: "", name: "None")
-          ForEach(options, id: \.id) { option in
-            selectionRow(id: option.id, name: option.name)
+      Group {
+        if let options {
+          Section {
+            selectionRow(id: "", name: "None")
+            ForEach(options, id: \.id) { option in
+              selectionRow(id: option.id, name: option.name)
+            }
           }
-        }
-        .listRowBackground(theme.card)
 
-        Section {
-          if let errorMessage {
+          Section {
+            if let errorMessage {
+              AccessibleErrorLabel(message: errorMessage)
+            }
+            Button {
+              isPresentingCreate = true
+            } label: {
+              Label("New \(label.lowercased())…", systemImage: "plus.circle")
+                .foregroundStyle(theme.primary)
+            }
+            .disabled(isCreating)
+          }
+        } else if let errorMessage {
+          Section {
             AccessibleErrorLabel(message: errorMessage)
+            Button("Try Again") {
+              Task { await load() }
+            }
           }
-          Button {
-            isPresentingCreate = true
-          } label: {
-            Label("New \(label.lowercased())…", systemImage: "plus.circle")
-              .foregroundStyle(theme.primary)
-          }
-          .disabled(isCreating)
-        }
-        .listRowBackground(theme.card)
-      } else if let errorMessage {
-        Section {
-          AccessibleErrorLabel(message: errorMessage)
-          Button("Try Again") {
-            Task { await load() }
+        } else {
+          Section {
+            ProgressView()
+              .frame(maxWidth: .infinity)
           }
         }
-        .listRowBackground(theme.card)
-      } else {
-        Section {
-          ProgressView()
-            .frame(maxWidth: .infinity)
-        }
-        .listRowBackground(theme.card)
       }
+      .listRowBackground(theme.card)
     }
     .themedScrollBackground()
     .navigationTitle(label)

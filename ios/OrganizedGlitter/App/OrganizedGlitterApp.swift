@@ -6,6 +6,7 @@ struct OrganizedGlitterApp: App {
   @State private var themeStore: ThemeStore
 
   init() {
+    UINavigationBar.applyCaveatLargeTitles()
     let themeStore = ThemeStore()
     _themeStore = State(initialValue: themeStore)
 
