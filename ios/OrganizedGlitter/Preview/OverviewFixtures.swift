@@ -5,7 +5,6 @@
   /// Isolated, fictional responses for Overview runtime review. Never contacts a server.
   final class OverviewFixtureProtocol: URLProtocol, @unchecked Sendable {
     private static let store = FixtureStore()
-
     static var scenario: String? {
       let arguments = ProcessInfo.processInfo.arguments
       guard let index = arguments.firstIndex(of: "-overview-fixture"),
@@ -580,19 +579,20 @@
     }
 
     private static var designDiamonds: [[String: Any]] {
-      zip(["Peony garden", "Blue hour", "Citrus grove", "Wildflowers"],
+      let artists = ["Maryline Cazenave", "Thomas Kinkade Studios", "Margaret Morales", "Fictional Artist"]
+      let images = ["design-yorkie-roses.jpg", "design-beachside-gathering.jpg", "design-divine-descent.jpg", ""]
+      return zip(["Yorkie & Roses", "Beachside Gathering", "Divine Descent", "Wildflowers"],
           ["progress", "stash", "progress", "completed"]).enumerated().map { index, pair in
         var project: [String: Any] = [
           "id": "design-project-\(index)", "user": "preview-user", "title": pair.0,
           "status": pair.1, "kit_category": "full", "drill_shape": "square",
-          "company": "design-company", "artist": "design-artist",
+          "company": "design-company", "artist": "design-artist-\(index)",
           "width": 40, "height": 50,
-          "image": index == 3
-            ? "" : index == 2 ? "design-citrus.png" : index == 1 ? "design-moon.png" : "design-peony.png",
+          "image": images[index],
           "created": "2026-09-01", "updated": "2026-09-19 12:0\(9 - index * 2):00",
           "expand": [
-            "company": ["id": "design-company", "name": "Fictional Atelier"],
-            "artist": ["id": "design-artist", "name": "Fictional Artist"],
+            "company": ["id": "design-company", "name": "Diamond Art Club"],
+            "artist": ["id": "design-artist-\(index)", "name": artists[index]],
           ],
         ]
         if pair.1 == "progress" {
@@ -601,14 +601,14 @@
           project["date_completed"] = "2026-09-17"
         }
         if index == 0 {
-          project["general_notes"] = "Soft florals with a deep green background."
+          project["general_notes"] = "Soft pink roses against a blush background."
         }
         return project
       }
     }
 
     private static var designBooks: [[String: Any]] {
-      ["Botanical days", "Small wonders", "The secret woodland", "Garden birds"].enumerated().map { index, title in
+      ["Princesses", "Family", "Pixar", "Classics"].enumerated().map { index, title in
         [
           "id": "design-book-\(index)", "user": "preview-user", "title": title,
           "status": "in_progress", "total_pages": 8, "completed_pages": 1,
@@ -617,8 +617,8 @@
           "created": "2026-09-01",
           "updated": "2026-09-19 10:00:00",
           "expand": [
-            "publisher": ["id": "design-publisher", "name": "Fictional Press"],
-            "illustrator": ["id": "design-illustrator", "name": "Fictional Artist"],
+            "publisher": ["id": "design-publisher", "name": "Hachette Heroes"],
+            "illustrator": ["id": "design-illustrator", "name": "Disney"],
           ],
         ]
       }
@@ -651,7 +651,7 @@
         [
           "id": "design-note-1", "project": "design-project-0",
           "content": "The flowers are starting to take shape.", "date": "2026-09-18",
-          "image": "design-peony.png", "created": "2026-09-18 16:00:00",
+          "image": "design-yorkie-roses.jpg", "created": "2026-09-18 16:00:00",
           "updated": "2026-09-18 16:00:00",
         ],
         [
@@ -663,23 +663,10 @@
     }
 
     private static func artwork(filename: String) -> Data {
-      if filename.hasPrefix("design-book-"), filename.hasSuffix(".jpg"),
-        let index = Int(filename.dropFirst("design-book-".count).dropLast(4)),
-        let atlas = UIImage(named: "FixtureBookCovers")?.cgImage
+      if let image = UIImage(named: (filename as NSString).deletingPathExtension),
+        let data = image.jpegData(compressionQuality: 0.9)
       {
-        let width = atlas.width / 2
-        let height = atlas.height / 2
-        let crop = CGRect(
-          x: index.isMultiple(of: 2) ? 0 : width,
-          y: index < 2 ? 0 : height,
-          width: width,
-          height: height
-        )
-        if let artwork = atlas.cropping(to: crop), let data = UIImage(cgImage: artwork).jpegData(
-          compressionQuality: 0.9
-        ) {
-          return data
-        }
+        return data
       }
       if filename.hasPrefix("design-"), let atlas = UIImage(named: "FixtureArtwork")?.cgImage {
         let right = filename.contains("citrus") || filename.contains("book")

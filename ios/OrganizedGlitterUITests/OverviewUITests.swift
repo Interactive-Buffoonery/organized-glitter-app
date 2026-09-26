@@ -73,7 +73,7 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(app.buttons["library.status"].waitForExistence(timeout: 5))
     XCTAssertEqual(app.buttons["library.status"].value as? String, "Completed")
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Peony garden"].exists)
+    XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
   }
 
   func testAccessibleLayoutAndRotation() throws {

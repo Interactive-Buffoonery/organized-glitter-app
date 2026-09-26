@@ -11,7 +11,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
 
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Peony garden", in: app)
+    openCard(named: "Yorkie & Roses", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
     let addProgressPhoto = button("detail.diamond.addNote", in: app)
@@ -28,7 +28,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
 
     app.navigationBars.buttons.element(boundBy: 0).tap()
     selectCraft("Books", in: app)
-    openCard(named: "Botanical days", in: app)
+    openCard(named: "Princesses", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 
     let editPageCount = button("detail.book.editPageCount", in: app)

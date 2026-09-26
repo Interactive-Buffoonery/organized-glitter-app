@@ -135,25 +135,25 @@ final class LibraryUITests: XCTestCase {
   func testSearchStatusAndSortUseServerBackedControls() throws {
     let app = launch("design")
     openLibrary(app)
-    XCTAssertTrue(app.staticTexts["Peony garden"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Yorkie & Roses"].waitForExistence(timeout: 5))
 
     app.buttons["library.status"].tap()
     app.buttons["Completed"].tap()
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Peony garden"].exists)
+    XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
 
     app.buttons["library.status"].tap()
     app.buttons["All statuses"].tap()
     app.buttons["library.sort"].tap()
     app.buttons["Title A to Z"].tap()
-    let blueHour = app.staticTexts["Blue hour"]
-    let citrusGrove = app.staticTexts["Citrus grove"]
-    XCTAssertTrue(blueHour.waitForExistence(timeout: 5))
-    XCTAssertTrue(citrusGrove.exists)
+    let beachside = app.staticTexts["Beachside Gathering"]
+    let divine = app.staticTexts["Divine Descent"]
+    XCTAssertTrue(beachside.waitForExistence(timeout: 5))
+    XCTAssertTrue(divine.exists)
     XCTAssertTrue(
-      blueHour.frame.minY < citrusGrove.frame.minY
-        || (blueHour.frame.minY == citrusGrove.frame.minY
-          && blueHour.frame.minX < citrusGrove.frame.minX)
+      beachside.frame.minY < divine.frame.minY
+        || (beachside.frame.minY == divine.frame.minY
+          && beachside.frame.minX < divine.frame.minX)
     )
 
     app.buttons["Search"].firstMatch.tap()
@@ -161,9 +161,9 @@ final class LibraryUITests: XCTestCase {
     let search = app.searchFields.firstMatch
     XCTAssertTrue(search.waitForExistence(timeout: 5))
     search.tap()
-    search.typeText("Citrus\n")
-    XCTAssertTrue(app.staticTexts["Citrus grove"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Blue hour"].exists)
+    search.typeText("Divine\n")
+    XCTAssertTrue(app.staticTexts["Divine Descent"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Beachside Gathering"].exists)
     try capture(app, "library-search")
   }
 }
