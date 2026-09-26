@@ -7,6 +7,9 @@ struct WelcomeView: View {
 
   @State private var path: [AccountEntryRoute] = []
   @State private var methodMode: AccountMethodView.Mode = .signIn
+  #if DEBUG
+    @AppStorage(OverviewFixtureProtocol.sampleDataKey) private var useSampleData = false
+  #endif
 
   var body: some View {
     NavigationStack(path: $path) {
@@ -38,6 +41,11 @@ struct WelcomeView: View {
             }
             .buttonStyle(AuthSecondaryButtonStyle())
             .accessibilityIdentifier("welcomeSignIn")
+
+            #if DEBUG
+              Button("Use sample data") { useSampleData = true }
+                .accessibilityIdentifier("welcomeUseSampleData")
+            #endif
           }
           .padding(.bottom, 16)
         }
