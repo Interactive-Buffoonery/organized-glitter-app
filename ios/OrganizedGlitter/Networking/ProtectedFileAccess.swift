@@ -31,7 +31,8 @@ final class ProtectedFileAccess {
         return
       } catch {
         guard generation == currentGeneration else { return }
-        token = nil
+        if case APIError.unauthenticated = error { token = nil }
+        if case APIError.forbidden = error { token = nil }
         try? await Task.sleep(for: .seconds(10))
       }
     }
