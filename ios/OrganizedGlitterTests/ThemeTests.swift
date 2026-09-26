@@ -41,15 +41,6 @@ struct ThemeTests {
     #expect(rgb(Color(hex: 0x000000)) == (0, 0, 0))
   }
 
-  /// The "Glow Stickers" contract: dark mode reuses the light pastel fills,
-  /// so sticker text is always the dark surface foreground in both variants.
-  @Test
-  func stickerSurfacesAreSharedBetweenVariants() {
-    #expect(Theme.light.accentSurfaces.count == 5)
-    #expect(Theme.light.accentSurfaces == Theme.dark.accentSurfaces)
-    #expect(Theme.light.surfaceForeground == Theme.dark.surfaceForeground)
-  }
-
   /// "Berry Cream after dark" paints a deep navy base with a bottom
   /// purple bloom; light retains its vertical gradient with no bloom.
   @Test
@@ -61,9 +52,6 @@ struct ThemeTests {
 
   @Test
   func secondaryTextMeetsMinimumContrast() {
-    for surface in Theme.light.accentSurfaces {
-      #expect(contrastRatio(Theme.light.surfaceMutedForeground, surface) >= 4.5)
-    }
     for stop in Theme.light.gradientStops {
       #expect(contrastRatio(Theme.light.mutedForeground, stop) >= 4.5)
     }
@@ -82,12 +70,6 @@ struct ThemeTests {
   func errorTextMeetsMinimumContrastOnTheCard() {
     #expect(contrastRatio(Theme.light.foreground, Theme.light.card) >= 4.5)
     #expect(contrastRatio(Theme.dark.foreground, Theme.dark.card) >= 4.5)
-  }
-
-  @Test
-  func accentSurfaceCyclesPastTheEnd() {
-    #expect(Theme.light.accentSurface(5) == Theme.light.accentSurfaces[0])
-    #expect(Theme.light.accentSurface(7) == Theme.light.accentSurfaces[2])
   }
 
   @Test

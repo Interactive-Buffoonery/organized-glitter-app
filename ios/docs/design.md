@@ -2,9 +2,26 @@
 
 The iOS app uses the native Berry Cream palette in light and dark appearances.
 [ADR 0001](adr/0001-retain-native-backgrounds.md) controls the palette and
-screen backgrounds. The approved native refinement controls Overview, Library,
-and craft details: artwork-led content, compact controls, system headings, and
-native interactions. The five destinations remain unchanged.
+screen backgrounds. The Shelf redesign (Option B in
+[redesign-options.html](mockups/redesign-options.html), audit in
+[redesign-audit.md](mockups/redesign-audit.md)) is the current direction.
+
+## Shelf
+
+- **Shell.** Home, Library, and on iOS 26 a `Tab(role: .search)`. iOS 18
+  searches inside Library with `.searchable`. Account opens from the Home
+  toolbar avatar. Create is the toolbar `+` `CreateMenu` on Home and Library.
+  The randomizer code stays but has no tab.
+- **iPad.** The `.sidebarAdaptable` `TabView` lists one sidebar row per craft
+  in a `TabSection("Library")`. The single Library tab shows only in the tab
+  bar, so there is no nested `NavigationSplitView`.
+- **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
+  clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient
+  seeded by record id, the title in Caveat, and a craft glyph.
+- **Titles.** One Caveat large title per screen through
+  `UINavigationBarAppearance`. No in-content page headers.
+- **Statuses.** `DiamondStatus`, `BookStatus`, and `PageStatus` carry the label
+  and SF Symbol for every select value on the backend.
 
 ## Current design reference
 
@@ -103,25 +120,14 @@ request/confirmation, and verification request use quiet auth controls instead
 of sticker pills. See
 [account-entry validation](account-entry-validation.md).
 
-Other authenticated screens still use legacy sticker surfaces, `StickerCard`,
-`IconBadge`, and `PillButtonStyle`. Their tokens and behavior remain until
-those screens are migrated. The old Overview metric view, `LibraryItemRow`,
-and unused surface-placement options on the Library row and status badge were
-removed after checking references. `IconBadge` stays because Create still uses
-it. The sections below describe both the retained palette and remaining legacy
-chrome.
+The sticker system (`StickerCard`, `IconBadge`, `PillButtonStyle`, and their
+tokens) was removed with the Create tab.
 
 ## Variants
 
-- **Light — "Berry Cream."** Blush-to-lilac gradient, raspberry primary,
-  pastel sticker cards.
-- **Dark — "Berry Cream after dark" (Glow Stickers).** Deep navy stage with a
-  purple radial bloom rising from the bottom. Legacy sticker cards keep the
-  *light-mode pastel fills* with dark text — bright stickers on a dark
-  scrapbook page. This is a deliberate contract: the five surface fills and
-  their text colors are shared between variants, so there is exactly one
-  pastel set to maintain and sticker text is always dark.
-  `ThemeTests.stickerSurfacesAreSharedBetweenVariants` enforces it.
+- **Light — "Berry Cream."** Blush-to-lilac gradient, raspberry primary.
+- **Dark — "Berry Cream after dark."** Deep navy stage with a purple radial
+  bloom rising from the bottom.
 
 `ThemeFlavor` is `system` / `light` / `dark`. Retired Catppuccin raw values
 (from older builds or the account's `theme_preference`) fail to parse and fall
@@ -179,49 +185,12 @@ stock grouped-list grey.
 | 1 | `0.38` | `#371475` |
 | 2 | `0.73` | transparent |
 
-## Legacy sticker surfaces (shared between variants)
-
-Cycled by index via `theme.accentSurface(i)`; indices wrap.
-
-| Index | Name | Hex |
-| --- | --- | --- |
-| 0 | Strawberry | `#FBD0DD` |
-| 1 | Lilac | `#ECD6FA` |
-| 2 | Mint | `#CDEEDD` |
-| 3 | Periwinkle | `#D3DEFB` |
-| 4 | Butter | `#FDEAB8` |
-
-Text on any sticker surface: `surfaceForeground` `#46323E`, secondary text
-`surfaceMutedForeground` `#765669` — in **both** variants (the fills stay
-light in dark mode, so the text stays dark).
-
-## Legacy sticker chrome
-
-| Token | Light | Dark |
-| --- | --- | --- |
-| `stickerOutline` | `#3A2531` | `#2F2029` |
-| `stickerShadow` | `#3A2531` @ 85% | `#000000` @ 85% |
-| `pillFill` | `#FBD8B8` | `#FBD8B8` |
-| `pillForeground` | `#4D3016` | `#4D3016` |
-
-Geometry (in `Theme.Sticker` / `Theme.Radius`): outline 1.5 pt, shadow offset
-(2.5, 3.5) with **zero blur** (the hard offset is the look), sticker corner
-radius 20 pt. Pressing a pill button collapses the shadow and shifts the pill
-into it (`PillButtonStyle`).
-
-Component: `.stickerCard(index)` supplies the current pastel card treatment.
-
 ## Typography
 
-- The approved native refinement uses system Dynamic Type headings on Overview,
-  Library, and craft details: one bold page title, compact semibold section
-  headings, and no duplicate navigation title on a root screen. Reference boards
-  and fixture provenance live in `design-previews/native-refinement/`.
-- **Caveat** (bundled, `Font.caveat(size:relativeTo:)`) remains the signature
-  display face on existing brand surfaces and screens outside this refinement.
-  The legacy `PageHeader` uses it at 40 pt. Do not change that shared component
-  globally to migrate one working screen. Never use Caveat for body text,
-  labels, or buttons.
+- **Caveat** (bundled) is the large-title face, set once per screen through
+  `UINavigationBar.applyCaveatLargeTitles()` and scaled with Dynamic Type. It
+  is also the generated-cover title. Never use Caveat for body text, labels, or
+  buttons.
 - Everything else is the system font with Dynamic Type styles.
 
 ## Iconography
@@ -234,7 +203,7 @@ read as siblings. Established mappings:
 | --- | --- | --- |
 | Overview / home | `Home` | `house` |
 | Library / dashboard | `LayoutDashboard` | `square.grid.2x2` |
-| Create | `Plus` | `plus.circle.fill` |
+| Create | `Plus` | `plus` |
 | Randomizer | `Shuffle` | `shuffle` |
 | Account | — | `person.crop.circle` |
 | Diamond project | `Gem` | `diamond` |
@@ -253,8 +222,6 @@ worth the Dynamic Type / weight-matching loss today.
 
 - Color is never the only signal: status always pairs an icon with its
   written label (`StatusBadge`).
-- Text on sticker surfaces uses `surfaceForeground` (≥ WCAG AA on all five
-  fills).
 - Rows and cards combine into single accessibility elements where the parts
   read as one thing.
 - Motion uses `Theme.motion` (ease-out-quart, 0.24 s) — no bounce, no elastic.

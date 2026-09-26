@@ -26,16 +26,6 @@ struct Theme: Equatable, Sendable {
 
   /// Page background, top to bottom.
   let gradientStops: [Color]
-  /// Pastel sticker-card fills, cycled by index: strawberry, lilac, mint,
-  /// periwinkle, butter. Shared between light and dark ("Glow Stickers":
-  /// dark mode keeps the light fills, so cards always carry dark text).
-  let accentSurfaces: [Color]
-  let surfaceForeground: Color
-  let surfaceMutedForeground: Color
-  let stickerOutline: Color
-  let stickerShadow: Color
-  let pillFill: Color
-  let pillForeground: Color
   /// Optional radial bloom drawn over a flat `background` base. `nil` for the
   /// light variant, which uses `backgroundGradient`. The dark "Berry Cream
   /// after dark" stage paints a deep navy base with a purple bloom rising
@@ -57,10 +47,6 @@ struct Theme: Equatable, Sendable {
   /// this over `backgroundGradient` so dark mode picks up the bloom.
   var themedBackground: ThemeBackground {
     ThemeBackground(theme: self)
-  }
-
-  func accentSurface(_ index: Int) -> Color {
-    accentSurfaces[index % accentSurfaces.count]
   }
 }
 
@@ -85,19 +71,12 @@ extension Theme {
 extension Theme {
   enum Radius {
     static let medium: CGFloat = 10
-    static let sticker: CGFloat = 20
   }
 
   enum Spacing {
     static let xs: CGFloat = 4
     static let sm: CGFloat = 8
     static let md: CGFloat = 16
-  }
-
-  /// The offset hard shadow that makes sticker cards read as stickers.
-  enum Sticker {
-    static let shadowOffset = CGSize(width: 2.5, height: 3.5)
-    static let outlineWidth: CGFloat = 1.5
   }
 
   /// Brief ease-out motion without bounce or elastic movement.
