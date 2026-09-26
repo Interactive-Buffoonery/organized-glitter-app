@@ -24,9 +24,13 @@ The application does not own backend schema or server behavior. Those remain in
 - A write with unknown completion must be refreshed before retry.
 - Library search, status filters, sorting, and pagination execute on PocketBase.
 - File images use short-lived PocketBase file tokens fetched for the signed-in
-  account. The app renews the token while its signed-in shell is visible and
-  updates original and thumbnail URLs together. A missing token suppresses
-  image requests. All file URL construction goes through `PocketBaseClient.fileURL`.
+  account. The app renews the token shortly before its expiry while its signed-in
+  shell is visible, with a 30-second minimum delay between renewals. A missing
+  token suppresses image requests. `RemoteArtwork` uses token-bearing URLs for
+  downloads but excludes the token query item from its in-memory cache and
+  in-flight request keys; thumbnail parameters remain part of those keys. The
+  cache is purged on session changes. All file URL construction goes through
+  `PocketBaseClient.fileURL`.
 
 ## Dependency policy
 

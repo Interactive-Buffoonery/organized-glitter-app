@@ -340,11 +340,7 @@ actor PocketBaseClient {
     return url
   }
 
-  /// Downloads a PocketBase file through the authenticated session.
-  ///
-  /// File tokens are not on the URL yet; sending `Authorization` here means a
-  /// later header-based or query-token migration can land in `fileURL` plus
-  /// this method without teaching `RemoteArtwork` a second session.
+  /// Downloads a protected PocketBase file using the token-bearing URL.
   func fileData(at url: URL, maximumByteCount: Int) async throws -> Data {
     var request = URLRequest(url: url)
     request.httpMethod = "GET"

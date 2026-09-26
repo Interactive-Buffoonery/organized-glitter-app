@@ -25,8 +25,7 @@ final class ProtectedFileAccess {
       do {
         let nextToken = try await client.fileToken()
         guard !Task.isCancelled, generation == currentGeneration else { return }
-        token = nextToken
-        // A changed token makes AsyncImage reload visible originals and thumbnails.
+        if token != nextToken { token = nextToken }
         try await Task.sleep(for: .seconds(Self.renewalDelay(for: nextToken)))
       } catch is CancellationError {
         return
