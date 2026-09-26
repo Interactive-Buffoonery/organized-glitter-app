@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LibraryView: View {
+  @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @Environment(\.horizontalSizeClass) private var sizeClass
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -340,7 +341,9 @@ struct LibraryView: View {
   private func galleryItem(_ item: LibraryItem) -> some View {
     NavigationLink(value: item) {
       LibraryGalleryCard(
-        item: item, imageURL: item.artworkURL(using: model.client, thumb: ArtworkThumb.gallery))
+        item: item,
+        imageURL: item.artworkURL(
+          using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token))
     }
     .buttonStyle(.plain)
   }

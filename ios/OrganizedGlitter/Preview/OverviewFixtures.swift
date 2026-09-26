@@ -26,6 +26,10 @@
 
     override func startLoading() {
       guard let url = request.url else { return }
+      if url.path == "/api/files/token" {
+        respond(object: ["token": "fictional-file-token"])
+        return
+      }
       if url.path.contains("/api/files/") {
         if url.lastPathComponent == "missing.png" {
           respond(object: [:], status: 404)
