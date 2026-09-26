@@ -189,10 +189,10 @@ struct LibraryItemDetailModelTests {
         if page == "2" {
           return (200, Self.pageListJSON(id: "page-2", number: 2, page: 2, totalPages: 2))
         }
-        if perPage == "2" {
+        if perPage == "48" {
           return (
             200,
-            #"{"page":1,"perPage":2,"totalItems":2,"totalPages":1,"items":[\#(Self.pageJSON(id: "page-1", number: 1, photos: [])),\#(Self.pageJSON(id: "page-2", number: 2, photos: []))]}"#
+            #"{"page":1,"perPage":48,"totalItems":25,"totalPages":1,"items":[\#(Self.pageJSON(id: "page-1", number: 1, photos: [])),\#(Self.pageJSON(id: "page-2", number: 2, photos: []))]}"#
           )
         }
         return (200, Self.pageListJSON(id: "page-1", number: 1, page: 1, totalPages: 2))
@@ -245,7 +245,19 @@ struct LibraryItemDetailModelTests {
     await model.loadMoreBookPages()
     #expect(model.bookPages.count == 48)
 
+    let requestsBeforeReload = DetailURLProtocol.requests.filter {
+      $0.url?.path.hasSuffix("/coloring_pages/records") == true
+    }.count
     await model.load(preservingLoadedBookPages: true)
+    let reloadRequests = DetailURLProtocol.requests.filter {
+      $0.url?.path.hasSuffix("/coloring_pages/records") == true
+    }.dropFirst(requestsBeforeReload)
+    #expect(reloadRequests.count == 1)
+    let reloadQuery = URLComponents(
+      url: try #require(reloadRequests.first?.url), resolvingAgainstBaseURL: false
+    )?.queryItems
+    #expect(reloadQuery?.first { $0.name == "page" }?.value == "1")
+    #expect(reloadQuery?.first { $0.name == "perPage" }?.value == "48")
     await model.loadMoreBookPages()
 
     let ids = model.bookPages.map(\.id)
@@ -433,7 +445,7 @@ struct LibraryItemDetailModelTests {
     totalPages: Int
   ) -> String {
     """
-    {"page":\(page),"perPage":24,"totalItems":\(totalPages),"totalPages":\(totalPages),"items":[\(pageJSON(id: id, number: number, photos: []))]}
+    {"page":\(page),"perPage":24,"totalItems":\(totalPages == 2 ? 25 : 1),"totalPages":\(totalPages),"items":[\(pageJSON(id: id, number: number, photos: []))]}
     """
   }
 
