@@ -254,6 +254,22 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
     }
   }
 
+  var statusLabel: String {
+    switch self {
+    case .diamond(let project): DiamondStatus.label(for: project.status)
+    case .book(let book): BookStatus.label(for: book.status)
+    case .page(let page): PageStatus.label(for: page.status)
+    }
+  }
+
+  var statusSystemImage: String {
+    switch self {
+    case .diamond(let project): DiamondStatus.systemImage(for: project.status)
+    case .book(let book): BookStatus.systemImage(for: book.status)
+    case .page(let page): PageStatus.systemImage(for: page.status)
+    }
+  }
+
   var updated: String {
     switch self {
     case .diamond(let project):
@@ -337,18 +353,5 @@ enum LibraryItem: Hashable, Identifiable, Sendable {
 extension String {
   var nonEmpty: String? {
     isEmpty ? nil : self
-  }
-
-  var organizedGlitterLabel: String {
-    switch self {
-    case "in_stash": "In stash"
-    case "in_progress", "progress": "In progress"
-    case "on_hold", "onhold": "On hold"
-    case "not_started": "Not started"
-    case "palette_chosen": "Palette chosen"
-    case "kitted": "Kitted up"
-    default:
-      replacingOccurrences(of: "_", with: " ").capitalized
-    }
   }
 }

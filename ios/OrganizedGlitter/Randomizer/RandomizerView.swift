@@ -8,8 +8,6 @@ struct RandomizerView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-        PageHeader("Randomizer", subtitle: "Pick a numbered section to work on next.")
-
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
           Text("Numbers to pick from")
             .font(.headline)
@@ -64,6 +62,5 @@ struct RandomizerView: View {
     }
     .background { theme.themedBackground.ignoresSafeArea() }
     .navigationTitle("Randomizer")
-    .navigationBarTitleDisplayMode(.inline)
   }
 }

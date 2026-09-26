@@ -61,35 +61,36 @@ struct DiamondProjectEditor: View {
   var body: some View {
     NavigationStack {
       Form {
-        Section("Project") {
-          TextField("Title", text: $draft.title)
+        Group {
+          Section("Project") {
+            TextField("Title", text: $draft.title)
 
-          Picker("Status", selection: $draft.status) {
-            ForEach(LibrarySection.diamonds.statusOptions, id: \.self) { status in
-              Text(status.organizedGlitterLabel).tag(status)
+            Picker("Status", selection: $draft.status) {
+              ForEach(DiamondStatus.allCases, id: \.self) { status in
+                Text(status.label).tag(status.rawValue)
+              }
+            }
+
+            Picker("Kit", selection: $draft.kitCategory) {
+              Text("Full size").tag("full")
+              Text("Mini").tag("mini")
+            }
+
+            Picker("Drill shape", selection: $draft.drillShape) {
+              Text("Not set").tag("")
+              Text("Round").tag("round")
+              Text("Square").tag("square")
             }
           }
 
-          Picker("Kit", selection: $draft.kitCategory) {
-            Text("Full size").tag("full")
-            Text("Mini").tag("mini")
-          }
-
-          Picker("Drill shape", selection: $draft.drillShape) {
-            Text("Not set").tag("")
-            Text("Round").tag("round")
-            Text("Square").tag("square")
+          if let errorMessage {
+            Section {
+              AccessibleErrorLabel(message: errorMessage)
+                .accessibilityIdentifier("projectSaveError")
+            }
           }
         }
         .listRowBackground(theme.card)
-
-        if let errorMessage {
-          Section {
-            AccessibleErrorLabel(message: errorMessage)
-              .accessibilityIdentifier("projectSaveError")
-          }
-          .listRowBackground(theme.card)
-        }
       }
       .themedScrollBackground()
       .navigationTitle(project == nil ? "New Project" : "Edit Project")

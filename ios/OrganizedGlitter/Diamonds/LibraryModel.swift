@@ -37,15 +37,17 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
   var statusOptions: [String] {
     switch self {
-    case .diamonds:
-      [
-        "wishlist", "purchased", "stash", "kitted", "progress", "onhold", "completed", "archived",
-        "destashed",
-      ]
-    case .books:
-      ["wishlist", "purchased", "in_stash", "in_progress", "completed", "archived", "destashed"]
-    case .pages:
-      ["not_started", "palette_chosen", "in_progress", "on_hold", "completed"]
+    case .diamonds: DiamondStatus.allCases.map(\.rawValue)
+    case .books: BookStatus.allCases.map(\.rawValue)
+    case .pages: PageStatus.allCases.map(\.rawValue)
+    }
+  }
+
+  func statusLabel(_ rawValue: String) -> String {
+    switch self {
+    case .diamonds: DiamondStatus.label(for: rawValue)
+    case .books: BookStatus.label(for: rawValue)
+    case .pages: PageStatus.label(for: rawValue)
     }
   }
 

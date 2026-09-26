@@ -8,17 +8,7 @@ struct LibraryGalleryCard: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      RecordArtwork(
-        url: imageURL,
-        maxHeight: item.isColoringBook ? 260 : 230,
-        emptyMinHeight: item.isColoringBook ? 220 : 170,
-        maxPixelDimension: 660
-      )
-        .aspectRatio(item.isColoringBook ? 0.72 : 1, contentMode: .fit)
-        .frame(maxWidth: .infinity)
-        .background(theme.card, in: .rect(cornerRadius: 10))
-        .clipShape(.rect(cornerRadius: 10))
-        .accessibilityHidden(true)
+      CoverArtwork(item: item, url: imageURL)
 
       Text(item.title)
         .font(.headline)
@@ -32,7 +22,7 @@ struct LibraryGalleryCard: View {
           .fixedSize(horizontal: false, vertical: true)
       }
 
-      StatusBadge(status: item.status, presentation: .quiet)
+      StatusBadge(label: item.statusLabel, systemImage: item.statusSystemImage)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(.rect)
@@ -41,13 +31,6 @@ struct LibraryGalleryCard: View {
 }
 
 extension LibraryItem {
-  fileprivate var isColoringBook: Bool {
-    if case .book = self {
-      return true
-    }
-    return false
-  }
-
   var galleryCaption: String {
     switch self {
     case .diamond:
