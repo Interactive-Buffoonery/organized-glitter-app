@@ -177,11 +177,28 @@ struct RemoteArtworkTests {
       maxPixelDimension: 32
     )
 
-    await decoded.insert(image, for: url, maxPixelDimension: 32)
+    let generation = await decoded.generation
+    await decoded.insert(image, for: url, maxPixelDimension: 32, generation: generation)
     let cached = await decoded.image(for: url, maxPixelDimension: 32)
 
     #expect(cached?.cgImage.width == image.cgImage.width)
     #expect(cached?.cgImage.height == image.cgImage.height)
+  }
+
+  @Test
+  func purgeRejectsDecodedImageFromAnEarlierLoad() async throws {
+    let decoded = RemoteArtworkDecodedStore()
+    let url = URL(string: "https://artwork.example.test/private.jpg")!
+    let image = try RemoteArtworkLoader.downsample(
+      data: jpegData(width: 40, height: 40, orientation: .up),
+      maxPixelDimension: 32
+    )
+    let generation = await decoded.generation
+
+    await decoded.removeAll()
+    await decoded.insert(image, for: url, maxPixelDimension: 32, generation: generation)
+
+    #expect(await decoded.image(for: url, maxPixelDimension: 32)?.cgImage.width == nil)
   }
 
   private func jpegData(
