@@ -227,8 +227,6 @@ struct OverviewView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
-        OverviewScreenHeader("Overview")
-
         craftPicker
 
         VStack(alignment: .leading, spacing: 6) {
@@ -242,14 +240,6 @@ struct OverviewView: View {
           wishlistAction
           completedAction
         }
-
-        if model.hasLoaded, model.errorMessage == nil {
-          Text(
-            "Active diamond projects: \(model.activeDiamondCount) · Active coloring pages: \(model.activeColoringPageCount) · Completed this month: \(model.completedThisMonthCount)"
-          )
-          .font(.footnote)
-          .foregroundStyle(theme.pageSecondaryForeground)
-        }
       }
       .frame(maxWidth: 760, alignment: .leading)
       .padding(.horizontal, 20)
@@ -261,6 +251,7 @@ struct OverviewView: View {
       theme.themedBackground.ignoresSafeArea()
     }
     .refreshable { await model.load() }
+    .navigationTitle("Overview")
     .navigationDestination(for: LibraryItem.self) { item in
       LibraryItemDetailDestination(
         item: item,
@@ -440,11 +431,11 @@ struct OverviewView: View {
       }
       let items = model.items.filter(craft.includes)
       if items.isEmpty {
-        EmptyFeatureView(
-          title: craft == .all
+        ContentUnavailableView(
+          craft == .all
             ? "No work in progress" : "No \(craft.rawValue.lowercased()) in progress",
           systemImage: "sparkles.rectangle.stack",
-          message: "Projects and coloring pages marked in progress will appear here."
+          description: Text("Projects and coloring pages marked in progress will appear here.")
         )
         .frame(minHeight: 220)
       } else {
@@ -472,24 +463,6 @@ struct OverviewView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading)
-  }
-}
-
-private struct OverviewScreenHeader: View {
-  @Environment(\.theme) private var theme
-
-  let title: String
-
-  init(_ title: String) {
-    self.title = title
-  }
-
-  var body: some View {
-    Text(title)
-      .font(.largeTitle.bold())
-      .foregroundStyle(theme.foreground)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .accessibilityAddTraits(.isHeader)
   }
 }
 
@@ -534,7 +507,7 @@ private struct OverviewProjectRow: View {
           Text(item.overviewKindLabel)
             .font(.subheadline)
             .foregroundStyle(theme.pageSecondaryForeground)
-          StatusBadge(status: item.status, presentation: .quiet)
+          StatusBadge(label: item.statusLabel, systemImage: item.statusSystemImage)
         }
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -550,31 +523,12 @@ private struct OverviewProjectRow: View {
     .accessibilityElement(children: .combine)
   }
 
-  @ViewBuilder
   private var artwork: some View {
-    if dynamicTypeSize.isAccessibilitySize {
-      RecordArtwork(
-        url: imageURL,
-        maxHeight: 220,
-        emptyMinHeight: 160,
-        maxPixelDimension: 660
-      )
-        .background(theme.card, in: .rect(cornerRadius: 10))
-        .clipShape(.rect(cornerRadius: 10))
-        .accessibilityHidden(true)
-        .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 220)
-    } else {
-      RecordArtwork(
-        url: imageURL,
-        maxHeight: 104,
-        emptyMinHeight: 104,
-        maxPixelDimension: 360
-      )
-        .background(theme.card, in: .rect(cornerRadius: 10))
-        .clipShape(.rect(cornerRadius: 10))
-        .accessibilityHidden(true)
-        .frame(width: 104, height: 104)
-    }
+    CoverArtwork(
+      item: item, url: imageURL,
+      maxPixelDimension: dynamicTypeSize.isAccessibilitySize ? 660 : 360
+    )
+    .frame(width: dynamicTypeSize.isAccessibilitySize ? 176 : 84)
   }
 }
 

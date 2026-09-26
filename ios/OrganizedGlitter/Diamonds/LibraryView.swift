@@ -94,11 +94,6 @@ struct LibraryView: View {
   private func browsingScroll(showsCraftPicker: Bool) -> some View {
     return ScrollView {
       LazyVStack(alignment: .leading, spacing: 12) {
-        Text("Library")
-          .font(.largeTitle.bold())
-          .foregroundStyle(theme.foreground)
-          .accessibilityAddTraits(.isHeader)
-
         searchField
 
         if showsCraftPicker {
@@ -116,6 +111,7 @@ struct LibraryView: View {
       .frame(maxWidth: .infinity)
     }
     .refreshable { await model.load() }
+    .navigationTitle("Library")
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
@@ -227,9 +223,9 @@ struct LibraryView: View {
           model.statusFilter = status
         } label: {
           if model.statusFilter == status {
-            Label(status.organizedGlitterLabel, systemImage: "checkmark")
+            Label(model.section.statusLabel(status), systemImage: "checkmark")
           } else {
-            Text(status.organizedGlitterLabel)
+            Text(model.section.statusLabel(status))
           }
         }
       }
@@ -238,7 +234,7 @@ struct LibraryView: View {
         if showsIcon {
           Image(systemName: "line.3.horizontal.decrease.circle")
         }
-        Text(model.statusFilter?.organizedGlitterLabel ?? "All statuses")
+        Text(model.statusFilter.map(model.section.statusLabel) ?? "All statuses")
         Image(systemName: "chevron.down")
           .font(.caption2.weight(.semibold))
           .accessibilityHidden(true)
@@ -250,7 +246,7 @@ struct LibraryView: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Filter by status")
-    .accessibilityValue(model.statusFilter?.organizedGlitterLabel ?? "All statuses")
+    .accessibilityValue(model.statusFilter.map(model.section.statusLabel) ?? "All statuses")
     .accessibilityIdentifier("library.status")
   }
 
@@ -308,10 +304,10 @@ struct LibraryView: View {
       }
       if model.items.isEmpty {
         if model.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-          EmptyFeatureView(
-            title: "Nothing here yet",
+          ContentUnavailableView(
+            "Nothing here yet",
             systemImage: model.section.systemImage,
-            message: "Items in this craft and filter will appear here."
+            description: Text("Items in this craft and filter will appear here.")
           )
           .frame(minHeight: 220)
         } else {

@@ -13,8 +13,6 @@ struct QuickCreateView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-        PageHeader("Create", subtitle: "Start something sparkly.")
-
         if verticals.diamondPainting {
           Button {
             isCreatingDiamond = true
@@ -36,7 +34,9 @@ struct QuickCreateView: View {
             title: "New coloring page", systemImage: "doc.richtext", surfaceIndex: 2)
         }
 
-        SectionHeader("Log")
+        Text("Log")
+          .font(.title3.weight(.semibold))
+          .accessibilityAddTraits(.isHeader)
           .padding(.top, Theme.Spacing.sm)
 
         CreateActionCard(
@@ -46,7 +46,6 @@ struct QuickCreateView: View {
     }
     .background(theme.themedBackground)
     .navigationTitle("Create")
-    .navigationBarTitleDisplayMode(.inline)
     .sheet(isPresented: $isCreatingDiamond) {
       DiamondProjectEditor(
         client: client,

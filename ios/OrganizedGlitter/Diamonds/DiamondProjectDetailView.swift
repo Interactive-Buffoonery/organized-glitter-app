@@ -17,16 +17,14 @@ struct DiamondProjectDetailView: View {
   var body: some View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 18) {
-        RecordArtwork(
+        CoverArtwork(
+          item: .diamond(project),
           url: LibraryItem.diamond(project).artworkURL(
             using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
-          maxHeight: heroHeight,
-          emptyMinHeight: 180,
-          successAccessibilityLabel: "Project artwork"
+          maxPixelDimension: 1_200,
+          loadedAccessibilityLabel: "Project artwork"
         )
         .frame(maxWidth: .infinity, maxHeight: heroHeight)
-        .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-        .clipShape(.rect(cornerRadius: Theme.Radius.medium))
         .accessibilityIdentifier("detail.hero")
 
         VStack(alignment: .leading, spacing: 6) {
@@ -42,7 +40,9 @@ struct DiamondProjectDetailView: View {
 
         DetailMetadataCard {
           DetailMetadataRow(label: "Status") {
-            StatusBadge(status: project.status, presentation: .quiet)
+            StatusBadge(
+              label: DiamondStatus.label(for: project.status),
+              systemImage: DiamondStatus.systemImage(for: project.status))
           }
           if let width = project.width, let height = project.height {
             DetailMetadataRow(
@@ -52,7 +52,7 @@ struct DiamondProjectDetailView: View {
           }
           DetailMetadataRow(
             label: "Drills",
-            value: project.drillShape?.nonEmpty?.organizedGlitterLabel ?? "Not set"
+            value: project.drillShape?.nonEmpty?.capitalized ?? "Not set"
           )
         }
 
@@ -78,7 +78,7 @@ struct DiamondProjectDetailView: View {
           DetailMetadataCard {
             DetailMetadataRow(
               label: "Kit",
-              value: project.kitCategory.organizedGlitterLabel
+              value: project.kitCategory.capitalized
             )
           }
 
@@ -273,70 +273,67 @@ private struct DiamondProgressNoteEditor: View {
 
     NavigationStack {
       Form {
-        Section("Progress") {
-          DatePicker("Date", selection: $date, displayedComponents: .date)
-          TextField("Caption (optional)", text: $content, axis: .vertical)
-            .lineLimit(3...8)
-          Text("Add a photo, a caption, or both.")
-            .font(.footnote)
-            .foregroundStyle(theme.pageSecondaryForeground)
-        }
-        .listRowBackground(theme.card)
-        .disabled(model.unresolvedWriteState != nil)
+        Group {
+          Section("Progress") {
+            DatePicker("Date", selection: $date, displayedComponents: .date)
+            TextField("Caption (optional)", text: $content, axis: .vertical)
+              .lineLimit(3...8)
+            Text("Add a photo, a caption, or both.")
+              .font(.footnote)
+              .foregroundStyle(theme.pageSecondaryForeground)
+          }
+          .disabled(model.unresolvedWriteState != nil)
 
-        Section("Photo") {
-          if let previewImage {
-            Image(uiImage: previewImage)
-              .resizable()
-              .scaledToFit()
-              .frame(maxWidth: .infinity, maxHeight: 320)
-              .accessibilityLabel("Selected progress photo")
-              .accessibilityIdentifier("detail.diamond.notePhoto")
-          }
+          Section("Photo") {
+            if let previewImage {
+              Image(uiImage: previewImage)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: 320)
+                .accessibilityLabel("Selected progress photo")
+                .accessibilityIdentifier("detail.diamond.notePhoto")
+            }
 
-          PhotosPicker(selection: $selectedItem, matching: .images) {
-            Label(
-              photoPickerTitle,
-              systemImage: "photo.on.rectangle"
-            )
+            PhotosPicker(selection: $selectedItem, matching: .images) {
+              Label(
+                photoPickerTitle,
+                systemImage: "photo.on.rectangle"
+              )
+            }
+            .disabled(isPreparingPhoto || model.isMutating)
           }
-          .disabled(isPreparingPhoto || model.isMutating)
-        }
-        .listRowBackground(theme.card)
-        .disabled(model.unresolvedWriteState != nil)
+          .disabled(model.unresolvedWriteState != nil)
 
-        if isPreparingPhoto {
-          Section {
-            ProgressView("Preparing photo…")
-          }
-          .listRowBackground(theme.card)
-        } else if model.isMutating {
-          Section {
-            ProgressView(
-              model.unresolvedWriteState == nil
-                ? (processedPhoto == nil ? "Adding progress note…" : "Uploading photo…")
-                : "Checking save status…"
-            )
-          }
-          .listRowBackground(theme.card)
-        }
-
-        if let message = photoErrorMessage {
-          Section {
-            AccessibleErrorLabel(message: message)
-          }
-          .listRowBackground(theme.card)
-        } else if let message = model.mutationErrorMessage {
-          Section {
-            if model.unresolvedWriteState == .refreshed {
-              Label(message, systemImage: "checkmark.circle")
-                .foregroundStyle(theme.foreground)
-            } else {
-              AccessibleErrorLabel(message: message)
+          if isPreparingPhoto {
+            Section {
+              ProgressView("Preparing photo…")
+            }
+          } else if model.isMutating {
+            Section {
+              ProgressView(
+                model.unresolvedWriteState == nil
+                  ? (processedPhoto == nil ? "Adding progress note…" : "Uploading photo…")
+                  : "Checking save status…"
+              )
             }
           }
-          .listRowBackground(theme.card)
+
+          if let message = photoErrorMessage {
+            Section {
+              AccessibleErrorLabel(message: message)
+            }
+          } else if let message = model.mutationErrorMessage {
+            Section {
+              if model.unresolvedWriteState == .refreshed {
+                Label(message, systemImage: "checkmark.circle")
+                  .foregroundStyle(theme.foreground)
+              } else {
+                AccessibleErrorLabel(message: message)
+              }
+            }
+          }
         }
+        .listRowBackground(theme.card)
       }
       .themedScrollBackground()
       .navigationTitle("Add progress note")
