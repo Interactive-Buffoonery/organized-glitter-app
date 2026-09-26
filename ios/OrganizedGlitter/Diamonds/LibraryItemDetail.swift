@@ -50,7 +50,6 @@ struct LibraryItemDetailDestination: View {
     }
     .navigationTitle(model.item.title)
     .navigationBarTitleDisplayMode(.inline)
-    .toolbarBackground(.hidden, for: .navigationBar)
     .background {
       theme.themedBackground.ignoresSafeArea()
     }

@@ -37,17 +37,6 @@ enum ThemeFlavor: String, CaseIterable, Identifiable, Sendable {
 }
 
 extension Theme {
-  /// Sticker fills are identical in both variants — that's the point of the
-  /// "Glow Stickers" dark mode: bright cards on a dark stage, one pastel set
-  /// to maintain. Text on these fills is always `surfaceForeground` (dark).
-  private static let sharedSurfaces = [
-    Color(hex: 0xFBD0DD),  // strawberry
-    Color(hex: 0xECD6FA),  // lilac
-    Color(hex: 0xCDEEDD),  // mint
-    Color(hex: 0xD3DEFB),  // periwinkle
-    Color(hex: 0xFDEAB8),  // butter
-  ]
-
   /// "Berry Cream" — blush-to-lilac gradient, raspberry primary.
   static let light = Theme(
     background: Color(hex: 0xF8E9F6),
@@ -69,20 +58,11 @@ extension Theme {
     border: Color(hex: 0xE5CDD9),
     ring: Color(hex: 0xD23C77),
     gradientStops: [Color(hex: 0xFDEEF3), Color(hex: 0xF8E9F6), Color(hex: 0xE7DEFA)],
-    accentSurfaces: sharedSurfaces,
-    surfaceForeground: Color(hex: 0x46323E),
-    surfaceMutedForeground: Color(hex: 0x765669),
-    stickerOutline: Color(hex: 0x3A2531),
-    stickerShadow: Color(hex: 0x3A2531, opacity: 0.85),
-    pillFill: Color(hex: 0xFBD8B8),
-    pillForeground: Color(hex: 0x4D3016),
     backgroundBloom: nil
   )
 
   /// "Berry Cream after dark" — deep navy stage with a purple bloom rising
-  /// from the bottom. Sticker cards keep the light-mode pastel fills with dark
-  /// text (the "Glow Stickers" contract), so the shared pastel set and surface
-  /// text colors are unchanged.
+  /// from the bottom.
   static let dark = Theme(
     background: Color(hex: 0x05051A),
     foreground: Color(hex: 0xF7F2F7),
@@ -103,13 +83,6 @@ extension Theme {
     border: Color(hex: 0x37304B),
     ring: Color(hex: 0xF58AB5),
     gradientStops: [Color(hex: 0x05051A), Color(hex: 0x05051A)],
-    accentSurfaces: sharedSurfaces,
-    surfaceForeground: Color(hex: 0x46323E),
-    surfaceMutedForeground: Color(hex: 0x765669),
-    stickerOutline: Color(hex: 0x2F2029),
-    stickerShadow: Color(hex: 0x000000, opacity: 0.85),
-    pillFill: Color(hex: 0xFBD8B8),
-    pillForeground: Color(hex: 0x4D3016),
     backgroundBloom: Bloom(
       center: UnitPoint(x: 0.56, y: 1.0),
       stops: [

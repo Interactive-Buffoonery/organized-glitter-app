@@ -63,6 +63,53 @@ enum LibrarySection: String, CaseIterable, Identifiable {
   }
 }
 
+extension LibraryItem {
+  var section: LibrarySection {
+    switch self {
+    case .diamond: .diamonds
+    case .book: .books
+    case .page: .pages
+    }
+  }
+}
+
+/// How a Library screen is reached. iPhone and the collapsed iPad tab bar
+/// browse every craft; iPad sidebar rows pin one craft; iOS 26 adds a search
+/// tab, while iOS 18 searches inside Library.
+enum LibraryPresentation: Hashable {
+  case browse
+  case craft(LibrarySection)
+  case search
+
+  static var hasSearchTab: Bool {
+    if #available(iOS 26, *) { true } else { false }
+  }
+
+  var title: String {
+    switch self {
+    case .browse: "Library"
+    case .craft(let section): section.pickerTitle
+    case .search: "Search"
+    }
+  }
+
+  var showsCraftPicker: Bool {
+    if case .craft = self { false } else { true }
+  }
+
+  var isSearchable: Bool {
+    self == .search || !Self.hasSearchTab
+  }
+
+  func accepts(_ request: LibraryRequest) -> Bool {
+    switch self {
+    case .browse: true
+    case .craft(let section): section == request.section
+    case .search: false
+    }
+  }
+}
+
 enum LibrarySort: String, CaseIterable, Identifiable {
   case recentlyUpdated
   case titleAscending
