@@ -113,32 +113,28 @@ final class LibraryItemDetailModel {
         let pagesFilter = PocketBaseFilter.all(filters)
         let pagesToReload =
           preservingLoadedBookPages && !bookPages.isEmpty ? max(bookPagesPage, 1) : 1
+        let requestedChunks = min(pagesToReload, 1_000 / Self.bookPagesPerPage)
         async let bookRequest: ColoringBookRecord = client.get(
           collection: "coloring_books",
           id: book.id,
           expand: "publisher,illustrator"
         )
-        var loadedPages: [ColoringPageRecord] = []
-        var loadedPage = 0
-        var totalPages = 0
-        for page in 1...pagesToReload {
-          let result: RecordList<ColoringPageRecord> = try await client.list(
-            collection: "coloring_pages",
-            page: page,
-            perPage: Self.bookPagesPerPage,
-            filter: pagesFilter,
-            sort: "+page_number",
-            expand: "book"
-          )
-          loadedPages.append(contentsOf: result.items)
-          loadedPage = result.page
-          totalPages = result.totalPages
-          if page >= result.totalPages { break }
-        }
-        let loadedBook = try await bookRequest
+        async let pagesRequest: RecordList<ColoringPageRecord> = client.list(
+          collection: "coloring_pages",
+          page: 1,
+          perPage: requestedChunks * Self.bookPagesPerPage,
+          filter: pagesFilter,
+          sort: "+page_number",
+          expand: "book"
+        )
+        let (loadedBook, loadedPages) = try await (bookRequest, pagesRequest)
         guard requestGeneration == generation else { return false }
+        let totalPages = requestedChunks == 1
+          ? loadedPages.totalPages
+          : (loadedPages.totalItems + Self.bookPagesPerPage - 1) / Self.bookPagesPerPage
+        let loadedPage = requestedChunks == 1 ? loadedPages.page : min(requestedChunks, totalPages)
         item = .book(loadedBook)
-        bookPages = loadedPages
+        bookPages = loadedPages.items
         bookPagesPage = loadedPage
         bookPagesTotalPages = totalPages
         canLoadMoreBookPages = loadedPage < totalPages
