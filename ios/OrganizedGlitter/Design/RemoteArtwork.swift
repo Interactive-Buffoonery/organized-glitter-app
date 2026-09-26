@@ -123,6 +123,7 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     client: PocketBaseClient? = nil
   ) async throws -> RemoteArtworkImage {
     let pixelSize = Int(maxPixelDimension.rounded(.up))
+    let decodedGeneration = await decodedStore.generation
     if let cached = await decodedStore.image(for: url, maxPixelDimension: pixelSize) {
       return cached
     }
@@ -155,7 +156,8 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     } onCancel: {
       decodingTask.cancel()
     }
-    await decodedStore.insert(image, for: url, maxPixelDimension: pixelSize)
+    await decodedStore.insert(
+      image, for: url, maxPixelDimension: pixelSize, generation: decodedGeneration)
     return image
   }
 
@@ -409,6 +411,7 @@ actor RemoteArtworkDecodedStore {
   private let maximumEntryCount: Int
   private var entries: [Key: Entry] = [:]
   private var accessCounter: UInt64 = 0
+  private(set) var generation: UInt64 = 0
 
   init(maximumEntryCount: Int = 48) {
     self.maximumEntryCount = max(0, maximumEntryCount)
@@ -425,8 +428,10 @@ actor RemoteArtworkDecodedStore {
     return entry.image
   }
 
-  func insert(_ image: RemoteArtworkImage, for url: URL, maxPixelDimension: Int) {
-    guard maximumEntryCount > 0 else {
+  func insert(
+    _ image: RemoteArtworkImage, for url: URL, maxPixelDimension: Int, generation: UInt64
+  ) {
+    guard generation == self.generation, maximumEntryCount > 0 else {
       return
     }
     accessCounter &+= 1
@@ -440,6 +445,7 @@ actor RemoteArtworkDecodedStore {
   }
 
   func removeAll() {
+    generation &+= 1
     entries.removeAll()
   }
 }
