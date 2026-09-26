@@ -22,7 +22,7 @@ final class NativeRefinementUITests: XCTestCase {
       )
       XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
     }
-    XCTAssertTrue(app.staticTexts["Overview"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
     try capture("refinement-01-overview")
 
     openLibrary(app)
@@ -51,6 +51,26 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element("detail.page", in: app).waitForExistence(timeout: 5))
     assertArtworkLoaded("Page artwork", in: app)
     try capture("refinement-06-page-detail")
+  }
+
+  func testCapturesShellActions() throws {
+    let app = launchFixture()
+    XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
+
+    app.buttons["create.menu"].tap()
+    XCTAssertTrue(app.buttons["create.diamond"].waitForExistence(timeout: 3))
+    XCTAssertTrue(app.buttons["create.book"].exists)
+    try capture("shell-01-create-menu")
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)).tap()
+
+    app.buttons["account.open"].tap()
+    XCTAssertTrue(app.staticTexts["Profile name"].waitForExistence(timeout: 3))
+    try capture("shell-02-account")
+    app.buttons["Done"].tap()
+
+    app.buttons["Search"].firstMatch.tap()
+    XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
+    try capture("shell-03-search")
   }
 
   func testDiamondEditCancelSaveAndDeleteRemainStateful() {

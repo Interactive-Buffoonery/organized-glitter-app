@@ -69,7 +69,7 @@ struct GeneratedCover: View {
     let (top, bottom) = Self.palettes[Self.paletteIndex(for: item.id)]
     GeometryReader { geo in
       VStack(alignment: .leading) {
-        Image(systemName: item.craftSystemImage)
+        Image(systemName: item.section.systemImage)
           .font(.system(size: geo.size.width * 0.1, weight: .semibold))
         Spacer(minLength: 0)
         // Caveat's final stroke can extend beyond the measured text width.
@@ -84,15 +84,5 @@ struct GeneratedCover: View {
     }
     .background(LinearGradient(colors: [top, bottom], startPoint: .topLeading, endPoint: .bottomTrailing))
     .accessibilityHidden(true)
-  }
-}
-
-extension LibraryItem {
-  var craftSystemImage: String {
-    switch self {
-    case .diamond: LibrarySection.diamonds.systemImage
-    case .book: LibrarySection.books.systemImage
-    case .page: LibrarySection.pages.systemImage
-    }
   }
 }
