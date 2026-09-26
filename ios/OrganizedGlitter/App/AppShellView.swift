@@ -1,11 +1,10 @@
 import SwiftUI
 
 enum AppTab: Hashable {
-  case overview
+  case home
   case library
-  case create
-  case randomizer
-  case account
+  case craft(LibrarySection)
+  case search
 }
 
 struct AppShellView: View {
@@ -13,7 +12,10 @@ struct AppShellView: View {
   let client: PocketBaseClient
   let user: UserRecord
 
-  @State private var selectedTab: AppTab = .overview
+  @Environment(\.horizontalSizeClass) private var sizeClass
+
+  @State private var selectedTab: AppTab = .home
+  @State private var isShowingAccount = false
   @State private var libraryRefresh = LibraryRefresh()
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
@@ -34,61 +36,97 @@ struct AppShellView: View {
 
   var body: some View {
     TabView(selection: $selectedTab) {
-      Tab("Overview", systemImage: "house", value: .overview) {
+      Tab("Home", systemImage: "house", value: .home) {
         NavigationStack {
           OverviewView(
             client: client, userID: user.id, verticals: accountPreferences.verticals,
             onLibraryRequest: { request in
               libraryRequest = request
-              selectedTab = .library
+              selectedTab = sizeClass == .regular ? .craft(request.section) : .library
             },
             onSessionExpired: { await model.expireSession() }
           )
+          .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+              Button("Account", systemImage: "person.crop.circle") {
+                isShowingAccount = true
+              }
+              .accessibilityIdentifier("account.open")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+              CreateMenu(
+                client: client,
+                userID: user.id,
+                verticals: accountPreferences.verticals,
+                onRefresh: { libraryRefresh.bump() },
+                onSaved: { _ in libraryRefresh.bump() }
+              )
+            }
+          }
         }
       }
 
-      Tab("Library", systemImage: "square.grid.2x2", value: .library) {
-        LibraryView(
-          client: client,
-          userID: user.id,
-          libraryRefresh: libraryRefresh,
-          verticals: accountPreferences.verticals,
-          request: libraryRequest,
-          onSessionExpired: { await model.expireSession() }
-        )
-      }
-
-      Tab("Create", systemImage: "plus.circle.fill", value: .create) {
-        NavigationStack {
-          QuickCreateView(
-            client: client,
-            userID: user.id,
-            libraryRefresh: libraryRefresh,
-            verticals: accountPreferences.verticals
-          )
+      // ponytail: iPad lists crafts as sidebar rows so Library never nests a
+      // second sidebar; compact width keeps one Library tab with a craft
+      // picker. `defaultVisibility(_:for:)` doesn't hide tabs on iPhone.
+      if sizeClass == .regular {
+        TabSection("Library") {
+          ForEach(LibrarySection.available(for: accountPreferences.verticals)) { section in
+            Tab(section.pickerTitle, systemImage: section.systemImage, value: AppTab.craft(section)) {
+              library(.craft(section))
+            }
+          }
+        }
+      } else {
+        Tab("Library", systemImage: "books.vertical", value: .library) {
+          library(.browse)
         }
       }
 
-      Tab("Randomizer", systemImage: "shuffle", value: .randomizer) {
-        NavigationStack {
-          RandomizerView()
-        }
-      }
-
-      Tab("Account", systemImage: "person.crop.circle", value: .account) {
-        NavigationStack {
-          AccountView(
-            appModel: model,
-            client: client,
-            preferences: accountPreferences
-          )
+      if LibraryPresentation.hasSearchTab {
+        Tab(value: .search, role: .search) {
+          library(.search)
         }
       }
     }
     .tabViewStyle(.sidebarAdaptable)
+    .onChange(of: sizeClass) { _, sizeClass in
+      switch (sizeClass, selectedTab) {
+      case (.regular, .library):
+        if let first = LibrarySection.available(for: accountPreferences.verticals).first {
+          selectedTab = .craft(first)
+        }
+      case (.compact, .craft):
+        selectedTab = .library
+      default:
+        break
+      }
+    }
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
+    .sheet(isPresented: $isShowingAccount) {
+      NavigationStack {
+        AccountView(appModel: model, client: client, preferences: accountPreferences)
+          .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Done") { isShowingAccount = false }
+            }
+          }
+      }
+    }
+  }
+
+  private func library(_ presentation: LibraryPresentation) -> some View {
+    LibraryView(
+      client: client,
+      userID: user.id,
+      presentation: presentation,
+      libraryRefresh: libraryRefresh,
+      verticals: accountPreferences.verticals,
+      request: libraryRequest,
+      onSessionExpired: { await model.expireSession() }
+    )
   }
 }

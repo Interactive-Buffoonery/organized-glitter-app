@@ -64,15 +64,27 @@ final class OrganizedGlitterUITests: XCTestCase {
     )
   }
 
-  func testAuthenticatedShellShowsFiveDestinations() {
+  func testAuthenticatedShellShowsDestinationsAndToolbarActions() {
     let app = XCUIApplication()
     app.launchArguments.append("-ui-testing-authenticated")
     app.launch()
 
-    for label in ["Overview", "Library", "Create", "Randomizer", "Account"] {
+    for label in ["Home", "Library", "Search"] {
       let destination = app.descendants(matching: .any)[label]
       XCTAssertTrue(destination.waitForExistence(timeout: 2), "\(label) is missing")
     }
+    XCTAssertFalse(app.tabBars.buttons["Create"].exists)
+    XCTAssertFalse(app.tabBars.buttons["Randomizer"].exists)
+
+    app.buttons["create.menu"].tap()
+    XCTAssertTrue(app.buttons["create.diamond"].waitForExistence(timeout: 2))
+    app.buttons["create.diamond"].tap()
+    XCTAssertTrue(app.navigationBars.buttons["Cancel"].waitForExistence(timeout: 3))
+    app.navigationBars.buttons["Cancel"].tap()
+
+    app.buttons["account.open"].tap()
+    XCTAssertTrue(app.staticTexts["Profile name"].waitForExistence(timeout: 3))
+    app.buttons["Done"].tap()
   }
 
   func testSeededBackendLoadsOverviewAndLibrary() throws {
@@ -215,7 +227,10 @@ final class OrganizedGlitterUITests: XCTestCase {
     if library.exists {
       library.tap()
     }
-    let search = app.textFields["library.search"]
+    if app.buttons["Search"].firstMatch.exists {
+      app.buttons["Search"].firstMatch.tap()
+    }
+    let search = app.searchFields.firstMatch
     guard search.waitForExistence(timeout: 3) else { return }
     search.tap()
     search.typeText("\(title)\n")

@@ -38,12 +38,11 @@ final class LibraryUITests: XCTestCase {
     try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone peer craft browsing.")
     let app = launch("populated")
     openLibrary(app)
-    XCTAssertTrue(app.textFields["library.search"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Garden of stars"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["Diamond art"].exists)
     XCTAssertTrue(app.buttons["Books"].exists)
     XCTAssertTrue(app.buttons["Pages"].exists)
-    XCTAssertTrue(app.buttons["Add diamond painting project"].exists)
+    XCTAssertTrue(app.buttons["create.menu"].exists)
     try capture(app, "library-diamonds")
 
     app.buttons["Books"].tap()
@@ -80,7 +79,7 @@ final class LibraryUITests: XCTestCase {
       XCTAssertTrue(app.staticTexts[label].waitForExistence(timeout: 5))
       XCTAssertFalse(app.navigationBars.buttons["Add"].exists)
       if scenario == "empty" {
-        XCTAssertTrue(app.buttons["Add diamond painting project"].exists)
+        XCTAssertTrue(app.buttons["create.menu"].exists)
       }
       try capture(app, "library-\(scenario)")
       if scenario == "error" {
@@ -91,20 +90,22 @@ final class LibraryUITests: XCTestCase {
     }
   }
 
-  func testIPadKeepsCraftSidebar() throws {
+  func testIPadListsCraftsInOneSidebar() throws {
     guard UIDevice.current.userInterfaceIdiom == .pad else {
       throw XCTSkip("iPad sidebar review.")
     }
     let app = launch("populated")
-    openLibrary(app)
-    XCTAssertTrue(app.staticTexts["Garden of stars"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Diamond art"].exists)
-    XCTAssertTrue(app.staticTexts["Books"].exists)
-    XCTAssertTrue(app.staticTexts["Pages"].exists)
-    XCTAssertFalse(app.segmentedControls.firstMatch.exists)
-    XCTAssertFalse(app.navigationBars.buttons["Add"].exists)
-    app.staticTexts["Books"].tap()
+    let books = app.cells["Books"]
+    if !books.waitForExistence(timeout: 2) {
+      app.buttons["ToggleSideBar"].tap()
+    }
+    XCTAssertTrue(books.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.cells["Diamond art"].exists)
+    XCTAssertTrue(app.cells["Pages"].exists)
+    books.tap()
     XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["library.craft"].exists)
+    XCTAssertTrue(app.buttons["create.menu"].exists)
     try capture(app, "library-ipad-sidebar")
   }
 
@@ -155,12 +156,14 @@ final class LibraryUITests: XCTestCase {
           && blueHour.frame.minX < citrusGrove.frame.minX)
     )
 
-    let search = app.textFields["library.search"]
+    app.buttons["Search"].firstMatch.tap()
+    XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
+    let search = app.searchFields.firstMatch
+    XCTAssertTrue(search.waitForExistence(timeout: 5))
     search.tap()
     search.typeText("Citrus\n")
-    XCTAssertTrue(citrusGrove.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Citrus grove"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Blue hour"].exists)
-    app.buttons["library.search.clear"].tap()
-    XCTAssertTrue(app.staticTexts["Blue hour"].waitForExistence(timeout: 5))
+    try capture(app, "library-search")
   }
 }

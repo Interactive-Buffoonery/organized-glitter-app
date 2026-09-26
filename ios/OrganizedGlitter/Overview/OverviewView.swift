@@ -251,7 +251,7 @@ struct OverviewView: View {
       theme.themedBackground.ignoresSafeArea()
     }
     .refreshable { await model.load() }
-    .navigationTitle("Overview")
+    .navigationTitle("Home")
     .navigationDestination(for: LibraryItem.self) { item in
       LibraryItemDetailDestination(
         item: item,

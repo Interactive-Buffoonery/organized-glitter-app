@@ -3,13 +3,11 @@ import SwiftUI
 struct LibraryView: View {
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
-  @Environment(\.horizontalSizeClass) private var sizeClass
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
-  @State private var editorTarget: LibraryEditorTarget?
-  @State private var columnVisibility: NavigationSplitViewVisibility = .all
+  let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
   let request: LibraryRequest?
@@ -17,6 +15,7 @@ struct LibraryView: View {
   init(
     client: PocketBaseClient,
     userID: String,
+    presentation: LibraryPresentation = .browse,
     libraryRefresh: LibraryRefresh,
     verticals: VerticalPreferences = .defaultValue,
     request: LibraryRequest? = nil,
@@ -24,85 +23,67 @@ struct LibraryView: View {
   ) {
     let model = LibraryModel(client: client, userID: userID)
     model.onSessionExpired = onSessionExpired
-    if let request {
+    if case .craft(let section) = presentation {
+      model.select(section)
+    } else {
+      model.align(to: verticals)
+    }
+    if let request, presentation.accepts(request) {
       model.apply(request)
     }
-    model.align(to: verticals)
     _model = State(initialValue: model)
+    self.presentation = presentation
     self.libraryRefresh = libraryRefresh
     self.verticals = verticals
     self.request = request
   }
 
   var body: some View {
-    Group {
-      if sizeClass == .regular {
-        padLibrary
-      } else {
-        phoneLibrary
-      }
-    }
-    .task(id: "\(model.listingIdentity)|\(libraryRefresh.generation)") {
-      path = []
-      await model.load()
-    }
-    .onChange(of: request) { _, request in
-      guard let request else { return }
-      path = []
-      model.apply(request)
-    }
-    .onChange(of: verticals) { _, next in
-      let previous = model.listingIdentity
-      model.align(to: next)
-      if model.listingIdentity != previous {
-        path = []
-      }
-    }
-    .sheet(item: $editorTarget) { target in
-      editor(for: target)
-    }
-  }
-
-  private var phoneLibrary: some View {
     NavigationStack(path: $path) {
-      browsingScroll(showsCraftPicker: true)
+      browsingScroll
         .navigationDestination(for: LibraryItem.self) { item in
           detail(for: item)
         }
     }
-  }
-
-  private var padLibrary: some View {
-    NavigationSplitView(columnVisibility: $columnVisibility) {
-      List(LibrarySection.available(for: verticals), selection: sectionSelection) { section in
-        Label(section.pickerTitle, systemImage: section.systemImage)
-          .tag(section)
-      }
-      .listStyle(.sidebar)
-      .themedScrollBackground()
-    } detail: {
-      NavigationStack(path: $path) {
-        browsingScroll(showsCraftPicker: false)
-          .navigationDestination(for: LibraryItem.self) { item in
-            detail(for: item)
-          }
+    .task(id: "\(model.listingIdentity)|\(libraryRefresh.generation)") {
+      path = []
+      guard !isAwaitingSearch else { return }
+      await model.load()
+    }
+    .onChange(of: request) { _, request in
+      guard let request, presentation.accepts(request) else { return }
+      path = []
+      model.apply(request)
+    }
+    .onChange(of: verticals) { _, next in
+      guard case .craft = presentation else {
+        let previous = model.listingIdentity
+        model.align(to: next)
+        if model.listingIdentity != previous {
+          path = []
+        }
+        return
       }
     }
-    .navigationSplitViewStyle(.balanced)
   }
 
-  private func browsingScroll(showsCraftPicker: Bool) -> some View {
-    return ScrollView {
-      LazyVStack(alignment: .leading, spacing: 12) {
-        searchField
+  /// The search tab shows a prompt until something has been searched.
+  private var isAwaitingSearch: Bool {
+    presentation == .search && model.committedSearch.isEmpty
+  }
 
-        if showsCraftPicker {
+  @ViewBuilder
+  private var browsingScroll: some View {
+    let scroll = ScrollView {
+      LazyVStack(alignment: .leading, spacing: 12) {
+        if presentation.showsCraftPicker {
           craftPicker
         }
 
-        filterControls
+        if presentation != .search {
+          filterControls
+        }
         libraryBody
-        createAction
       }
       .frame(maxWidth: 760, alignment: .leading)
       .padding(.horizontal, 20)
@@ -111,9 +92,28 @@ struct LibraryView: View {
       .frame(maxWidth: .infinity)
     }
     .refreshable { await model.load() }
-    .navigationTitle("Library")
+    .navigationTitle(presentation.title)
     .background {
       theme.themedBackground.ignoresSafeArea()
+    }
+    .toolbar {
+      if presentation != .search {
+        ToolbarItem(placement: .topBarTrailing) {
+          CreateMenu(
+            client: model.client,
+            userID: model.userID,
+            verticals: verticals,
+            onRefresh: { await model.load() },
+            onSaved: { item in
+              if item.section == model.section {
+                Task { await selectSaved(item) }
+              } else {
+                libraryRefresh.bump()
+              }
+            }
+          )
+        }
+      }
     }
     .overlay(alignment: .bottom) {
       if model.isLoading, model.hasLoaded {
@@ -127,41 +127,21 @@ struct LibraryView: View {
         AccessibilityNotification.Announcement("Loading more library items").post()
       }
     }
-  }
 
-  private var searchField: some View {
-    @Bindable var model = model
-    return HStack(spacing: 10) {
-      Image(systemName: "magnifyingglass")
-        .foregroundStyle(theme.pageSecondaryForeground)
-        .accessibilityHidden(true)
-      TextField(searchPrompt, text: $model.searchText)
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
-        .submitLabel(.search)
-        .accessibilityIdentifier("library.search")
-        .accessibilityHint(searchHint)
-        .onSubmit {
+    if presentation.isSearchable {
+      scroll
+        .searchable(text: Bindable(model).searchText, prompt: searchPrompt)
+        .onSubmit(of: .search) {
           Task { await model.load() }
         }
-      if !model.searchText.isEmpty {
-        Button {
-          Task { await model.clearSearch() }
-        } label: {
-          Image(systemName: "xmark.circle.fill")
-            .foregroundStyle(theme.pageSecondaryForeground)
-            .frame(width: 44, height: 44)
-            .contentShape(.rect)
+        .onChange(of: model.searchText) { _, text in
+          if text.isEmpty {
+            Task { await model.clearSearch() }
+          }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Clear search")
-        .accessibilityIdentifier("library.search.clear")
-      }
+    } else {
+      scroll
     }
-    .padding(.horizontal, 12)
-    .frame(minHeight: 44)
-    .background(theme.card, in: .rect(cornerRadius: 12))
-    .accessibilityElement(children: .contain)
   }
 
   private var craftPicker: some View {
@@ -294,6 +274,13 @@ struct LibraryView: View {
         retryButton
       }
       .frame(minHeight: 280)
+    } else if isAwaitingSearch {
+      ContentUnavailableView(
+        "Search your library",
+        systemImage: "magnifyingglass",
+        description: Text("Find projects, books, and pages by title, artist, or company.")
+      )
+      .frame(minHeight: 280)
     } else if model.isLoading, !model.hasLoaded {
       ProgressView("Loading \(model.section.rawValue.lowercased())")
         .frame(maxWidth: .infinity, minHeight: 220)
@@ -353,38 +340,6 @@ struct LibraryView: View {
   }
 
   @ViewBuilder
-  private var createAction: some View {
-    if let action = createDestination {
-      Button {
-        editorTarget = action.target
-      } label: {
-        Label(action.title, systemImage: "plus")
-          .frame(maxWidth: .infinity, alignment: .leading)
-      }
-      .buttonStyle(QuietActionStyle())
-    }
-  }
-
-  private var createDestination: (title: String, target: LibraryEditorTarget)? {
-    switch model.section {
-    case .diamonds: ("Add diamond painting project", .newDiamond)
-    case .books: ("Add coloring book", .newBook)
-    case .pages: nil
-    }
-  }
-
-  private var sectionSelection: Binding<LibrarySection?> {
-    Binding(
-      get: { model.section },
-      set: { newSection in
-        if let newSection {
-          model.select(newSection)
-        }
-      }
-    )
-  }
-
-  @ViewBuilder
   private func detail(for item: LibraryItem) -> some View {
     LibraryItemDetailDestination(
       item: item,
@@ -392,28 +347,6 @@ struct LibraryView: View {
       userID: model.userID,
       onCollectionChanged: { await model.load() }
     )
-  }
-
-  @ViewBuilder
-  private func editor(for target: LibraryEditorTarget) -> some View {
-    switch target {
-    case .newDiamond:
-      DiamondProjectEditor(
-        client: model.client,
-        userID: model.userID,
-        onLibraryRefresh: { await model.load() }
-      ) { saved in
-        Task { await selectSaved(.diamond(saved)) }
-      }
-    case .newBook:
-      ColoringBookEditor(
-        client: model.client,
-        userID: model.userID,
-        onLibraryRefresh: { await model.load() }
-      ) { saved in
-        Task { await selectSaved(.book(saved)) }
-      }
-    }
   }
 
   private func selectSaved(_ item: LibraryItem) async {
@@ -429,26 +362,6 @@ struct LibraryView: View {
     case .diamonds: "Search diamond art"
     case .books: "Search books"
     case .pages: "Search pages"
-    }
-  }
-
-  private var searchHint: String {
-    switch model.section {
-    case .diamonds: "Search titles, artists, or companies"
-    case .books: "Search titles, publishers, or illustrators"
-    case .pages: "Search by book title or page number"
-    }
-  }
-}
-
-private enum LibraryEditorTarget: Identifiable {
-  case newDiamond
-  case newBook
-
-  var id: String {
-    switch self {
-    case .newDiamond: "new-diamond"
-    case .newBook: "new-book"
     }
   }
 }
