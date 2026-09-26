@@ -252,7 +252,7 @@ struct DiamondProjectDetailView: View {
   }
 }
 
-private struct DiamondProgressNoteEditor: View {
+struct DiamondProgressNoteEditor: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
 
