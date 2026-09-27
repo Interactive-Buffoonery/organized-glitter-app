@@ -55,6 +55,7 @@ final class LibraryItemDetailModel {
   private var generation = 0
   private var unresolvedDiamondWriteIncludesPhoto = false
   private static let bookPagesPerPage = 24
+  static let projectExpand = "company,artist,project_tags_via_project.tag"
 
   init(item: LibraryItem, client: PocketBaseClient, userID: String) {
     self.item = item
@@ -81,7 +82,7 @@ final class LibraryItemDetailModel {
         async let projectRequest: DiamondProjectRecord = client.get(
           collection: "projects",
           id: project.id,
-          expand: "company,artist"
+          expand: Self.projectExpand
         )
         async let notesRequest: RecordList<DiamondProgressNoteRecord> = client.list(
           collection: "progress_notes",
@@ -305,6 +306,38 @@ final class LibraryItemDetailModel {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to delete this item.",
         fallback: "The item could not be deleted. Try again."
+      )
+      return false
+    }
+  }
+
+  /// Plain status PATCH, matching the web. Dates stay as the user set them.
+  func setStatus(_ status: String) async -> Bool {
+    guard !isMutating, unresolvedWriteState == nil, item.status != status else { return false }
+    isMutating = true
+    mutationErrorMessage = nil
+    defer { isMutating = false }
+    let patch = ["status": status]
+    do {
+      let saved: LibraryItem
+      switch item {
+      case .diamond(let project):
+        saved = .diamond(try await client.update(collection: "projects", id: project.id, body: patch))
+      case .book(let book):
+        saved = .book(
+          try await client.update(collection: "coloring_books", id: book.id, body: patch))
+      case .page:
+        return false
+      }
+      item = saved.retainingListingContext(from: item)
+      await load()
+      return true
+    } catch APIError.cancelled {
+      return false
+    } catch {
+      mutationErrorMessage = error.userMessage(
+        permission: "Your account does not have permission to change the status.",
+        fallback: "The status could not be changed. Try again."
       )
       return false
     }
