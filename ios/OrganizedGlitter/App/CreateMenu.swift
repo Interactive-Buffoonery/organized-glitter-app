@@ -3,6 +3,7 @@ import SwiftUI
 /// The toolbar `+`. Create is an action, not a destination, so it lives here
 /// instead of in a tab. Coloring pages are created from their book.
 struct CreateMenu: View {
+  @Environment(\.connectionAvailable) private var connectionAvailable
   let library: LibrarySession
   let verticals: VerticalPreferences
   let onRefresh: () async -> Void
@@ -12,6 +13,9 @@ struct CreateMenu: View {
 
   var body: some View {
     Menu {
+      if !connectionAvailable {
+        Text("New items need a connection")
+      }
       if verticals.diamondPainting {
         Button("Diamond painting project", systemImage: "diamond") { target = .diamond }
           .accessibilityIdentifier("create.diamond")
