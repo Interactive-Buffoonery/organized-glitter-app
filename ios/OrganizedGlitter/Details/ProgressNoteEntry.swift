@@ -55,9 +55,9 @@ struct ProgressNoteEntry: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Open progress photo from \(formattedDate)")
         } else if let viewer {
-          Button { viewer.open(note.recordID) } label: { photo }
+          Button { viewer.open(note.id) } label: { photo }
             .buttonStyle(.plain)
-            .matchedTransitionSource(id: note.recordID, in: viewer.namespace)
+            .matchedTransitionSource(id: note.id, in: viewer.namespace)
             .accessibilityLabel("Open progress photo from \(formattedDate)")
         } else {
           photo
@@ -307,7 +307,7 @@ struct ProgressNotesSection: View {
         let fullSize = protectedFiles?.photoURL(for: note)
       else { return nil }
       return DetailPhoto(
-        id: note.recordID, url: thumbnail, fullSizeURL: fullSize,
+        id: note.id, url: thumbnail, fullSizeURL: fullSize,
         accessibilityLabel: "Progress photo from \(DetailDateOnly.formatted(note.date) ?? note.date)",
         date: DetailDateOnly.formatted(note.date), caption: note.content.nonEmpty)
     }
