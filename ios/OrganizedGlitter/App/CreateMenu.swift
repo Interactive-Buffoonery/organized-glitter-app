@@ -13,11 +13,11 @@ struct CreateMenu: View {
   var body: some View {
     Menu {
       if verticals.diamondPainting {
-        Button("Diamond painting project", systemImage: "sparkles.rectangle.stack") { target = .diamond }
+        Button("Diamond painting project", systemImage: LibrarySection.diamonds.systemImage) { target = .diamond }
           .accessibilityIdentifier("create.diamond")
       }
       if verticals.coloringBooks {
-        Button("Coloring book", systemImage: "books.vertical") { target = .book }
+        Button("Coloring book", systemImage: LibrarySection.books.systemImage) { target = .book }
           .accessibilityIdentifier("create.book")
       }
     } label: {
