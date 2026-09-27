@@ -11,6 +11,7 @@ struct ProfileNameView: View {
         .textContentType(.nickname)
         .autocorrectionDisabled()
         .accessibilityLabel("Profile name")
+      NeedsConnectionHint()
     }
     .navigationTitle("Profile Name")
     .toolbar {
