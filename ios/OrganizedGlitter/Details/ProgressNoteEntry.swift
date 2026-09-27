@@ -124,18 +124,21 @@ struct ProgressNoteEntry: View {
       switch phase {
       case .success(let image):
         image.resizable().scaledToFit()
+          .frame(maxWidth: .infinity)
           .accessibilityLabel("Progress photo from \(formattedDate)")
       case .failure:
         photoPlaceholder("Photo unavailable", systemImage: "photo.badge.exclamationmark")
+          .aspectRatio(4 / 5, contentMode: .fit)
       case .empty:
         photoPlaceholder("Loading photo", systemImage: "photo")
+          .aspectRatio(4 / 5, contentMode: .fit)
           .overlay { ProgressView().accessibilityHidden(true) }
       @unknown default:
         photoPlaceholder("Photo unavailable", systemImage: "photo")
+          .aspectRatio(4 / 5, contentMode: .fit)
       }
     }
     .frame(maxWidth: .infinity)
-    .aspectRatio(4 / 5, contentMode: .fit)
     .background(theme.muted.opacity(0.45))
     .clipShape(.rect(cornerRadius: Theme.Radius.medium))
   }
@@ -408,7 +411,7 @@ struct ProgressNoteEditor: View {
         .listRowBackground(theme.card)
       }
       .themedScrollBackground()
-      .navigationTitle("Add progress note")
+      .navigationTitle("Log progress")
       .navigationBarTitleDisplayMode(.inline)
       .interactiveDismissDisabled(model.isMutating)
       .accessibilityIdentifier("detail.progress.noteEditor")
