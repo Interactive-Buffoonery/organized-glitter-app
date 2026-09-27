@@ -7,6 +7,7 @@ struct PasswordResetConfirmationView: View {
   let client: PocketBaseClient?
   let link: PasswordResetLink
   let onConfirmed: @MainActor () async -> Void
+  let onOutcomeUnknown: @MainActor () async -> Void
 
   @State private var password = ""
   @State private var passwordConfirmation = ""
@@ -21,11 +22,13 @@ struct PasswordResetConfirmationView: View {
   init(
     client: PocketBaseClient?,
     link: PasswordResetLink,
-    onConfirmed: @escaping @MainActor () async -> Void
+    onConfirmed: @escaping @MainActor () async -> Void,
+    onOutcomeUnknown: @escaping @MainActor () async -> Void
   ) {
     self.client = client
     self.link = link
     self.onConfirmed = onConfirmed
+    self.onOutcomeUnknown = onOutcomeUnknown
     _presentation = State(initialValue: link == .invalid ? .invalidLink : .form)
   }
 
@@ -34,6 +37,7 @@ struct PasswordResetConfirmationView: View {
     case invalidLink
     case requestNewLink
     case complete
+    case outcomeUnknown
   }
 
   private enum Field {
@@ -95,6 +99,8 @@ struct PasswordResetConfirmationView: View {
       "Reset password"
     case .complete:
       "Password updated"
+    case .outcomeUnknown:
+      "Check your password reset"
     }
   }
 
@@ -109,6 +115,8 @@ struct PasswordResetConfirmationView: View {
       EmptyView()
     case .complete:
       completion
+    case .outcomeUnknown:
+      uncertainOutcome
     }
   }
 
@@ -190,6 +198,28 @@ struct PasswordResetConfirmationView: View {
     .accessibilityIdentifier("passwordResetContinue")
   }
 
+  @ViewBuilder
+  private var uncertainOutcome: some View {
+    Text("We couldn’t confirm whether your password was reset. Try signing in with your new password. If it doesn’t work, request a new reset link.")
+      .font(.body)
+      .foregroundStyle(theme.foreground)
+      .accessibilityFocused($isOutcomeFocused)
+      .accessibilityIdentifier("passwordResetOutcomeUnknown")
+
+    Button("Try signing in") {
+      dismiss()
+    }
+    .buttonStyle(AuthPrimaryButtonStyle())
+    .accessibilityIdentifier("passwordResetTrySignIn")
+
+    Button("Request a new reset link") {
+      presentation = .requestNewLink
+    }
+    .buttonStyle(AuthLinkButtonStyle())
+    .disabled(client == nil)
+    .accessibilityIdentifier("passwordResetRequestNewLink")
+  }
+
   private func startConfirmation() {
     guard confirmationTask == nil else { return }
     submitGeneration += 1
@@ -255,14 +285,26 @@ struct PasswordResetConfirmationView: View {
         presentation = .invalidLink
         announceInvalidLink()
       case .offline:
-        errorMessage = "You appear to be offline. Reconnect and try again."
+        await showUncertainOutcome(generation: generation)
       case .server, .decoding, .emailUnverified:
-        errorMessage = "Your password could not be reset. Try again."
+        await showUncertainOutcome(generation: generation)
       }
     } catch {
       guard generation == submitGeneration else { return }
-      errorMessage = "Your password could not be reset. Try again."
+      await showUncertainOutcome(generation: generation)
     }
+  }
+
+  private func showUncertainOutcome(generation: Int) async {
+    password = ""
+    passwordConfirmation = ""
+    await onOutcomeUnknown()
+    guard generation == submitGeneration else { return }
+    presentation = .outcomeUnknown
+    isOutcomeFocused = true
+    AccessibilityNotification.Announcement(
+      "We couldn’t confirm whether your password was reset. Try signing in with your new password."
+    ).post()
   }
 
   private func announceInvalidLink() {

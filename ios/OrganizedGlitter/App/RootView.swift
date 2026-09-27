@@ -39,7 +39,8 @@ struct RootView: View {
       PasswordResetConfirmationView(
         client: model.client,
         link: destination.link,
-        onConfirmed: model.passwordResetConfirmed
+        onConfirmed: model.passwordResetConfirmed,
+        onOutcomeUnknown: model.passwordResetConfirmed
       )
     }
   }
