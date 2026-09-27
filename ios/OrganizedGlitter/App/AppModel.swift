@@ -6,6 +6,19 @@ import Observation
 @MainActor
 @Observable
 final class AppModel {
+  enum AppleReadiness: Equatable {
+    case loading
+    case available
+    case unavailable
+    case failed
+  }
+
+  private struct AppleAttempt {
+    let generation: Int
+    let state: String
+    let nonce: AppleSignInNonce
+  }
+
   enum Phase: Equatable {
     case restoring
     case cleaningLocalData
@@ -37,6 +50,9 @@ final class AppModel {
   @ObservationIgnored private var oauthTask: Task<Void, Never>?
   @ObservationIgnored private var oauthTimeoutTask: Task<Void, Never>?
   @ObservationIgnored private var oauthBrowser: OAuthWebSession?
+  @ObservationIgnored private var appleTask: Task<Void, Never>?
+  @ObservationIgnored private var appleAttempt: AppleAttempt?
+  @ObservationIgnored private var appleReadinessGeneration = 0
 
   var phase: Phase {
     didSet {
@@ -45,6 +61,8 @@ final class AppModel {
   }
   var signInError: String?
   var oauthError: String?
+  var appleError: String?
+  var appleReadiness: AppleReadiness = .loading
   var socialProviders: [SocialProvider] = []
   var isSubmitting = false
   var passwordResetDestination: PasswordResetDestination?
@@ -251,6 +269,119 @@ final class AppModel {
       socialProviders = providers.compactMap { SocialProvider(rawValue: $0.name) }
     } catch {
       socialProviders = []
+    }
+  }
+
+  func loadAppleReadiness() async {
+    guard let client else {
+      appleReadiness = .unavailable
+      return
+    }
+    appleReadinessGeneration &+= 1
+    let generation = appleReadinessGeneration
+    appleReadiness = .loading
+    do {
+      let available = try await client.appleNativeReadiness()
+      guard generation == appleReadinessGeneration, case .signedOut = phase else { return }
+      appleReadiness = available ? .available : .unavailable
+    } catch {
+      guard generation == appleReadinessGeneration, case .signedOut = phase else { return }
+      appleReadiness = .failed
+    }
+  }
+
+  func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
+    guard appleReadiness == .available else { return }
+    let generation = beginSessionTransition()
+    appleError = nil
+    do {
+      let nonce = try AppleSignInNonce.generate()
+      let state = UUID().uuidString
+      appleAttempt = AppleAttempt(generation: generation, state: state, nonce: nonce)
+      request.requestedScopes = [.fullName, .email]
+      request.nonce = nonce.digest
+      request.state = state
+      isSubmitting = true
+    } catch {
+      appleError = "Apple sign-in could not start securely. Try again."
+      isSubmitting = false
+    }
+  }
+
+  func completeAppleAuthorization(_ result: Result<ASAuthorization, Error>) {
+    guard let attempt = appleAttempt, attempt.generation == sessionGeneration else { return }
+    switch result {
+    case .failure(let error):
+      appleAttempt = nil
+      isSubmitting = false
+      if (error as? ASAuthorizationError)?.code != .canceled {
+        appleError = "Apple sign-in could not finish. Try again."
+      }
+    case .success(let authorization):
+      guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+        credential.state == attempt.state,
+        let codeData = credential.authorizationCode,
+        let code = String(data: codeData, encoding: .utf8),
+        !code.isEmpty,
+        let client
+      else {
+        appleAttempt = nil
+        isSubmitting = false
+        appleError = "Apple did not provide a valid authorization. Try again."
+        return
+      }
+      let name = AppleNativeName(fullName: credential.fullName)
+      appleTask = Task {
+        defer {
+          if attempt.generation == sessionGeneration {
+            appleTask = nil
+            appleAttempt = nil
+            isSubmitting = false
+          }
+        }
+        do {
+          let session = try await client.signInWithApple(
+            code: code,
+            nonce: attempt.nonce.raw,
+            name: name
+          )
+          guard attempt.generation == sessionGeneration else { return }
+          phase = .signedIn(session.user)
+          applyThemePreference(from: session.user)
+        } catch is CancellationError {
+          return
+        } catch APIError.cancelled {
+          return
+        } catch {
+          guard attempt.generation == sessionGeneration else { return }
+          appleError = Self.appleMessage(for: error)
+        }
+      }
+    }
+  }
+
+  func cancelAppleSignIn() {
+    guard appleAttempt != nil || appleTask != nil else { return }
+    _ = beginSessionTransition()
+    isSubmitting = false
+  }
+
+  private static func appleMessage(for error: Error) -> String {
+    switch error {
+    case AppleSignInError.invalidCredential, AppleSignInError.invalidAuthorization:
+      return "Apple did not complete sign-in. Start a new Apple sign-in and try again."
+    case AppleSignInError.rateLimited:
+      return "Too many Apple sign-in attempts. Wait a moment and try again."
+    case AppleSignInError.unavailable:
+      return "Apple sign-in is unavailable right now. Try again later or continue with email."
+    case APIError.conflict:
+      return "An account already uses this email. Sign in with its existing method, then connect Apple in web Account settings."
+    case APIError.emailUnverified:
+      return "Verify your account before signing in. You can request a new verification email with the email method."
+    case APIError.offline:
+      return APIError.offlineMessage
+    default:
+      return "Organized Glitter could not sign you in with Apple. Try again."
     }
   }
 
@@ -502,6 +633,9 @@ final class AppModel {
     oauthTask = nil
     oauthTimeoutTask = nil
     oauthBrowser = nil
+    appleTask?.cancel()
+    appleTask = nil
+    appleAttempt = nil
     sessionGeneration &+= 1
     return sessionGeneration
   }
