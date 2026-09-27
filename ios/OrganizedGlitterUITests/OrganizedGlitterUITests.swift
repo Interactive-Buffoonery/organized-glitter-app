@@ -38,6 +38,26 @@ final class OrganizedGlitterUITests: XCTestCase {
     }
   }
 
+  func testRestoringExposesStatusAndHidesAccountActions() {
+    let app = XCUIApplication()
+    app.launchArguments.append("-ui-testing-restoring")
+    app.launch()
+
+    let status = app.staticTexts["launchProgress"]
+    XCTAssertTrue(status.waitForExistence(timeout: 3))
+    XCTAssertEqual(status.label, "Opening your library")
+    XCTAssertTrue(app.descendants(matching: .any)["welcomeWordmark"].firstMatch.exists)
+    XCTAssertFalse(app.buttons["welcomeCreateAccount"].exists)
+    XCTAssertFalse(app.buttons["welcomeSignIn"].exists)
+    XCTAssertFalse(app.buttons["welcomeUseSampleData"].exists)
+
+    app.terminate()
+    app.launchArguments = ["-ui-testing-signed-out"]
+    app.launch()
+    XCTAssertTrue(app.buttons["welcomeSignIn"].waitForExistence(timeout: 3))
+    XCTAssertFalse(app.staticTexts["launchProgress"].exists)
+  }
+
   func testSignedOutAccountEntryPointsAreNative() {
     let app = XCUIApplication()
     app.launchArguments.append("-ui-testing-signed-out")

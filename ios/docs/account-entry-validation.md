@@ -42,7 +42,7 @@ The App Store / home-screen icon was regenerated from
 | Screen | Native destination | Backend contract |
 | --- | --- | --- |
 | System launch | `UILaunchScreen` + `LaunchBackground` + `LaunchWordmark` | None |
-| In-app restore | `LaunchView` while `phase == .restoring` | Keychain + `authRefresh` |
+| In-app restore | `WelcomeView` while `phase == .restoring` | Keychain + `authRefresh` |
 | Welcome | `WelcomeView` | Navigation only |
 | Method choice | `AccountMethodView` | Email only today |
 | Email sign-in | `SignInView` | `authWithPassword` |
@@ -56,9 +56,9 @@ The App Store / home-screen icon was regenerated from
 
 | Surface | Behavior |
 | --- | --- |
-| System launch screen | Solid `LaunchBackground` (`#F8E9F6` light / `#05051A` dark) with centered Caveat `LaunchWordmark` asset. |
-| In-app restoration | Caveat wordmark plus unlabeled progress (VoiceOver: “Opening your library”) only while restoring. No artificial delay. |
-| Welcome | Stacked Caveat wordmark, Create account, Sign in. Owns `NavigationStack` path. No authenticated tabs. |
+| System launch screen | Solid `LaunchBackground` (`#F8E9F6` light / `#05051A` dark) with the `LaunchWordmark` asset at Welcome's wordmark position (70pt above the safe-area center). Regenerate with `script/render-launch-wordmark.swift`. |
+| In-app restoration | Welcome's layout with twinkling sparkles and hidden actions; the themed background fades in over the launch color. VoiceOver exposes “Opening your library” as a separate `launchProgress` status after the wordmark header. Sparkles hold still with Reduce Motion. No artificial delay. |
+| Welcome | Stacked Caveat wordmark with still sparkles, Create account, Sign in. Owns `NavigationStack` path. No authenticated tabs. |
 | Method selection | Wordmark, Welcome back / Create account, Continue with email, switch link. Mode switches in place without stacking duplicate method screens. |
 | Email sign-in | Email, password, Sign in, Forgot password?, Privacy, Terms, Resend verification. Password reset and verification use the shared path, not nested `NavigationLink` destinations. |
 | Registration | Username, email, password, confirmation; success guidance after create. Sign in pops back to method choice in sign-in mode. |
