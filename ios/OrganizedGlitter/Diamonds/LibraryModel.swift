@@ -244,7 +244,7 @@ final class LibraryModel {
     if let refreshed = items.first(where: { $0.id == item.id }) {
       return refreshed
     }
-    return matchesCurrentListing(snapshot) ? snapshot : nil
+    return matchesCurrentListing(snapshot, bookTitles: ownedBookTitles()) ? snapshot : nil
   }
 
   func load(reset: Bool = true) async {
@@ -276,7 +276,8 @@ final class LibraryModel {
         displayedItems = []
         return
       }
-      let matching = library.items.filter { matchesCurrentListing($0) }
+      let bookTitles = ownedBookTitles()
+      let matching = library.items.filter { matchesCurrentListing($0, bookTitles: bookTitles) }
         .sorted(by: precedes)
       totalPages = (matching.count + Self.pageSize - 1) / Self.pageSize
       currentPage = min(requestedPage, totalPages)
@@ -356,16 +357,26 @@ final class LibraryModel {
 
   private static let pageSize = 30
 
-  private func matchesCurrentListing(_ item: LibraryItem) -> Bool {
+  private func ownedBookTitles() -> [String: String] {
+    guard section == .pages else { return [:] }
+    var titles: [String: String] = [:]
+    for item in library.items {
+      if case .book(let book) = item, book.user == userID {
+        titles[book.id] = book.title
+      }
+    }
+    return titles
+  }
+
+  private func matchesCurrentListing(
+    _ item: LibraryItem, bookTitles: [String: String]
+  ) -> Bool {
     switch (section, item) {
     case (.diamonds, .diamond(let project)) where project.user == userID:
       break
     case (.books, .book(let book)) where book.user == userID:
       break
-    case (.pages, .page(let page)) where library.items.contains(where: {
-        if case .book(let book) = $0 { return book.id == page.book && book.user == userID }
-        return false
-      }):
+    case (.pages, .page(let page)) where bookTitles[page.book] != nil:
       break
     default:
       return false
@@ -401,10 +412,7 @@ final class LibraryModel {
       if let pageNumber = Int(search) {
         return page.pageNumber == pageNumber
       }
-      let bookTitle = page.expand?.book?.title ?? library.items.compactMap { candidate -> String? in
-        if case .book(let book) = candidate, book.id == page.book { return book.title }
-        return nil
-      }.first ?? ""
+      let bookTitle = page.expand?.book?.title ?? bookTitles[page.book] ?? ""
       return bookTitle.localizedCaseInsensitiveContains(search)
     }
   }
