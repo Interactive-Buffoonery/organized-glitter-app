@@ -242,7 +242,9 @@ struct DiamondProjectDetailView: View {
           .contentShape(.rect)
       }
       .buttonStyle(.plain)
-      .foregroundStyle(theme.primary)
+      .foregroundStyle(
+        theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
+      )
       .disabled(model.isMutating || model.unresolvedWriteState != nil)
       .accessibilityIdentifier("detail.diamond.addNote")
     }
