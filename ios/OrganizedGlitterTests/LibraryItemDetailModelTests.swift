@@ -219,6 +219,33 @@ struct LibraryItemDetailModelTests {
   }
 
   @Test
+  func undecodableStatusResponseRefreshesBeforeAnotherPatch() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, "not JSON")
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, Self.bookJSON)
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records") {
+        return (200, Self.pageListJSON(id: "page-1", number: 1, totalPages: 1))
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .book(Self.book), client: client, userID: "user-1")
+
+    #expect(!(await model.setStatus("completed")))
+    #expect(model.unresolvedStatusWrite)
+    #expect(model.unresolvedWriteState == .refreshed)
+    #expect(model.item.status == "in_progress")
+    #expect(!(await model.setStatus("completed")))
+    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count == 1)
+  }
+
+  @Test
   func rejectedStatusHasDedicatedNearMenuFeedback() async throws {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)
