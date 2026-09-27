@@ -48,7 +48,7 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
 enum DetailStatusAppearance {
   static func foreground(for status: String, colorScheme: ColorScheme) -> Color {
     let dark = colorScheme == .dark
-    switch status {
+    return switch status {
     case "wishlist", "destashed": Color(hex: dark ? 0xFFE4E6 : 0x9F1239)
     case "purchased": Color(hex: dark ? 0xD9F2FF : 0x075985)
     case "stash", "in_stash": Color(hex: dark ? 0xFFEDD5 : 0x9A3412)
@@ -62,7 +62,7 @@ enum DetailStatusAppearance {
 
   static func background(for status: String, colorScheme: ColorScheme) -> Color {
     let dark = colorScheme == .dark
-    switch status {
+    return switch status {
     case "wishlist", "destashed": Color(hex: dark ? 0x6B2138 : 0xFFE4E6)
     case "purchased": Color(hex: dark ? 0x164E63 : 0xE0F2FE)
     case "stash", "in_stash": Color(hex: dark ? 0x7C2D12 : 0xFFEDD5)
