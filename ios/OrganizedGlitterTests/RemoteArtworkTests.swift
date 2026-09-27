@@ -16,7 +16,7 @@ struct RemoteArtworkTests {
     let image = try await loader.load(
       from: URL(
         string:
-          "https://overview.example.invalid/api/files/projects/design-project/design-peony.png"
+          "https://overview.example.invalid/api/files/projects/design-project/design-princesses-rapunzel.jpg"
       )!,
       maxPixelDimension: 660
     ).cgImage

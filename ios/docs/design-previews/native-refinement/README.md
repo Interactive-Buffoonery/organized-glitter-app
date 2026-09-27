@@ -13,16 +13,33 @@ Kit artwork and book covers are real product images, one imageset per
 fixture file name (`design-yorkie-roses`, `design-book-0`, and so on), loaded
 through the normal file-request path:
 
-- Diamond Art Club: Yorkie & Roses, Beachside Gathering, Divine Descent.
+- Diamond Art Club:
+  [Yorkie & Roses](https://www.diamondartclub.com/products/yorkie-roses)
+  by Maryline Cazenave,
+  [Beachside Gathering](https://www.diamondartclub.com/products/beachside-gathering-diamond-art-kit)
+  by Thomas Kinkade Studios, and
+  [Divine Descent](https://www.diamondartclub.com/products/divine-descent)
+  by Margaret Morales.
 - Hachette Heroes Mystery Colouring: Princesses, Family, Pixar, Classics.
 
-`FixtureArtwork` is original synthetic artwork still used for book page photos.
-The fixture loader selects a quadrant through the same file-request path.
+Page photos use four unchanged illustration crops (Rapunzel, Snow White, Ariel,
+and Mulan) from Hachette's official Princesses interior preview. No AI-generated
+artwork is bundled in the sample data. Sample page numbers and progress remain
+fictional; the source illustrations are solutions 29–32.
+
+- [Publisher product page](https://www.hachette.fr/livre/coloriages-mysteres-disney-princesses-9782019457150/)
+- [Original interior preview](https://media.hachette.fr/fit-in/1600x1600/contenuNumerique/968/757496-001-C.jpg?source=web)
+- Downloaded 2026-09-27. Artwork: Disney; publisher: Hachette Heroes;
+  illustrator: Jérémy Mariez.
+- Crops retain the printed illustration borders and color keys; Rapunzel and
+  Mulan are rotated upright. No generated
+  fill, repainting, or other AI processing was used.
+
+The older fictional test records reuse these product images. Unrecognized
+fixture upload filenames use the Yorkie & Roses product image as a stand-in;
+the explicit missing-image fixture still returns 404.
 
 All fixture images live in the development-only `Preview/FixtureAssets.xcassets`
 catalog, explicitly excluded from Release builds in addition to Xcode's
-`DEVELOPMENT_ASSET_PATHS` setting.
-
-Fixture generation prompt:
-
-> Generate a square 2-by-2 contact sheet of four ORIGINAL craft artworks for synthetic test fixtures in an iPhone diamond painting and coloring tracker. Exactly equal quadrants, edge-to-edge images, NO gutters, NO frames, NO captions, NO UI, NO typography. TOP LEFT: beautiful pink peonies and lilac flowers rendered as a flat finished diamond painting canvas, tiny realistic faceted square resin beads, viewed straight on so entire square composition is visible. TOP RIGHT: citrus lemons and white orange blossoms rendered as an entire finished diamond-art canvas with tiny faceted beads, straight on. BOTTOM LEFT: moonlit botanical garden colored-pencil coloring page on ivory paper, navy night sky and pale flowers with some uncolored ink linework; entire square illustration visible, no pencil objects. BOTTOM RIGHT: refined botanical coloring-book cover artwork, ivory paper, fine green fern stems and pale pink flowers around an empty central oval, NO words. Cohesive palette raspberry pink, lilac, natural green, navy; crafted tactile detail, sophisticated art, no glitter effects outside actual beads. Each quadrant stands alone and will be separately cropped at its exact quadrant edges by a debug fixture loader. This is original fictional test artwork, not user content or any existing copyrighted book cover.
+`DEVELOPMENT_ASSET_PATHS` setting. The historical generated design references
+above are documentation only and are not loaded by the app.
