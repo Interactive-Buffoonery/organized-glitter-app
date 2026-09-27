@@ -7,6 +7,7 @@ struct LibraryView: View {
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
+  @State private var firstItemTarget: CreateTarget?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -67,6 +68,13 @@ struct LibraryView: View {
     }
   }
 
+  /// A craft with nothing in it gets one prompt instead of an empty grid.
+  private var isEmptyLibrary: Bool {
+    presentation != .search && model.hasLoaded && !model.isLoading && model.items.isEmpty
+      && model.errorMessage == nil && model.statusFilter == nil
+      && model.committedSearch.isEmpty
+  }
+
   /// The search tab shows a prompt until something has been searched.
   private var isAwaitingSearch: Bool {
     presentation == .search && model.committedSearch.isEmpty
@@ -80,8 +88,8 @@ struct LibraryView: View {
           craftPicker
         }
 
-        if presentation != .search {
-          filterControls
+        if presentation != .search, !isEmptyLibrary {
+          statusChips
         }
         libraryBody
       }
@@ -98,32 +106,34 @@ struct LibraryView: View {
     }
     .toolbar {
       if presentation != .search {
+        if !isEmptyLibrary {
+          ToolbarItem(placement: .topBarTrailing) { sortMenu }
+        }
         ToolbarItem(placement: .topBarTrailing) {
           CreateMenu(
             client: model.client,
             userID: model.userID,
             verticals: verticals,
             onRefresh: { await model.load() },
-            onSaved: { item in
-              if item.section == model.section {
-                Task { await selectSaved(item) }
-              } else {
-                libraryRefresh.bump()
-              }
-            }
+            onSaved: created
           )
         }
       }
     }
+    .sheet(item: $firstItemTarget) { target in
+      CreateEditor(
+        target: target, client: model.client, userID: model.userID,
+        onRefresh: { await model.load() }, onSaved: created)
+    }
     .overlay(alignment: .bottom) {
-      if model.isLoading, model.hasLoaded {
+      if model.isLoading, !model.items.isEmpty {
         ProgressView("Loading more library items")
           .padding()
           .accessibilityAddTraits(.updatesFrequently)
       }
     }
     .onChange(of: model.isLoading) { _, isLoading in
-      if isLoading, model.hasLoaded {
+      if isLoading, !model.items.isEmpty {
         AccessibilityNotification.Announcement("Loading more library items").post()
       }
     }
@@ -170,95 +180,53 @@ struct LibraryView: View {
     .accessibilityIdentifier("library.craft")
   }
 
-  private var filterControls: some View {
-    Group {
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: 4) {
-          statusFilter(showsIcon: true)
-          sortMenu(showsTitle: true)
-        }
-      } else {
+  private var statusChips: some View {
+    ScrollViewReader { proxy in
+      ScrollView(.horizontal) {
         HStack(spacing: 8) {
-          statusFilter(showsIcon: false)
-          sortMenu(showsTitle: false)
-        }
-      }
-    }
-  }
-
-  private func statusFilter(showsIcon: Bool) -> some View {
-    Menu {
-      Button {
-        model.statusFilter = nil
-      } label: {
-        if model.statusFilter == nil {
-          Label("All statuses", systemImage: "checkmark")
-        } else {
-          Text("All statuses")
-        }
-      }
-      Divider()
-      ForEach(model.section.statusOptions, id: \.self) { status in
-        Button {
-          model.statusFilter = status
-        } label: {
-          if model.statusFilter == status {
-            Label(model.section.statusLabel(status), systemImage: "checkmark")
-          } else {
-            Text(model.section.statusLabel(status))
+          statusChip(nil, title: "All")
+          ForEach(model.section.statusOptions, id: \.self) { status in
+            statusChip(status, title: model.section.statusLabel(status))
           }
         }
+        .padding(.horizontal, 20)
       }
-    } label: {
-      HStack(spacing: 5) {
-        if showsIcon {
-          Image(systemName: "line.3.horizontal.decrease.circle")
-        }
-        Text(model.statusFilter.map(model.section.statusLabel) ?? "All statuses")
-        Image(systemName: "chevron.down")
-          .font(.caption2.weight(.semibold))
-          .accessibilityHidden(true)
+      .scrollIndicators(.hidden)
+      .onAppear { proxy.scrollTo(model.statusFilter ?? "", anchor: .center) }
+      .onChange(of: model.statusFilter) { _, status in
+        withAnimation(Theme.motion) { proxy.scrollTo(status ?? "", anchor: .center) }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .frame(minHeight: 44)
-      .contentShape(.rect)
-      .foregroundStyle(theme.foreground)
     }
-    .buttonStyle(.plain)
+    .padding(.horizontal, -20)
+    .accessibilityElement(children: .contain)
     .accessibilityLabel("Filter by status")
-    .accessibilityValue(model.statusFilter.map(model.section.statusLabel) ?? "All statuses")
-    .accessibilityIdentifier("library.status")
   }
 
-  private func sortMenu(showsTitle: Bool) -> some View {
+  @ViewBuilder
+  private func statusChip(_ status: String?, title: String) -> some View {
+    let isSelected = model.statusFilter == status
+    let chip = Button(title) { model.statusFilter = status }
+      .buttonBorderShape(.capsule)
+      .accessibilityAddTraits(isSelected ? .isSelected : [])
+      .accessibilityIdentifier("library.status.\(status ?? "all")")
+      .id(status ?? "")
+    if isSelected {
+      chip.buttonStyle(.borderedProminent).foregroundStyle(theme.primaryForeground)
+    } else {
+      chip.buttonStyle(.bordered).foregroundStyle(theme.foreground)
+    }
+  }
+
+  private var sortMenu: some View {
     Menu {
-      ForEach(model.section.sortOptions) { option in
-        Button {
-          model.sort = option
-        } label: {
-          if model.sort == option {
-            Label(option.title, systemImage: "checkmark")
-          } else {
-            Text(option.title)
-          }
+      Picker("Sort", selection: Bindable(model).sort) {
+        ForEach(model.section.sortOptions) { option in
+          Text(option.title).tag(option)
         }
       }
     } label: {
-      if showsTitle {
-        Label(model.sort.title, systemImage: "arrow.up.arrow.down")
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .frame(minHeight: 44)
-          .contentShape(.rect)
-          .foregroundStyle(theme.foreground)
-      } else {
-        Image(systemName: "arrow.up.arrow.down")
-          .frame(width: 44, height: 44)
-          .contentShape(.rect)
-          .foregroundStyle(theme.foreground)
-      }
+      Label("Sort", systemImage: "arrow.up.arrow.down")
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Sort library")
     .accessibilityValue(model.sort.title)
     .accessibilityIdentifier("library.sort")
   }
@@ -281,7 +249,7 @@ struct LibraryView: View {
         description: Text("Find projects, books, and pages by title, artist, or company.")
       )
       .frame(minHeight: 280)
-    } else if model.isLoading, !model.hasLoaded {
+    } else if model.items.isEmpty, model.isLoading || !model.hasLoaded {
       ProgressView("Loading \(model.section.rawValue.lowercased())")
         .frame(maxWidth: .infinity, minHeight: 220)
     } else {
@@ -290,16 +258,8 @@ struct LibraryView: View {
         retryButton
       }
       if model.items.isEmpty {
-        if model.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-          ContentUnavailableView(
-            "Nothing here yet",
-            systemImage: model.section.systemImage,
-            description: Text("Items in this craft and filter will appear here.")
-          )
-          .frame(minHeight: 220)
-        } else {
-          ContentUnavailableView.search(text: model.searchText)
-        }
+        emptyState
+          .frame(minHeight: 280)
       } else {
         LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
           ForEach(model.items) { item in
@@ -312,6 +272,56 @@ struct LibraryView: View {
           }
         }
       }
+    }
+  }
+
+  @ViewBuilder
+  private var emptyState: some View {
+    if !model.committedSearch.isEmpty {
+      ContentUnavailableView.search(text: model.committedSearch)
+    } else if let status = model.statusFilter {
+      ContentUnavailableView {
+        Label("Nothing \(model.section.statusLabel(status).lowercased())", systemImage: "line.3.horizontal.decrease.circle")
+      } description: {
+        Text("Try another status.")
+      } actions: {
+        Button("Show All") { model.statusFilter = nil }
+          .buttonStyle(QuietActionStyle())
+      }
+    } else {
+      switch model.section {
+      case .diamonds:
+        firstItemPrompt("Add your first kit", message: "Diamond painting projects you add appear here as covers.", target: .diamond)
+      case .books:
+        firstItemPrompt("Add your first book", message: "Coloring books you add appear here as covers.", target: .book)
+      case .pages:
+        ContentUnavailableView(
+          "No pages yet",
+          systemImage: model.section.systemImage,
+          description: Text("Pages come from your coloring books.")
+        )
+      }
+    }
+  }
+
+  private func firstItemPrompt(_ title: String, message: String, target: CreateTarget) -> some View {
+    ContentUnavailableView {
+      Label(title, systemImage: model.section.systemImage)
+    } description: {
+      Text(message)
+    } actions: {
+      Button(title) { firstItemTarget = target }
+        .buttonStyle(.borderedProminent)
+        .foregroundStyle(theme.primaryForeground)
+        .accessibilityIdentifier("library.first")
+    }
+  }
+
+  private func created(_ item: LibraryItem) {
+    if item.section == model.section {
+      Task { await selectSaved(item) }
+    } else {
+      libraryRefresh.bump()
     }
   }
 
