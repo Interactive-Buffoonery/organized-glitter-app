@@ -11,7 +11,9 @@ enum APIError: Error, Equatable {
   case decoding
   case cancelled
 
-  static func from(statusCode: Int, body: Data) -> APIError {
+  static func from(
+    statusCode: Int, body: Data, isPasswordAuthentication: Bool = false
+  ) -> APIError {
     switch statusCode {
     case 400:
       let response = try? JSONDecoder().decode(PocketBaseErrorResponse.self, from: body)
@@ -19,6 +21,13 @@ enum APIError: Error, Equatable {
     case 401:
       return .unauthenticated
     case 403:
+      if isPasswordAuthentication,
+        let response = try? JSONDecoder().decode(PocketBaseErrorResponse.self, from: body),
+        response.message
+          == "The request doesn't satisfy the collection requirements to authenticate."
+      {
+        return .emailUnverified
+      }
       return .forbidden
     case 404:
       return .notFound

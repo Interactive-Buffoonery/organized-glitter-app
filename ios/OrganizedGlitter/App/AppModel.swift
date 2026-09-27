@@ -22,10 +22,18 @@ final class AppModel {
   @ObservationIgnored let client: PocketBaseClient?
   private let sessionStore: KeychainSessionStore?
   private let themeStore: ThemeStore?
+  @ObservationIgnored private var sessionGeneration = 0
 
-  var phase: Phase
+  var phase: Phase {
+    didSet {
+      routePendingPasswordReset()
+    }
+  }
   var signInError: String?
   var isSubmitting = false
+  var passwordResetDestination: PasswordResetDestination?
+  var showsSignedInPasswordResetNotice = false
+  private var pendingPasswordResetLink: PasswordResetLink?
 
   init(client: PocketBaseClient, sessionStore: KeychainSessionStore, themeStore: ThemeStore) {
     self.client = client
@@ -39,16 +47,29 @@ final class AppModel {
       }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-signed-out") {
         phase = .signedOut
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing-password-reset") {
+          open(URL(string: "https://organizedglitter.app/auth/confirm-password-reset/fixture-token")!)
+        }
         return
       }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated")
         || UserDefaults.standard.bool(forKey: OverviewFixtureProtocol.sampleDataKey)
       {
+        let generation = beginSessionTransition()
         Task {
           do {
             let session = try await client.signIn(identity: "fixture", password: "fixture")
+            guard generation == sessionGeneration else { return }
             phase = .signedIn(session.user)
+            if ProcessInfo.processInfo.arguments.contains("-ui-testing-password-reset") {
+              open(
+                URL(
+                  string: "https://organizedglitter.app/auth/confirm-password-reset/fixture-token"
+                )!
+              )
+            }
           } catch {
+            guard generation == sessionGeneration else { return }
             phase = .restorationFailed
           }
         }
@@ -72,22 +93,30 @@ final class AppModel {
     guard let client, let sessionStore else {
       return
     }
+    let generation = beginSessionTransition()
 
     do {
       guard let storedSession = try sessionStore.load() else {
         await RemoteArtworkLoader.shared.purgeMemoryCache()
+        guard generation == sessionGeneration else { return }
         phase = .signedOut
         return
       }
 
       let session = try await client.restore(storedSession)
+      guard generation == sessionGeneration else { return }
       phase = .signedIn(session.user)
       applyThemePreference(from: session.user)
+    } catch APIError.cancelled {
+      return
     } catch APIError.offline {
+      guard generation == sessionGeneration else { return }
       phase = .offline
     } catch APIError.unauthenticated, APIError.forbidden {
+      guard generation == sessionGeneration else { return }
       await clearInvalidSession(using: sessionStore)
     } catch {
+      guard generation == sessionGeneration else { return }
       phase = .restorationFailed
     }
   }
@@ -119,16 +148,25 @@ final class AppModel {
       signInError = "Enter your email address and password."
       return
     }
+    let generation = beginSessionTransition()
 
     isSubmitting = true
     signInError = nil
-    defer { isSubmitting = false }
+    defer {
+      if generation == sessionGeneration {
+        isSubmitting = false
+      }
+    }
 
     do {
       let session = try await client.signIn(identity: trimmedIdentity, password: password)
+      guard generation == sessionGeneration else { return }
       phase = .signedIn(session.user)
       applyThemePreference(from: session.user)
+    } catch APIError.cancelled {
+      return
     } catch {
+      guard generation == sessionGeneration else { return }
       signInError = error.userFacingMessage
     }
   }
@@ -149,12 +187,50 @@ final class AppModel {
     guard let client else {
       return
     }
+    let generation = beginSessionTransition()
+    isSubmitting = false
+    signInError = nil
 
     Task {
       await client.signOut()
       await RemoteArtworkLoader.shared.purgeMemoryCache()
+      guard generation == sessionGeneration else { return }
       phase = .signedOut
     }
+  }
+
+  func open(_ url: URL) {
+    guard let link = PasswordResetLink.parse(url) else {
+      return
+    }
+    pendingPasswordResetLink = link
+    routePendingPasswordReset()
+  }
+
+  private func routePendingPasswordReset() {
+    guard phase != .restoring else { return }
+    if case .signedIn = phase {
+      guard pendingPasswordResetLink != nil || passwordResetDestination != nil else { return }
+      pendingPasswordResetLink = nil
+      passwordResetDestination = nil
+      showsSignedInPasswordResetNotice = true
+      return
+    }
+    guard let link = pendingPasswordResetLink else { return }
+    pendingPasswordResetLink = nil
+    passwordResetDestination = PasswordResetDestination(link: link)
+  }
+
+  func passwordResetConfirmed() async {
+    guard let client else {
+      return
+    }
+    let generation = beginSessionTransition()
+    isSubmitting = false
+    signInError = nil
+    await client.signOut()
+    guard generation == sessionGeneration else { return }
+    phase = .signedOut
   }
 
   func replaceSignedInUser(_ user: UserRecord) {
@@ -178,6 +254,11 @@ final class AppModel {
       themeStore.flavor = flavor
     }
   }
+
+  private func beginSessionTransition() -> Int {
+    sessionGeneration &+= 1
+    return sessionGeneration
+  }
 }
 
 extension Error {
@@ -190,7 +271,8 @@ extension Error {
     case .unauthenticated:
       return "That email address and password do not match."
     case .emailUnverified:
-      return "Verify your email address before signing in. You can request a new verification email below."
+      return
+        "Verify your email address before signing in. You can request a new verification email below."
     case .forbidden:
       return "This account does not have permission to sign in."
     case .validation(let message):

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Requests a password-reset email. Token confirmation stays blocked until the
-/// backend ships Associated Domains and universal-link routes.
+/// Requests a password-reset email. Confirmation opens from the canonical
+/// universal link when the deployed web contract is available.
 struct PasswordResetView: View {
   @Environment(\.theme) private var theme
   @Environment(\.dismiss) private var dismiss
@@ -14,7 +14,9 @@ struct PasswordResetView: View {
   @State private var didRequest = false
   @State private var errorMessage: String?
   @State private var submitGeneration = 0
+  @State private var sendTask: Task<Void, Never>?
   @FocusState private var isEmailFocused: Bool
+  @AccessibilityFocusState private var isOutcomeFocused: Bool
 
   var body: some View {
     AuthEntryContainer(alignment: .center) {
@@ -46,6 +48,8 @@ struct PasswordResetView: View {
       }
     }
     .onDisappear {
+      sendTask?.cancel()
+      sendTask = nil
       submitGeneration += 1
       isEmailFocused = false
     }
@@ -60,13 +64,13 @@ struct PasswordResetView: View {
         .foregroundStyle(theme.foreground)
         .accessibilityIdentifier("passwordResetConfirmation")
 
-      Text(
-        "Opening the reset link inside this app requires a backend universal-link contract that is not available yet. Use the link from email in a browser for now."
-      )
-      .font(.footnote)
-      .multilineTextAlignment(.center)
-      .foregroundStyle(theme.mutedForeground)
+      Text("Open the link in the email to choose a new password.")
+        .font(.footnote)
+        .multilineTextAlignment(.center)
+        .foregroundStyle(theme.mutedForeground)
     }
+    .accessibilityElement(children: .combine)
+    .accessibilityFocused($isOutcomeFocused)
   }
 
   @ViewBuilder
@@ -84,7 +88,7 @@ struct PasswordResetView: View {
         .autocorrectionDisabled()
         .submitLabel(.send)
         .focused($isEmailFocused)
-        .onSubmit { Task { await send() } }
+        .onSubmit(startSending)
         .accessibilityLabel("Password reset email address")
         .accessibilityIdentifier("passwordResetEmail")
     }
@@ -95,7 +99,7 @@ struct PasswordResetView: View {
     }
 
     Button {
-      Task { await send() }
+      startSending()
     } label: {
       if isSending {
         ProgressView()
@@ -110,7 +114,19 @@ struct PasswordResetView: View {
     .accessibilityIdentifier("passwordResetSend")
   }
 
-  private func send() async {
+  private func startSending() {
+    guard sendTask == nil else { return }
+    submitGeneration += 1
+    let generation = submitGeneration
+    sendTask = Task {
+      await send(generation: generation)
+      if generation == submitGeneration {
+        sendTask = nil
+      }
+    }
+  }
+
+  private func send(generation: Int) async {
     let normalized = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     guard normalized.range(of: #"^[^\s@]+@[^\s@]+\.[^\s@]+$"#, options: .regularExpression) != nil
     else {
@@ -118,8 +134,6 @@ struct PasswordResetView: View {
       return
     }
 
-    submitGeneration += 1
-    let generation = submitGeneration
     isSending = true
     errorMessage = nil
     defer {
@@ -132,6 +146,10 @@ struct PasswordResetView: View {
       try await client.requestPasswordReset(email: normalized)
       guard generation == submitGeneration else { return }
       didRequest = true
+      isOutcomeFocused = true
+      AccessibilityNotification.Announcement(
+        "Check your inbox. If an account exists for that address, you will receive reset instructions."
+      ).post()
     } catch APIError.cancelled {
       return
     } catch APIError.offline {

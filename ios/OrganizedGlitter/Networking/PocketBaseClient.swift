@@ -26,6 +26,7 @@ actor PocketBaseClient {
       let password: String
     }
 
+    let generation = sessionGeneration
     let response: AuthResponse = try await request(
       path: "/api/collections/users/auth-with-password",
       method: "POST",
@@ -35,6 +36,9 @@ actor PocketBaseClient {
 
     guard response.record.verified == true else {
       throw APIError.emailUnverified
+    }
+    guard generation == sessionGeneration else {
+      throw APIError.cancelled
     }
     return try persist(response.session)
   }
@@ -88,6 +92,29 @@ actor PocketBaseClient {
       path: "/api/collections/users/request-password-reset",
       method: "POST",
       body: Body(email: email),
+      includesAuthentication: false
+    )
+  }
+
+  func confirmPasswordReset(
+    token: String,
+    password: String,
+    passwordConfirmation: String
+  ) async throws {
+    struct Body: Encodable {
+      let token: String
+      let password: String
+      let passwordConfirm: String
+    }
+
+    _ = try await send(
+      path: "/api/collections/users/confirm-password-reset",
+      method: "POST",
+      body: Body(
+        token: token,
+        password: password,
+        passwordConfirm: passwordConfirmation
+      ),
       includesAuthentication: false
     )
   }
@@ -551,7 +578,13 @@ actor PocketBaseClient {
     }
 
     guard 200..<300 ~= httpResponse.statusCode else {
-      throw APIError.from(statusCode: httpResponse.statusCode, body: data)
+      throw APIError.from(
+        statusCode: httpResponse.statusCode,
+        body: data,
+        isPasswordAuthentication: method == "POST"
+          && path == "/api/collections/users/auth-with-password"
+          && !includesAuthentication
+      )
     }
     return data
   }
