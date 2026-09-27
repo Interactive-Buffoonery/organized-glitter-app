@@ -4,7 +4,42 @@ import Testing
 @testable import OrganizedGlitter
 
 @MainActor
+@Suite(.serialized)
 struct LibraryItemDetailModelTests {
+  @Test func lostNoteResponseNeedsAuthoritativeRefreshBeforeRetry() async throws {
+    LostNoteURLProtocol.snapshotAvailable = false
+    LostNoteURLProtocol.createRequests = 0
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [LostNoteURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://lost-note.example.test")!,
+      sessionStore: KeychainSessionStore(service: "LostNoteTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(StoredSession(token: "example-token", userID: "feature-user"))
+    let library = LibrarySession(
+      client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(await model.load())
+
+    let saved = await model.addDiamondProgressNote(
+      content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil)
+    #expect(!saved)
+    #expect(model.unresolvedWriteState == .needsRefresh)
+    #expect(model.progressNotes.isEmpty)
+    #expect(LostNoteURLProtocol.createRequests == 1)
+    let duplicate = await model.addDiamondProgressNote(
+      content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil)
+    #expect(!duplicate)
+    #expect(LostNoteURLProtocol.createRequests == 1)
+
+    LostNoteURLProtocol.snapshotAvailable = true
+    #expect(await model.refreshUnresolvedWriteStatus())
+    #expect(model.unresolvedWriteState == .refreshed)
+    #expect(model.progressNotes.map(\.id) == ["saved-note"])
+  }
+
   @Test func bookPagesFilterAndPaginateFromLocalLibrary() async throws {
     let library = try localFeatureLibrary()
     let book = featureBook("book", title: "Quiet Pages")
@@ -60,4 +95,33 @@ struct LibraryItemDetailModelTests {
     #expect(await model.load())
     #expect(model.progressNotes.map(\.id) == ["newer", "older"])
   }
+}
+
+private final class LostNoteURLProtocol: URLProtocol, @unchecked Sendable {
+  nonisolated(unsafe) static var snapshotAvailable = false
+  nonisolated(unsafe) static var createRequests = 0
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+  override func startLoading() {
+    guard request.url?.path == "/api/mobile/sync/snapshot" else {
+      Self.createRequests += 1
+      client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+      return
+    }
+    guard Self.snapshotAvailable else {
+      client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+      return
+    }
+    let body = #"{"version":1,"projects":[{"id":"project","user":"feature-user","title":"Moon Garden","status":"wishlist","kit_category":"full","created":"2026-09-01","updated":"2026-09-01"}],"coloringBooks":[],"coloringPages":[],"progressNotes":[{"id":"saved-note","project":"project","content":"Half finished","date":"2026-09-01","created":"2026-09-01","updated":"2026-09-01"}],"coloringPageProgressNotes":[]}"#
+    let response = HTTPURLResponse(
+      url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+      headerFields: ["Content-Type": "application/json"])!
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data(body.utf8))
+    client?.urlProtocolDidFinishLoading(self)
+  }
+
+  override func stopLoading() {}
 }
