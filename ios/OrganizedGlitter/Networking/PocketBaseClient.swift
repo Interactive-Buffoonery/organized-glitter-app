@@ -1,7 +1,7 @@
 import Foundation
 
 actor PocketBaseClient {
-  private let baseURL: URL
+  nonisolated let baseURL: URL
   private let sessionStore: KeychainSessionStore
   private let urlSession: URLSession
 
@@ -120,6 +120,15 @@ actor PocketBaseClient {
   }
 
   func restore(_ stored: StoredSession) async throws -> AuthenticatedSession {
+    prepareOfflineSession(stored)
+    return try await refreshAuthentication()
+  }
+
+  func prepareOfflineSession(_ stored: StoredSession) {
+    sessionGeneration &+= 1
+    refreshTask?.cancel()
+    refreshTask = nil
+    refreshGeneration = nil
     authentication = AuthenticatedSession(
       token: stored.token,
       user: UserRecord(
@@ -136,7 +145,6 @@ actor PocketBaseClient {
       )
     )
 
-    return try await refreshAuthentication()
   }
 
   func refreshAuthentication() async throws -> AuthenticatedSession {
@@ -339,6 +347,52 @@ actor PocketBaseClient {
     )
   }
 
+  func mobileSnapshot() async throws -> LocalFullSnapshot {
+    try await request(path: "/api/mobile/sync/snapshot")
+  }
+
+  func applyLocalOperation(_ operation: LocalPendingOperation) async throws -> LibraryItem {
+    struct Body: Encodable {
+      let operationId: String
+      let collection: String
+      let recordId: String
+      let base: [String: LocalJSONValue]
+      let patch: [String: LocalJSONValue]
+    }
+    let body = Body(
+      operationId: operation.id.uuidString, collection: operation.key.kind.rawValue,
+      recordId: operation.key.id, base: operation.base, patch: operation.patch)
+    let result = try await sendResponseEncoded(
+      path: "/api/mobile/sync/apply", method: "POST",
+      body: PocketBaseRequestBody(json: body), acceptedStatusCodes: [409])
+    let object = try JSONSerialization.jsonObject(with: result.data) as? [String: Any]
+    guard let object else { throw APIError.decoding }
+    if result.status == 409 {
+      guard object["reason"] as? String == "field_conflict" else {
+        throw APIError.validation("This edit could not be retried safely.")
+      }
+    }
+    guard let recordObject = object["record"] else { throw APIError.decoding }
+    let recordData = try JSONSerialization.data(withJSONObject: recordObject)
+    let record: LibraryItem
+    do {
+      let decoder = JSONDecoder()
+      switch operation.key.kind {
+      case .project:
+        record = .diamond(try decoder.decode(DiamondProjectRecord.self, from: recordData))
+      case .book:
+        record = .book(try decoder.decode(ColoringBookRecord.self, from: recordData))
+      case .page:
+        record = .page(try decoder.decode(ColoringPageRecord.self, from: recordData))
+      }
+    } catch {
+      throw APIError.decoding
+    }
+    guard record.localRecordKey == operation.key else { throw APIError.decoding }
+    if result.status == 409 { throw LocalSyncConflict(current: record) }
+    return record
+  }
+
   /// Fetches a short-lived token for protected file URLs.
   func fileToken() async throws -> String {
     struct Response: Decodable { let token: String }
@@ -520,6 +574,22 @@ actor PocketBaseClient {
     includesAuthentication: Bool = true,
     canRefreshAuthentication: Bool = true
   ) async throws -> Data {
+    try await sendResponseEncoded(
+      path: path, queryItems: queryItems, method: method, body: body,
+      includesAuthentication: includesAuthentication,
+      canRefreshAuthentication: canRefreshAuthentication).data
+  }
+
+  private func sendResponseEncoded(
+    path: String,
+    queryItems: [URLQueryItem] = [],
+    method: String = "GET",
+    body: PocketBaseRequestBody? = nil,
+    includesAuthentication: Bool = true,
+    canRefreshAuthentication: Bool = true,
+    acceptedStatusCodes: Set<Int> = []
+  ) async throws -> (data: Data, status: Int) {
+    let requestGeneration = sessionGeneration
     guard
       var components = URLComponents(
         url: baseURL.appending(path: path),
@@ -558,6 +628,10 @@ actor PocketBaseClient {
       throw APIError.from(error)
     }
 
+    if includesAuthentication, requestGeneration != sessionGeneration {
+      throw APIError.cancelled
+    }
+
     guard let httpResponse = response as? HTTPURLResponse else {
       throw APIError.server
     }
@@ -567,17 +641,20 @@ actor PocketBaseClient {
       canRefreshAuthentication
     {
       _ = try await refreshAuthentication()
-      return try await sendEncoded(
+      return try await sendResponseEncoded(
         path: path,
         queryItems: queryItems,
         method: method,
         body: body,
         includesAuthentication: true,
-        canRefreshAuthentication: false
+        canRefreshAuthentication: false,
+        acceptedStatusCodes: acceptedStatusCodes
       )
     }
 
-    guard 200..<300 ~= httpResponse.statusCode else {
+    guard 200..<300 ~= httpResponse.statusCode
+      || acceptedStatusCodes.contains(httpResponse.statusCode)
+    else {
       throw APIError.from(
         statusCode: httpResponse.statusCode,
         body: data,
@@ -586,7 +663,7 @@ actor PocketBaseClient {
           && !includesAuthentication
       )
     }
-    return data
+    return (data, httpResponse.statusCode)
   }
 }
 
