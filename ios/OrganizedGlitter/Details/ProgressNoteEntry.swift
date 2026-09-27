@@ -183,6 +183,7 @@ struct ProgressNotesSection: View {
   let model: LibraryItemDetailModel
   let onCollectionChanged: @MainActor @Sendable () async -> Void
   var onOpenPhoto: ((ProgressNoteItem) -> Void)? = nil
+  var onReveal: ((String) -> Void)? = nil
 
   @State private var isAddingNote = false
   @State private var revealedNoteID: String?
@@ -316,7 +317,11 @@ struct ProgressNotesSection: View {
   private func revealSavedNote(_ proxy: ScrollViewProxy) {
     guard let id = pendingNoteID else { return }
     withAnimation(reduceMotion ? nil : Theme.motion) {
-      proxy.scrollTo("note-\(id)", anchor: .center)
+      if let onReveal {
+        onReveal("note-\(id)")
+      } else {
+        proxy.scrollTo("note-\(id)", anchor: .center)
+      }
       revealedNoteID = id
       highlightedNoteID = id
     }

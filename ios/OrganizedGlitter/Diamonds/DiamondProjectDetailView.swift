@@ -13,74 +13,78 @@ struct DiamondProjectDetailView: View {
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        header
-        DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
+    ScrollViewReader { proxy in
+      ScrollView {
+        VStack(alignment: .leading, spacing: 20) {
+          header
+          DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
-        if !specs.isEmpty {
-          DetailSpecStrip(specs: specs)
-        }
+          if !specs.isEmpty {
+            DetailSpecStrip(specs: specs)
+          }
 
-        ProgressNotesSection(model: model, onCollectionChanged: onCollectionChanged)
+          ProgressNotesSection(
+            model: model, onCollectionChanged: onCollectionChanged,
+            onReveal: { proxy.scrollTo($0, anchor: .center) })
 
-        detailSection("Details") {
-          DetailMetadataCard {
-            if let company = project.expand?.company?.name.nonEmpty {
-              DetailMetadataRow(label: "Company", value: company)
-            }
-            if let artist = project.expand?.artist?.name.nonEmpty {
-              DetailMetadataRow(label: "Artist", value: artist)
-            }
-            DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
-            ForEach(dateRows, id: \.label) { row in
-              DetailMetadataRow(label: row.label, value: row.value)
-            }
-            if !project.tags.isEmpty {
-              DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
-            }
-            if let source = sourceURL {
-              DetailMetadataRow(label: "Source") {
-                Link(source.host() ?? source.absoluteString, destination: source)
-                  .lineLimit(1)
+          detailSection("Details") {
+            DetailMetadataCard {
+              if let company = project.expand?.company?.name.nonEmpty {
+                DetailMetadataRow(label: "Company", value: company)
               }
-              .accessibilityIdentifier("detail.diamond.source")
+              if let artist = project.expand?.artist?.name.nonEmpty {
+                DetailMetadataRow(label: "Artist", value: artist)
+              }
+              DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
+              ForEach(dateRows, id: \.label) { row in
+                DetailMetadataRow(label: row.label, value: row.value)
+              }
+              if !project.tags.isEmpty {
+                DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
+              }
+              if let source = sourceURL {
+                DetailMetadataRow(label: "Source") {
+                  Link(source.host() ?? source.absoluteString, destination: source)
+                    .lineLimit(1)
+                }
+                .accessibilityIdentifier("detail.diamond.source")
+              }
+            }
+
+            if let notes = project.generalNotes?.plainTextFromHTML.nonEmpty {
+              Text(notes)
+                .foregroundStyle(theme.foreground)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
             }
           }
 
-          if let notes = project.generalNotes?.plainTextFromHTML.nonEmpty {
-            Text(notes)
-              .foregroundStyle(theme.foreground)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(14)
-              .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-          }
-        }
-
-        if let errorMessage = model.errorMessage {
-          VStack(alignment: .leading, spacing: 12) {
-            AccessibleErrorLabel(message: errorMessage)
-            Button("Try again") {
-              Task { await model.load() }
+          if let errorMessage = model.errorMessage {
+            VStack(alignment: .leading, spacing: 12) {
+              AccessibleErrorLabel(message: errorMessage)
+              Button("Try again") {
+                Task { await model.load() }
+              }
             }
           }
-        }
 
-        if let mutationErrorMessage = model.mutationErrorMessage,
-          model.unresolvedWriteState == nil
-        {
-          AccessibleErrorLabel(message: mutationErrorMessage)
+          if let mutationErrorMessage = model.mutationErrorMessage,
+            model.unresolvedWriteState == nil
+          {
+            AccessibleErrorLabel(message: mutationErrorMessage)
+          }
         }
+        .frame(maxWidth: 760, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
       }
-      .frame(maxWidth: 760, alignment: .leading)
-      .padding(.horizontal, 20)
-      .padding(.vertical, 16)
-      .frame(maxWidth: .infinity)
+      .background {
+        theme.themedBackground.ignoresSafeArea()
+      }
+      .refreshable { await model.refresh() }
     }
-    .background {
-      theme.themedBackground.ignoresSafeArea()
-    }
-    .refreshable { await model.refresh() }
   }
 
   private var header: some View {
