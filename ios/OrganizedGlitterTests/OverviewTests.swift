@@ -147,7 +147,7 @@ struct OverviewLoadingTests {
     #expect(model.errorMessage == nil)
   }
 
-  @Test func continueKeepsARecentlyLoggedProjectWithAnOldEdit() async throws {
+  @Test func continueKeepsLatestNoteAndBothCraftQuotas() async throws {
     let library = try localFeatureLibrary()
     let projects = (0..<12).map { index in
       #"{"id":"project-\#(index)","title":"Project \#(index)","user":"feature-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-\#(10 + index)"}"#
@@ -163,9 +163,18 @@ struct OverviewLoadingTests {
     }
     """#.utf8))
     try await library.store.ingestSnapshot(snapshot, scope: library.scope)
+    try await library.store.ingest(
+      .book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    for index in 0..<12 {
+      try await library.store.ingest(
+        .page(featurePage("page-\(index)", book: "book", number: index + 1,
+          status: "in_progress")), scope: library.scope)
+    }
     let model = OverviewModel(library: library)
     await model.load()
-    #expect(model.items.count == 10)
+    #expect(model.items.count == 20)
+    #expect(model.items.filter { if case .diamond = $0 { true } else { false } }.count == 10)
+    #expect(model.items.filter { if case .page = $0 { true } else { false } }.count == 10)
     #expect(model.items.first?.recordID == "project-0")
   }
 
