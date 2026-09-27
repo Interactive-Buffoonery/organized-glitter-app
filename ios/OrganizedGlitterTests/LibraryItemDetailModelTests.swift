@@ -160,6 +160,9 @@ struct LibraryItemDetailModelTests {
       if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
         return (500, "{}")
       }
+      if request.httpMethod == "GET", path.hasSuffix("/progress_notes/records") {
+        return (200, Self.noteListJSON)
+      }
       Issue.record("Unexpected request: \(request)")
       return (500, "{}")
     }
