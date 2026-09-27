@@ -68,6 +68,7 @@
 		81A535F58978295A957C45AE /* ColoringBookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2B4F3D4BDDCE126CECB107 /* ColoringBookDetailView.swift */; };
 		81B74D4319E12928F38EE396 /* OrganizedGlitterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87432C7595D56F6A212DA34D /* OrganizedGlitterApp.swift */; };
 		82E7FA3D4B49FA1DF95E4B3C /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9AF6A3CC8D0561397DBC098 /* AccountView.swift */; };
+		8550BA81AF0ADB18FF6EF1BF /* Connectivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BCADE99E4C9E7A968F900C5 /* Connectivity.swift */; };
 		86A3987AD8A99D6D11B976DA /* NumberSectionPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8FEDDF7DDA92FB7C38D8E1 /* NumberSectionPicker.swift */; };
 		897DEC9F1C8657788DC16C6E /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E841D3F9B09655375C7BFEEB /* AppModel.swift */; };
 		8EE07AF430A1E7770993BC6F /* PasswordResetLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABD86FAEE4E3F2BEF344FBC2 /* PasswordResetLinkTests.swift */; };
@@ -112,6 +113,7 @@
 		F318A1BFDA2F6C1781E7799B /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728912BD866D6E64A64A1156 /* WelcomeView.swift */; };
 		F5850FD6A7A6108CC90776F7 /* ProgressNoteEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A44F8DED9DD837DCCC00FAF /* ProgressNoteEntry.swift */; };
 		F604ED93EC6E10B6696CC90B /* OAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF7448BB4586E06FB910036 /* OAuthTests.swift */; };
+		FAC35F0ADCC801ACCBC1F79A /* OfflineGuidanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C18A1C48EF0C4EC8C420EC6 /* OfflineGuidanceTests.swift */; };
 		FD47E1CEADB3F3BA9B3A74C1 /* RemoteArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02EA4614FC4C10D918E0879 /* RemoteArtwork.swift */; };
 		FD4D6BABAD2181AC7A09236A /* LocalLibraryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7567298DEDD48B2D921E5BC /* LocalLibraryStoreTests.swift */; };
 		FD7CA4ED75B15A0B645235F5 /* NumberSectionPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3277359BD8C95E73E0D0287 /* NumberSectionPickerTests.swift */; };
@@ -176,6 +178,7 @@
 		554D2223736BF1D4902B498D /* LibrarySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySession.swift; sourceTree = "<group>"; };
 		55DA63A04D6C14AE2EF96802 /* PrivateArtworkStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateArtworkStoreTests.swift; sourceTree = "<group>"; };
 		58BD72A7B122B24BAD21755A /* OrganizedGlitterUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizedGlitterUITests.swift; sourceTree = "<group>"; };
+		5C18A1C48EF0C4EC8C420EC6 /* OfflineGuidanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineGuidanceTests.swift; sourceTree = "<group>"; };
 		5C8FD32FA9733C6C54C75F0D /* LibraryItemDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetail.swift; sourceTree = "<group>"; };
 		5D3DB50E4F57B385875B6FF1 /* AccountDestinations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDestinations.swift; sourceTree = "<group>"; };
 		5D9C4E6FD2A3DBB49CDA8FAC /* RegistrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationView.swift; sourceTree = "<group>"; };
@@ -193,6 +196,7 @@
 		728912BD866D6E64A64A1156 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		77D37503C19C43867510A924 /* AccountPreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPreferencesTests.swift; sourceTree = "<group>"; };
 		78CA823F6822F1CC0582249F /* LocalFeatureFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFeatureFixtures.swift; sourceTree = "<group>"; };
+		7BCADE99E4C9E7A968F900C5 /* Connectivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connectivity.swift; sourceTree = "<group>"; };
 		7DF7448BB4586E06FB910036 /* OAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthTests.swift; sourceTree = "<group>"; };
 		7FA4FE68327F5F2276F1EC0D /* PasswordResetLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetLink.swift; sourceTree = "<group>"; };
 		845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIErrorTests.swift; sourceTree = "<group>"; };
@@ -331,6 +335,7 @@
 				6FCC5D630FB65A58EB27EDEC /* AppConfiguration.swift */,
 				E841D3F9B09655375C7BFEEB /* AppModel.swift */,
 				3F029D79800F22CE6C8BCB60 /* AppShellView.swift */,
+				7BCADE99E4C9E7A968F900C5 /* Connectivity.swift */,
 				D6FEE06635DBC0A5ECF26E1C /* CreateMenu.swift */,
 				2F4C3D5F5234F13224CA4205 /* LibraryRefresh.swift */,
 				87432C7595D56F6A212DA34D /* OrganizedGlitterApp.swift */,
@@ -475,6 +480,7 @@
 				2360F3205301A955F7A2898C /* LocalSyncTransportTests.swift */,
 				A3277359BD8C95E73E0D0287 /* NumberSectionPickerTests.swift */,
 				7DF7448BB4586E06FB910036 /* OAuthTests.swift */,
+				5C18A1C48EF0C4EC8C420EC6 /* OfflineGuidanceTests.swift */,
 				A0EFEA0FDF0D2A4FD5A59E4B /* OfflineSessionTests.swift */,
 				1A580F5FC13D7331BCA7E222 /* OverviewTests.swift */,
 				ABD86FAEE4E3F2BEF344FBC2 /* PasswordResetLinkTests.swift */,
@@ -660,6 +666,7 @@
 				7F5BD6B19D638072E887F982 /* LocalSyncTransportTests.swift in Sources */,
 				FD7CA4ED75B15A0B645235F5 /* NumberSectionPickerTests.swift in Sources */,
 				F604ED93EC6E10B6696CC90B /* OAuthTests.swift in Sources */,
+				FAC35F0ADCC801ACCBC1F79A /* OfflineGuidanceTests.swift in Sources */,
 				71AE29C0F11977F5A7B2259C /* OfflineSessionTests.swift in Sources */,
 				B5F6DF03D4C7892E8879D9A2 /* OverviewTests.swift in Sources */,
 				8EE07AF430A1E7770993BC6F /* PasswordResetLinkTests.swift in Sources */,
@@ -694,6 +701,7 @@
 				81A535F58978295A957C45AE /* ColoringBookDetailView.swift in Sources */,
 				94E216D13A5F3BCDD2447A3B /* ColoringEditors.swift in Sources */,
 				100BE9E76C3F8F819393FE4E /* ColoringPageDetailView.swift in Sources */,
+				8550BA81AF0ADB18FF6EF1BF /* Connectivity.swift in Sources */,
 				C5B48D3377B606FB1E94D862 /* CoverArtwork.swift in Sources */,
 				7294FB2A6664672A48BA860A /* CreateMenu.swift in Sources */,
 				5984DF19440D36F48EB42089 /* DetailDateOnly.swift in Sources */,
