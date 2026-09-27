@@ -18,7 +18,6 @@ struct DiamondProjectDetailView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         header
-        actions
         DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
         if !specs.isEmpty {
@@ -26,7 +25,7 @@ struct DiamondProjectDetailView: View {
         }
 
         VStack(alignment: .leading, spacing: 12) {
-          sectionTitle("Progress")
+          progressHeader
           if progressPhotos.isEmpty {
             ContentUnavailableView(
               "No progress photos",
@@ -197,7 +196,7 @@ struct DiamondProjectDetailView: View {
         maxPixelDimension: 1_200,
         loadedAccessibilityLabel: "Project artwork"
       )
-      .frame(width: horizontalSizeClass == .regular ? 320 : 260)
+      .frame(width: horizontalSizeClass == .regular ? 300 : 204)
       .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
       .padding(.bottom, 8)
       .accessibilityIdentifier("detail.hero")
@@ -210,17 +209,6 @@ struct DiamondProjectDetailView: View {
         Text(LibraryItem.diamond(project).subtitle)
           .foregroundStyle(theme.pageSecondaryForeground)
       }
-    }
-    .multilineTextAlignment(.center)
-    .frame(maxWidth: .infinity)
-  }
-
-  private var actions: some View {
-    let layout =
-      dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(spacing: 10))
-      : AnyLayout(HStackLayout(spacing: 12))
-    return layout {
       DetailStatusMenu<DiamondStatus>(current: project.status) { status in
         Task {
           let changed = await model.setStatus(status)
@@ -230,20 +218,34 @@ struct DiamondProjectDetailView: View {
         }
       }
       .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      .padding(.top, 4)
+    }
+    .multilineTextAlignment(.center)
+    .frame(maxWidth: .infinity)
+  }
+
+  private var progressHeader: some View {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+    return layout {
+      sectionTitle("Progress")
+      if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
 
       Button {
         isAddingNote = true
       } label: {
-        Label("Log", systemImage: "pencil")
-          .frame(maxWidth: .infinity, minHeight: 36)
+        Label("Log progress", systemImage: "plus.circle")
+          .labelStyle(.titleAndIcon)
+          .frame(minHeight: 44)
+          .contentShape(.rect)
       }
-      .glassProminentButton()
-      .foregroundStyle(theme.primaryForeground)
+      .buttonStyle(.plain)
+      .foregroundStyle(theme.primary)
       .disabled(model.isMutating || model.unresolvedWriteState != nil)
-      .accessibilityLabel("Log progress")
       .accessibilityIdentifier("detail.diamond.addNote")
     }
-    .controlSize(.large)
   }
 
   private var specs: [DetailSpec] {
