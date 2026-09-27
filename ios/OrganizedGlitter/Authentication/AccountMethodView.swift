@@ -165,6 +165,7 @@ struct AccountMethodView: View {
       .frame(maxWidth: .infinity, minHeight: 52)
       .disabled(model.isSubmitting)
       .accessibilityIdentifier("continueWithApple")
+      .id(sourceID)
     }
   #endif
 }

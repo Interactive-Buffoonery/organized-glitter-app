@@ -48,12 +48,20 @@ struct AppModelTests {
       .authorized(state: firstState, code: "late-code", name: nil),
       sourceID: secondSource
     )
-    #expect(model.isSubmitting)
-    #expect(model.appleError == nil)
-
-    model.completeAppleAuthorization(.cancelled, sourceID: secondSource)
     #expect(!model.isSubmitting)
-    #expect(model.appleError == nil)
+    #expect(model.appleError == "Apple did not provide a valid authorization. Try again.")
+
+    let thirdSource = UUID()
+    let thirdRequest = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(thirdRequest, sourceID: thirdSource)
+    #expect(thirdRequest.state != nil)
+    #expect(model.isSubmitting)
+    model.completeAppleAuthorization(
+      .authorized(state: nil, code: "missing-state-code", name: nil),
+      sourceID: thirdSource
+    )
+    #expect(!model.isSubmitting)
+    #expect(model.appleError == "Apple did not provide a valid authorization. Try again.")
     #expect(try store.load() == nil)
   }
 
