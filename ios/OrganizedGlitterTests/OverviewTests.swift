@@ -108,9 +108,11 @@ struct OverviewPresentationTests {
     #expect(OverviewModel.loggedCaption(noteDate: "not a date", now: now, timeZone: zone) == nil)
   }
 
-  @Test func artworkUsesTheFileAccessBoundary() {
+  @Test func artworkUsesTheFileAccessBoundary() throws {
     let client = client()
-    let model = OverviewModel(client: client, userID: "fictional-user")
+    let library = LibrarySession(
+      client: client, userID: "fictional-user", store: try LocalLibraryStore.inMemory())
+    let model = OverviewModel(library: library)
     #expect(
       model.artworkURL(for: project(image: "garden image.png"), token: "file-token")
         == client.fileURL(
@@ -132,246 +134,34 @@ struct OverviewPresentationTests {
 }
 
 @MainActor
-@Suite("Overview loading", .serialized)
+@Suite("Overview local snapshot")
 struct OverviewLoadingTests {
-  private func model() async throws -> OverviewModel {
-    OverviewURLProtocol.reset()
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [OverviewURLProtocol.self]
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://overview.example.invalid")!,
-      sessionStore: KeychainSessionStore(service: "OverviewLoadingTests.\(UUID().uuidString)"),
-      urlSession: URLSession(configuration: configuration)
-    )
-    _ = try await client.signIn(identity: "fictional-user", password: "example-password")
-    return OverviewModel(client: client, userID: "fictional-user")
-  }
-
-  private func waitForFirstNoteRequest() async -> Bool {
-    await waitForSignal(OverviewURLProtocol.firstNoteStarted)
-  }
-
-  private func waitForFirstActiveRequest() async -> Bool {
-    await waitForSignal(OverviewURLProtocol.firstActiveStarted)
-  }
-
-  private func waitForSignal(_ signal: DispatchSemaphore) async -> Bool {
-    await withCheckedContinuation { continuation in
-      DispatchQueue.global().async {
-        continuation.resume(returning: signal.wait(timeout: .now() + 2) == .success)
-      }
-    }
-  }
-
-  @Test func shelvesAppearBeforeOptionalNoteDatesReturn() async throws {
-    let model = try await model()
-
+  @Test func shelvesUseLocalRecordsAndStayAvailableOffline() async throws {
+    let library = try localFeatureLibrary()
+    let active = featureProject("active", title: "Active", status: "progress")
+    let kitted = featureProject("kitted", title: "Kitted", status: "kitted")
+    try await library.store.ingest(.diamond(active), scope: library.scope)
+    try await library.store.ingest(.diamond(kitted), scope: library.scope)
+    let model = OverviewModel(library: library)
     await model.load()
-
     #expect(model.hasLoaded)
-    #expect(!model.isLoading)
-    #expect(model.items.map(\.recordID) == ["project-1"])
-    #expect(model.completedThisMonthCount == 5)
-    #expect(model.latestNoteDates.isEmpty)
-    #expect(await waitForFirstNoteRequest())
-
-    OverviewURLProtocol.firstNoteGate.signal()
-    await model.noteDatesTask?.value
-    #expect(model.latestNoteDates == ["project-1": "2026-09-20"])
-  }
-
-  @Test func supersededNoteDatesCannotReplaceReloadedShelves() async throws {
-    let model = try await model()
-    await model.load()
-    #expect(await waitForFirstNoteRequest())
-    let oldDatesTask = model.noteDatesTask
-
-    await model.load()
-    await model.noteDatesTask?.value
-    OverviewURLProtocol.firstNoteGate.signal()
-    await oldDatesTask?.value
-
-    #expect(model.items.map(\.recordID) == ["project-2"])
-    #expect(model.latestNoteDates == ["project-2": "2026-09-21"])
-  }
-
-  @Test func cancelledNoteDatesDoNotEnrichTheShelf() async throws {
-    let model = try await model()
-    await model.load()
-    #expect(await waitForFirstNoteRequest())
-
-    model.cancelNoteDates()
-    OverviewURLProtocol.firstNoteGate.signal()
-    await model.noteDatesTask?.value
-
-    #expect(model.items.map(\.recordID) == ["project-1"])
-    #expect(model.latestNoteDates.isEmpty)
-  }
-
-  @Test func supersededListErrorDoesNotReplaceReloadedShelf() async throws {
-    let model = try await model()
-    OverviewURLProtocol.delayFirstActiveFailure = true
-    let firstLoad = Task { await model.load() }
-    #expect(await waitForFirstActiveRequest())
-
-    await model.load()
-    OverviewURLProtocol.firstActiveGate.signal()
-    await firstLoad.value
-    await model.noteDatesTask?.value
-
-    #expect(model.items.map(\.recordID) == ["project-2"])
+    #expect(model.items.map(\.recordID) == ["active"])
+    #expect(model.upNext.map(\.recordID) == ["kitted"])
     #expect(model.errorMessage == nil)
   }
 
-  @Test func supersededUnauthorizedListCannotExpireSession() async throws {
-    let model = try await model()
-    let expirations = OverviewExpirationCounter()
-    model.onSessionExpired = { expirations.count += 1 }
-    OverviewURLProtocol.delayFirstActiveFailure = true
-    OverviewURLProtocol.firstActiveFailureStatus = 401
-    let firstLoad = Task { await model.load() }
-    #expect(await waitForFirstActiveRequest())
-
+  @Test func reloadReflectsLocalRecordChanges() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Active", status: "progress")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = OverviewModel(library: library)
     await model.load()
-    OverviewURLProtocol.firstActiveGate.signal()
-    await firstLoad.value
-    await model.noteDatesTask?.value
-
-    #expect(model.items.map(\.recordID) == ["project-3"])
-    #expect(model.errorMessage == nil)
-    #expect(expirations.count == 0)
-  }
-}
-
-@MainActor
-private final class OverviewExpirationCounter {
-  var count = 0
-}
-
-private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
-  nonisolated(unsafe) static var firstNoteGate = DispatchSemaphore(value: 0)
-  nonisolated(unsafe) static var firstNoteStarted = DispatchSemaphore(value: 0)
-  nonisolated(unsafe) static var firstActiveGate = DispatchSemaphore(value: 0)
-  nonisolated(unsafe) static var firstActiveStarted = DispatchSemaphore(value: 0)
-  nonisolated(unsafe) static var delayFirstActiveFailure = false
-  nonisolated(unsafe) static var firstActiveFailureStatus = 500
-  nonisolated(unsafe) static var activeListCount = 0
-  private static let stateLock = NSLock()
-
-  private let requestLock = NSLock()
-  private var cancelled = false
-  private var waitingForNote = false
-  private var waitingForActive = false
-
-  static func reset() {
-    stateLock.lock()
-    activeListCount = 0
-    firstNoteGate = DispatchSemaphore(value: 0)
-    firstNoteStarted = DispatchSemaphore(value: 0)
-    firstActiveGate = DispatchSemaphore(value: 0)
-    firstActiveStarted = DispatchSemaphore(value: 0)
-    delayFirstActiveFailure = false
-    firstActiveFailureStatus = 500
-    stateLock.unlock()
-  }
-
-  override class func canInit(with request: URLRequest) -> Bool { true }
-  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-  override func startLoading() {
-    let path = request.url?.path ?? ""
-    if path == "/api/notes/latest" {
-      Self.stateLock.lock()
-      let isFirstLoad = Self.activeListCount == 1
-      Self.stateLock.unlock()
-      if isFirstLoad {
-        requestLock.lock()
-        waitingForNote = true
-        requestLock.unlock()
-        Self.firstNoteStarted.signal()
-        DispatchQueue.global().async {
-          Self.firstNoteGate.wait()
-          self.respond(#"{"items":[{"targetId":"project-1","date":"2026-09-20"}]}"#)
-        }
-      } else {
-        respond(#"{"items":[{"targetId":"project-2","date":"2026-09-21"}]}"#)
-      }
-      return
-    }
-
-    if path == "/api/collections/users/auth-with-password" {
-      respond(#"{"token":"example-token","record":{"id":"fictional-user","verified":true}}"#)
-      return
-    }
-    if path == "/api/collections/users/auth-refresh" {
-      respond(#"{"token":"refreshed-token","record":{"id":"fictional-user","verified":true}}"#)
-      return
-    }
-
-    let filter = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?
-      .queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
-    if path.contains("/projects/") && filter.contains(#"status = "progress""#) {
-      Self.stateLock.lock()
-      Self.activeListCount += 1
-      let number = Self.activeListCount
-      let delayedFailure = number == 1 && Self.delayFirstActiveFailure
-      let retryFailure = number == 2 && Self.delayFirstActiveFailure
-        && Self.firstActiveFailureStatus == 401
-      let failureStatus = Self.firstActiveFailureStatus
-      Self.stateLock.unlock()
-      if delayedFailure {
-        requestLock.lock()
-        waitingForActive = true
-        requestLock.unlock()
-        Self.firstActiveStarted.signal()
-        DispatchQueue.global().async {
-          Self.firstActiveGate.wait()
-          self.respond("{}", status: failureStatus)
-        }
-      } else if retryFailure {
-        respond("{}", status: 401)
-      } else {
-        respond(list(
-          items: """
-            {"id":"project-\(number)","title":"Example \(number)","user":"fictional-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-0\(number)"}
-            """, total: 1))
-      }
-    } else if path.contains("/projects/") && filter.contains(#"status = "completed""#) {
-      respond(list(items: "", total: 2))
-    } else if path.contains("/coloring_pages/") && filter.contains(#"status = "completed""#) {
-      respond(list(items: "", total: 3))
-    } else {
-      respond(list(items: "", total: 0))
-    }
-  }
-
-  override func stopLoading() {
-    requestLock.lock()
-    cancelled = true
-    let unblockNote = waitingForNote
-    let unblockActive = waitingForActive
-    requestLock.unlock()
-    if unblockNote { Self.firstNoteGate.signal() }
-    if unblockActive { Self.firstActiveGate.signal() }
-  }
-
-  private func list(items: String, total: Int) -> String {
-    """
-    {"page":1,"perPage":10,"totalItems":\(total),"totalPages":1,"items":[\(items)]}
-    """
-  }
-
-  private func respond(_ body: String, status: Int = 200) {
-    requestLock.lock()
-    let shouldRespond = !cancelled
-    requestLock.unlock()
-    guard shouldRespond, let url = request.url else { return }
-    let response = HTTPURLResponse(
-      url: url, statusCode: status, httpVersion: nil,
-      headerFields: ["Content-Type": "application/json"]
-    )!
-    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-    client?.urlProtocol(self, didLoad: Data(body.utf8))
-    client?.urlProtocolDidFinishLoading(self)
+    #expect(model.items.count == 1)
+    try await library.store.ingest(
+      .diamond(featureProject("project", title: "Kitted", status: "kitted")),
+      scope: library.scope)
+    await model.load()
+    #expect(model.items.isEmpty)
+    #expect(model.upNext.map(\.recordID) == ["project"])
   }
 }

@@ -36,8 +36,9 @@ struct ColoringBookDraft: Equatable {
 
 struct ColoringBookEditor: View {
   @Environment(\.protectedFiles) private var protectedFiles
-  let client: PocketBaseClient
-  let userID: String
+  let library: LibrarySession
+  var client: PocketBaseClient { library.client }
+  var userID: String { library.userID }
   let book: ColoringBookRecord?
   let onLibraryRefresh: () async -> Void
   let onSaved: (ColoringBookRecord) -> Void
@@ -49,17 +50,14 @@ struct ColoringBookEditor: View {
   @State private var draft: ColoringBookDraft
   @State private var isSaving = false
   @State private var errorMessage: String?
-  @State private var isCompletionUnknown = false
 
   init(
-    client: PocketBaseClient,
-    userID: String,
+    library: LibrarySession,
     book: ColoringBookRecord? = nil,
     onLibraryRefresh: @escaping () async -> Void = {},
     onSaved: @escaping (ColoringBookRecord) -> Void
   ) {
-    self.client = client
-    self.userID = userID
+    self.library = library
     self.book = book
     self.onLibraryRefresh = onLibraryRefresh
     self.onSaved = onSaved
@@ -171,7 +169,7 @@ struct ColoringBookEditor: View {
           Button("Save") {
             Task { await save() }
           }
-          .disabled(!draft.isValid || isSaving || isCompletionUnknown)
+          .disabled(!draft.isValid || isSaving)
         }
       }
     }
@@ -196,32 +194,18 @@ struct ColoringBookEditor: View {
     do {
       let saved: ColoringBookRecord
       if let book {
-        saved = try await client.update(
-          collection: "coloring_books",
-          id: book.id,
-          body: write
-        )
+        if draft.totalPages != baseline.totalPages {
+          saved = try await library.updateOnline(
+            collection: "coloring_books", id: book.id, body: write)
+        } else {
+          saved = try await library.update(
+            collection: "coloring_books", id: book.id, body: write)
+        }
       } else {
-        saved = try await client.create(collection: "coloring_books", body: write)
+        saved = try await library.create(collection: "coloring_books", body: write)
       }
       onSaved(saved)
       dismiss()
-    } catch APIError.offline, APIError.server {
-      await onLibraryRefresh()
-      if let book,
-        let refreshed: ColoringBookRecord = try? await client.get(
-          collection: "coloring_books",
-          id: book.id
-        ),
-        draft.matchesSavedRecord(refreshed)
-      {
-        onSaved(refreshed)
-        dismiss()
-        return
-      }
-      isCompletionUnknown = true
-      errorMessage =
-        "Save status is unknown. The library was refreshed; check the book before trying again."
     } catch {
       errorMessage = error.userMessage(
         permission: "Your account does not have permission to save this book.",
@@ -237,7 +221,7 @@ struct ColoringBookEditor: View {
 // leaves the server value untouched. When the user clears series, publisher,
 // or illustrator, the key is included as `""`, PocketBase's unset value for a
 // non-required text or relation field.
-struct ColoringBookWrite: Encodable {
+struct ColoringBookWrite: Encodable, Sendable {
   let user: String?
   let title: String?
   let series: String?
@@ -302,7 +286,7 @@ struct ColoringPageDraft: Equatable {
 
 struct ColoringPageEditor: View {
   @Environment(\.protectedFiles) private var protectedFiles
-  let client: PocketBaseClient
+  let library: LibrarySession
   let page: ColoringPageRecord
   let onLibraryRefresh: () async -> Void
   let onSaved: (ColoringPageRecord) -> Void
@@ -314,15 +298,14 @@ struct ColoringPageEditor: View {
   @State private var draft: ColoringPageDraft
   @State private var isSaving = false
   @State private var errorMessage: String?
-  @State private var isCompletionUnknown = false
 
   init(
-    client: PocketBaseClient,
+    library: LibrarySession,
     page: ColoringPageRecord,
     onLibraryRefresh: @escaping () async -> Void = {},
     onSaved: @escaping (ColoringPageRecord) -> Void
   ) {
-    self.client = client
+    self.library = library
     self.page = page
     self.onLibraryRefresh = onLibraryRefresh
     self.onSaved = onSaved
@@ -403,7 +386,7 @@ struct ColoringPageEditor: View {
           Button("Save") {
             Task { await save() }
           }
-          .disabled(isSaving || isCompletionUnknown)
+          .disabled(isSaving)
         }
       }
     }
@@ -421,28 +404,13 @@ struct ColoringPageEditor: View {
     let write = ColoringPageWrite.make(baseline: baseline, draft: draft)
 
     do {
-      let saved: ColoringPageRecord = try await client.update(
+      let saved: ColoringPageRecord = try await library.update(
         collection: "coloring_pages",
         id: page.id,
         body: write
       )
       onSaved(saved)
       dismiss()
-    } catch APIError.offline, APIError.server {
-      await onLibraryRefresh()
-      if let refreshed: ColoringPageRecord = try? await client.get(
-        collection: "coloring_pages",
-        id: page.id
-      ),
-        draft.matchesSavedRecord(refreshed)
-      {
-        onSaved(refreshed)
-        dismiss()
-        return
-      }
-      isCompletionUnknown = true
-      errorMessage =
-        "Save status is unknown. The library was refreshed; check the page before trying again."
     } catch {
       errorMessage = error.userMessage(
         permission: "Your account does not have permission to save this page.",
@@ -458,7 +426,7 @@ struct ColoringPageEditor: View {
 // the client only ever writes status and the revealed subject. Unchanged
 // fields are nil so the encoder omits the key and PATCH leaves them alone;
 // clearing the subject sends `""`.
-struct ColoringPageWrite: Encodable {
+struct ColoringPageWrite: Encodable, Sendable {
   let status: String?
   let revealedSubject: String?
 
