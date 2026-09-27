@@ -31,7 +31,7 @@ struct ColoringBookDetailView: View {
         if model.bookPages.isEmpty, !model.isLoading, model.errorMessage == nil {
           ContentUnavailableView(
             "No matching pages",
-            systemImage: "pencil.and.scribble",
+            systemImage: LibrarySection.pages.systemImage,
             description: Text(emptyPagesMessage)
           )
           .frame(maxWidth: .infinity)
