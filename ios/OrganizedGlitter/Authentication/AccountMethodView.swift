@@ -6,6 +6,7 @@ struct AccountMethodView: View {
   @Environment(\.theme) private var theme
   @Environment(\.colorScheme) private var colorScheme
   @State private var presentationAnchor: UIWindow?
+  @State private var appleSourceID = UUID()
 
   enum Mode: Hashable {
     case signIn
@@ -66,15 +67,7 @@ struct AccountMethodView: View {
         VStack(spacing: 12) {
           #if DEBUG
             if model.appleReadiness == .available {
-              SignInWithAppleButton(.continue) { request in
-                model.configureAppleRequest(request)
-              } onCompletion: { result in
-                model.completeAppleAuthorization(result)
-              }
-              .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-              .frame(maxWidth: .infinity, minHeight: 52)
-              .disabled(model.isSubmitting)
-              .accessibilityIdentifier("continueWithApple")
+              appleButton
             }
           #endif
 
@@ -89,7 +82,7 @@ struct AccountMethodView: View {
           #if DEBUG
             if model.appleReadiness == .failed {
               Button("Check Apple sign-in again") {
-                Task { await model.loadAppleReadiness() }
+                Task { await model.loadSignInMethods() }
               }
               .buttonStyle(AuthLinkButtonStyle())
               .accessibilityIdentifier("retryAppleReadiness")
@@ -146,9 +139,7 @@ struct AccountMethodView: View {
     .navigationBarTitleDisplayMode(.inline)
     .task {
       #if DEBUG
-        async let appleReadiness: Void = model.loadAppleReadiness()
-        async let socialProviders: Void = model.loadSocialProviders()
-        _ = await (appleReadiness, socialProviders)
+        await model.loadSignInMethods()
       #else
         await model.loadSocialProviders()
       #endif
@@ -157,9 +148,25 @@ struct AccountMethodView: View {
       model.cancelOAuth()
       #if DEBUG
         model.cancelAppleSignIn()
+        appleSourceID = UUID()
       #endif
     }
   }
+
+  #if DEBUG
+    private var appleButton: some View {
+      let sourceID = appleSourceID
+      return SignInWithAppleButton(.continue) { request in
+        model.configureAppleRequest(request, sourceID: sourceID)
+      } onCompletion: { result in
+        model.completeAppleAuthorization(AppleAuthorizationOutcome(result), sourceID: sourceID)
+      }
+      .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+      .frame(maxWidth: .infinity, minHeight: 52)
+      .disabled(model.isSubmitting)
+      .accessibilityIdentifier("continueWithApple")
+    }
+  #endif
 }
 
 /// Rounded method-choice control matching the studio’s quiet provider rows.

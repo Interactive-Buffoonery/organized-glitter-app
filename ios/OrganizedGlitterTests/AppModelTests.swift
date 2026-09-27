@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import Testing
 @testable import OrganizedGlitter
@@ -5,6 +6,57 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct AppModelTests {
+  @Test
+  func lateAppleCallbacksCannotClearANewerRequest() async throws {
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring {
+      await Task.yield()
+    }
+    model.appleReadiness = .available
+
+    let firstSource = UUID()
+    let firstRequest = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(firstRequest, sourceID: firstSource)
+    let firstState = try #require(firstRequest.state)
+    model.cancelAppleSignIn()
+
+    let secondSource = UUID()
+    let secondRequest = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(secondRequest, sourceID: secondSource)
+    let secondState = try #require(secondRequest.state)
+    #expect(firstState != secondState)
+
+    model.completeAppleAuthorization(.failed, sourceID: firstSource)
+    #expect(model.isSubmitting)
+    #expect(model.appleError == nil)
+
+    model.completeAppleAuthorization(
+      .authorized(state: firstState, code: "late-code", name: nil),
+      sourceID: firstSource
+    )
+    #expect(model.isSubmitting)
+    #expect(model.appleError == nil)
+
+    model.completeAppleAuthorization(
+      .authorized(state: firstState, code: "late-code", name: nil),
+      sourceID: secondSource
+    )
+    #expect(model.isSubmitting)
+    #expect(model.appleError == nil)
+
+    model.completeAppleAuthorization(.cancelled, sourceID: secondSource)
+    #expect(!model.isSubmitting)
+    #expect(model.appleError == nil)
+    #expect(try store.load() == nil)
+  }
+
   @Test
   func preservesStoredSessionWhenRefreshHasServerFailure() async throws {
     let store = KeychainSessionStore(
