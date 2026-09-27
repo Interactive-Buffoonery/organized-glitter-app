@@ -648,34 +648,34 @@ private struct DetailDateRow: View {
         .buttonStyle(.plain)
         .foregroundStyle(theme.pageAction)
         .accessibilityLabel("Add \(label.lowercased()) date")
+        .popover(isPresented: $isAddingDate) {
+          VStack(alignment: .leading, spacing: 16) {
+            Text("Add \(label.lowercased()) date")
+              .font(.headline)
+              .foregroundStyle(theme.foreground)
+            DatePicker(label, selection: $newDate, displayedComponents: .date)
+              .datePickerStyle(.graphical)
+            HStack {
+              Button("Cancel") { isAddingDate = false }
+              Spacer()
+              Button("Save") {
+                isAddingDate = false
+                onChange(newDate)
+              }
+              .buttonStyle(.borderedProminent)
+            }
+          }
+          .padding()
+          .frame(maxWidth: 380)
+          .background(theme.card)
+          .presentationCompactAdaptation(.sheet)
+          .presentationDetents([.medium, .large])
+          .presentationDragIndicator(.visible)
+        }
       }
     }
     .disabled(isDisabled)
     .accessibilityIdentifier("detail.date.\(label.lowercased())")
-    .sheet(isPresented: $isAddingDate) {
-      NavigationStack {
-        Form {
-          DatePicker(label, selection: $newDate, displayedComponents: .date)
-            .datePickerStyle(.graphical)
-            .listRowBackground(theme.card)
-        }
-        .themedScrollBackground()
-        .navigationTitle("Add \(label.lowercased()) date")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") { isAddingDate = false }
-          }
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Save") {
-              isAddingDate = false
-              onChange(newDate)
-            }
-          }
-        }
-      }
-      .drawer([.medium])
-    }
   }
 }
 
