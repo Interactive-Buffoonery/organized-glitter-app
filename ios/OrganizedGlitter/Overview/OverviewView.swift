@@ -5,8 +5,9 @@ import SwiftUI
 @MainActor
 @Observable
 final class OverviewModel {
-  let client: PocketBaseClient
-  let userID: String
+  let library: LibrarySession
+  var client: PocketBaseClient { library.client }
+  var userID: String { library.userID }
 
   var completedThisMonthCount = 0
   /// In-progress projects and pages, most recently logged first.
@@ -19,131 +20,67 @@ final class OverviewModel {
   var hasLoaded = false
   var errorMessage: String?
   var onSessionExpired: (@MainActor @Sendable () async -> Void)?
-  private var pendingReload = false
-  private var loadGeneration = 0
-  private(set) var noteDatesTask: Task<Void, Never>?
-
-  init(client: PocketBaseClient, userID: String) {
-    self.client = client
-    self.userID = userID
+  init(library: LibrarySession) {
+    self.library = library
   }
 
   func load() async {
-    pendingReload = true
-    loadGeneration &+= 1
-    noteDatesTask?.cancel()
-    guard !isLoading else {
-      return
-    }
-
     isLoading = true
-    defer {
-      isLoading = false
-      hasLoaded = true
-    }
-
-    while pendingReload {
-      pendingReload = false
-      errorMessage = nil
-      await performLoad(generation: loadGeneration)
-    }
-  }
-
-  func cancelNoteDates() {
-    noteDatesTask?.cancel()
-  }
-
-  private func performLoad(generation: Int) async {
-    let projectOwner = PocketBaseFilter.equals(.user, userID)
-    let pageOwner = PocketBaseFilter.equals(.bookUser, userID)
-    let now = Date()
-    let monthStart = OverviewModel.startOfMonth(containing: now)
-    let monthEnd = OverviewModel.startOfNextMonth(containing: now)
-
-    func projects(_ status: String, perPage: Int) async throws -> RecordList<DiamondProjectRecord> {
-      try await client.list(
-        collection: "projects",
-        perPage: perPage,
-        filter: PocketBaseFilter.all([projectOwner, PocketBaseFilter.equals(.status, status)]),
-        sort: "-updated",
-        expand: "company,artist"
-      )
-    }
-
+    errorMessage = nil
+    defer { isLoading = false }
     do {
-      async let activeProjects = projects("progress", perPage: 10)
-      async let kittedProjects = projects("kitted", perPage: 10)
-      async let stashProjects = projects("stash", perPage: 10)
-      async let activePages: RecordList<ColoringPageRecord> = client.list(
-        collection: "coloring_pages",
-        perPage: 10,
-        filter: PocketBaseFilter.all([
-          pageOwner,
-          PocketBaseFilter.equals(.status, "in_progress"),
-        ]),
-        sort: "-updated",
-        expand: "book"
-      )
-      async let completedProjects: RecordList<DiamondProjectRecord> = client.list(
-        collection: "projects",
-        perPage: 1,
-        filter: PocketBaseFilter.all([
-          projectOwner,
-          PocketBaseFilter.equals(.status, "completed"),
-          PocketBaseFilter.greaterThanOrEqual(.dateCompleted, monthStart),
-          PocketBaseFilter.lessThan(.dateCompleted, monthEnd),
-        ])
-      )
-      async let completedPages: RecordList<ColoringPageRecord> = client.list(
-        collection: "coloring_pages",
-        perPage: 1,
-        filter: PocketBaseFilter.all([
-          pageOwner,
-          PocketBaseFilter.equals(.status, "completed"),
-          PocketBaseFilter.greaterThanOrEqual(.completedAt, monthStart),
-          PocketBaseFilter.lessThan(.completedAt, monthEnd),
-        ])
-      )
-
-      let (projects, pages, kitted, stash, projectCompletions, pageCompletions) =
-        try await (
-          activeProjects, activePages, kittedProjects, stashProjects, completedProjects,
-          completedPages
-        )
-
-      guard !Task.isCancelled, generation == loadGeneration else { return }
-      completedThisMonthCount = projectCompletions.totalItems + pageCompletions.totalItems
-      latestNoteDates = [:]
-      items = Self.continueOrder(
-        projects.items.map(LibraryItem.diamond) + pages.items.map(LibraryItem.page),
-        latestNoteDates: [:])
-      upNext = (kitted.items + stash.items).map(LibraryItem.diamond)
-      hasLoaded = true
-
-      let projectIDs = projects.items.map(\.id)
-      let pageIDs = pages.items.map(\.id)
-      noteDatesTask = Task { [weak self] in
-        guard let self else { return }
-        async let diamondDates = try? self.client.latestNoteDates(
-          craft: "diamond", userID: self.userID, targetIDs: projectIDs)
-        async let pageDates = try? self.client.latestNoteDates(
-          craft: "coloring", userID: self.userID, targetIDs: pageIDs)
-        let dates = (await diamondDates ?? [:]).merging(await pageDates ?? [:]) { $1 }
-        guard !Task.isCancelled, generation == self.loadGeneration else { return }
-        self.latestNoteDates = dates
-        self.items = Self.continueOrder(self.items, latestNoteDates: dates)
+      try await library.loadLocal()
+      let now = Date()
+      let monthStart = Self.startOfMonth(containing: now)
+      let monthEnd = Self.startOfNextMonth(containing: now)
+      let projects = library.items.compactMap { item -> DiamondProjectRecord? in
+        if case .diamond(let project) = item, project.user == userID { return project }
+        return nil
       }
-    } catch APIError.cancelled {
-      return
+      let pages = library.items.compactMap { item -> ColoringPageRecord? in
+        if case .page(let page) = item { return page }
+        return nil
+      }
+      completedThisMonthCount = projects.filter {
+        $0.status == "completed" && ($0.dateCompleted ?? "") >= monthStart
+          && ($0.dateCompleted ?? "") < monthEnd
+      }.count + pages.filter {
+        $0.status == "completed" && ($0.completedAt ?? "") >= monthStart
+          && ($0.completedAt ?? "") < monthEnd
+      }.count
+      var dates: [String: String] = [:]
+      for note in library.progressNotes where projects.contains(where: { $0.id == note.project }) {
+        if note.date > dates[note.project, default: ""] { dates[note.project] = note.date }
+      }
+      for note in library.coloringPageProgressNotes where pages.contains(where: { $0.id == note.page }) {
+        if note.date > dates[note.page, default: ""] { dates[note.page] = note.date }
+      }
+      latestNoteDates = dates
+      let activeProjects = projects.filter { $0.status == "progress" }
+        .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.diamond)
+      let activePages = pages.filter { $0.status == "in_progress" }
+        .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.page)
+      items = Self.continueOrder(activeProjects + activePages, latestNoteDates: dates)
+      let kitted = projects.filter { $0.status == "kitted" }
+        .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.diamond)
+      let stash = projects.filter { $0.status == "stash" }
+        .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.diamond)
+      upNext = kitted + stash
+      hasLoaded = true
     } catch APIError.unauthenticated {
-      guard !Task.isCancelled, generation == loadGeneration else { return }
       errorMessage = APIError.unauthenticated.overviewMessage
       await onSessionExpired?()
     } catch {
-      guard !Task.isCancelled, generation == loadGeneration else { return }
       errorMessage = error.overviewMessage
     }
   }
+
+  func refresh() async {
+    do { try await library.refresh() } catch { errorMessage = error.overviewMessage }
+    await load()
+  }
+
+  func cancelNoteDates() {}
 
   /// Most recently logged first; records without a note fall back to `updated`.
   /// Note dates are date-only, so a note logged today outranks today's edits.
@@ -226,13 +163,12 @@ struct OverviewView: View {
   let onLibraryRequest: (LibraryRequest) -> Void
 
   init(
-    client: PocketBaseClient,
-    userID: String,
+    library: LibrarySession,
     verticals: VerticalPreferences,
     onLibraryRequest: @escaping (LibraryRequest) -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
-    let model = OverviewModel(client: client, userID: userID)
+    let model = OverviewModel(library: library)
     model.onSessionExpired = onSessionExpired
     _model = State(initialValue: model)
     self.verticals = verticals
@@ -273,24 +209,23 @@ struct OverviewView: View {
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
-    .refreshable { await model.load() }
+    .refreshable { await model.refresh() }
     .navigationTitle("Home")
     .navigationDestination(for: LibraryItem.self) { item in
       LibraryItemDetailDestination(
         item: item,
-        client: model.client,
-        userID: model.userID,
+        library: model.library,
         onCollectionChanged: { await model.load() }
       )
     }
     .sheet(item: $loggingProject) { project in
       DiamondProgressNoteEditor(
         model: LibraryItemDetailModel(
-          item: .diamond(project), client: model.client, userID: model.userID),
+          item: .diamond(project), library: model.library),
         onCollectionChanged: { await model.load() }
       )
     }
-    .task { await model.load() }
+    .task(id: model.library.generation) { await model.load() }
     .onDisappear { model.cancelNoteDates() }
   }
 
@@ -400,7 +335,7 @@ struct OverviewView: View {
             ForEach(continueItems) { item in
               ContinueCard(
                 item: item,
-                imageURL: model.artworkURL(for: item, token: protectedFiles?.token),
+                imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
                 caption: model.latestNoteDates[item.recordID]
                   .flatMap { OverviewModel.loggedCaption(noteDate: $0) },
                 onLog: logAction(for: item)
@@ -430,7 +365,7 @@ struct OverviewView: View {
           NavigationLink(value: item) {
             UpNextCover(
               item: item,
-              imageURL: model.artworkURL(for: item, token: protectedFiles?.token))
+              imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery))
           }
           .buttonStyle(.plain)
         }

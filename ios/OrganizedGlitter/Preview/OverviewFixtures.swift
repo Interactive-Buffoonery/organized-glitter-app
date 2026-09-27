@@ -55,8 +55,11 @@
       }
       let scenario = Self.scenario ?? "populated"
       let collection = Self.collectionAndID(from: url)?.collection
-      if scenario == "loading", Self.contentCollections.contains(collection ?? "") { return }
-      if scenario == "error", Self.contentCollections.contains(collection ?? "") {
+      let isLibraryRequest = Self.contentCollections.contains(collection ?? "")
+        || url.path == "/api/mobile/sync/snapshot"
+        || url.path == "/api/mobile/sync/apply"
+      if scenario == "loading", isLibraryRequest { return }
+      if scenario == "error", isLibraryRequest {
         respond(object: ["message": "Fictional service failure"], status: 503)
         return
       }
@@ -197,6 +200,19 @@
         if request.url?.path == "/api/notes/latest" {
           return latestNotes(request: request)
         }
+        if request.url?.path == "/api/mobile/sync/snapshot" {
+          return FixtureResponse(object: [
+            "version": 1,
+            "projects": collections["projects"] ?? [],
+            "coloringBooks": collections["coloring_books"] ?? [],
+            "coloringPages": collections["coloring_pages"] ?? [],
+            "progressNotes": collections["progress_notes"] ?? [],
+            "coloringPageProgressNotes": collections["coloring_page_progress_notes"] ?? [],
+          ], status: 200)
+        }
+        if request.url?.path == "/api/mobile/sync/apply" {
+          return apply(request: request)
+        }
         guard let url = request.url,
           let target = OverviewFixtureProtocol.collectionAndID(from: url)
         else {
@@ -258,7 +274,33 @@
             ? (scenario == "design"
               ? OverviewFixtureProtocol.designProgressNotes
               : OverviewFixtureProtocol.progressNoteItems) : [],
+          "coloring_page_progress_notes": [],
         ]
+      }
+
+      private func apply(request: URLRequest) -> FixtureResponse {
+        let body = jsonValues(from: request)
+        guard let collection = body["collection"] as? String,
+          let id = body["recordId"] as? String,
+          let patch = body["patch"] as? [String: Any],
+          let base = body["base"] as? [String: Any],
+          let index = collections[collection]?.firstIndex(where: { $0["id"] as? String == id })
+        else {
+          return FixtureResponse(object: ["message": "Fixture record not found"], status: 404)
+        }
+        var record = collections[collection]![index]
+        for field in patch.keys {
+          let current = (record[field] ?? NSNull()) as? NSObject
+          let previous = (base[field] ?? NSNull()) as? NSObject
+          if current != previous {
+            return FixtureResponse(
+              object: ["reason": "field_conflict", "record": record], status: 409)
+          }
+        }
+        for (field, value) in patch { record[field] = value }
+        record["updated"] = "2026-09-19 15:00:00"
+        collections[collection]![index] = record
+        return FixtureResponse(object: ["record": record], status: 200)
       }
 
       private func latestNotes(request: URLRequest) -> FixtureResponse {

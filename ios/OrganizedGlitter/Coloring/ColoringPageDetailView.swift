@@ -26,8 +26,7 @@ struct ColoringPageDetailView: View {
       LazyVStack(alignment: .leading, spacing: 18) {
         CoverArtwork(
           item: .page(page),
-          url: LibraryItem.page(page).artworkURL(
-            using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
+          url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery),
           maxPixelDimension: 1_200,
           loadedAccessibilityLabel: "Page artwork"
         )
@@ -183,7 +182,7 @@ struct ColoringPageDetailView: View {
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
-    .refreshable { await model.load() }
+    .refreshable { await model.refresh() }
     .task(id: selectedItem) {
       await prepareSelection()
     }

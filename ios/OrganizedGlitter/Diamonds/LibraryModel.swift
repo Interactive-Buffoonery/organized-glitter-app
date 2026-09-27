@@ -152,8 +152,9 @@ struct LibraryRequest: Equatable {
 @MainActor
 @Observable
 final class LibraryModel {
-  let client: PocketBaseClient
-  let userID: String
+  let library: LibrarySession
+  var client: PocketBaseClient { library.client }
+  var userID: String { library.userID }
 
   var section = LibrarySection.diamonds
   var searchText = ""
@@ -166,29 +167,19 @@ final class LibraryModel {
   var isMutating = false
   var mutationError: String?
 
-  private(set) var projects: [DiamondProjectRecord] = []
-  private(set) var books: [ColoringBookRecord] = []
-  private(set) var pages: [ColoringPageRecord] = []
+  private(set) var displayedItems: [LibraryItem] = []
   private var currentPage = 0
   private var totalPages = 0
   private var generation = 0
   private var listingEpoch = 0
   var onSessionExpired: (@MainActor @Sendable () async -> Void)?
 
-  init(client: PocketBaseClient, userID: String) {
-    self.client = client
-    self.userID = userID
+  init(library: LibrarySession) {
+    self.library = library
   }
 
   var items: [LibraryItem] {
-    switch section {
-    case .diamonds:
-      projects.map(LibraryItem.diamond)
-    case .books:
-      books.map(LibraryItem.book)
-    case .pages:
-      pages.map(LibraryItem.page)
-    }
+    displayedItems
   }
 
   var canLoadMore: Bool {
@@ -267,8 +258,6 @@ final class LibraryModel {
     }
     let requestGeneration = generation
     let requestedSection = section
-    let requestedSort = sort
-    let requestedSearch = committedSearch
     let requestedPage = reset ? 1 : currentPage + 1
 
     isLoading = true
@@ -281,47 +270,18 @@ final class LibraryModel {
     }
 
     do {
-      switch requestedSection {
-      case .diamonds:
-        let result: RecordList<DiamondProjectRecord> = try await client.list(
-          collection: "projects",
-          page: requestedPage,
-          filter: filter(for: requestedSection, search: requestedSearch),
-          sort: requestedSort.query(for: requestedSection),
-          expand: "company,artist"
-        )
-        guard requestGeneration == generation, section == requestedSection else {
-          return
-        }
-        projects = reset ? result.items : projects + result.items
-        applyPagination(result)
-      case .books:
-        let result: RecordList<ColoringBookRecord> = try await client.list(
-          collection: "coloring_books",
-          page: requestedPage,
-          filter: filter(for: requestedSection, search: requestedSearch),
-          sort: requestedSort.query(for: requestedSection),
-          expand: "publisher,illustrator"
-        )
-        guard requestGeneration == generation, section == requestedSection else {
-          return
-        }
-        books = reset ? result.items : books + result.items
-        applyPagination(result)
-      case .pages:
-        let result: RecordList<ColoringPageRecord> = try await client.list(
-          collection: "coloring_pages",
-          page: requestedPage,
-          filter: filter(for: requestedSection, search: requestedSearch),
-          sort: requestedSort.query(for: requestedSection),
-          expand: "book"
-        )
-        guard requestGeneration == generation, section == requestedSection else {
-          return
-        }
-        pages = reset ? result.items : pages + result.items
-        applyPagination(result)
+      if reset { try await library.loadLocal() }
+      guard requestGeneration == generation, section == requestedSection else { return }
+      if !library.hasSnapshot && library.items.isEmpty {
+        displayedItems = []
+        errorMessage = "Connect to download your library."
+        return
       }
+      let matching = library.items.filter { matchesCurrentListing($0) }
+        .sorted(by: precedes)
+      totalPages = (matching.count + Self.pageSize - 1) / Self.pageSize
+      currentPage = min(requestedPage, totalPages)
+      displayedItems = Array(matching.prefix(requestedPage * Self.pageSize))
     } catch APIError.cancelled {
       return
     } catch APIError.unauthenticated {
@@ -334,6 +294,15 @@ final class LibraryModel {
       guard requestGeneration == generation else {
         return
       }
+      errorMessage = error.libraryMessage
+    }
+  }
+
+  func refresh() async {
+    do {
+      try await library.refresh()
+      await load()
+    } catch {
       errorMessage = error.libraryMessage
     }
   }
@@ -362,7 +331,7 @@ final class LibraryModel {
     defer { isMutating = false }
 
     do {
-      try await client.delete(collection: collection, id: recordID)
+      try await library.delete(collection: collection, id: recordID)
       await load()
     } catch {
       if error as? APIError == .offline || error as? APIError == .server {
@@ -381,32 +350,18 @@ final class LibraryModel {
     }
   }
 
-  private func filter(for section: LibrarySection, search: String? = nil) -> String {
-    var filters = [
-      PocketBaseFilter.equals(section == .pages ? .bookUser : .user, userID)
-    ]
-
-    let search = (search ?? committedSearch).trimmingCharacters(in: .whitespacesAndNewlines)
-    if !search.isEmpty {
-      if section == .pages, let pageNumber = Int(search) {
-        filters.append(PocketBaseFilter.equals(.pageNumber, pageNumber))
-      } else {
-        filters.append(
-          PocketBaseFilter.any(
-            searchFields(for: section).map { PocketBaseFilter.contains($0, search) })
-        )
-      }
-    }
-
-    if let statusFilter {
-      filters.append(PocketBaseFilter.equals(.status, statusFilter))
-    }
-    return PocketBaseFilter.all(filters)
-  }
+  private static let pageSize = 30
 
   private func matchesCurrentListing(_ item: LibraryItem) -> Bool {
     switch (section, item) {
-    case (.diamonds, .diamond), (.books, .book), (.pages, .page):
+    case (.diamonds, .diamond(let project)) where project.user == userID:
+      break
+    case (.books, .book(let book)) where book.user == userID:
+      break
+    case (.pages, .page(let page)) where library.items.contains(where: {
+        if case .book(let book) = $0 { return book.id == page.book && book.user == userID }
+        return false
+      }):
       break
     default:
       return false
@@ -442,18 +397,11 @@ final class LibraryModel {
       if let pageNumber = Int(search) {
         return page.pageNumber == pageNumber
       }
-      guard let bookTitle = page.expand?.book?.title else {
-        return true
-      }
+      let bookTitle = page.expand?.book?.title ?? library.items.compactMap { candidate -> String? in
+        if case .book(let book) = candidate, book.id == page.book { return book.title }
+        return nil
+      }.first ?? ""
       return bookTitle.localizedCaseInsensitiveContains(search)
-    }
-  }
-
-  private func searchFields(for section: LibrarySection) -> [PocketBaseFilter.Field] {
-    switch section {
-    case .diamonds: [.title, .artistName, .companyName]
-    case .books: [.title, .publisherName, .illustratorName]
-    case .pages: [.bookTitle]
     }
   }
 
@@ -461,9 +409,20 @@ final class LibraryModel {
     values.contains { ($0 ?? "").localizedCaseInsensitiveContains(search) }
   }
 
-  private func applyPagination<Record>(_ result: RecordList<Record>) {
-    currentPage = result.page
-    totalPages = result.totalPages
+  private func precedes(_ lhs: LibraryItem, _ rhs: LibraryItem) -> Bool {
+    switch sort {
+    case .recentlyUpdated:
+      return lhs.updated == rhs.updated ? lhs.recordID < rhs.recordID : lhs.updated > rhs.updated
+    case .titleAscending, .titleDescending:
+      let comparison = lhs.title.localizedStandardCompare(rhs.title)
+      return comparison == .orderedSame ? lhs.recordID < rhs.recordID
+        : comparison == (sort == .titleAscending ? .orderedAscending : .orderedDescending)
+    case .pageAscending, .pageDescending:
+      guard case .page(let left) = lhs, case .page(let right) = rhs else { return false }
+      return left.pageNumber == right.pageNumber ? left.id < right.id
+        : (sort == .pageAscending ? left.pageNumber < right.pageNumber
+          : left.pageNumber > right.pageNumber)
+    }
   }
 }
 

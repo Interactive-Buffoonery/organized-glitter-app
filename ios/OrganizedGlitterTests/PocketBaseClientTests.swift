@@ -445,10 +445,15 @@ struct PocketBaseClientTests {
     )
 
     _ = try await client.signIn(identity: "sarah@example.test", password: "password")
-    let model = LibraryModel(client: client, userID: "user-1")
-    await model.load()
+    let records: RecordList<DiamondProjectRecord> = try await client.list(
+      collection: "projects",
+      perPage: 50,
+      filter: PocketBaseFilter.equals(.user, "user-1"),
+      sort: "-updated",
+      expand: "company,artist"
+    )
 
-    #expect(model.projects.map(\.title) == ["Moon Garden"])
+    #expect(records.items.map(\.title) == ["Moon Garden"])
     let components = URLComponents(
       url: try #require(PocketBaseClientURLProtocol.requests.last?.url),
       resolvingAgainstBaseURL: false

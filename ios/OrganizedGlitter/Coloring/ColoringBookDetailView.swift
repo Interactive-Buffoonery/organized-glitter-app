@@ -41,15 +41,14 @@ struct ColoringBookDetailView: View {
               NavigationLink {
                 LibraryItemDetailDestination(
                   item: .page(page),
-                  client: model.client,
-                  userID: model.userID,
+                  library: model.library,
                   onCollectionChanged: {
                     model.needsBookPageRefresh = true
                     await onCollectionChanged()
                   }
                 )
               } label: {
-                ColoringBookPageCard(page: page, client: model.client)
+                ColoringBookPageCard(page: page)
               }
               .buttonStyle(.plain)
               .accessibilityIdentifier("detail.book.page.\(page.id)")
@@ -120,14 +119,14 @@ struct ColoringBookDetailView: View {
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
-    .refreshable { await model.load() }
+    .refreshable { await model.refresh() }
   }
 
   private var bookHeader: some View {
     VStack(spacing: 8) {
       CoverArtwork(
         item: .book(book),
-        url: LibraryItem.book(book).artworkURL(using: model.client, token: protectedFiles?.token),
+        url: protectedFiles?.artworkURL(for: .book(book)),
         maxPixelDimension: 900,
         loadedAccessibilityLabel: "Book cover"
       )
@@ -258,14 +257,12 @@ private struct ColoringBookPageCard: View {
   @Environment(\.theme) private var theme
 
   let page: ColoringPageRecord
-  let client: PocketBaseClient
 
   var body: some View {
     VStack(spacing: 4) {
       CoverArtwork(
         item: .page(page),
-        url: LibraryItem.page(page).artworkURL(
-          using: client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token)
+        url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery)
       )
 
       HStack(spacing: 3) {
