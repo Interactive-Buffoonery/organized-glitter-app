@@ -6,6 +6,15 @@
   final class OverviewFixtureProtocol: URLProtocol, @unchecked Sendable {
     private static let store = FixtureStore()
     static let sampleDataKey = "use-sample-data"
+    static let offlineAfterSeedArgument = "-fixture-offline-after-seed"
+
+    static var offlineAfterSeed: Bool {
+      scenario != nil && ProcessInfo.processInfo.arguments.contains(offlineAfterSeedArgument)
+    }
+
+    static var offlineSeedCompleted: Bool {
+      offlineAfterSeed && store.hasCompletedOfflineSeed
+    }
 
     static var scenario: String? {
       let arguments = ProcessInfo.processInfo.arguments
@@ -50,6 +59,10 @@
           "token": "fictional-fixture-token",
           "record": ["id": "preview-user", "verified": true, "username": "Fictional crafter"],
         ])
+        return
+      }
+      if Self.offlineSeedCompleted {
+        client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
         return
       }
       let scenario = Self.scenario ?? "populated"
@@ -202,6 +215,15 @@
       private var scenario: String?
       private var collections: [String: [[String: Any]]] = [:]
       private var sequence = 0
+      private var servedSnapshot = false
+      private var servedUser = false
+      private var servedSettings = false
+
+      var hasCompletedOfflineSeed: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return servedSnapshot && servedUser && servedSettings
+      }
 
       func response(for request: URLRequest, scenario: String) -> FixtureResponse {
         lock.lock()
@@ -214,6 +236,7 @@
           return latestNotes(request: request)
         }
         if request.url?.path == "/api/mobile/sync/snapshot" {
+          servedSnapshot = true
           return FixtureResponse(object: [
             "version": 1,
             "projects": collections["projects"] ?? [],
@@ -235,9 +258,15 @@
         switch request.httpMethod ?? "GET" {
         case "GET":
           if let id = target.id {
-            return get(collection: target.collection, id: id)
+            let response = get(collection: target.collection, id: id)
+            if target.collection == "users", response.status == 200 { servedUser = true }
+            return response
           }
-          return list(collection: target.collection, url: url)
+          let response = list(collection: target.collection, url: url)
+          if target.collection == "user_dashboard_settings", response.status == 200 {
+            servedSettings = true
+          }
+          return response
         case "POST":
           return create(collection: target.collection, request: request)
         case "PATCH":
@@ -258,6 +287,9 @@
       private func reset(for scenario: String) {
         self.scenario = scenario
         sequence = 0
+        servedSnapshot = false
+        servedUser = false
+        servedSettings = false
         let hasContent = scenario != "empty"
         let usesDesignData = scenario == "design" || scenario == "many-pages"
         collections = [

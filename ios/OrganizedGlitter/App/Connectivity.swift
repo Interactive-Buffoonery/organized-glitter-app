@@ -19,6 +19,19 @@ final class Connectivity {
   private(set) var connectionAvailable = true
 
   func monitor() async {
+    #if DEBUG
+      if OverviewFixtureProtocol.offlineAfterSeed {
+        while !Task.isCancelled {
+          if OverviewFixtureProtocol.offlineSeedCompleted {
+            connectionAvailable = false
+            return
+          }
+          do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+        }
+        return
+      }
+    #endif
+
     let monitor = NWPathMonitor()
     let updates = AsyncStream<Bool> { continuation in
       monitor.pathUpdateHandler = { path in
