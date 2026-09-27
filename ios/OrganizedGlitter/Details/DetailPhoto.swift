@@ -12,7 +12,6 @@ struct DetailPhoto: Identifiable, Hashable, Sendable {
 
 struct DetailPhotoGallery: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-  @Environment(\.theme) private var theme
 
   let photos: [DetailPhoto]
 
@@ -20,31 +19,8 @@ struct DetailPhotoGallery: View {
     ScrollView(.horizontal) {
       LazyHStack(spacing: 12) {
         ForEach(photos) { photo in
-          RemoteArtwork(
-            url: photo.url,
-            maxPixelDimension: thumbnailSize * 3
-          ) { phase in
-            switch phase {
-            case .success(let image):
-              image
-                .resizable()
-                .scaledToFit()
-                .accessibilityLabel(photo.accessibilityLabel)
-            case .failure:
-              photoPlaceholder(systemImage: "photo.badge.exclamationmark")
-                .accessibilityLabel("Photo unavailable")
-            case .empty:
-              photoPlaceholder(systemImage: "photo")
-                .overlay { ProgressView() }
-                .accessibilityHidden(true)
-            @unknown default:
-              photoPlaceholder(systemImage: "photo")
-                .accessibilityHidden(true)
-            }
-          }
-          .frame(width: thumbnailSize, height: thumbnailSize)
-          .background(theme.muted.opacity(0.45))
-          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
+          DetailPhotoTile(photo: photo, contentMode: .fit, maxPixelDimension: thumbnailSize * 3)
+            .frame(width: thumbnailSize, height: thumbnailSize)
         }
       }
     }
@@ -55,8 +31,69 @@ struct DetailPhotoGallery: View {
   private var thumbnailSize: CGFloat {
     dynamicTypeSize.isAccessibilitySize ? 160 : 104
   }
+}
 
-  private func photoPlaceholder(systemImage: String) -> some View {
+/// Square progress photos in a grid, like the web's contact sheet.
+struct DetailPhotoContactSheet: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+  let photos: [DetailPhoto]
+
+  var body: some View {
+    LazyVGrid(
+      columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: columnCount),
+      spacing: 6
+    ) {
+      ForEach(photos) { photo in
+        DetailPhotoTile(photo: photo, contentMode: .fill, maxPixelDimension: 480)
+          .aspectRatio(1, contentMode: .fit)
+      }
+    }
+    .accessibilityIdentifier("detail.photos")
+  }
+
+  private var columnCount: Int {
+    if dynamicTypeSize.isAccessibilitySize { return 2 }
+    return horizontalSizeClass == .regular ? 4 : 3
+  }
+}
+
+struct DetailPhotoTile: View {
+  @Environment(\.theme) private var theme
+
+  let photo: DetailPhoto
+  let contentMode: ContentMode
+  let maxPixelDimension: CGFloat
+
+  var body: some View {
+    Color.clear
+      .overlay {
+        RemoteArtwork(url: photo.url, maxPixelDimension: maxPixelDimension) { phase in
+          switch phase {
+          case .success(let image):
+            image
+              .resizable()
+              .aspectRatio(contentMode: contentMode)
+              .accessibilityLabel(photo.accessibilityLabel)
+          case .failure:
+            placeholder(systemImage: "photo.badge.exclamationmark")
+              .accessibilityLabel("Photo unavailable")
+          case .empty:
+            placeholder(systemImage: "photo")
+              .overlay { ProgressView() }
+              .accessibilityHidden(true)
+          @unknown default:
+            placeholder(systemImage: "photo")
+              .accessibilityHidden(true)
+          }
+        }
+      }
+      .background(theme.muted.opacity(0.45))
+      .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
+  }
+
+  private func placeholder(systemImage: String) -> some View {
     Rectangle()
       .fill(theme.muted)
       .overlay {

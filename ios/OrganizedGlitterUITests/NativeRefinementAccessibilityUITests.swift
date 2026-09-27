@@ -16,7 +16,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
 
     let addProgressPhoto = button("detail.diamond.addNote", in: app)
     makeHittable(addProgressPhoto, in: app)
-    XCTAssertTrue(app.staticTexts["Photos"].exists)
+    XCTAssertTrue(app.staticTexts["Progress"].exists)
     try capture("refinement-ax-01-diamond-lower")
 
     button("detail.edit", in: app).tap()
