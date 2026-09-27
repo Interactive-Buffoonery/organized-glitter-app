@@ -70,28 +70,24 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("continueWithEmail")
           .disabled(model.client == nil)
 
-          // Social methods remain a Debug-only integration spike until native
-          // Apple and physical-device continuity checks complete.
-          #if DEBUG
-            ForEach(model.socialProviders, id: \.self) { provider in
-              Button {
-                guard let presentationAnchor else { return }
-                model.signInWithOAuth(provider: provider, anchor: presentationAnchor)
-              } label: {
-                Label(
-                  "Continue with \(provider.displayName)",
-                  systemImage: provider.symbolName
-                )
-              }
-              .buttonStyle(AuthMethodButtonStyle())
-              .disabled(model.isSubmitting || presentationAnchor == nil)
-              .accessibilityIdentifier("continueWith\(provider.displayName)")
+          ForEach(model.socialProviders, id: \.self) { provider in
+            Button {
+              guard let presentationAnchor else { return }
+              model.signInWithOAuth(provider: provider, anchor: presentationAnchor)
+            } label: {
+              Label(
+                "Continue with \(provider.displayName)",
+                systemImage: provider.symbolName
+              )
             }
-            if let error = model.oauthError {
-              AccessibleErrorLabel(message: error)
-                .accessibilityIdentifier("oauthError")
-            }
-          #endif
+            .buttonStyle(AuthMethodButtonStyle())
+            .disabled(model.isSubmitting || presentationAnchor == nil)
+            .accessibilityIdentifier("continueWith\(provider.displayName)")
+          }
+          if let error = model.oauthError {
+            AccessibleErrorLabel(message: error)
+              .accessibilityIdentifier("oauthError")
+          }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Account providers")
@@ -119,10 +115,8 @@ struct AccountMethodView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    #if DEBUG
-      .task { await model.loadSocialProviders() }
-      .onDisappear { model.cancelOAuth() }
-    #endif
+    .task { await model.loadSocialProviders() }
+    .onDisappear { model.cancelOAuth() }
   }
 }
 

@@ -1,6 +1,6 @@
 # Social sign-in parity for iOS
 
-Updated: 2026-09-27. Status: Google/Discord draft implemented; Apple and release gates pending.
+Updated: 2026-09-27. Status: Google/Discord enabled in Debug and Release for prelaunch testing; Apple and public-launch checks pending.
 Planning branch: `feat/social-sign-in`, created from `origin/main`.
 Simulator evidence and remaining checks: [social-oauth-validation.md](social-oauth-validation.md).
 
@@ -308,7 +308,8 @@ After the backend contract is verified:
 - Pin the verified backend revision once as part of native integration, including
   the route and readiness-response contract.
 
-Do not release Google/Discord without the required Apple sign-in support.
+Google/Discord are enabled in Release builds for owner prelaunch testing.
+Complete native Apple sign-in support before the planned public App Store launch.
 Confirm the current App Store login-service requirements at release review;
 the release gate is an operational provider test, not merely a visible button.
 
