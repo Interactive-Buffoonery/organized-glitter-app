@@ -43,8 +43,25 @@ struct DetailDateOnlyTests {
     #expect(after(1) == "1 day")
     #expect(after(13) == "13 days")
     #expect(after(43) == "6 weeks")
+    #expect(after(62) == "8 weeks")
+    #expect(after(63) == "2 months")
     #expect(after(130) == "4 months")
     #expect(after(-1) == nil)
+  }
+
+  @Test
+  func elapsedCountsCompletedCalendarMonthsAcrossShortMonths() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.locale = Locale(identifier: "en_US")
+    calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
+    let start = try #require(DetailDateOnly.date("2026-02-01", timeZone: calendar.timeZone))
+    let beforeThreeMonths = try #require(
+      DetailDateOnly.date("2026-04-30", timeZone: calendar.timeZone))
+    let threeMonths = try #require(
+      DetailDateOnly.date("2026-05-01", timeZone: calendar.timeZone))
+
+    #expect(DetailDateOnly.elapsed(from: start, to: beforeThreeMonths, calendar: calendar) == "2 months")
+    #expect(DetailDateOnly.elapsed(from: start, to: threeMonths, calendar: calendar) == "3 months")
   }
 
   @Test
