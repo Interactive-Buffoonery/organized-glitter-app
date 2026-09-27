@@ -109,7 +109,7 @@ struct PocketBaseClientTests {
     PocketBaseClientURLProtocol.responses = [
       (
         403,
-        #"{"data":{},"message":"Only verified users can authenticate.","status":403}"#
+        #"{"data":{},"message":"The request doesn't satisfy the collection requirements to authenticate.","status":403}"#
       )
     ]
 
@@ -128,6 +128,61 @@ struct PocketBaseClientTests {
       _ = try await client.signIn(identity: "unverified@example.test", password: "password")
     }
     #expect(try store.load() == nil)
+  }
+
+  @Test(arguments: [
+    #"{"data":{},"message":"This account is restricted.","status":403}"#,
+    #"{"data":{},"message":"Verification service access denied.","status":403}"#,
+    #"{"data":{},"status":403}"#,
+    "not-json",
+    "",
+  ])
+  func preservesUnrelatedPasswordAuthenticationDenials(body: String) async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [(403, body)]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: APIError.forbidden) {
+      _ = try await client.signIn(identity: "restricted@example.test", password: "password")
+    }
+    #expect(try store.load() == nil)
+  }
+
+  @Test
+  func preservesAuthRuleMessageOutsidePasswordAuthentication() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (
+        403,
+        #"{"data":{},"message":"The request doesn't satisfy the collection requirements to authenticate.","status":403}"#
+      )
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+      ),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: APIError.forbidden) {
+      try await client.requestPasswordReset(email: "restricted@example.test")
+    }
   }
 
   @Test
