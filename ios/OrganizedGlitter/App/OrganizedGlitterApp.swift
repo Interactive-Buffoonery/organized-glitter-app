@@ -39,7 +39,18 @@ struct OrganizedGlitterApp: App {
         sessionStore = KeychainSessionStore()
         client = PocketBaseClient(baseURL: configuration.pocketBaseURL, sessionStore: sessionStore)
       #endif
-      return AppModel(client: client, sessionStore: sessionStore, themeStore: themeStore)
+      let databaseURL = URL.applicationSupportDirectory
+        .appending(path: "LocalLibrary", directoryHint: .isDirectory)
+        .appending(path: "library.store")
+      let localStore: LocalLibraryStore
+      #if DEBUG
+        localStore = try OverviewFixtureProtocol.scenario != nil
+          ? LocalLibraryStore.inMemory() : LocalLibraryStore(databaseURL: databaseURL)
+      #else
+        localStore = try LocalLibraryStore(databaseURL: databaseURL)
+      #endif
+      return AppModel(
+        client: client, sessionStore: sessionStore, themeStore: themeStore, localStore: localStore)
     } catch {
       return AppModel(configurationError: error, themeStore: themeStore)
     }

@@ -2,7 +2,7 @@
 
 ## Product
 
-Organized Glitter is publicly distributed through the App Store. Each user’s
+Organized Glitter is a new native app being prepared for the App Store. Each user’s
 craft-project library and files are private. Read `README.md` and
 `ios/docs/architecture.md` before changing application structure or backend behavior.
 
@@ -13,8 +13,12 @@ craft-project library and files are private. Read `README.md` and
 - Guard APIs newer than iOS 18 with availability checks.
 - Keep PocketBase as the only backend and identity system.
 - Never merge accounts by email or reassign records on the client.
-- Keep server data in memory. Do not add offline writes or a persistent record
-  cache.
+- Store library records and pending supported edits in the account-scoped
+  SwiftData store. Route feature reads and writes through `LibrarySession`.
+- PocketBase is authoritative for shared data and authorization. Never discard
+  pending edits after a failed download or an authentication failure.
+- Keep creates, deletes, uploads, taxonomy changes, and book page-count changes
+  online until their offline contracts are explicitly implemented.
 - Use Apple platform APIs before third-party dependencies.
 - Never log credentials, auth tokens, OAuth codes, user content, private file
   URLs, email addresses, or other PII.
@@ -40,7 +44,8 @@ craft-project library and files are private. Read `README.md` and
 - `PocketBaseClient` is the concrete transport. Do not add a protocol with one
   implementation or a generic repository layer.
 - Treat task cancellation as normal.
-- Use partial updates and refresh after writes.
+- Use partial updates. Commit local edits before reporting success; synchronize
+  through the transactional mobile contract and refresh after accepted writes.
 - Use role-appropriate native controls and provide accessibility labels.
 
 ## Git

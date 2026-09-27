@@ -3,8 +3,7 @@ import SwiftUI
 /// The toolbar `+`. Create is an action, not a destination, so it lives here
 /// instead of in a tab. Coloring pages are created from their book.
 struct CreateMenu: View {
-  let client: PocketBaseClient
-  let userID: String
+  let library: LibrarySession
   let verticals: VerticalPreferences
   let onRefresh: () async -> Void
   let onSaved: (LibraryItem) -> Void
@@ -28,7 +27,7 @@ struct CreateMenu: View {
     .accessibilityIdentifier("create.menu")
     .sheet(item: $target) { target in
       CreateEditor(
-        target: target, client: client, userID: userID, onRefresh: onRefresh, onSaved: onSaved)
+        target: target, library: library, onRefresh: onRefresh, onSaved: onSaved)
     }
   }
 }
@@ -42,19 +41,18 @@ enum CreateTarget: String, Identifiable {
 
 struct CreateEditor: View {
   let target: CreateTarget
-  let client: PocketBaseClient
-  let userID: String
+  let library: LibrarySession
   let onRefresh: () async -> Void
   let onSaved: (LibraryItem) -> Void
 
   var body: some View {
     switch target {
     case .diamond:
-      DiamondProjectEditor(client: client, userID: userID, onLibraryRefresh: onRefresh) {
+      DiamondProjectEditor(library: library, onLibraryRefresh: onRefresh) {
         onSaved(.diamond($0))
       }
     case .book:
-      ColoringBookEditor(client: client, userID: userID, onLibraryRefresh: onRefresh) {
+      ColoringBookEditor(library: library, onLibraryRefresh: onRefresh) {
         onSaved(.book($0))
       }
     }

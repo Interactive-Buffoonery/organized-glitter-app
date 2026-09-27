@@ -4,6 +4,7 @@
 
 - `OrganizedGlitter/App` owns configuration, session state, and root navigation.
 - `OrganizedGlitter/Networking` owns concrete PocketBase requests.
+- `OrganizedGlitter/LocalLibrary` owns durable records, queued edits, and sync.
 - Feature folders own their views and feature-local state.
 - `OrganizedGlitter/Design` owns semantic native styling. Tokens, hex values,
   and rules are documented in `docs/design.md`.
@@ -17,20 +18,29 @@ The application does not own backend schema or server behavior. Those remain in
 
 - PocketBase is the only identity system and backend.
 - Credentials are stored in Keychain.
-- Records remain in memory for the process lifetime.
-- Writes require connectivity.
-- The app does not queue writes or claim realtime synchronization.
-- Concurrent edits use PocketBase last-write-wins behavior.
-- A write with unknown completion must be refreshed before retry.
-- Library search, status filters, sorting, and pagination execute on PocketBase.
-- File images use short-lived PocketBase file tokens fetched for the signed-in
-  account. The app renews the token shortly before its expiry while its signed-in
-  shell is visible, with a 30-second minimum delay between renewals. A missing
-  token suppresses image requests. `RemoteArtwork` uses token-bearing URLs for
-  downloads but excludes the token query item from its in-memory cache and
-  in-flight request keys; thumbnail parameters remain part of those keys. The
-  cache is purged on session changes. All file URL construction goes through
-  `PocketBaseClient.fileURL`.
+- Library reads and writes flow through the account-scoped `LibrarySession`.
+- SwiftData stores downloaded records, the last verified user, and pending
+  metadata edits. CloudKit synchronization is explicitly disabled.
+- Local saves commit the displayed change and retry operation together before
+  the editor reports success. Unacknowledged operations retain stable IDs.
+- A complete PocketBase snapshot replaces confirmed server state; failed
+  snapshots never imply deletion. Pending changes remain an overlay.
+- The mobile apply route checks ownership, changed fields, and related lifecycle
+  fields atomically. Conflicts preserve local edits for explicit resolution.
+- Creation, deletion, uploads, taxonomy, account preferences, and book page-count
+  changes remain online operations. Server hooks continue to own page generation.
+- Local data is separated by backend and user ID, protected by Apple file
+  protection, and excluded from device backups. Unsent edits exist only on this
+  device until synchronized; uninstalling the app removes them.
+- Explicit sign-out requires confirmation before discarding pending changes and
+  removes the local account library and downloaded artwork. Authentication
+  failure locks the account without deleting unsent work.
+- Artwork is stored in a bounded, account-scoped cache without token-bearing
+  URLs. Cache-only URLs cannot trigger network downloads. Online file requests
+  require a file token and the configured backend origin. Successful snapshots
+  prune files no longer referenced by the accessible library.
+
+See [the offline library contract](offline-library.md) for rollout and tests.
 
 ## Dependency policy
 
@@ -48,7 +58,7 @@ Before App Store submission, the release owner must separately verify:
 
 - Deployed backend Git revision.
 - Production PocketBase version.
-- Existing-user identity continuity.
+- Account isolation and offline session restoration.
 - Collection authorization.
 - Backup retention and isolated restoration.
 - Account deletion and provider revocation.
