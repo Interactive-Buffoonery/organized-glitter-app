@@ -238,6 +238,7 @@ struct DiamondProjectDetailView: View {
       } label: {
         Label("Log progress", systemImage: "plus.circle")
           .labelStyle(.titleAndIcon)
+          .font(.subheadline)
           .frame(minHeight: 44)
           .contentShape(.rect)
       }
