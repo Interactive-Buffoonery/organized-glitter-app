@@ -83,6 +83,21 @@ struct DiamondProjectRecord: Codable, Hashable, Identifiable, Sendable {
 struct ColoringBookExpand: Codable, Hashable, Sendable {
   let publisher: NamedRelationRecord?
   let illustrator: NamedRelationRecord?
+  var bookTags: [ColoringBookTagRecord]? = nil
+
+  enum CodingKeys: String, CodingKey {
+    case publisher, illustrator
+    case bookTags = "coloring_book_tags_via_book"
+  }
+}
+
+struct ColoringBookTagRecord: Codable, Hashable, Sendable {
+  struct Expand: Codable, Hashable, Sendable {
+    let tag: TagRecord?
+  }
+
+  let id: String
+  let expand: Expand?
 }
 
 struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
@@ -132,7 +147,20 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
 }
 
 struct ColoringPageExpand: Codable, Hashable, Sendable {
-  let book: ColoringBookRecord?
+  let book: ColoringPageBook?
+  var mediums: [NamedRelationRecord]? = nil
+}
+
+struct ColoringPageBook: Codable, Hashable, Sendable {
+  let id: String
+  let title: String
+  let user: String
+}
+
+extension ColoringPageExpand {
+  init(book: ColoringBookRecord) {
+    self.init(book: ColoringPageBook(id: book.id, title: book.title, user: book.user))
+  }
 }
 
 struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
