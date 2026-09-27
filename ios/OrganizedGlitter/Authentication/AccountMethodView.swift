@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Method choice before the email form. Only email is offered while Apple,
-/// Google, and Discord lack a verified native continuity path.
+/// Method choice before the email form.
 struct AccountMethodView: View {
   @Environment(\.theme) private var theme
+  @State private var presentationAnchor: UIWindow?
 
   enum Mode: Hashable {
     case signIn
@@ -69,6 +69,29 @@ struct AccountMethodView: View {
           .buttonStyle(AuthMethodButtonStyle())
           .accessibilityIdentifier("continueWithEmail")
           .disabled(model.client == nil)
+
+          // Social methods remain a Debug-only integration spike until native
+          // Apple and physical-device continuity checks complete.
+          #if DEBUG
+            ForEach(model.socialProviders, id: \.self) { provider in
+              Button {
+                guard let presentationAnchor else { return }
+                model.signInWithOAuth(provider: provider, anchor: presentationAnchor)
+              } label: {
+                Label(
+                  "Continue with \(provider == "google" ? "Google" : "Discord")",
+                  systemImage: provider == "google" ? "globe" : "bubble.left.and.bubble.right"
+                )
+              }
+              .buttonStyle(AuthMethodButtonStyle())
+              .disabled(model.isSubmitting || presentationAnchor == nil)
+              .accessibilityIdentifier("continueWith\(provider.capitalized)")
+            }
+            if let error = model.oauthError {
+              AccessibleErrorLabel(message: error)
+                .accessibilityIdentifier("oauthError")
+            }
+          #endif
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Account providers")
@@ -89,8 +112,17 @@ struct AccountMethodView: View {
         Spacer(minLength: 12)
       }
       .frame(maxWidth: .infinity)
+      .background {
+        OAuthPresentationAnchor { presentationAnchor = $0 }
+          .frame(width: 0, height: 0)
+          .accessibilityHidden(true)
+      }
     }
     .navigationBarTitleDisplayMode(.inline)
+    #if DEBUG
+      .task { await model.loadSocialProviders() }
+      .onDisappear { model.cancelOAuth() }
+    #endif
   }
 }
 

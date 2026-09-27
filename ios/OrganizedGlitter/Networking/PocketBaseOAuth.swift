@@ -1,0 +1,118 @@
+import Foundation
+
+struct OAuthProvider: Decodable, Sendable {
+  let name: String
+  let state: String
+  let authURL: String
+  let codeVerifier: String
+
+  func authorizationURL(redirectURL: URL, clientID: String) throws -> URL {
+    guard !clientID.isEmpty,
+      var components = URLComponents(string: authURL + redirectURL.absoluteString),
+      components.scheme == "https"
+    else {
+      throw OAuthError.invalidResponse
+    }
+    var queryItems = components.queryItems ?? []
+    guard queryItems.contains(where: { $0.name == "redirect_uri" }) else {
+      throw OAuthError.invalidResponse
+    }
+    queryItems.removeAll { $0.name == "state" }
+    queryItems.append(URLQueryItem(name: "state", value: clientID))
+    components.queryItems = queryItems
+    guard let url = components.url else { throw OAuthError.invalidResponse }
+    return url
+  }
+}
+
+enum OAuthError: Error, Equatable {
+  case unavailable
+  case invalidResponse
+  case disconnected
+  case denied
+  case timedOut
+  case presentationFailed
+}
+
+enum OAuthRealtimeEvent: Sendable, Equatable {
+  case connected(String)
+  case callback(OAuthCallback)
+}
+
+struct OAuthCallback: Decodable, Sendable, Equatable {
+  let state: String?
+  let code: String?
+  let error: String?
+}
+
+struct OAuthSSEParser {
+  private var event = ""
+  private var id = ""
+  private var data: [String] = []
+
+  mutating func consume(_ line: String) throws -> OAuthRealtimeEvent? {
+    if line.isEmpty {
+      defer {
+        event = ""
+        id = ""
+        data = []
+      }
+      switch event {
+      case "PB_CONNECT":
+        guard !id.isEmpty else { throw OAuthError.invalidResponse }
+        return .connected(id)
+      case "@oauth2":
+        guard !data.isEmpty,
+          let payload = data.joined(separator: "\n").data(using: .utf8),
+          let callback = try? JSONDecoder().decode(OAuthCallback.self, from: payload)
+        else { throw OAuthError.invalidResponse }
+        return .callback(callback)
+      default:
+        return nil
+      }
+    }
+    if line.hasPrefix(":") { return nil }
+    let pieces = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+    guard pieces.count == 2 else { return nil }
+    let value = String(pieces[1].hasPrefix(" ") ? pieces[1].dropFirst() : pieces[1][...])
+    switch pieces[0] {
+    case "event": event = value
+    case "id": id = value
+    case "data": data.append(value)
+    default: break
+    }
+    return nil
+  }
+}
+
+enum OAuthRealtime {
+  static func events(url: URL, session: URLSession) -> AsyncThrowingStream<OAuthRealtimeEvent, Error> {
+    AsyncThrowingStream { continuation in
+      let task = Task {
+        do {
+          var request = URLRequest(url: url)
+          request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+          request.cachePolicy = .reloadIgnoringLocalCacheData
+          let (bytes, response) = try await session.bytes(for: request)
+          guard let httpResponse = response as? HTTPURLResponse,
+            httpResponse.statusCode == 200
+          else { throw OAuthError.disconnected }
+          var parser = OAuthSSEParser()
+          for try await line in bytes.lines {
+            try Task.checkCancellation()
+            guard line.utf8.count <= 8_192 else { throw OAuthError.invalidResponse }
+            if let event = try parser.consume(line) {
+              continuation.yield(event)
+            }
+          }
+          throw OAuthError.disconnected
+        } catch is CancellationError {
+          continuation.finish()
+        } catch {
+          continuation.finish(throwing: error)
+        }
+      }
+      continuation.onTermination = { @Sendable _ in task.cancel() }
+    }
+  }
+}

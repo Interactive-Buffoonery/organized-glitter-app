@@ -247,7 +247,7 @@ private extension Error {
       return message
     case .unauthenticated:
       return "Sign in again to update your account."
-    case .emailUnverified, .notFound, .server, .decoding, .cancelled:
+    case .emailUnverified, .notFound, .server, .decoding, .cancelled, .conflict:
       return "The account could not be updated. Try again."
     }
   }
