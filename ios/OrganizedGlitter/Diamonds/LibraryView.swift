@@ -8,6 +8,7 @@ struct LibraryView: View {
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
   @State private var firstItemTarget: CreateTarget?
+  @State private var pageCountBook: ColoringBookRecord?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -44,6 +45,9 @@ struct LibraryView: View {
         .navigationDestination(for: LibraryItem.self) { item in
           detail(for: item)
         }
+    }
+    .bookPageCountInspector(book: $pageCountBook, library: model.library) { _ in
+      Task { await model.load() }
     }
     .task(id: model.listingIdentity) {
       path = []
@@ -360,7 +364,8 @@ struct LibraryView: View {
     LibraryItemDetailDestination(
       item: item,
       library: model.library,
-      onCollectionChanged: { await model.load() }
+      onCollectionChanged: { await model.load() },
+      onEditPageCount: { pageCountBook = $0 }
     )
   }
 
