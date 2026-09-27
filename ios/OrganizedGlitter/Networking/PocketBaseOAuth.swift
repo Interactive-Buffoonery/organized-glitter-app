@@ -49,6 +49,7 @@ struct OAuthSSEParser {
   private var event = ""
   private var id = ""
   private var data: [String] = []
+  private var dataByteCount = 0
 
   mutating func consume(_ line: String) throws -> OAuthRealtimeEvent? {
     if line.isEmpty {
@@ -56,6 +57,7 @@ struct OAuthSSEParser {
         event = ""
         id = ""
         data = []
+        dataByteCount = 0
       }
       switch event {
       case "PB_CONNECT":
@@ -78,7 +80,10 @@ struct OAuthSSEParser {
     switch pieces[0] {
     case "event": event = value
     case "id": id = value
-    case "data": data.append(value)
+    case "data":
+      dataByteCount += value.utf8.count
+      guard dataByteCount <= 8_192 else { throw OAuthError.invalidResponse }
+      data.append(value)
     default: break
     }
     return nil
@@ -86,33 +91,55 @@ struct OAuthSSEParser {
 }
 
 enum OAuthRealtime {
-  static func events(url: URL, session: URLSession) -> AsyncThrowingStream<OAuthRealtimeEvent, Error> {
-    AsyncThrowingStream { continuation in
-      let task = Task {
-        do {
-          var request = URLRequest(url: url)
-          request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-          request.cachePolicy = .reloadIgnoringLocalCacheData
-          let (bytes, response) = try await session.bytes(for: request)
-          guard let httpResponse = response as? HTTPURLResponse,
-            httpResponse.statusCode == 200
-          else { throw OAuthError.disconnected }
-          var parser = OAuthSSEParser()
-          for try await line in bytes.lines {
-            try Task.checkCancellation()
-            guard line.utf8.count <= 8_192 else { throw OAuthError.invalidResponse }
-            if let event = try parser.consume(line) {
-              continuation.yield(event)
-            }
-          }
-          throw OAuthError.disconnected
-        } catch is CancellationError {
-          continuation.finish()
-        } catch {
-          continuation.finish(throwing: error)
-        }
-      }
-      continuation.onTermination = { @Sendable _ in task.cancel() }
+  struct Connection: Sendable {
+    let events: AsyncThrowingStream<OAuthRealtimeEvent, Error>
+    private let stop: @Sendable () -> Void
+
+    init(events: AsyncThrowingStream<OAuthRealtimeEvent, Error>, stop: @escaping @Sendable () -> Void) {
+      self.events = events
+      self.stop = stop
     }
+
+    func cancel() { stop() }
+  }
+
+  static func open(url: URL, session: URLSession) -> Connection {
+    let (events, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
+    let task = Task {
+      do {
+        var request = URLRequest(url: url)
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let (bytes, response) = try await session.bytes(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+          httpResponse.statusCode == 200
+        else { throw OAuthError.disconnected }
+        var parser = OAuthSSEParser()
+        var lineBytes = Data()
+        for try await byte in bytes {
+          try Task.checkCancellation()
+          if byte != 10 {
+            lineBytes.append(byte)
+            guard lineBytes.count <= 8_192 else { throw OAuthError.invalidResponse }
+            continue
+          }
+          if lineBytes.last == 13 { lineBytes.removeLast() }
+          guard let line = String(data: lineBytes, encoding: .utf8) else {
+            throw OAuthError.invalidResponse
+          }
+          lineBytes.removeAll(keepingCapacity: true)
+          if let event = try parser.consume(line) {
+            continuation.yield(event)
+          }
+        }
+        throw OAuthError.disconnected
+      } catch is CancellationError {
+        continuation.finish()
+      } catch {
+        continuation.finish(throwing: error)
+      }
+    }
+    continuation.onTermination = { @Sendable _ in task.cancel() }
+    return Connection(events: events) { task.cancel() }
   }
 }

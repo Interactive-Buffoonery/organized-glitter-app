@@ -236,6 +236,13 @@ final class AppModel {
   }
 
   func loadSocialProviders() async {
+    #if DEBUG
+      if ProcessInfo.processInfo.arguments.contains("-ui-testing-signed-out") {
+        socialProviders = ProcessInfo.processInfo.arguments.contains("-ui-testing-social-providers")
+          ? ["google", "discord"] : []
+        return
+      }
+    #endif
     guard let client else { return }
     do {
       let providers = try await client.oauthProviders()
@@ -311,7 +318,7 @@ final class AppModel {
     case OAuthError.presentationFailed:
       return "The sign-in window could not open. Try again."
     case APIError.conflict:
-      return "This provider is already connected to another account. Sign in with your existing method and manage connections on the web."
+      return "This sign-in conflicts with an existing account. Sign in with your existing method and manage connections on the web."
     case APIError.emailUnverified:
       return "Verify your account before signing in. You can request a new verification email with the email method."
     case APIError.offline:

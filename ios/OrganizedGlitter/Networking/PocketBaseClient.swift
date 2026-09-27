@@ -10,7 +10,7 @@ actor PocketBaseClient {
   private let sessionStore: KeychainSessionStore
   private let urlSession: URLSession
   private let artworkStore = PrivateArtworkStore()
-  private let oauthEvents: @Sendable (URL, URLSession) -> AsyncThrowingStream<OAuthRealtimeEvent, Error>
+  private let oauthEvents: @Sendable (URL, URLSession) -> OAuthRealtime.Connection
 
   private var authentication: AuthenticatedSession?
   private var refreshTask: Task<AuthenticatedSession, Error>?
@@ -22,7 +22,7 @@ actor PocketBaseClient {
     baseURL: URL,
     sessionStore: KeychainSessionStore,
     urlSession: URLSession? = nil,
-    oauthEvents: @escaping @Sendable (URL, URLSession) -> AsyncThrowingStream<OAuthRealtimeEvent, Error> = OAuthRealtime.events
+    oauthEvents: @escaping @Sendable (URL, URLSession) -> OAuthRealtime.Connection = OAuthRealtime.open
   ) {
     self.baseURL = baseURL
     self.sessionStore = sessionStore
@@ -80,8 +80,9 @@ actor PocketBaseClient {
       throw OAuthError.unavailable
     }
 
-    let stream = oauthEvents(baseURL.appending(path: "/api/realtime"), urlSession)
-    var events = stream.makeAsyncIterator()
+    let connection = oauthEvents(baseURL.appending(path: "/api/realtime"), urlSession)
+    defer { connection.cancel() }
+    var events = connection.events.makeAsyncIterator()
     guard case .connected(let clientID) = try await events.next() else {
       throw OAuthError.disconnected
     }
@@ -122,7 +123,7 @@ actor PocketBaseClient {
           let provider: String
           let code: String
           let codeVerifier: String
-          let redirectUrl: String
+          let redirectURL: String
         }
         let response: AuthResponse = try await request(
           path: "/api/collections/users/auth-with-oauth2",
@@ -131,7 +132,7 @@ actor PocketBaseClient {
             provider: provider.name,
             code: code,
             codeVerifier: provider.codeVerifier,
-            redirectUrl: redirectURL.absoluteString
+            redirectURL: redirectURL.absoluteString
           ),
           includesAuthentication: false
         )
