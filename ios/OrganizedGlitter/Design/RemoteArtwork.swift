@@ -141,10 +141,14 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     }
 
     let fileClient: PocketBaseClient?
+    let session: URLSession
     #if DEBUG
-      fileClient = OverviewFixtureProtocol.scenario == nil ? client : nil
+      let isFixtureRun = OverviewFixtureProtocol.scenario != nil
+      fileClient = isFixtureRun ? nil : client
+      session = isFixtureRun ? OverviewFixtureProtocol.session() : self.session
     #else
       fileClient = client
+      session = self.session
     #endif
 
     let data = try await dataStore.data(for: cacheURL) { [session] in

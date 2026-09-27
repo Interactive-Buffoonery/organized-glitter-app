@@ -9,16 +9,17 @@ image details. Preserve the five native destinations.
 References were created with the built-in imagegen tool. They show synthetic
 content and are visual guides, not executable screens or backend contracts.
 
-`FixtureArtwork` is original synthetic artwork generated with the same built-in
-tool for deterministic Debug UI review. The fixture loader selects a quadrant
-for each craft through the normal file-request path. It is not user content.
+Kit artwork and book covers are real product images, one imageset per
+fixture file name (`design-yorkie-roses`, `design-book-0`, and so on), loaded
+through the normal file-request path:
 
-`FixtureBookCovers` supplies four original portrait book covers in a 2-by-2
-contact sheet: Botanical days, Small wonders, The secret woodland, and Garden
-birds, in reading order. These were generated for the same fictional records
-with botanical ink/watercolor art, quiet serif titles, and no marketing copy.
-The fixture crops at the midpoint boundaries without stretching the covers.
-Both atlases live in the development-only `Preview/FixtureAssets.xcassets`
+- Diamond Art Club: Yorkie & Roses, Beachside Gathering, Divine Descent.
+- Hachette Heroes Mystery Colouring: Princesses, Family, Pixar, Classics.
+
+`FixtureArtwork` is original synthetic artwork still used for book page photos.
+The fixture loader selects a quadrant through the same file-request path.
+
+All fixture images live in the development-only `Preview/FixtureAssets.xcassets`
 catalog, explicitly excluded from Release builds in addition to Xcode's
 `DEVELOPMENT_ASSET_PATHS` setting.
 

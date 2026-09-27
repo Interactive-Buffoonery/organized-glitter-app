@@ -38,7 +38,9 @@ final class AppModel {
         phase = .signedOut
         return
       }
-      if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated") {
+      if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated")
+        || UserDefaults.standard.bool(forKey: OverviewFixtureProtocol.sampleDataKey)
+      {
         Task {
           do {
             let session = try await client.signIn(identity: "fixture", password: "fixture")
@@ -138,6 +140,9 @@ final class AppModel {
   }
 
   func signOut() {
+    #if DEBUG
+      UserDefaults.standard.removeObject(forKey: OverviewFixtureProtocol.sampleDataKey)
+    #endif
     guard let client else {
       return
     }

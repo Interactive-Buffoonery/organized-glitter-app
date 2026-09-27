@@ -4,17 +4,24 @@ import SwiftUI
 struct OrganizedGlitterApp: App {
   @State private var model: AppModel
   @State private var themeStore: ThemeStore
+  #if DEBUG
+    @AppStorage(OverviewFixtureProtocol.sampleDataKey) private var useSampleData = false
+  #endif
 
   init() {
     UINavigationBar.applyCaveatLargeTitles()
     let themeStore = ThemeStore()
     _themeStore = State(initialValue: themeStore)
+    _model = State(initialValue: Self.makeModel(themeStore: themeStore))
+  }
 
+  private static func makeModel(themeStore: ThemeStore) -> AppModel {
     do {
       let configuration = try AppConfiguration.load()
       let sessionStore: KeychainSessionStore
       let client: PocketBaseClient
       #if DEBUG
+        URLProtocol.unregisterClass(OverviewFixtureProtocol.self)
         if OverviewFixtureProtocol.scenario != nil {
           URLProtocol.registerClass(OverviewFixtureProtocol.self)
           sessionStore = KeychainSessionStore(service: "OverviewFixtures")
@@ -32,11 +39,9 @@ struct OrganizedGlitterApp: App {
         sessionStore = KeychainSessionStore()
         client = PocketBaseClient(baseURL: configuration.pocketBaseURL, sessionStore: sessionStore)
       #endif
-      _model = State(
-        initialValue: AppModel(client: client, sessionStore: sessionStore, themeStore: themeStore)
-      )
+      return AppModel(client: client, sessionStore: sessionStore, themeStore: themeStore)
     } catch {
-      _model = State(initialValue: AppModel(configurationError: error, themeStore: themeStore))
+      return AppModel(configurationError: error, themeStore: themeStore)
     }
   }
 
@@ -44,6 +49,11 @@ struct OrganizedGlitterApp: App {
     WindowGroup {
       ThemedRoot(flavor: themeStore.flavor) {
         RootView(model: model)
+          #if DEBUG
+            .onChange(of: useSampleData) {
+              model = Self.makeModel(themeStore: themeStore)
+            }
+          #endif
       }
       .environment(themeStore)
     }
