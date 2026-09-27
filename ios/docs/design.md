@@ -118,7 +118,12 @@ wordmark. While session restore runs, Welcome's layout stands in as the splash:
 its three sparkles twinkle in place of a spinner, the actions stay hidden, and
 the themed background fades in over the flat launch color. Nothing moves on the
 way to Welcome. `script/render-launch-wordmark.swift` redraws the launch asset
-from the shared `BrandWordmarkArt`. Signed-out users land on Welcome (wordmark
+from the shared `BrandWordmarkArt`. `AccountEntryLayout` owns the padding,
+button heights, action spacing, and wordmark size used by Welcome and derives
+the renderer offset and canvas from them. Sparkle geometry lives only in
+`BrandWordmarkArt`; regenerate the PNGs after changing these metrics. The static
+launch image targets the default text size; Dynamic Type can resize the live UI.
+Signed-out users land on Welcome (wordmark
 with still sparkles above Create account and Sign in) with no authenticated
 tabs. `WelcomeView` owns the
 signed-out `NavigationStack`. Method selection offers Continue with email only;
