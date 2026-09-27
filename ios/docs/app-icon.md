@@ -1,7 +1,7 @@
 # Sorted app icon
 
 The approved artwork uses eight berry and lilac pieces and a pink sparkle on
-navy (`#05051A`). It has no outer border in either light or dark mode. The square
+navy (`#05051A`), deeper than the page background (`#151533`). It has no outer border in either light or dark mode. The square
 grid is centered; the sparkle extends above it without moving the grid down.
 
 ## Assets

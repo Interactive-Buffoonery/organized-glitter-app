@@ -253,6 +253,6 @@ worth the Dynamic Type / weight-matching loss today.
 
 ## App icon artwork
 
-The approved Sorted icon uses berry and lilac pieces on the dark-mode navy base,
+The approved Sorted icon uses berry and lilac pieces on deep navy (`#05051A`),
 with no outer border in either appearance. See [App icon](app-icon.md) for
 source, export, and alignment rules. The Caveat wordmark remains separate.
