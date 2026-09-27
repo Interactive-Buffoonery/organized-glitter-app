@@ -239,9 +239,15 @@ struct ColoringBookDetailView: View {
     Button {
       onEditPageCount()
     } label: {
-      Label("Edit page count", systemImage: "number")
+      Text("Edit page count")
+        .font(.subheadline)
+        .frame(minHeight: 44)
+        .contentShape(.rect)
     }
-    .buttonStyle(.bordered)
+    .buttonStyle(.plain)
+    .foregroundStyle(
+      theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
+    )
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }
