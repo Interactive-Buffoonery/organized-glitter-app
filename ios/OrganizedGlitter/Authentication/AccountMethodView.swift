@@ -1,8 +1,10 @@
+import AuthenticationServices
 import SwiftUI
 
 /// Method choice before the email form.
 struct AccountMethodView: View {
   @Environment(\.theme) private var theme
+  @Environment(\.colorScheme) private var colorScheme
   @State private var presentationAnchor: UIWindow?
 
   enum Mode: Hashable {
@@ -62,6 +64,20 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("accountMethodTitle")
 
         VStack(spacing: 12) {
+          #if DEBUG
+            if model.appleReadiness == .available {
+              SignInWithAppleButton(.continue) { request in
+                model.configureAppleRequest(request)
+              } onCompletion: { result in
+                model.completeAppleAuthorization(result)
+              }
+              .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+              .frame(maxWidth: .infinity, minHeight: 52)
+              .disabled(model.isSubmitting)
+              .accessibilityIdentifier("continueWithApple")
+            }
+          #endif
+
           NavigationLink(value: mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister) {
             Label(mode.emailDestinationTitle, systemImage: "envelope")
               .labelStyle(.titleAndIcon)
@@ -70,6 +86,19 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("continueWithEmail")
           .disabled(model.client == nil)
 
+          #if DEBUG
+            if model.appleReadiness == .failed {
+              Button("Check Apple sign-in again") {
+                Task { await model.loadAppleReadiness() }
+              }
+              .buttonStyle(AuthLinkButtonStyle())
+              .accessibilityIdentifier("retryAppleReadiness")
+            }
+            if let error = model.appleError {
+              AccessibleErrorLabel(message: error)
+                .accessibilityIdentifier("appleSignInError")
+            }
+          #endif
           ForEach(model.socialProviders, id: \.self) { provider in
             Button {
               guard let presentationAnchor else { return }
@@ -115,8 +144,21 @@ struct AccountMethodView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .task { await model.loadSocialProviders() }
-    .onDisappear { model.cancelOAuth() }
+    .task {
+      #if DEBUG
+        async let appleReadiness: Void = model.loadAppleReadiness()
+        async let socialProviders: Void = model.loadSocialProviders()
+        _ = await (appleReadiness, socialProviders)
+      #else
+        await model.loadSocialProviders()
+      #endif
+    }
+    .onDisappear {
+      model.cancelOAuth()
+      #if DEBUG
+        model.cancelAppleSignIn()
+      #endif
+    }
   }
 }
 
