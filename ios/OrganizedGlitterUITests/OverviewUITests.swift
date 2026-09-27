@@ -29,7 +29,8 @@ final class OverviewUITests: XCTestCase {
       .firstMatch
     XCTAssertTrue(page.waitForExistence(timeout: 5))
     XCTAssertTrue(
-      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Logged")).firstMatch.exists)
+      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Logged"))
+        .firstMatch.waitForExistence(timeout: 5))
     try capture(app, "overview-top")
 
     let log = app.buttons["overview.log.fictional-project-1"]
