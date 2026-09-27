@@ -3,14 +3,12 @@ import SwiftUI
 struct RootView: View {
   @Environment(\.theme) private var theme
 
-  @Bindable var model: AppModel
+  let model: AppModel
 
   var body: some View {
     Group {
       switch model.phase {
-      case .restoring:
-        LaunchView()
-      case .signedOut:
+      case .restoring, .signedOut:
         WelcomeView(model: model)
       case .signedIn(let user):
         if let client = model.client {
@@ -35,6 +33,7 @@ struct RootView: View {
       }
     }
     .background(theme.themedBackground.ignoresSafeArea())
+    .animation(Theme.motion, value: model.phase)
     .sheet(item: $model.passwordResetDestination) { destination in
       PasswordResetConfirmationView(
         client: model.client,
@@ -42,30 +41,6 @@ struct RootView: View {
         onConfirmed: model.passwordResetConfirmed,
         onOutcomeUnknown: model.passwordResetConfirmed
       )
-    }
-  }
-}
-
-/// In-app restoration surface. Distinct from the system launch screen: it can
-/// show progress while session restore runs, then yields as soon as `phase`
-/// leaves `.restoring`. No artificial branding delay. Wordmark matches Welcome;
-/// progress is quiet and labeled for VoiceOver only.
-private struct LaunchView: View {
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  var body: some View {
-    VStack(spacing: 28) {
-      BrandWordmark(size: 64)
-      ProgressView()
-        .accessibilityLabel("Opening your library")
-        .accessibilityIdentifier("launchProgress")
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .accessibilityElement(children: .combine)
-    .transaction { transaction in
-      if reduceMotion {
-        transaction.animation = nil
-      }
     }
   }
 }
