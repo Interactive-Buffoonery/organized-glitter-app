@@ -53,6 +53,25 @@ struct OfflineSessionTests {
     #expect(try await local.entries(scope: other).isEmpty)
   }
 
+  @Test func passwordResetClosesLibraryAndPreservesPendingWork() async throws {
+    let (model, local, keychain, scope) = try await makeOfflineModel()
+    defer { try? keychain.clear() }
+    while model.phase == .restoring { await Task.yield() }
+    let project = featureProject("pending-reset", title: "Original", user: scope.userID)
+    try await local.ingest(.diamond(project), scope: scope)
+    try await local.queueEdit(
+      scope: scope, key: LocalRecordKey(kind: .project, id: project.id),
+      patch: ["title": .string("Unsent title")])
+
+    await model.passwordResetConfirmed()
+
+    #expect(model.phase == .signedOut)
+    #expect(model.library == nil)
+    #expect(try keychain.load() == nil)
+    #expect(try await local.pendingCount(scope: scope) == 1)
+    #expect(try await local.loadUser(scope: scope) == .preview)
+  }
+
   @Test func pausedLibraryRejectsEditsBeforeSignOutChecksPendingWork() async throws {
     let library = try localFeatureLibrary()
     try await library.store.ingest(.diamond(featureProject("project", title: "Original")), scope: library.scope)

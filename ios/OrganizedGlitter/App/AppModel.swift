@@ -231,11 +231,14 @@ final class AppModel {
 
   func expireSession() async {
     guard !isSigningOut else { return }
+    isSigningOut = true
+    defer { isSigningOut = false }
     sessionGeneration &+= 1
+    library?.pauseWrites()
     await drainUserSave()
+    await client?.signOut()
     try? await library?.close(removingData: false)
     library = nil
-    await client?.signOut()
     await RemoteArtworkLoader.shared.purgeMemoryCache()
     phase = .signedOut
   }
@@ -309,15 +312,9 @@ final class AppModel {
   }
 
   func passwordResetConfirmed() async {
-    guard let client else {
-      return
-    }
-    let generation = beginSessionTransition()
     isSubmitting = false
     signInError = nil
-    await client.signOut()
-    guard generation == sessionGeneration else { return }
-    phase = .signedOut
+    await expireSession()
   }
 
   private func finishPendingLocalRemoval() async throws {
