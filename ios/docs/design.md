@@ -26,6 +26,13 @@ screen backgrounds. The Shelf redesign (Option B in
   In stash covers. A single "N finished this month" row opens Completed.
   Section titles open the matching Library filter; a menu picks the craft when
   both are enabled.
+- **Detail.** A centered hero cover over the title and credits, then a status
+  `Menu` beside the prominent Log button. Diamonds show a spec strip (size,
+  drill, diamonds, started) that turns into rows at accessibility sizes, a
+  progress contact sheet, and a Details card (company, artist, kit, dates,
+  tags, source link, notes as plain text). Books show pages as a contact sheet
+  with a status glyph per page. Detail scroll content uses a plain `VStack`;
+  a `LazyVGrid` inside a `LazyVStack` loops layout at AX5.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
   clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient
   seeded by record id, the title in Caveat, and a craft glyph.

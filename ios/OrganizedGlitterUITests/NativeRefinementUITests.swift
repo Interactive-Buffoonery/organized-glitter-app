@@ -103,6 +103,45 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertFalse(app.staticTexts["Yorkie & Roses updated"].exists)
   }
 
+  func testDiamondDetailShowsSpecsDetailsAndChangesStatus() throws {
+    let app = launchFixture()
+    openLibrary(app)
+    openCard(named: "Yorkie & Roses", in: app)
+    XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
+    XCTAssertTrue(element("detail.specs", in: app).waitForExistence(timeout: 5))
+    XCTAssertTrue(button("detail.diamond.addNote", in: app).exists)
+    let photo = app.images.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Progress photo from")
+    ).firstMatch
+    for _ in 0..<6 where !photo.waitForExistence(timeout: 1) {
+      app.swipeUp()
+    }
+    XCTAssertTrue(photo.exists)
+
+    let status = button("detail.status", in: app)
+    for _ in 0..<6 where !status.isHittable {
+      app.swipeDown()
+    }
+    XCTAssertEqual(status.value as? String, "In progress")
+    status.tap()
+    let completed = app.buttons["Completed"].firstMatch
+    XCTAssertTrue(completed.waitForExistence(timeout: 3))
+    completed.tap()
+    let changed = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "value == %@", "Completed"), object: status)
+    XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
+
+    let source = element("detail.diamond.source", in: app)
+    makeHittable(source, in: app)
+    XCTAssertTrue(
+      app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Dogs and Florals"))
+        .firstMatch.exists)
+    XCTAssertTrue(
+      app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Soft pink roses"))
+        .firstMatch.exists)
+    try capture("detail-diamond-lower")
+  }
+
   func testBookPagesPaginateAndNavigateToTheNextPage() {
     let app = launchFixture()
     openLibrary(app)
