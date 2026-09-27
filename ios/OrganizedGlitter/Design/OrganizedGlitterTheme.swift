@@ -101,6 +101,7 @@ final class FormDrawer {
   }
 
   var route: Route?
+  var isPresenting: Bool { route != nil }
 
   func present<Content: View>(
     detents: Set<PresentationDetent>,
