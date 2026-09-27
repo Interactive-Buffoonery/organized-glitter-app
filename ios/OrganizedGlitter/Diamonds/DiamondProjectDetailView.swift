@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct DiamondProjectDetailView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -13,131 +14,163 @@ struct DiamondProjectDetailView: View {
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   @State private var isAddingNote = false
+  @State private var revealedNoteID: String?
+  @State private var highlightedNoteID: String?
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        header
-        DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
+    ScrollViewReader { proxy in
+      ScrollView {
+        VStack(alignment: .leading, spacing: 20) {
+          header
+          DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
-        if !specs.isEmpty {
-          DetailSpecStrip(specs: specs)
-        }
-
-        VStack(alignment: .leading, spacing: 12) {
-          progressHeader
-          if progressPhotos.isEmpty {
-            ContentUnavailableView(
-              "No progress photos",
-              systemImage: "photo.on.rectangle",
-              description: Text("Log a dated photo as your project changes.")
-            )
-            .frame(maxWidth: .infinity)
-          } else {
-            DetailPhotoContactSheet(photos: progressPhotos)
+          if !specs.isEmpty {
+            DetailSpecStrip(specs: specs)
           }
 
-          if model.canLoadMoreProgressNotes {
-            Button {
-              Task { await model.loadMoreProgressNotes() }
-            } label: {
-              HStack {
-                if model.isLoadingMore { ProgressView() }
-                Text(model.isLoadingMore ? "Loading more progress" : "Load more progress")
-              }
-              .frame(maxWidth: .infinity, minHeight: 44)
-            }
-            .buttonStyle(.bordered)
-            .disabled(model.isLoadingMore)
-            .accessibilityIdentifier("detail.diamond.loadMoreProgress")
-          }
-
-          if !isAddingNote, !model.unresolvedStatusWrite {
-            unresolvedWriteRecovery
-          }
-        }
-
-        detailSection("Details") {
-          DetailMetadataCard {
-            if let company = project.expand?.company?.name.nonEmpty {
-              DetailMetadataRow(label: "Company", value: company)
-            }
-            if let artist = project.expand?.artist?.name.nonEmpty {
-              DetailMetadataRow(label: "Artist", value: artist)
-            }
-            DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
-            ForEach(dateRows, id: \.label) { row in
-              DetailMetadataRow(label: row.label, value: row.value)
-            }
-            if !project.tags.isEmpty {
-              DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
-            }
-            if let source = sourceURL {
-              DetailMetadataRow(label: "Source") {
-                Link(source.host() ?? source.absoluteString, destination: source)
-                  .lineLimit(1)
-              }
-              .accessibilityIdentifier("detail.diamond.source")
-            }
-          }
-
-          if let notes = project.generalNotes?.plainTextFromHTML.nonEmpty {
-            Text(notes)
-              .foregroundStyle(theme.foreground)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(14)
-              .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-          }
-        }
-
-        if !model.progressNotes.isEmpty {
-          detailSection("Progress notes") {
-            ForEach(model.progressNotes) { note in
-              VStack(alignment: .leading, spacing: 6) {
-                Text(noteDate(note.date))
-                  .font(.subheadline.weight(.semibold))
-                  .foregroundStyle(theme.pageSecondaryForeground)
-                if let content = note.content.nonEmpty {
-                  Text(content)
-                    .foregroundStyle(theme.foreground)
-                }
-              }
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(14)
-              .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-            }
-          }
-        }
-
-        if let errorMessage = model.errorMessage {
           VStack(alignment: .leading, spacing: 12) {
-            AccessibleErrorLabel(message: errorMessage)
-            Button("Try again") {
-              Task { await model.load() }
+            progressHeader
+            if progressPhotos.isEmpty {
+              ContentUnavailableView(
+                "No progress photos",
+                systemImage: "photo.on.rectangle",
+                description: Text("Log a dated photo as your project changes.")
+              )
+              .frame(maxWidth: .infinity)
+            } else {
+              DetailPhotoContactSheet(
+                photos: progressPhotos,
+                pendingID: pendingNoteID,
+                highlightedID: highlightedNoteID)
+            }
+
+            if model.canLoadMoreProgressNotes {
+              Button {
+                Task { await model.loadMoreProgressNotes() }
+              } label: {
+                HStack {
+                  if model.isLoadingMore { ProgressView() }
+                  Text(model.isLoadingMore ? "Loading more progress" : "Load more progress")
+                }
+                .frame(maxWidth: .infinity, minHeight: 44)
+              }
+              .buttonStyle(.bordered)
+              .disabled(model.isLoadingMore)
+              .accessibilityIdentifier("detail.diamond.loadMoreProgress")
+            }
+
+            if !isAddingNote, !model.unresolvedStatusWrite {
+              unresolvedWriteRecovery
             }
           }
-        }
 
-        if let mutationErrorMessage = model.mutationErrorMessage,
-          !isAddingNote, model.unresolvedWriteState == nil
-        {
-          AccessibleErrorLabel(message: mutationErrorMessage)
+          detailSection("Details") {
+            DetailMetadataCard {
+              if let company = project.expand?.company?.name.nonEmpty {
+                DetailMetadataRow(label: "Company", value: company)
+              }
+              if let artist = project.expand?.artist?.name.nonEmpty {
+                DetailMetadataRow(label: "Artist", value: artist)
+              }
+              DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
+              ForEach(dateRows, id: \.label) { row in
+                DetailMetadataRow(label: row.label, value: row.value)
+              }
+              if !project.tags.isEmpty {
+                DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
+              }
+              if let source = sourceURL {
+                DetailMetadataRow(label: "Source") {
+                  Link(source.host() ?? source.absoluteString, destination: source)
+                    .lineLimit(1)
+                }
+                .accessibilityIdentifier("detail.diamond.source")
+              }
+            }
+
+            if let notes = project.generalNotes?.plainTextFromHTML.nonEmpty {
+              Text(notes)
+                .foregroundStyle(theme.foreground)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+            }
+          }
+
+          if !model.progressNotes.isEmpty {
+            detailSection("Progress notes") {
+              ForEach(model.progressNotes) { note in
+                VStack(alignment: .leading, spacing: 6) {
+                  Text(noteDate(note.date))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(theme.pageSecondaryForeground)
+                  if let content = note.content.nonEmpty {
+                    Text(content)
+                      .foregroundStyle(theme.foreground)
+                  }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+                .savedEntryReveal(
+                  isPending: note.id == pendingNoteID, isHighlighted: note.id == highlightedNoteID)
+                .id("note-\(note.id)")
+              }
+            }
+          }
+
+          if let errorMessage = model.errorMessage {
+            VStack(alignment: .leading, spacing: 12) {
+              AccessibleErrorLabel(message: errorMessage)
+              Button("Try again") {
+                Task { await model.load() }
+              }
+            }
+          }
+
+          if let mutationErrorMessage = model.mutationErrorMessage,
+            !isAddingNote, model.unresolvedWriteState == nil
+          {
+            AccessibleErrorLabel(message: mutationErrorMessage)
+          }
         }
+        .frame(maxWidth: 760, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
       }
-      .frame(maxWidth: 760, alignment: .leading)
-      .padding(.horizontal, 20)
-      .padding(.vertical, 16)
-      .frame(maxWidth: .infinity)
+      .background {
+        theme.themedBackground.ignoresSafeArea()
+      }
+      .refreshable { await model.refresh() }
+      .sheet(isPresented: $isAddingNote, onDismiss: { revealSavedNote(proxy) }) {
+        DiamondProgressNoteEditor(
+          model: model,
+          onCollectionChanged: onCollectionChanged
+        )
+      }
+      .task(id: highlightedNoteID) {
+        guard highlightedNoteID != nil else { return }
+        do { try await Task.sleep(for: .seconds(1.6)) } catch { return }
+        withAnimation(Theme.motion) { highlightedNoteID = nil }
+      }
     }
-    .background {
-      theme.themedBackground.ignoresSafeArea()
+  }
+
+  /// A confirmed note stays invisible behind the editor until the sheet closes.
+  private var pendingNoteID: String? {
+    model.lastAddedProgressNoteID == revealedNoteID ? nil : model.lastAddedProgressNoteID
+  }
+
+  private func revealSavedNote(_ proxy: ScrollViewProxy) {
+    guard let id = pendingNoteID else { return }
+    let target = progressPhotos.contains { $0.id == id } ? "photo-\(id)" : "note-\(id)"
+    withAnimation(reduceMotion ? nil : Theme.motion) {
+      proxy.scrollTo(target, anchor: .center)
     }
-    .refreshable { await model.load() }
-    .sheet(isPresented: $isAddingNote) {
-      DiamondProgressNoteEditor(
-        model: model,
-        onCollectionChanged: onCollectionChanged
-      )
+    withAnimation(Theme.motion) {
+      revealedNoteID = id
+      highlightedNoteID = id
     }
   }
 
@@ -191,8 +224,7 @@ struct DiamondProjectDetailView: View {
     VStack(spacing: 8) {
       CoverArtwork(
         item: .diamond(project),
-        url: LibraryItem.diamond(project).artworkURL(
-          using: model.client, token: protectedFiles?.token),
+        url: protectedFiles?.artworkURL(for: .diamond(project)),
         maxPixelDimension: 1_200,
         loadedAccessibilityLabel: "Project artwork"
       )
@@ -209,15 +241,8 @@ struct DiamondProjectDetailView: View {
         Text(LibraryItem.diamond(project).subtitle)
           .foregroundStyle(theme.pageSecondaryForeground)
       }
-      DetailStatusMenu<DiamondStatus>(current: project.status) { status in
-        Task {
-          let changed = await model.setStatus(status)
-          if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
-            await onCollectionChanged()
-          }
-        }
-      }
-      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      DetailStatusMenu<DiamondStatus>(
+        current: project.status, model: model, onCollectionChanged: onCollectionChanged)
       .padding(.top, 4)
     }
     .multilineTextAlignment(.center)
@@ -243,9 +268,7 @@ struct DiamondProjectDetailView: View {
           .contentShape(.rect)
       }
       .buttonStyle(.plain)
-      .foregroundStyle(
-        theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
-      )
+      .foregroundStyle(theme.pageAction)
       .disabled(model.isMutating || model.unresolvedWriteState != nil)
       .accessibilityIdentifier("detail.diamond.addNote")
     }
@@ -338,6 +361,7 @@ struct DiamondProjectDetailView: View {
 
 struct DiamondProgressNoteEditor: View {
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.theme) private var theme
 
   let model: LibraryItemDetailModel
@@ -369,13 +393,8 @@ struct DiamondProgressNoteEditor: View {
           .disabled(model.unresolvedWriteState != nil)
 
           Section("Photo") {
-            if let previewImage {
-              Image(uiImage: previewImage)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: 320)
-                .accessibilityLabel("Selected progress photo")
-                .accessibilityIdentifier("detail.diamond.notePhoto")
+            if isPreparingPhoto || previewImage != nil {
+              photoPreview
             }
 
             PhotosPicker(selection: $selectedItem, matching: .images) {
@@ -388,11 +407,7 @@ struct DiamondProgressNoteEditor: View {
           }
           .disabled(model.unresolvedWriteState != nil)
 
-          if isPreparingPhoto {
-            Section {
-              ProgressView("Preparing photo…")
-            }
-          } else if model.isMutating {
+          if model.isMutating {
             Section {
               ProgressView(
                 model.unresolvedWriteState == nil
@@ -459,6 +474,31 @@ struct DiamondProgressNoteEditor: View {
         await prepareSelectedPhoto()
       }
     }
+    .sensoryFeedback(.success, trigger: model.lastAddedProgressNoteID) { _, saved in saved != nil }
+  }
+
+  /// A fixed 4:5 frame, so preparing and the finished preview never move the form.
+  private var photoPreview: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: Theme.Radius.medium)
+        .fill(theme.muted.opacity(0.45))
+      if let previewImage {
+        Image(uiImage: previewImage)
+          .resizable()
+          .scaledToFit()
+          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
+          .transition(.opacity)
+          .accessibilityLabel("Selected progress photo")
+          .accessibilityIdentifier("detail.diamond.notePhoto")
+      } else {
+        ProgressView("Preparing photo…")
+          .transition(.opacity)
+      }
+    }
+    .aspectRatio(4 / 5, contentMode: .fit)
+    .frame(maxHeight: dynamicTypeSize.isAccessibilitySize ? 440 : 320)
+    .frame(maxWidth: .infinity)
+    .animation(Theme.motion, value: previewImage)
   }
 
   private var canSubmit: Bool {

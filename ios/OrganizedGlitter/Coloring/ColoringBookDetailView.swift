@@ -41,15 +41,14 @@ struct ColoringBookDetailView: View {
               NavigationLink {
                 LibraryItemDetailDestination(
                   item: .page(page),
-                  client: model.client,
-                  userID: model.userID,
+                  library: model.library,
                   onCollectionChanged: {
                     model.needsBookPageRefresh = true
                     await onCollectionChanged()
                   }
                 )
               } label: {
-                ColoringBookPageCard(page: page, client: model.client)
+                ColoringBookPageCard(page: page)
               }
               .buttonStyle(.plain)
               .accessibilityIdentifier("detail.book.page.\(page.id)")
@@ -120,14 +119,14 @@ struct ColoringBookDetailView: View {
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
-    .refreshable { await model.load() }
+    .refreshable { await model.refresh() }
   }
 
   private var bookHeader: some View {
     VStack(spacing: 8) {
       CoverArtwork(
         item: .book(book),
-        url: LibraryItem.book(book).artworkURL(using: model.client, token: protectedFiles?.token),
+        url: protectedFiles?.artworkURL(for: .book(book)),
         maxPixelDimension: 900,
         loadedAccessibilityLabel: "Book cover"
       )
@@ -144,15 +143,8 @@ struct ColoringBookDetailView: View {
         Text(credits)
           .foregroundStyle(theme.pageSecondaryForeground)
       }
-      DetailStatusMenu<BookStatus>(current: book.status) { status in
-        Task {
-          let changed = await model.setStatus(status)
-          if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
-            await onCollectionChanged()
-          }
-        }
-      }
-      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      DetailStatusMenu<BookStatus>(
+        current: book.status, model: model, onCollectionChanged: onCollectionChanged)
       .padding(.top, 4)
       Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
         .font(.subheadline)
@@ -245,9 +237,7 @@ struct ColoringBookDetailView: View {
         .contentShape(.rect)
     }
     .buttonStyle(.plain)
-    .foregroundStyle(
-      theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
-    )
+    .foregroundStyle(theme.pageAction)
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }
@@ -258,14 +248,12 @@ private struct ColoringBookPageCard: View {
   @Environment(\.theme) private var theme
 
   let page: ColoringPageRecord
-  let client: PocketBaseClient
 
   var body: some View {
     VStack(spacing: 4) {
       CoverArtwork(
         item: .page(page),
-        url: LibraryItem.page(page).artworkURL(
-          using: client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token)
+        url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery)
       )
 
       HStack(spacing: 3) {

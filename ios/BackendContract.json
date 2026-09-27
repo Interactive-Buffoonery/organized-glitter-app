@@ -1,6 +1,6 @@
 {
   "backendRepository": "Interactive-Buffoonery/organized-glitter",
-  "backendCommit": "6aff8ce42e7360513131a10ceb1c9478afb828f8",
-  "pocketBaseVersion": "0.37.5",
-  "schemaSha256": "fa004fbe0836cf2c5a93bd18523695cebd91d64a3eeb18b9e78862a4507f0c08"
+  "backendCommit": "a64da547c1adf0edd6eebf92e767711ad45aa50e",
+  "pocketBaseVersion": "0.40.4",
+  "schemaSha256": "a327f54833d10d0ff90f9e2801185cdda9b8e1970b989ca13ca9477cd67a91d1"
 }

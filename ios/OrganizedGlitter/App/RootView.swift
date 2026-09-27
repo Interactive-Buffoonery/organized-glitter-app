@@ -8,11 +8,22 @@ struct RootView: View {
   var body: some View {
     Group {
       switch model.phase {
+      case .cleaningLocalData:
+        ProgressView("Removing this account’s local data")
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      case .cleanupFailed:
+        ConnectionUnavailableView(
+          title: "Couldn’t finish signing out",
+          message: "Local data still needs to be removed. Try again before signing into an account.",
+          systemImage: "arrow.clockwise",
+          retry: model.retrySessionRestoration
+        )
       case .restoring, .signedOut:
         WelcomeView(model: model)
       case .signedIn(let user):
-        if let client = model.client {
-          AppShellView(model: model, client: client, user: user)
+        if let client = model.client, let library = model.library {
+          AppShellView(model: model, client: client, user: user, library: library)
+            .id(library.scope.storageKey)
         }
       case .offline:
         ConnectionUnavailableView(

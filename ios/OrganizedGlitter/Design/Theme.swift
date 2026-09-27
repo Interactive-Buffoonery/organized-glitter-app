@@ -31,6 +31,11 @@ struct Theme: Equatable, Sendable {
     backgroundBloom == nil ? mutedForeground : foreground
   }
 
+  /// Quiet text actions directly over the page, readable across the glow.
+  var pageAction: Color {
+    backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
+  }
+
   var backgroundGradient: LinearGradient {
     LinearGradient(colors: gradientStops, startPoint: .top, endPoint: .bottom)
   }
