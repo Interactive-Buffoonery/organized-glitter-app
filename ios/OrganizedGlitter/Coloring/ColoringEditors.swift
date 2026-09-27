@@ -335,7 +335,7 @@ struct ColoringPageEditor: View {
                   RoundedRectangle(cornerRadius: Theme.Radius.medium)
                     .fill(theme.muted)
                     .overlay {
-                      Image(systemName: "doc.richtext")
+                      Image(systemName: LibrarySection.pages.systemImage)
                         .foregroundStyle(theme.mutedForeground)
                     }
                 }
