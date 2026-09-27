@@ -133,3 +133,26 @@ struct QuietActionStyle: ButtonStyle {
       .opacity(isEnabled ? 1 : 0.5)
   }
 }
+
+extension View {
+  /// Liquid Glass on iOS 26, a material capsule before it.
+  @ViewBuilder
+  func glassButton() -> some View {
+    if #available(iOS 26, *) {
+      buttonStyle(.glass)
+    } else {
+      buttonStyle(.bordered)
+        .background(.ultraThinMaterial, in: .capsule)
+    }
+  }
+
+  @ViewBuilder
+  func glassProminentButton() -> some View {
+    if #available(iOS 26, *) {
+      buttonStyle(.glassProminent)
+    } else {
+      buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+    }
+  }
+}

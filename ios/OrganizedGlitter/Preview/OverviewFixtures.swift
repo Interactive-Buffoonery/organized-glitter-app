@@ -623,7 +623,19 @@
           project["date_completed"] = "2026-09-17"
         }
         if index == 0 {
-          project["general_notes"] = "Soft pink roses against a blush background."
+          project["general_notes"] =
+            "<p>Soft pink roses against a <strong>blush</strong> background.</p><p>Save the AB drills for the bow.</p>"
+          project["total_diamonds"] = 48_200
+          project["color_count"] = 42
+          project["date_purchased"] = "2026-07-02"
+          project["date_received"] = "2026-07-11"
+          project["date_started"] = "2026-08-14"
+          project["source_url"] = "https://www.diamondartclub.com/products/yorkie-roses"
+          var expand = project["expand"] as! [String: Any]
+          expand["project_tags_via_project"] = [("Dogs", "tag-dogs"), ("Florals", "tag-florals")].map {
+            ["id": "pt-\($0.1)", "expand": ["tag": ["id": $0.1, "name": $0.0]]]
+          }
+          project["expand"] = expand
         }
         return project
       }
@@ -680,6 +692,17 @@
           "id": "design-note-2", "project": "design-project-0",
           "content": "Finished the first color family.", "date": "2026-09-15",
           "created": "2026-09-15 16:00:00", "updated": "2026-09-15 16:00:00",
+        ],
+        [
+          "id": "design-note-3", "project": "design-project-0",
+          "content": "", "date": "2026-09-08", "image": "design-yorkie-roses.jpg",
+          "created": "2026-09-08 16:00:00", "updated": "2026-09-08 16:00:00",
+        ],
+        [
+          "id": "design-note-4", "project": "design-project-0",
+          "content": "Started in the top corner.", "date": "2026-08-14",
+          "image": "design-yorkie-roses.jpg",
+          "created": "2026-08-14 16:00:00", "updated": "2026-08-14 16:00:00",
         ],
       ]
     }

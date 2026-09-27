@@ -28,4 +28,29 @@ struct DetailDateOnlyTests {
 
     #expect(formatted == nil)
   }
+
+  @Test
+  func elapsedPicksOneReadableUnit() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.locale = Locale(identifier: "en_US")
+    calendar.timeZone = try #require(TimeZone(identifier: "UTC"))
+    let start = try #require(DetailDateOnly.date("2026-08-14", timeZone: calendar.timeZone))
+    func after(_ days: Int) -> String? {
+      DetailDateOnly.elapsed(
+        from: start, to: start.addingTimeInterval(Double(days) * 86_400), calendar: calendar)
+    }
+
+    #expect(after(1) == "1 day")
+    #expect(after(13) == "13 days")
+    #expect(after(43) == "6 weeks")
+    #expect(after(130) == "4 months")
+    #expect(after(-1) == nil)
+  }
+
+  @Test
+  func webRichTextNotesBecomePlainText() {
+    let html = "<p>Soft <strong>pink</strong> roses</p><p>Tom &amp; Jerry&nbsp;&lt;3</p><ul><li>AB drills</li></ul>"
+    #expect(html.plainTextFromHTML == "Soft pink roses\nTom & Jerry <3\n• AB drills")
+    #expect("Plain & simple".plainTextFromHTML == "Plain & simple")
+  }
 }
