@@ -28,6 +28,7 @@ struct CreateMenu: View {
     .sheet(item: $target) { target in
       CreateEditor(
         target: target, library: library, onRefresh: onRefresh, onSaved: onSaved)
+        .drawer([.large])
     }
   }
 }

@@ -232,6 +232,7 @@ struct OverviewView: View {
           }
         }
       )
+      .drawer([.medium, .large])
     }
     .task(id: model.library.generation) { await model.load() }
   }

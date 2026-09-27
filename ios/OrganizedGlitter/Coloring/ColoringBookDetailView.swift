@@ -135,10 +135,9 @@ struct ColoringBookDetailView: View {
       .padding(.bottom, 8)
       .accessibilityIdentifier("detail.hero")
 
-      Text(book.title)
-        .font(.title2.bold())
-        .foregroundStyle(theme.foreground)
-        .accessibilityAddTraits(.isHeader)
+      DetailInlineTitle(
+        value: book.title, field: "title", label: "Title", model: model,
+        onCollectionChanged: onCollectionChanged)
       if let credits = credits {
         Text(credits)
           .foregroundStyle(theme.pageSecondaryForeground)

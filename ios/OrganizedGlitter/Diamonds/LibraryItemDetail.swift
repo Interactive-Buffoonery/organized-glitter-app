@@ -34,7 +34,7 @@ struct LibraryItemDetailDestination: View {
         ColoringBookDetailView(
           book: book,
           model: model,
-          onEditPageCount: { editor = .book(book) },
+          onEditPageCount: { editor = .pageCount(book) },
           onCollectionChanged: onCollectionChanged
         )
         .accessibilityIdentifier("detail.book")
@@ -95,6 +95,7 @@ struct LibraryItemDetailDestination: View {
     }
     .sheet(item: $editor) { editor in
       editorView(for: editor)
+        .drawer(editor.detents)
     }
     .confirmationDialog(
       "Delete \(model.item.title)?",
@@ -150,6 +151,14 @@ struct LibraryItemDetailDestination: View {
           Task { await acceptSaved(.book(saved)) }
         }
       )
+    case .pageCount(let book):
+      ColoringBookPageCountEditor(
+        library: model.library,
+        book: book,
+        onSaved: { saved in
+          Task { await acceptSaved(.book(saved)) }
+        }
+      )
     case .page(let page):
       ColoringPageEditor(
         library: model.library,
@@ -176,6 +185,7 @@ struct LibraryItemDetailDestination: View {
 private enum DetailEditor: Identifiable {
   case diamond(DiamondProjectRecord)
   case book(ColoringBookRecord)
+  case pageCount(ColoringBookRecord)
   case page(ColoringPageRecord)
 
   init(item: LibraryItem) {
@@ -190,7 +200,16 @@ private enum DetailEditor: Identifiable {
     switch self {
     case .diamond(let project): "diamond:\(project.id)"
     case .book(let book): "book:\(book.id)"
+    case .pageCount(let book): "pageCount:\(book.id)"
     case .page(let page): "page:\(page.id)"
+    }
+  }
+
+  var detents: Set<PresentationDetent> {
+    switch self {
+    case .diamond, .page: [.medium, .large]
+    case .book: [.large]
+    case .pageCount: [.medium]
     }
   }
 }

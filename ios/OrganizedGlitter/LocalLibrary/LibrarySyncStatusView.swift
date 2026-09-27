@@ -26,6 +26,7 @@ struct LibrarySyncStatusView: View {
       .accessibilityIdentifier("library.syncStatus")
       .sheet(isPresented: $showingChanges) {
         NavigationStack { LibraryConflictView(library: library) }
+          .drawer([.medium, .large])
       }
     }
   }
