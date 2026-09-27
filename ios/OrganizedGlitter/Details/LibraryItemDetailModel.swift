@@ -258,6 +258,18 @@ final class LibraryItemDetailModel {
     else {
       return false
     }
+    let collection: String
+    let parent: (String, String)
+    switch item {
+    case .diamond(let project):
+      collection = "progress_notes"
+      parent = ("project", project.id)
+    case .page(let page):
+      collection = "coloring_page_progress_notes"
+      parent = ("page", page.id)
+    case .book:
+      return false
+    }
     isMutating = true
     mutationErrorMessage = nil
     statusErrorMessage = nil
@@ -273,18 +285,6 @@ final class LibraryItemDetailModel {
           contentType: photo.contentType,
           data: photo.data
         ))
-    }
-    let collection: String
-    let parent: (String, String)
-    switch item {
-    case .diamond(let project):
-      collection = "progress_notes"
-      parent = ("project", project.id)
-    case .page(let page):
-      collection = "coloring_page_progress_notes"
-      parent = ("page", page.id)
-    case .book:
-      return false
     }
     let form = PocketBaseMultipartForm(
       fields: [
@@ -370,6 +370,9 @@ final class LibraryItemDetailModel {
     do {
       try await library.delete(collection: note.collection, id: note.recordID)
       progressNotes.removeAll { $0.id == note.id }
+      if lastAddedProgressNoteID == note.recordID {
+        lastAddedProgressNoteID = nil
+      }
       mutationErrorMessage = nil
       return nil
     } catch APIError.offline, APIError.server, APIError.cancelled {

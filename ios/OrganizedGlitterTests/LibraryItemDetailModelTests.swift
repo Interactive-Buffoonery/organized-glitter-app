@@ -135,9 +135,45 @@ struct LibraryItemDetailModelTests {
     #expect(model.unresolvedWriteState == .needsRefresh)
   }
 
-  @Test func confirmedNoteIsTheOneToReveal() async throws {
+  @Test func unsupportedBookNoteDoesNotChangeFollowingWriteRecovery() async throws {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [OfflinePagePhotoURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://unsupported-book-note.example.test")!,
+      sessionStore: KeychainSessionStore(service: "UnsupportedBookNoteTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(StoredSession(token: "example-token", userID: "feature-user"))
+    let library = LibrarySession(
+      client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
+    let book = featureBook("book", title: "Quiet Pages")
+    let page = featurePage("page", book: book.id, number: 1)
+    try await library.store.ingest(.book(book), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .book(book), library: library)
+    #expect(await model.load())
+
+    #expect(!(await model.addProgressNote(content: "Progress", date: .now, photo: nil)))
+    #expect(!model.isMutating)
+    #expect(model.unresolvedWriteState == nil)
+    #expect(model.mutationErrorMessage == nil)
+    #expect(model.statusErrorMessage == nil)
+
+    await model.acceptSaved(.page(page))
+    let photo = ProcessedDetailPhoto(
+      data: Data([1, 2, 3]), fileName: "example.jpg", contentType: "image/jpeg")
+    #expect(!(await model.appendPagePhoto(photo)))
+    #expect(model.mutationErrorMessage?.contains("Adding a photo needs a connection") == true)
+    #expect(model.mutationErrorMessage?.contains("Adding a progress note") == false)
+  }
+
+  @Test func confirmedNoteRevealClearsOnlyWhenThatNoteIsDeleted() async throws {
+    LostNoteURLProtocol.snapshotAvailable = false
     LostNoteURLProtocol.createSucceeds = true
-    defer { LostNoteURLProtocol.createSucceeds = false }
+    LostNoteURLProtocol.deleteSucceeds = true
+    defer {
+      LostNoteURLProtocol.createSucceeds = false
+      LostNoteURLProtocol.deleteSucceeds = false
+    }
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [LostNoteURLProtocol.self]
     let client = PocketBaseClient(
@@ -149,6 +185,12 @@ struct LibraryItemDetailModelTests {
       client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
     let project = featureProject("project", title: "Moon Garden")
     try await library.store.ingest(.diamond(project), scope: library.scope)
+    try await library.store.ingestNote(
+      DiamondProgressNoteRecord(
+        id: "older-note", project: project.id, content: "Earlier work",
+        date: "1969-12-31", image: nil, created: "1969-12-31",
+        updated: "1969-12-31", expand: nil),
+      scope: library.scope)
     let model = LibraryItemDetailModel(item: .diamond(project), library: library)
     #expect(await model.load())
     #expect(model.lastAddedProgressNoteID == nil)
@@ -157,7 +199,17 @@ struct LibraryItemDetailModelTests {
       await model.addProgressNote(
         content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil))
     #expect(model.lastAddedProgressNoteID == "created-note")
+    #expect(model.progressNotes.map(\.recordID) == ["created-note", "older-note"])
+
+    let older = try #require(model.progressNotes.first { $0.recordID == "older-note" })
+    #expect(await model.deleteProgressNote(older) == nil)
+    #expect(model.lastAddedProgressNoteID == "created-note")
     #expect(model.progressNotes.map(\.recordID) == ["created-note"])
+
+    let created = try #require(model.progressNotes.first { $0.recordID == "created-note" })
+    #expect(await model.deleteProgressNote(created) == nil)
+    #expect(model.lastAddedProgressNoteID == nil)
+    #expect(model.progressNotes.isEmpty)
   }
 
   @Test func progressNotesKeepLoadedPagesAfterReloadsAndSaves() async throws {
@@ -279,6 +331,7 @@ private final class LostNoteURLProtocol: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) static var snapshotAvailable = false
   nonisolated(unsafe) static var createRequests = 0
   nonisolated(unsafe) static var createSucceeds = false
+  nonisolated(unsafe) static var deleteSucceeds = false
 
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -286,6 +339,13 @@ private final class LostNoteURLProtocol: URLProtocol, @unchecked Sendable {
   override func startLoading() {
     if Self.createSucceeds, request.httpMethod == "POST" {
       respond(#"{"id":"created-note","project":"project","content":"Half finished","date":"1970-01-01","created":"2026-09-01","updated":"2026-09-01"}"#)
+      return
+    }
+    if Self.deleteSucceeds, request.httpMethod == "DELETE" {
+      let response = HTTPURLResponse(
+        url: request.url!, statusCode: 204, httpVersion: "HTTP/1.1", headerFields: nil)!
+      client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+      client?.urlProtocolDidFinishLoading(self)
       return
     }
     guard request.url?.path == "/api/mobile/sync/snapshot" else {
