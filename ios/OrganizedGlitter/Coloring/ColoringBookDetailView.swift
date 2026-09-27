@@ -133,6 +133,7 @@ struct ColoringBookDetailView: View {
       .frame(width: horizontalSizeClass == .regular ? 240 : 184)
       .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
       .padding(.bottom, 8)
+      .photoViewer(opening: coverPhoto)
       .accessibilityIdentifier("detail.hero")
 
       Text(book.title)
@@ -167,6 +168,14 @@ struct ColoringBookDetailView: View {
       .compactMap { $0?.nonEmpty }
       .joined(separator: " · ")
       .nonEmpty
+  }
+
+  private var coverPhoto: DetailPhoto? {
+    guard let url = protectedFiles?.artworkURL(for: .book(book)) else { return nil }
+    return DetailPhoto(
+      id: "book-cover", url: url, fullSizeURL: url,
+      accessibilityLabel: "Book cover"
+    )
   }
 
   private var emptyPagesMessage: String {

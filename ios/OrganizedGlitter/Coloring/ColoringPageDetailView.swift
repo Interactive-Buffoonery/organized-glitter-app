@@ -31,6 +31,7 @@ struct ColoringPageDetailView: View {
           loadedAccessibilityLabel: "Page artwork"
         )
         .frame(maxWidth: .infinity, maxHeight: heroHeight)
+        .photoViewer(opening: coverPhoto)
         .accessibilityIdentifier("detail.hero")
 
         VStack(alignment: .leading, spacing: 6) {
@@ -183,6 +184,7 @@ struct ColoringPageDetailView: View {
       theme.themedBackground.ignoresSafeArea()
     }
     .refreshable { await model.refresh() }
+    .photoViewer(photos)
     .task(id: selectedItem) {
       await prepareSelection()
     }
@@ -193,15 +195,26 @@ struct ColoringPageDetailView: View {
       guard !filename.isEmpty,
         let url = protectedFiles?.url(
           collection: "coloring_pages", recordID: page.id, filename: filename,
-          thumb: ArtworkThumb.compact)
+          thumb: ArtworkThumb.compact),
+        let fullSizeURL = protectedFiles?.url(
+          collection: "coloring_pages", recordID: page.id, filename: filename)
       else { return nil }
       return DetailPhoto(
         id: filename,
         url: url,
+        fullSizeURL: fullSizeURL,
         accessibilityLabel: "Page photo \(index + 1)"
           + pagePhotoSubjectSuffix
       )
     }
+  }
+
+  private var coverPhoto: DetailPhoto? {
+    guard let url = protectedFiles?.artworkURL(for: .page(page)) else { return nil }
+    return DetailPhoto(
+      id: "page-cover", url: url, fullSizeURL: url,
+      accessibilityLabel: "Page artwork"
+    )
   }
 
   private func formattedDate(_ value: String?) -> String? {
