@@ -82,9 +82,10 @@ struct OAuthPresentationAnchor: UIViewRepresentable {
 
     override func didMoveToWindow() {
       super.didMoveToWindow()
-      let window = window
+      let callback = onWindow
       DispatchQueue.main.async { [weak self] in
-        self?.onWindow?(window)
+        guard let window = self?.window else { return }
+        callback?(window)
       }
     }
   }
