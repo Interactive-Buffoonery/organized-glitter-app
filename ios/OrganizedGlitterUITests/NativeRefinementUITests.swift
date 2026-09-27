@@ -330,10 +330,7 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
     field.tap()
-    field.press(forDuration: 1)
-    let selectAll = app.menuItems["Select All"]
-    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
-    selectAll.tap()
+    field.typeKey("a", modifierFlags: .command)
     field.typeText(value)
     XCTAssertEqual(field.value as? String, value)
   }
