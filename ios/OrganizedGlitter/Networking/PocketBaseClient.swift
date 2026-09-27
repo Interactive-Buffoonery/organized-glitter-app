@@ -367,16 +367,12 @@ actor PocketBaseClient {
       body: PocketBaseRequestBody(json: body), acceptedStatusCodes: [409])
     let object = try JSONSerialization.jsonObject(with: result.data) as? [String: Any]
     guard let object else { throw APIError.decoding }
-    let recordObject: Any?
     if result.status == 409 {
       guard object["reason"] as? String == "field_conflict" else {
         throw APIError.validation("This edit could not be retried safely.")
       }
-      recordObject = object["record"]
-    } else {
-      recordObject = object["record"]
     }
-    guard let recordObject else { throw APIError.decoding }
+    guard let recordObject = object["record"] else { throw APIError.decoding }
     let recordData = try JSONSerialization.data(withJSONObject: recordObject)
     let record: LibraryItem
     do {
