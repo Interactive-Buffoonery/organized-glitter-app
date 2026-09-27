@@ -46,7 +46,9 @@ final class LibraryItemDetailModel {
   var isMutating = false
   var errorMessage: String?
   var mutationErrorMessage: String?
+  private(set) var statusErrorMessage: String?
   private(set) var unresolvedWriteState: DetailUnresolvedWriteState?
+  private(set) var unresolvedStatusWrite = false
 
   private var bookPagesPage = 0
   private var bookPagesTotalPages = 0
@@ -55,6 +57,7 @@ final class LibraryItemDetailModel {
   private var generation = 0
   private var unresolvedDiamondWriteIncludesPhoto = false
   private static let bookPagesPerPage = 24
+  static let projectExpand = "company,artist,project_tags_via_project.tag"
 
   init(item: LibraryItem, client: PocketBaseClient, userID: String) {
     self.item = item
@@ -81,7 +84,7 @@ final class LibraryItemDetailModel {
         async let projectRequest: DiamondProjectRecord = client.get(
           collection: "projects",
           id: project.id,
-          expand: "company,artist"
+          expand: Self.projectExpand
         )
         async let notesRequest: RecordList<DiamondProgressNoteRecord> = client.list(
           collection: "progress_notes",
@@ -281,6 +284,7 @@ final class LibraryItemDetailModel {
 
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
     do {
       try await client.delete(collection: collection, id: recordID)
@@ -310,6 +314,42 @@ final class LibraryItemDetailModel {
     }
   }
 
+  /// Plain status PATCH, matching the web. Dates stay as the user set them.
+  func setStatus(_ status: String) async -> Bool {
+    guard !isMutating, unresolvedWriteState == nil, item.status != status else { return false }
+    isMutating = true
+    mutationErrorMessage = nil
+    statusErrorMessage = nil
+    defer { isMutating = false }
+    let patch = ["status": status]
+    do {
+      let saved: LibraryItem
+      switch item {
+      case .diamond(let project):
+        saved = .diamond(try await client.update(collection: "projects", id: project.id, body: patch))
+      case .book(let book):
+        saved = .book(
+          try await client.update(collection: "coloring_books", id: book.id, body: patch))
+      case .page:
+        return false
+      }
+      item = saved.retainingListingContext(from: item)
+      await load()
+      return true
+    } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
+      unresolvedStatusWrite = true
+      unresolvedWriteState = .needsRefresh
+      _ = await reconcileUnresolvedWrite()
+      return false
+    } catch {
+      statusErrorMessage = error.userMessage(
+        permission: "Your account does not have permission to change the status.",
+        fallback: "The status could not be changed. Try again."
+      )
+      return false
+    }
+  }
+
   func addDiamondProgressNote(
     content: String,
     date: Date,
@@ -323,6 +363,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
 
     var files: [PocketBaseMultipartFile] = []
@@ -375,6 +416,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
 
     let form = PocketBaseMultipartForm(
@@ -422,6 +464,7 @@ final class LibraryItemDetailModel {
     guard unresolvedWriteState == .refreshed else { return }
     unresolvedWriteState = nil
     unresolvedDiamondWriteIncludesPhoto = false
+    unresolvedStatusWrite = false
     mutationErrorMessage = nil
   }
 
@@ -429,6 +472,11 @@ final class LibraryItemDetailModel {
     let didRefresh = await load()
     if didRefresh {
       unresolvedWriteState = .refreshed
+      if unresolvedStatusWrite {
+        mutationErrorMessage =
+          "The status response was lost. Review the refreshed status before changing it again."
+        return true
+      }
       switch item {
       case .diamond:
         mutationErrorMessage =
@@ -445,6 +493,11 @@ final class LibraryItemDetailModel {
     }
 
     unresolvedWriteState = .needsRefresh
+    if unresolvedStatusWrite {
+      mutationErrorMessage =
+        "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
+      return false
+    }
     switch item {
     case .diamond:
       mutationErrorMessage =

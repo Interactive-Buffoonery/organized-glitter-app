@@ -16,73 +16,72 @@ struct DiamondProjectDetailView: View {
 
   var body: some View {
     ScrollView {
-      LazyVStack(alignment: .leading, spacing: 18) {
-        CoverArtwork(
-          item: .diamond(project),
-          url: LibraryItem.diamond(project).artworkURL(
-            using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
-          maxPixelDimension: 1_200,
-          loadedAccessibilityLabel: "Project artwork"
-        )
-        .frame(maxWidth: .infinity, maxHeight: heroHeight)
-        .accessibilityIdentifier("detail.hero")
+      VStack(alignment: .leading, spacing: 20) {
+        header
+        DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
-        VStack(alignment: .leading, spacing: 6) {
-          Text(project.title)
-            .font(.title2.bold())
-            .foregroundStyle(theme.foreground)
-          if !LibraryItem.diamond(project).subtitle.isEmpty {
-            Text(LibraryItem.diamond(project).subtitle)
-              .font(.body)
-              .foregroundStyle(theme.pageSecondaryForeground)
-          }
-        }
-
-        DetailMetadataCard {
-          DetailMetadataRow(label: "Status") {
-            StatusBadge(
-              label: DiamondStatus.label(for: project.status),
-              systemImage: DiamondStatus.systemImage(for: project.status))
-          }
-          if let width = project.width, let height = project.height {
-            DetailMetadataRow(
-              label: "Size",
-              value: "\(width.formatted()) × \(height.formatted()) cm"
-            )
-          }
-          DetailMetadataRow(
-            label: "Drills",
-            value: project.drillShape?.nonEmpty?.capitalized ?? "Not set"
-          )
+        if !specs.isEmpty {
+          DetailSpecStrip(specs: specs)
         }
 
         VStack(alignment: .leading, spacing: 12) {
-          photoHeader
+          progressHeader
           if progressPhotos.isEmpty {
             ContentUnavailableView(
               "No progress photos",
               systemImage: "photo.on.rectangle",
-              description: Text("Add a dated photo as your project changes.")
+              description: Text("Log a dated photo as your project changes.")
             )
             .frame(maxWidth: .infinity)
           } else {
-            DetailPhotoGallery(photos: progressPhotos)
+            DetailPhotoContactSheet(photos: progressPhotos)
           }
 
-          if !isAddingNote {
+          if model.canLoadMoreProgressNotes {
+            Button {
+              Task { await model.loadMoreProgressNotes() }
+            } label: {
+              HStack {
+                if model.isLoadingMore { ProgressView() }
+                Text(model.isLoadingMore ? "Loading more progress" : "Load more progress")
+              }
+              .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.isLoadingMore)
+            .accessibilityIdentifier("detail.diamond.loadMoreProgress")
+          }
+
+          if !isAddingNote, !model.unresolvedStatusWrite {
             unresolvedWriteRecovery
           }
         }
 
-        detailSection("Project details") {
+        detailSection("Details") {
           DetailMetadataCard {
-            DetailMetadataRow(
-              label: "Kit",
-              value: project.kitCategory.capitalized
-            )
+            if let company = project.expand?.company?.name.nonEmpty {
+              DetailMetadataRow(label: "Company", value: company)
+            }
+            if let artist = project.expand?.artist?.name.nonEmpty {
+              DetailMetadataRow(label: "Artist", value: artist)
+            }
+            DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
+            ForEach(dateRows, id: \.label) { row in
+              DetailMetadataRow(label: row.label, value: row.value)
+            }
+            if !project.tags.isEmpty {
+              DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
+            }
+            if let source = sourceURL {
+              DetailMetadataRow(label: "Source") {
+                Link(source.host() ?? source.absoluteString, destination: source)
+                  .lineLimit(1)
+              }
+              .accessibilityIdentifier("detail.diamond.source")
+            }
           }
 
-          if let notes = project.generalNotes?.nonEmpty {
+          if let notes = project.generalNotes?.plainTextFromHTML.nonEmpty {
             Text(notes)
               .foregroundStyle(theme.foreground)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,14 +105,6 @@ struct DiamondProjectDetailView: View {
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(14)
               .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-            }
-
-            if model.canLoadMoreProgressNotes {
-              Button("Load more notes") {
-                Task { await model.loadMoreProgressNotes() }
-              }
-              .disabled(model.isLoadingMore)
-              .frame(maxWidth: .infinity)
             }
           }
         }
@@ -155,7 +146,7 @@ struct DiamondProjectDetailView: View {
       guard let image = note.image?.nonEmpty,
         let url = protectedFiles?.url(
           collection: "progress_notes", recordID: note.id, filename: image,
-          thumb: ArtworkThumb.compact)
+          thumb: ArtworkThumb.gallery)
       else { return nil }
       return DetailPhoto(
         id: note.id,
@@ -196,34 +187,130 @@ struct DiamondProjectDetailView: View {
     }
   }
 
-  private var photoHeader: some View {
-    let layout =
-      dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-      : AnyLayout(HStackLayout())
-    return layout {
-      Text("Photos")
-        .font(.title3.weight(.semibold))
+  private var header: some View {
+    VStack(spacing: 8) {
+      CoverArtwork(
+        item: .diamond(project),
+        url: LibraryItem.diamond(project).artworkURL(
+          using: model.client, token: protectedFiles?.token),
+        maxPixelDimension: 1_200,
+        loadedAccessibilityLabel: "Project artwork"
+      )
+      .frame(width: horizontalSizeClass == .regular ? 300 : 204)
+      .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
+      .padding(.bottom, 8)
+      .accessibilityIdentifier("detail.hero")
+
+      Text(project.title)
+        .font(.title2.bold())
         .foregroundStyle(theme.foreground)
         .accessibilityAddTraits(.isHeader)
-      if !dynamicTypeSize.isAccessibilitySize {
-        Spacer()
+      if !LibraryItem.diamond(project).subtitle.isEmpty {
+        Text(LibraryItem.diamond(project).subtitle)
+          .foregroundStyle(theme.pageSecondaryForeground)
       }
+      DetailStatusMenu<DiamondStatus>(current: project.status) { status in
+        Task {
+          let changed = await model.setStatus(status)
+          if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
+            await onCollectionChanged()
+          }
+        }
+      }
+      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      .padding(.top, 4)
+    }
+    .multilineTextAlignment(.center)
+    .frame(maxWidth: .infinity)
+  }
+
+  private var progressHeader: some View {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+    return layout {
+      sectionTitle("Progress")
+      if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
+
       Button {
         isAddingNote = true
       } label: {
-        Label("Add photo", systemImage: "plus")
+        Label("Log progress", systemImage: "plus.circle")
+          .labelStyle(.titleAndIcon)
+          .font(.subheadline)
           .frame(minHeight: 44)
           .contentShape(.rect)
       }
-      .buttonStyle(.bordered)
+      .buttonStyle(.plain)
+      .foregroundStyle(
+        theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
+      )
       .disabled(model.isMutating || model.unresolvedWriteState != nil)
       .accessibilityIdentifier("detail.diamond.addNote")
     }
   }
 
-  private var heroHeight: CGFloat {
-    horizontalSizeClass == .regular ? 360 : 250
+  private var specs: [DetailSpec] {
+    var specs: [DetailSpec] = []
+    if let width = project.width, let height = project.height {
+      specs.append(
+        DetailSpec(
+          title: "Size", value: "\(width.formatted())×\(height.formatted())", caption: "cm",
+          accessibilityValue: "\(width.formatted()) by \(height.formatted()) centimeters"))
+    }
+    if let drill = project.drillShape?.nonEmpty {
+      let kit = "\(project.kitCategory.lowercased()) kit"
+      specs.append(
+        DetailSpec(
+          title: "Drill", value: drill.capitalized, caption: kit,
+          accessibilityValue: "\(drill), \(kit)"))
+    }
+    if let total = project.totalDiamonds, total > 0 {
+      let colors = project.colorCount.flatMap { $0 > 0 ? "\(Int($0)) colors" : nil }
+      specs.append(
+        DetailSpec(
+          title: "Diamonds",
+          value: Int(total).formatted(.number.notation(.compactName).precision(.significantDigits(1...3))),
+          caption: colors,
+          accessibilityValue: [Int(total).formatted(), colors].compactMap { $0 }.joined(separator: ", ")))
+    }
+    if let started = project.dateStarted.flatMap({ DetailDateOnly.date($0) }),
+      let day = project.dateStarted.flatMap({ DetailDateOnly.monthDay($0) })
+    {
+      let end = project.dateCompleted.flatMap { DetailDateOnly.date($0) } ?? .now
+      let elapsed = DetailDateOnly.elapsed(from: started, to: end)
+      specs.append(
+        DetailSpec(
+          title: "Started", value: day, caption: elapsed,
+          accessibilityValue: [day, elapsed].compactMap { $0 }.joined(separator: ", ")))
+    }
+    return specs
+  }
+
+  private var dateRows: [(label: String, value: String)] {
+    [
+      ("Purchased", project.datePurchased),
+      ("Received", project.dateReceived),
+      ("Started", project.dateStarted),
+      ("Completed", project.dateCompleted),
+    ].compactMap { label, value in
+      value.flatMap { DetailDateOnly.formatted($0) }.map { (label, $0) }
+    }
+  }
+
+  private var sourceURL: URL? {
+    guard let url = project.sourceURL?.nonEmpty.flatMap(URL.init(string:)),
+      ["http", "https"].contains(url.scheme?.lowercased())
+    else { return nil }
+    return url
+  }
+
+  private func sectionTitle(_ title: String) -> some View {
+    Text(title)
+      .font(.title3.weight(.semibold))
+      .foregroundStyle(theme.foreground)
+      .accessibilityAddTraits(.isHeader)
   }
 
   private func noteDate(_ value: String) -> String {
@@ -243,10 +330,7 @@ struct DiamondProjectDetailView: View {
     @ViewBuilder content: () -> Content
   ) -> some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text(title)
-        .font(.title3.weight(.semibold))
-        .foregroundStyle(theme.foreground)
-        .accessibilityAddTraits(.isHeader)
+      sectionTitle(title)
       content()
     }
   }

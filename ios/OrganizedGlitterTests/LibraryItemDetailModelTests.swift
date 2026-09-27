@@ -116,6 +116,157 @@ struct LibraryItemDetailModelTests {
   }
 
   @Test
+  func statusChangeSendsOnlyStatusAndReloadsWithTags() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "PATCH", path.hasSuffix("/projects/records/project-1") {
+        let body = try JSONSerialization.jsonObject(
+          with: DetailURLProtocol.bodyData(for: request)) as? [String: String]
+        #expect(body == ["status": "completed"])
+        return (200, Self.projectJSON)
+      }
+      if path.hasSuffix("/projects/records/project-1") {
+        let expand = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)?
+          .queryItems?.first(where: { $0.name == "expand" })?.value
+        #expect(expand == "company,artist,project_tags_via_project.tag")
+        return (200, Self.taggedProjectJSON)
+      }
+      if path.hasSuffix("/progress_notes/records") {
+        return (200, Self.noteListJSON)
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .diamond(Self.project), client: client, userID: "user-1")
+
+    #expect(await model.setStatus("completed"))
+    guard case .diamond(let project) = model.item else {
+      Issue.record("Expected a project after the status change")
+      return
+    }
+    #expect(project.status == "completed")
+    #expect(project.tags.map(\.name) == ["Animals", "gift"])
+    #expect(project.totalDiamonds == 48_200)
+  }
+
+  @Test
+  func uncertainDiamondStatusBlocksAnotherPatchUntilReviewed() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "PATCH", path.hasSuffix("/projects/records/project-1") {
+        return (500, "{}")
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
+        return (500, "{}")
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/progress_notes/records") {
+        return (200, Self.noteListJSON)
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .diamond(Self.project), client: client, userID: "user-1")
+
+    #expect(!(await model.setStatus("completed")))
+    #expect(model.unresolvedStatusWrite)
+    #expect(model.unresolvedWriteState == .needsRefresh)
+    #expect(!(await model.setStatus("completed")))
+    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count == 1)
+
+    DetailURLProtocol.handler = { request in
+      let path = try #require(request.url?.path)
+      if path.hasSuffix("/projects/records/project-1") {
+        return (200, Self.taggedProjectJSON)
+      }
+      if path.hasSuffix("/progress_notes/records") {
+        return (200, Self.noteListJSON)
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    #expect(await model.refreshUnresolvedWriteStatus())
+    #expect(model.unresolvedWriteState == .refreshed)
+    #expect(model.item.status == "completed")
+    #expect(!(await model.setStatus("progress")))
+    model.clearUnresolvedWriteRecovery()
+    #expect(!model.unresolvedStatusWrite)
+  }
+
+  @Test
+  func uncertainBookStatusRefreshesBeforeAnotherChange() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_books/records/book-1") {
+        return (500, "{}")
+      }
+      if path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, Self.bookJSON)
+      }
+      if path.hasSuffix("/coloring_pages/records") {
+        return (200, Self.pageListJSON(id: "page-1", number: 1, totalPages: 1))
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .book(Self.book), client: client, userID: "user-1")
+
+    #expect(!(await model.setStatus("completed")))
+    #expect(model.unresolvedStatusWrite)
+    #expect(model.unresolvedWriteState == .refreshed)
+    #expect(model.item.status == "in_progress")
+    #expect(!(await model.setStatus("completed")))
+    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count == 1)
+  }
+
+  @Test
+  func undecodableStatusResponseRefreshesBeforeAnotherPatch() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, "not JSON")
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/coloring_books/records/book-1") {
+        return (200, Self.bookJSON)
+      }
+      if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records") {
+        return (200, Self.pageListJSON(id: "page-1", number: 1, totalPages: 1))
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .book(Self.book), client: client, userID: "user-1")
+
+    #expect(!(await model.setStatus("completed")))
+    #expect(model.unresolvedStatusWrite)
+    #expect(model.unresolvedWriteState == .refreshed)
+    #expect(model.item.status == "in_progress")
+    #expect(!(await model.setStatus("completed")))
+    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count == 1)
+  }
+
+  @Test
+  func rejectedStatusHasDedicatedNearMenuFeedback() async throws {
+    let client = try await signedInClient { request in
+      let path = try #require(request.url?.path)
+      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_books/records/book-1") {
+        return (403, "{}")
+      }
+      Issue.record("Unexpected request: \(request)")
+      return (500, "{}")
+    }
+    let model = LibraryItemDetailModel(
+      item: .book(Self.book), client: client, userID: "user-1")
+
+    #expect(!(await model.setStatus("completed")))
+    #expect(model.statusErrorMessage?.contains("permission") == true)
+    #expect(model.unresolvedWriteState == nil)
+  }
+
+  @Test
   func unresolvedPageUploadNeverRepeatsTheWriteWhenRefreshFails() async throws {
     let client = try await signedInClient { request in
       let path = try #require(request.url?.path)
@@ -425,6 +576,9 @@ struct LibraryItemDetailModelTests {
 
   nonisolated private static let projectJSON =
     #"{"id":"project-1","title":"Moon Garden","user":"user-1","status":"progress","kit_category":"full","drill_shape":"round","width":40,"height":50,"created":"2026-01-01","updated":"2026-01-02"}"#
+
+  nonisolated private static let taggedProjectJSON =
+    #"{"id":"project-1","title":"Moon Garden","user":"user-1","status":"completed","kit_category":"full","drill_shape":"round","width":40,"height":50,"total_diamonds":48200,"created":"2026-01-01","updated":"2026-01-03","expand":{"project_tags_via_project":[{"id":"pt-1","expand":{"tag":{"id":"tag-2","name":"gift"}}},{"id":"pt-2","expand":{"tag":{"id":"tag-1","name":"Animals"}}}]}}"#
 
   nonisolated private static let noteJSON =
     #"{"id":"note-1","project":"project-1","content":"Halfway done","date":"2026-09-19 00:00:00.000Z","image":"progress.png","created":"2026-09-19","updated":"2026-09-19"}"#
