@@ -9,7 +9,7 @@ struct CreateMenu: View {
   let onRefresh: () async -> Void
   let onSaved: (LibraryItem) -> Void
 
-  @State private var target: Target?
+  @State private var target: CreateTarget?
 
   var body: some View {
     Menu {
@@ -27,23 +27,36 @@ struct CreateMenu: View {
     .disabled(!verticals.diamondPainting && !verticals.coloringBooks)
     .accessibilityIdentifier("create.menu")
     .sheet(item: $target) { target in
-      switch target {
-      case .diamond:
-        DiamondProjectEditor(client: client, userID: userID, onLibraryRefresh: onRefresh) {
-          onSaved(.diamond($0))
-        }
-      case .book:
-        ColoringBookEditor(client: client, userID: userID, onLibraryRefresh: onRefresh) {
-          onSaved(.book($0))
-        }
-      }
+      CreateEditor(
+        target: target, client: client, userID: userID, onRefresh: onRefresh, onSaved: onSaved)
     }
   }
+}
 
-  private enum Target: String, Identifiable {
-    case diamond
-    case book
+enum CreateTarget: String, Identifiable {
+  case diamond
+  case book
 
-    var id: Self { self }
+  var id: Self { self }
+}
+
+struct CreateEditor: View {
+  let target: CreateTarget
+  let client: PocketBaseClient
+  let userID: String
+  let onRefresh: () async -> Void
+  let onSaved: (LibraryItem) -> Void
+
+  var body: some View {
+    switch target {
+    case .diamond:
+      DiamondProjectEditor(client: client, userID: userID, onLibraryRefresh: onRefresh) {
+        onSaved(.diamond($0))
+      }
+    case .book:
+      ColoringBookEditor(client: client, userID: userID, onLibraryRefresh: onRefresh) {
+        onSaved(.book($0))
+      }
+    }
   }
 }

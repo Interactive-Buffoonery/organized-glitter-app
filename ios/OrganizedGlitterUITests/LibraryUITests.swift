@@ -71,7 +71,7 @@ final class LibraryUITests: XCTestCase {
   func testLoadingEmptyAndErrorStates() throws {
     for (scenario, label) in [
       ("loading", "Loading diamond projects"),
-      ("empty", "Nothing here yet"),
+      ("empty", "Add your first kit"),
       ("error", "Couldn’t load your library"),
     ] {
       let app = launch(scenario)
@@ -80,6 +80,11 @@ final class LibraryUITests: XCTestCase {
       XCTAssertFalse(app.navigationBars.buttons["Add"].exists)
       if scenario == "empty" {
         XCTAssertTrue(app.buttons["create.menu"].exists)
+        XCTAssertFalse(app.buttons["library.sort"].exists)
+        XCTAssertFalse(app.buttons["library.status.all"].exists)
+        app.buttons["library.first"].tap()
+        XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
+        app.buttons["Cancel"].tap()
       }
       try capture(app, "library-\(scenario)")
       if scenario == "error" {
@@ -137,13 +142,25 @@ final class LibraryUITests: XCTestCase {
     openLibrary(app)
     XCTAssertTrue(app.staticTexts["Yorkie & Roses"].waitForExistence(timeout: 5))
 
-    app.buttons["library.status"].tap()
-    app.buttons["Completed"].tap()
+    let all = app.buttons["library.status.all"]
+    let completed = app.buttons["library.status.completed"]
+    let chipRow = all.frame.midY
+    let origin = app.coordinate(withNormalizedOffset: .zero)
+    for _ in 0..<4 where completed.frame.maxX > app.frame.maxX {
+      origin.withOffset(CGVector(dx: 300, dy: chipRow)).press(
+        forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 60, dy: chipRow)))
+    }
+    completed.tap()
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
+    XCTAssertTrue(app.buttons["library.status.completed"].isSelected)
+    try capture(app, "library-status-chips")
 
-    app.buttons["library.status"].tap()
-    app.buttons["All statuses"].tap()
+    for _ in 0..<4 where all.frame.minX < 0 {
+      origin.withOffset(CGVector(dx: 60, dy: chipRow)).press(
+        forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 300, dy: chipRow)))
+    }
+    all.tap()
     app.buttons["library.sort"].tap()
     app.buttons["Title A to Z"].tap()
     let beachside = app.staticTexts["Beachside Gathering"]
@@ -159,6 +176,10 @@ final class LibraryUITests: XCTestCase {
     app.buttons["Search"].firstMatch.tap()
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
     let search = app.searchFields.firstMatch
+    // iPadOS collapses the field into a toolbar button at accessibility sizes.
+    if !search.waitForExistence(timeout: 2) {
+      app.navigationBars["Search"].buttons["Search"].tap()
+    }
     XCTAssertTrue(search.waitForExistence(timeout: 5))
     search.tap()
     search.typeText("Divine\n")

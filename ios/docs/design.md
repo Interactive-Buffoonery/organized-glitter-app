@@ -15,6 +15,10 @@ screen backgrounds. The Shelf redesign (Option B in
 - **iPad.** The `.sidebarAdaptable` `TabView` lists one sidebar row per craft
   in a `TabSection("Library")`. The single Library tab shows only in the tab
   bar, so there is no nested `NavigationSplitView`.
+- **Library.** A covers grid under a row of status chips (All plus every
+  backend status). Sort is a toolbar menu next to `+`. A craft with nothing in
+  it hides chips and sort and shows one "Add your first kit" (or book) prompt
+  that opens the editor.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
   clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient
   seeded by record id, the title in Caveat, and a craft glyph.
