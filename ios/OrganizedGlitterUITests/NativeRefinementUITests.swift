@@ -156,7 +156,7 @@ final class NativeRefinementUITests: XCTestCase {
     confirm.tap()
 
     let uploadedPhoto = app.descendants(matching: .any).matching(
-      NSPredicate(format: "label == %@", "Page photo 2: Moonlit garden")
+      NSPredicate(format: "label == %@", "Page photo 2: Rapunzel")
     ).firstMatch
     XCTAssertTrue(uploadedPhoto.waitForExistence(timeout: 10))
     XCTAssertTrue(element("detail.page", in: app).exists)
