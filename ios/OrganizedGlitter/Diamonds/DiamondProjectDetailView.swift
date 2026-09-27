@@ -241,15 +241,8 @@ struct DiamondProjectDetailView: View {
         Text(LibraryItem.diamond(project).subtitle)
           .foregroundStyle(theme.pageSecondaryForeground)
       }
-      DetailStatusMenu<DiamondStatus>(current: project.status) { status in
-        Task {
-          let changed = await model.setStatus(status)
-          if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
-            await onCollectionChanged()
-          }
-        }
-      }
-      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      DetailStatusMenu<DiamondStatus>(
+        current: project.status, model: model, onCollectionChanged: onCollectionChanged)
       .padding(.top, 4)
     }
     .multilineTextAlignment(.center)
@@ -275,9 +268,7 @@ struct DiamondProjectDetailView: View {
           .contentShape(.rect)
       }
       .buttonStyle(.plain)
-      .foregroundStyle(
-        theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
-      )
+      .foregroundStyle(theme.pageAction)
       .disabled(model.isMutating || model.unresolvedWriteState != nil)
       .accessibilityIdentifier("detail.diamond.addNote")
     }

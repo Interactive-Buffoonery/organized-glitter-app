@@ -143,15 +143,8 @@ struct ColoringBookDetailView: View {
         Text(credits)
           .foregroundStyle(theme.pageSecondaryForeground)
       }
-      DetailStatusMenu<BookStatus>(current: book.status) { status in
-        Task {
-          let changed = await model.setStatus(status)
-          if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
-            await onCollectionChanged()
-          }
-        }
-      }
-      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      DetailStatusMenu<BookStatus>(
+        current: book.status, model: model, onCollectionChanged: onCollectionChanged)
       .padding(.top, 4)
       Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
         .font(.subheadline)
@@ -244,9 +237,7 @@ struct ColoringBookDetailView: View {
         .contentShape(.rect)
     }
     .buttonStyle(.plain)
-    .foregroundStyle(
-      theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
-    )
+    .foregroundStyle(theme.pageAction)
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }
