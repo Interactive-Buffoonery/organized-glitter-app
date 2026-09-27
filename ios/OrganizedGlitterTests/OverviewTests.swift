@@ -110,26 +110,23 @@ struct OverviewPresentationTests {
 
   @Test func artworkUsesTheFileAccessBoundary() throws {
     let client = client()
-    let library = LibrarySession(
-      client: client, userID: "fictional-user", store: try LocalLibraryStore.inMemory())
-    let model = OverviewModel(library: library)
     #expect(
-      model.artworkURL(for: project(image: "garden image.png"), token: "file-token")
+      project(image: "garden image.png").artworkURL(using: client, thumb: ArtworkThumb.gallery, token: "file-token")
         == client.fileURL(
           collection: "projects", recordID: "fictional-project", filename: "garden image.png",
           thumb: ArtworkThumb.gallery, token: "file-token"
         ))
     #expect(
-      model.artworkURL(for: page(photos: ["", "page.png", "later.png"]), token: "file-token")
+      page(photos: ["", "page.png", "later.png"]).artworkURL(using: client, thumb: ArtworkThumb.gallery, token: "file-token")
         == client.fileURL(
           collection: "coloring_pages", recordID: "fictional-page", filename: "page.png",
           thumb: ArtworkThumb.gallery, token: "file-token"
         ))
-    #expect(model.artworkURL(for: project(), token: "file-token") == nil)
-    #expect(model.artworkURL(for: project(image: ""), token: "file-token") == nil)
-    #expect(model.artworkURL(for: page(), token: "file-token") == nil)
-    #expect(model.artworkURL(for: page(photos: [""]), token: "file-token") == nil)
-    #expect(model.artworkURL(for: project(image: "garden image.png"), token: nil) == nil)
+    #expect(project().artworkURL(using: client, thumb: ArtworkThumb.gallery, token: "file-token") == nil)
+    #expect(project(image: "").artworkURL(using: client, thumb: ArtworkThumb.gallery, token: "file-token") == nil)
+    #expect(page().artworkURL(using: client, thumb: ArtworkThumb.gallery, token: "file-token") == nil)
+    #expect(page(photos: [""]).artworkURL(using: client, thumb: ArtworkThumb.gallery, token: "file-token") == nil)
+    #expect(project(image: "garden image.png").artworkURL(using: client, thumb: ArtworkThumb.gallery, token: nil) == nil)
   }
 }
 
