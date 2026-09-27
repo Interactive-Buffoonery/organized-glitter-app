@@ -68,8 +68,11 @@
         return
       }
       let collection = Self.collectionAndID(from: url)?.collection
-      if scenario == "loading", Self.contentCollections.contains(collection ?? "") { return }
-      if scenario == "error", Self.contentCollections.contains(collection ?? "") {
+      let isLibraryRequest = Self.contentCollections.contains(collection ?? "")
+        || url.path == "/api/mobile/sync/snapshot"
+        || url.path == "/api/mobile/sync/apply"
+      if scenario == "loading", isLibraryRequest { return }
+      if scenario == "error", isLibraryRequest {
         respond(object: ["message": "Fictional service failure"], status: 503)
         return
       }
@@ -210,6 +213,19 @@
         if request.url?.path == "/api/notes/latest" {
           return latestNotes(request: request)
         }
+        if request.url?.path == "/api/mobile/sync/snapshot" {
+          return FixtureResponse(object: [
+            "version": 1,
+            "projects": collections["projects"] ?? [],
+            "coloringBooks": collections["coloring_books"] ?? [],
+            "coloringPages": collections["coloring_pages"] ?? [],
+            "progressNotes": collections["progress_notes"] ?? [],
+            "coloringPageProgressNotes": collections["coloring_page_progress_notes"] ?? [],
+          ], status: 200)
+        }
+        if request.url?.path == "/api/mobile/sync/apply" {
+          return apply(request: request)
+        }
         guard let url = request.url,
           let target = OverviewFixtureProtocol.collectionAndID(from: url)
         else {
@@ -243,6 +259,7 @@
         self.scenario = scenario
         sequence = 0
         let hasContent = scenario != "empty"
+        let usesDesignData = scenario == "design" || scenario == "many-pages"
         collections = [
           "users": [
             [
@@ -259,19 +276,65 @@
             ]
           ],
           "projects": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designDiamonds : OverviewFixtureProtocol.diamondItems) : [],
           "coloring_books": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designBooks : OverviewFixtureProtocol.bookItems) : [],
           "coloring_pages": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designPages : OverviewFixtureProtocol.pageItems) : [],
           "progress_notes": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designProgressNotes
               : OverviewFixtureProtocol.progressNoteItems) : [],
+          "coloring_page_progress_notes": [],
         ]
+        if scenario == "many-pages", var books = collections["coloring_books"],
+          var firstBook = books.first
+        {
+          firstBook["total_pages"] = 30
+          books[0] = firstBook
+          collections["coloring_books"] = books
+          var pages = collections["coloring_pages"] ?? []
+          for index in pages.indices {
+            pages[index]["expand"] = ["book": firstBook]
+          }
+          for index in 8..<30 {
+            pages.append([
+              "id": "design-page-\(index)", "book": "design-book-0",
+              "page_number": index + 1, "status": "not_started", "photos": [],
+              "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
+              "expand": ["book": firstBook],
+            ])
+          }
+          collections["coloring_pages"] = pages
+        }
+      }
+
+      private func apply(request: URLRequest) -> FixtureResponse {
+        let body = jsonValues(from: request)
+        guard let collection = body["collection"] as? String,
+          let id = body["recordId"] as? String,
+          let patch = body["patch"] as? [String: Any],
+          let base = body["base"] as? [String: Any],
+          let index = collections[collection]?.firstIndex(where: { $0["id"] as? String == id })
+        else {
+          return FixtureResponse(object: ["message": "Fixture record not found"], status: 404)
+        }
+        var record = collections[collection]![index]
+        for field in patch.keys {
+          let current = (record[field] ?? NSNull()) as? NSObject
+          let previous = (base[field] ?? NSNull()) as? NSObject
+          if current != previous {
+            return FixtureResponse(
+              object: ["reason": "field_conflict", "record": record], status: 409)
+          }
+        }
+        for (field, value) in patch { record[field] = value }
+        record["updated"] = "2026-09-19 15:00:00"
+        collections[collection]![index] = record
+        return FixtureResponse(object: ["record": record], status: 200)
       }
 
       private func latestNotes(request: URLRequest) -> FixtureResponse {
@@ -636,7 +699,19 @@
           project["date_completed"] = "2026-09-17"
         }
         if index == 0 {
-          project["general_notes"] = "Soft pink roses against a blush background."
+          project["general_notes"] =
+            "<p>Soft pink roses against a <strong>blush</strong> background.</p><p>Save the AB drills for the bow.</p>"
+          project["total_diamonds"] = 48_200
+          project["color_count"] = 42
+          project["date_purchased"] = "2026-07-02"
+          project["date_received"] = "2026-07-11"
+          project["date_started"] = "2026-08-14"
+          project["source_url"] = "https://www.diamondartclub.com/products/yorkie-roses"
+          var expand = project["expand"] as! [String: Any]
+          expand["project_tags_via_project"] = [("Dogs", "tag-dogs"), ("Florals", "tag-florals")].map {
+            ["id": "pt-\($0.1)", "expand": ["tag": ["id": $0.1, "name": $0.0]]]
+          }
+          project["expand"] = expand
         }
         return project
       }
@@ -694,6 +769,17 @@
           "id": "design-note-2", "project": "design-project-0",
           "content": "Finished the first color family.", "date": "2026-09-15",
           "created": "2026-09-15 16:00:00", "updated": "2026-09-15 16:00:00",
+        ],
+        [
+          "id": "design-note-3", "project": "design-project-0",
+          "content": "", "date": "2026-09-08", "image": "design-yorkie-roses.jpg",
+          "created": "2026-09-08 16:00:00", "updated": "2026-09-08 16:00:00",
+        ],
+        [
+          "id": "design-note-4", "project": "design-project-0",
+          "content": "Started in the top corner.", "date": "2026-08-14",
+          "image": "design-yorkie-roses.jpg",
+          "created": "2026-08-14 16:00:00", "updated": "2026-08-14 16:00:00",
         ],
       ]
     }

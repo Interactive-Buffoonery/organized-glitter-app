@@ -1,8 +1,9 @@
 # Sorted app icon
 
-The approved artwork uses eight berry and lilac pieces and a pink sparkle on
-navy (`#05051A`), deeper than the page background (`#151533`). It has no outer border in either light or dark mode. The square
-grid is centered; the sparkle extends above it without moving the grid down.
+The approved artwork is Sarah's supplied 2048px PNG: hand-drawn pink and lilac
+squares, a white center square, and a raspberry diamond on navy (`#05051A`).
+It has no added outer border in either appearance. Preserve its original
+colors, highlights, and composition.
 
 ## Assets
 
@@ -15,8 +16,8 @@ The Xcode project explicitly selects `AppIcon` as its app icon asset catalog.
 
 ## Regeneration
 
-The editable SVG and export script live in the web repository:
-[`docs/icons/app-icon.svg`](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/icons/app-icon.svg).
+The original PNG and export script live in the web repository:
+[`docs/icons/app-icon-source.png`](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/icons/app-icon-source.png).
 Run `node scripts/generate-app-icons.mjs` there with its documented development
 dependencies, then copy the approved static exports:
 
@@ -26,6 +27,8 @@ dependencies, then copy the approved static exports:
 | `public/images/logo.png` | `Logo.imageset/logo.png` |
 
 There is no runtime or application-code dependency between the repositories.
+The export script trims seven pixels from each edge to remove the original
+PNG's gray edge fringe before resizing. The source PNG remains untouched.
 Do not export the rounded logo as the home-screen icon, add transparent margins
 to the square icon, or independently redraw the grid.
 

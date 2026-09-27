@@ -21,6 +21,8 @@ enum BookPageFilter: String, CaseIterable, Identifiable {
   }
 }
 
+extension LibraryItemDetailModel: Identifiable {}
+
 enum DetailUnresolvedWriteState: Equatable {
   case needsRefresh
   case refreshed
@@ -29,11 +31,15 @@ enum DetailUnresolvedWriteState: Equatable {
 @MainActor
 @Observable
 final class LibraryItemDetailModel {
-  let client: PocketBaseClient
-  let userID: String
+  let library: LibrarySession
+  var client: PocketBaseClient { library.client }
+  var userID: String { library.userID }
 
   private(set) var item: LibraryItem
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
+  /// The note the server most recently confirmed from this model, for the saved-entry reveal.
+  private(set) var lastAddedProgressNoteID: String?
+  private(set) var statusSaveRevision = 0
   private(set) var bookPages: [ColoringPageRecord] = []
   var needsBookPageRefresh = false
   private(set) var canLoadMoreBookPages = false
@@ -46,7 +52,9 @@ final class LibraryItemDetailModel {
   var isMutating = false
   var errorMessage: String?
   var mutationErrorMessage: String?
+  private(set) var statusErrorMessage: String?
   private(set) var unresolvedWriteState: DetailUnresolvedWriteState?
+  private(set) var unresolvedStatusWrite = false
 
   private var bookPagesPage = 0
   private var bookPagesTotalPages = 0
@@ -55,208 +63,94 @@ final class LibraryItemDetailModel {
   private var generation = 0
   private var unresolvedDiamondWriteIncludesPhoto = false
   private static let bookPagesPerPage = 24
+  static let projectExpand = "company,artist,project_tags_via_project.tag"
 
-  init(item: LibraryItem, client: PocketBaseClient, userID: String) {
+  init(item: LibraryItem, library: LibrarySession) {
     self.item = item
-    self.client = client
-    self.userID = userID
+    self.library = library
   }
 
   @discardableResult
   func load(preservingLoadedBookPages: Bool = false) async -> Bool {
     generation += 1
-    let requestGeneration = generation
     isLoading = true
     errorMessage = nil
     defer {
-      if requestGeneration == generation {
-        isLoading = false
-        hasLoaded = true
-      }
+      isLoading = false
+      hasLoaded = true
     }
 
     do {
+      try await library.loadLocal()
+      if let current = library.items.first(where: { $0.id == item.id }) {
+        item = current.retainingListingContext(from: item)
+      } else if library.hasSnapshot {
+        errorMessage = APIError.notFound.detailLoadMessage
+        return false
+      }
       switch item {
       case .diamond(let project):
-        async let projectRequest: DiamondProjectRecord = client.get(
-          collection: "projects",
-          id: project.id,
-          expand: "company,artist"
-        )
-        async let notesRequest: RecordList<DiamondProgressNoteRecord> = client.list(
-          collection: "progress_notes",
-          page: 1,
-          perPage: 20,
-          filter: PocketBaseFilter.all([
-            PocketBaseFilter.equals(.projectUser, userID),
-            PocketBaseFilter.equals(.project, project.id),
-          ]),
-          sort: "-date,-created"
-        )
-        let (loadedProject, loadedNotes) = try await (projectRequest, notesRequest)
-        guard requestGeneration == generation else { return false }
-        item = .diamond(loadedProject)
-        progressNotes = loadedNotes.items
-        progressNotesPage = loadedNotes.page
-        progressNotesTotalPages = loadedNotes.totalPages
-        canLoadMoreProgressNotes = loadedNotes.page < loadedNotes.totalPages
-
+        projectProgressNotes(projectID: project.id, pagesToShow: max(progressNotesPage, 1))
       case .book(let book):
-        let requestedFilter = bookPageFilter
-        var filters = [
-          PocketBaseFilter.equals(.book, book.id),
-          PocketBaseFilter.equals(.bookUser, userID),
-        ]
-        if let status = requestedFilter.status {
-          filters.append(PocketBaseFilter.equals(.status, status))
-        }
-        let pagesFilter = PocketBaseFilter.all(filters)
-        let pagesToReload =
-          preservingLoadedBookPages && !bookPages.isEmpty ? max(bookPagesPage, 1) : 1
-        let requestedChunks = min(pagesToReload, 1_000 / Self.bookPagesPerPage)
-        async let bookRequest: ColoringBookRecord = client.get(
-          collection: "coloring_books",
-          id: book.id,
-          expand: "publisher,illustrator"
-        )
-        async let pagesRequest: RecordList<ColoringPageRecord> = client.list(
-          collection: "coloring_pages",
-          page: 1,
-          perPage: requestedChunks * Self.bookPagesPerPage,
-          filter: pagesFilter,
-          sort: "+page_number",
-          expand: "book"
-        )
-        let (loadedBook, loadedPages) = try await (bookRequest, pagesRequest)
-        guard requestGeneration == generation else { return false }
-        let totalPages = requestedChunks == 1
-          ? loadedPages.totalPages
-          : (loadedPages.totalItems + Self.bookPagesPerPage - 1) / Self.bookPagesPerPage
-        let loadedPage = requestedChunks == 1 ? loadedPages.page : min(requestedChunks, totalPages)
-        item = .book(loadedBook)
-        bookPages = loadedPages.items
-        bookPagesPage = loadedPage
-        bookPagesTotalPages = totalPages
-        canLoadMoreBookPages = loadedPage < totalPages
-
-      case .page(let page):
-        let loaded: ColoringPageRecord = try await client.get(
-          collection: "coloring_pages",
-          id: page.id,
-          expand: "book"
-        )
-        guard requestGeneration == generation else { return false }
-        item = .page(loaded)
+        let pagesToShow = preservingLoadedBookPages ? max(bookPagesPage, 1) : 1
+        projectBookPages(bookID: book.id, pagesToShow: pagesToShow)
+      case .page:
+        break
       }
       return true
     } catch APIError.cancelled {
       return false
     } catch {
-      guard requestGeneration == generation else { return false }
       errorMessage = error.detailLoadMessage
       return false
     }
   }
 
+  func refresh() async {
+    do { try await library.refresh() } catch { errorMessage = error.detailLoadMessage }
+    await load(preservingLoadedBookPages: true)
+  }
+
   func setBookPageFilter(_ filter: BookPageFilter) async {
     guard bookPageFilter != filter else { return }
     bookPageFilter = filter
-    bookPages = []
-    bookPagesPage = 0
-    bookPagesTotalPages = 0
-    canLoadMoreBookPages = false
     await reloadBookPages()
   }
 
   func reloadBookPages() async {
     guard case .book(let book) = item else { return }
-    generation += 1
-    let requestGeneration = generation
-    isLoading = true
-    errorMessage = nil
-    defer {
-      if requestGeneration == generation {
-        isLoading = false
-      }
-    }
-
-    do {
-      let result = try await bookPagesResult(bookID: book.id, page: 1)
-      guard requestGeneration == generation else { return }
-      bookPages = result.items
-      bookPagesPage = result.page
-      bookPagesTotalPages = result.totalPages
-      canLoadMoreBookPages = result.page < result.totalPages
-    } catch APIError.cancelled {
-      return
-    } catch {
-      guard requestGeneration == generation else { return }
-      errorMessage = error.detailLoadMessage
-    }
+    projectBookPages(bookID: book.id, pagesToShow: 1)
   }
 
   func loadMoreBookPages() async {
-    guard case .book(let book) = item,
-      !isLoadingMore,
-      bookPagesPage < bookPagesTotalPages
-    else {
-      return
-    }
-
-    let requestGeneration = generation
-    let requestedFilter = bookPageFilter
-    isLoadingMore = true
-    errorMessage = nil
-    defer { isLoadingMore = false }
-    do {
-      let result = try await bookPagesResult(bookID: book.id, page: bookPagesPage + 1)
-      guard requestGeneration == generation, requestedFilter == bookPageFilter else { return }
-      bookPages.append(contentsOf: result.items)
-      bookPagesPage = result.page
-      bookPagesTotalPages = result.totalPages
-      canLoadMoreBookPages = result.page < result.totalPages
-    } catch APIError.cancelled {
-      return
-    } catch {
-      guard requestGeneration == generation, requestedFilter == bookPageFilter else { return }
-      errorMessage = error.detailLoadMessage
-    }
+    guard case .book(let book) = item, canLoadMoreBookPages else { return }
+    projectBookPages(bookID: book.id, pagesToShow: bookPagesPage + 1)
   }
 
   func loadMoreProgressNotes() async {
-    guard case .diamond(let project) = item,
-      !isLoadingMore,
-      progressNotesPage < progressNotesTotalPages
-    else {
-      return
-    }
+    guard case .diamond(let project) = item, canLoadMoreProgressNotes else { return }
+    projectProgressNotes(projectID: project.id, pagesToShow: progressNotesPage + 1)
+  }
 
-    let requestGeneration = generation
-    isLoadingMore = true
-    errorMessage = nil
-    defer { isLoadingMore = false }
-    do {
-      let result: RecordList<DiamondProgressNoteRecord> = try await client.list(
-        collection: "progress_notes",
-        page: progressNotesPage + 1,
-        perPage: 20,
-        filter: PocketBaseFilter.all([
-          PocketBaseFilter.equals(.projectUser, userID),
-          PocketBaseFilter.equals(.project, project.id),
-        ]),
-        sort: "-date,-created"
-      )
-      guard requestGeneration == generation else { return }
-      progressNotes.append(contentsOf: result.items)
-      progressNotesPage = result.page
-      progressNotesTotalPages = result.totalPages
-      canLoadMoreProgressNotes = result.page < result.totalPages
-    } catch APIError.cancelled {
-      return
-    } catch {
-      guard requestGeneration == generation else { return }
-      errorMessage = error.detailLoadMessage
-    }
+  private func projectProgressNotes(projectID: String, pagesToShow: Int) {
+    let matching = library.progressNotes.filter { $0.project == projectID }
+      .sorted { Self.progressNote($0, precedes: $1) }
+    progressNotesPage = pagesToShow
+    progressNotesTotalPages = (matching.count + 19) / 20
+    progressNotes = Array(matching.prefix(progressNotesPage * 20))
+    canLoadMoreProgressNotes = progressNotesPage < progressNotesTotalPages
+  }
+
+  private func projectBookPages(bookID: String, pagesToShow: Int) {
+    let matching = library.items.compactMap { item -> ColoringPageRecord? in
+      guard case .page(let page) = item, page.book == bookID,
+        bookPageFilter.status == nil || page.status == bookPageFilter.status else { return nil }
+      return page
+    }.sorted { $0.pageNumber == $1.pageNumber ? $0.id < $1.id : $0.pageNumber < $1.pageNumber }
+    bookPagesPage = pagesToShow
+    bookPagesTotalPages = (matching.count + Self.bookPagesPerPage - 1) / Self.bookPagesPerPage
+    bookPages = Array(matching.prefix(pagesToShow * Self.bookPagesPerPage))
+    canLoadMoreBookPages = bookPagesPage < bookPagesTotalPages
   }
 
   func acceptSaved(_ saved: LibraryItem) async {
@@ -281,30 +175,52 @@ final class LibraryItemDetailModel {
 
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
     do {
-      try await client.delete(collection: collection, id: recordID)
+      try await library.delete(collection: collection, id: recordID)
       return true
-    } catch APIError.offline, APIError.server {
-      do {
-        let _: EmptyPocketBaseRecord = try await client.get(
-          collection: collection,
-          id: recordID
-        )
-        mutationErrorMessage =
-          "Delete status is unknown. The item still appears on the server; check it before trying again."
-        return false
-      } catch APIError.notFound {
-        return true
-      } catch {
-        mutationErrorMessage =
-          "Delete status is unknown. Check the library before trying again."
-        return false
-      }
     } catch {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to delete this item.",
         fallback: "The item could not be deleted. Try again."
+      )
+      return false
+    }
+  }
+
+  /// Plain status PATCH, matching the web. Dates stay as the user set them.
+  func setStatus(_ status: String) async -> Bool {
+    guard !isMutating, unresolvedWriteState == nil, item.status != status else { return false }
+    isMutating = true
+    mutationErrorMessage = nil
+    statusErrorMessage = nil
+    defer { isMutating = false }
+    let patch = ["status": status]
+    do {
+      let saved: LibraryItem
+      switch item {
+      case .diamond(let project):
+        saved = .diamond(try await library.update(collection: "projects", id: project.id, body: patch))
+      case .book(let book):
+        saved = .book(
+          try await library.update(collection: "coloring_books", id: book.id, body: patch))
+      case .page:
+        return false
+      }
+      item = saved.retainingListingContext(from: item)
+      statusSaveRevision += 1
+      await load()
+      return true
+    } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
+      unresolvedStatusWrite = true
+      unresolvedWriteState = .needsRefresh
+      _ = await reconcileUnresolvedWrite()
+      return false
+    } catch {
+      statusErrorMessage = error.userMessage(
+        permission: "Your account does not have permission to change the status.",
+        fallback: "The status could not be changed. Try again."
       )
       return false
     }
@@ -323,6 +239,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
 
     var files: [PocketBaseMultipartFile] = []
@@ -345,12 +262,12 @@ final class LibraryItemDetailModel {
     )
 
     do {
-      let saved: DiamondProgressNoteRecord = try await client.create(
+      let saved: DiamondProgressNoteRecord = try await library.create(
         collection: "progress_notes",
         multipart: form
       )
       mergeProgressNote(saved)
-      await load()
+      lastAddedProgressNoteID = saved.id
       return true
     } catch APIError.offline, APIError.server, APIError.cancelled {
       unresolvedDiamondWriteIncludesPhoto = photo != nil
@@ -375,6 +292,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
 
     let form = PocketBaseMultipartForm(
@@ -388,7 +306,7 @@ final class LibraryItemDetailModel {
       ]
     )
     do {
-      let saved: ColoringPageRecord = try await client.update(
+      let saved: ColoringPageRecord = try await library.update(
         collection: "coloring_pages",
         id: page.id,
         multipart: form
@@ -422,13 +340,25 @@ final class LibraryItemDetailModel {
     guard unresolvedWriteState == .refreshed else { return }
     unresolvedWriteState = nil
     unresolvedDiamondWriteIncludesPhoto = false
+    unresolvedStatusWrite = false
     mutationErrorMessage = nil
   }
 
   private func reconcileUnresolvedWrite() async -> Bool {
-    let didRefresh = await load()
+    let didRefresh: Bool
+    do {
+      try await library.refreshFromServer()
+      didRefresh = await load()
+    } catch {
+      didRefresh = false
+    }
     if didRefresh {
       unresolvedWriteState = .refreshed
+      if unresolvedStatusWrite {
+        mutationErrorMessage =
+          "The status response was lost. Review the refreshed status before changing it again."
+        return true
+      }
       switch item {
       case .diamond:
         mutationErrorMessage =
@@ -445,6 +375,11 @@ final class LibraryItemDetailModel {
     }
 
     unresolvedWriteState = .needsRefresh
+    if unresolvedStatusWrite {
+      mutationErrorMessage =
+        "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
+      return false
+    }
     switch item {
     case .diamond:
       mutationErrorMessage =
@@ -477,26 +412,6 @@ final class LibraryItemDetailModel {
     return lhs.created > rhs.created
   }
 
-  private func bookPagesResult(bookID: String, page: Int) async throws
-    -> RecordList<ColoringPageRecord>
-  {
-    var filters = [
-      PocketBaseFilter.equals(.book, bookID),
-      PocketBaseFilter.equals(.bookUser, userID),
-    ]
-    if let status = bookPageFilter.status {
-      filters.append(PocketBaseFilter.equals(.status, status))
-    }
-    return try await client.list(
-      collection: "coloring_pages",
-      page: page,
-      perPage: Self.bookPagesPerPage,
-      filter: PocketBaseFilter.all(filters),
-      sort: "+page_number",
-      expand: "book"
-    )
-  }
-
   private static func dateOnlyString(from date: Date) -> String {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = .current
@@ -510,7 +425,6 @@ final class LibraryItemDetailModel {
   }
 }
 
-private struct EmptyPocketBaseRecord: Decodable, Sendable {}
 
 extension Error {
   fileprivate var detailLoadMessage: String {
