@@ -24,7 +24,7 @@ final class OverviewModel {
     self.library = library
   }
 
-  func load() async {
+  func load(animation: Animation? = nil) async {
     isLoading = true
     errorMessage = nil
     defer { isLoading = false }
@@ -57,12 +57,14 @@ final class OverviewModel {
       for note in library.coloringPageProgressNotes where pageIDs.contains(note.page) {
         if note.date > dates[note.page, default: ""] { dates[note.page] = note.date }
       }
-      latestNoteDates = dates
       let activeProjects = projects.filter { $0.status == "progress" }
         .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.diamond)
       let activePages = pages.filter { $0.status == "in_progress" }
         .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.page)
-      items = Self.continueOrder(activeProjects + activePages, latestNoteDates: dates)
+      withAnimation(animation) {
+        latestNoteDates = dates
+        items = Self.continueOrder(activeProjects + activePages, latestNoteDates: dates)
+      }
       let kitted = projects.filter { $0.status == "kitted" }
         .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.diamond)
       let stash = projects.filter { $0.status == "stash" }
@@ -156,11 +158,14 @@ final class OverviewModel {
 }
 
 struct OverviewView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
 
   @State private var model: OverviewModel
-  @State private var loggingProject: DiamondProjectRecord?
+  @State private var logEditor: LibraryItemDetailModel?
+  @State private var loggedItemID: LibraryItem.ID?
+  @State private var continuePosition: LibraryItem.ID?
   let verticals: VerticalPreferences
   let onLibraryRequest: (LibraryRequest) -> Void
 
@@ -220,15 +225,30 @@ struct OverviewView: View {
         onCollectionChanged: { await model.load() }
       )
     }
-    .sheet(item: $loggingProject) { project in
+    .sheet(item: $logEditor, onDismiss: showLoggedItem) { editor in
       DiamondProgressNoteEditor(
-        model: LibraryItemDetailModel(
-          item: .diamond(project), library: model.library),
-        onCollectionChanged: { await model.load() }
+        model: editor,
+        onCollectionChanged: {
+          if editor.lastAddedProgressNoteID != nil {
+            loggedItemID = editor.item.id
+          } else {
+            await model.load()
+          }
+        }
       )
     }
     .task(id: model.library.generation) { await model.load() }
     .onDisappear { model.cancelNoteDates() }
+  }
+
+  /// Reorders Continue after the sheet closes, so the confirmed card visibly moves to the front.
+  private func showLoggedItem() {
+    guard let id = loggedItemID else { return }
+    loggedItemID = nil
+    Task {
+      await model.load(animation: reduceMotion ? nil : Theme.motion)
+      withAnimation(reduceMotion ? nil : Theme.motion) { continuePosition = id }
+    }
   }
 
   private var continueItems: [LibraryItem] {
@@ -349,6 +369,7 @@ struct OverviewView: View {
           .scrollTargetLayout()
           .padding(.horizontal, 20)
         }
+        .scrollPosition(id: $continuePosition)
         .scrollTargetBehavior(.viewAligned)
         .scrollIndicators(.hidden)
         .accessibilityIdentifier("overview.continue.shelf")
@@ -359,7 +380,7 @@ struct OverviewView: View {
   // ponytail: pages have no Log sheet yet, so their cover opens the detail.
   private func logAction(for item: LibraryItem) -> (() -> Void)? {
     guard case .diamond(let project) = item else { return nil }
-    return { loggingProject = project }
+    return { logEditor = LibraryItemDetailModel(item: .diamond(project), library: model.library) }
   }
 
   private var upNextShelf: some View {
@@ -453,6 +474,7 @@ private struct ContinueCard: View {
             .foregroundStyle(theme.foreground)
             .lineLimit(2, reservesSpace: true)
           Label(caption ?? item.statusLabel, systemImage: item.statusSystemImage)
+            .contentTransition(.opacity)
             .font(.caption)
             .foregroundStyle(theme.pageSecondaryForeground)
         }

@@ -21,6 +21,8 @@ enum BookPageFilter: String, CaseIterable, Identifiable {
   }
 }
 
+extension LibraryItemDetailModel: Identifiable {}
+
 enum DetailUnresolvedWriteState: Equatable {
   case needsRefresh
   case refreshed
@@ -35,6 +37,8 @@ final class LibraryItemDetailModel {
 
   private(set) var item: LibraryItem
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
+  /// The note the server most recently confirmed from this model, for the saved-entry reveal.
+  private(set) var lastAddedProgressNoteID: String?
   private(set) var bookPages: [ColoringPageRecord] = []
   var needsBookPageRefresh = false
   private(set) var canLoadMoreBookPages = false
@@ -262,6 +266,7 @@ final class LibraryItemDetailModel {
         multipart: form
       )
       mergeProgressNote(saved)
+      lastAddedProgressNoteID = saved.id
       return true
     } catch APIError.offline, APIError.server, APIError.cancelled {
       unresolvedDiamondWriteIncludesPhoto = photo != nil
