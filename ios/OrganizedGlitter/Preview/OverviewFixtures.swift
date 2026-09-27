@@ -42,8 +42,7 @@
           respond(object: [:], status: 404)
           return
         }
-        let type = url.lastPathComponent.hasSuffix(".jpg") ? "image/jpeg" : "image/png"
-        respond(data: Self.artwork(filename: url.lastPathComponent), type: type)
+        respond(data: Self.artwork(filename: url.lastPathComponent), type: "image/jpeg")
         return
       }
       if url.path.contains("/auth-with-password") {
@@ -661,12 +660,13 @@
     }
 
     private static var designPages: [[String: Any]] {
-      let titles = ["Moonlit garden", "Fern study", "Summer stems", "Magnolias"]
+      let titles = ["Rapunzel", "Snow White", "Ariel", "Mulan"]
+      let images = ["rapunzel", "snow-white", "ariel", "mulan"]
       return (0..<8).map { index in
         var page: [String: Any] = [
           "id": "design-page-\(index)", "book": "design-book-0", "page_number": index + 1,
           "status": index == 0 ? "in_progress" : index == 1 ? "completed" : "not_started",
-          "photos": index < 4 ? [index == 0 ? "design-moon.png" : "design-book.png"] : [],
+          "photos": index < 4 ? ["design-princesses-\(images[index]).jpg"] : [],
           "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
           "expand": ["book": designBooks[0]],
         ]
@@ -704,28 +704,16 @@
       {
         return data
       }
-      if filename.hasPrefix("design-"), let atlas = UIImage(named: "FixtureArtwork")?.cgImage {
-        let right = filename.contains("citrus") || filename.contains("book")
-        let bottom = filename.contains("moon") || filename.contains("book")
-        let width = atlas.width / 2
-        let height = atlas.height / 2
-        let crop = CGRect(x: right ? width : 0, y: bottom ? height : 0, width: width, height: height)
-        if let artwork = atlas.cropping(to: crop), let data = UIImage(cgImage: artwork).pngData() {
-          return data
-        }
+      let asset: String
+      switch filename {
+      case "fictional-cover.png":
+        asset = "design-book-0"
+      case "fictional-page.png":
+        asset = "design-princesses-rapunzel"
+      default:
+        asset = "design-yorkie-roses"
       }
-      return UIGraphicsImageRenderer(size: CGSize(width: 200, height: 260)).pngData { context in
-        UIColor(red: 0.18, green: 0.23, blue: 0.34, alpha: 1).setFill()
-        context.fill(CGRect(x: 0, y: 0, width: 200, height: 260))
-        UIColor(red: 0.93, green: 0.81, blue: 0.57, alpha: 1).setFill()
-        context.cgContext.fillEllipse(in: CGRect(x: 120, y: 28, width: 45, height: 45))
-        for index in 0..<6 {
-          UIColor(red: 0.4, green: 0.65, blue: 0.54, alpha: 1).setFill()
-          context.cgContext.fillEllipse(
-            in: CGRect(x: 15 + index * 30, y: 115 + (index % 2) * 30, width: 25, height: 90)
-          )
-        }
-      }
+      return UIImage(named: asset)?.jpegData(compressionQuality: 0.9) ?? Data()
     }
   }
 #endif
