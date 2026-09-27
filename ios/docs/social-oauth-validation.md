@@ -1,11 +1,32 @@
 # Google and Discord OAuth validation
 
-Updated: 2026-09-27. Branch: `feat/social-oauth`, stacked on native reset PR #5.
+Updated: 2026-09-27. Branch: `feat/social-oauth`, rebased onto `main` after PR #5 merged.
 This is a Debug-only integration layer. `AccountMethodView` hides provider controls
 from Release builds until native Apple and the release gates in
 `social-sign-in-plan.md` are complete.
 
-## Simulator evidence
+## Rebase and cancellation review
+
+Rebased onto `main` at `35a76ca`. Regenerated the Xcode project to resolve the
+project-file conflict. Review fixes are in `95b23fb`:
+
+- Session transitions cancel the task and invalidate its specific client attempt
+  ID. Cleanup from an older attempt cannot invalidate a newer attempt.
+- Tests cover model cancellation while waiting for a callback and during exchange,
+  timeout, rejection of a late response without task cancellation, and delayed
+  cleanup after a retry starts.
+- Removed unused provider `state` decoding and the unused `OAuthError.timedOut`
+  case. Callback state validation remains in place. Provider names and symbols
+  now come from one `SocialProvider` mapping.
+- `DESTINATION='platform=iOS Simulator,id=C3F25292-F37D-4B34-BBA7-7955D3883C06' ./ios/script/pre-pr.sh` passed on a dedicated iOS 26.5 simulator: 173 unit tests in 27 suites and the full UI suite, including provider buttons. Device-specific and opt-in checks were skipped where their prerequisites were absent.
+- The Release simulator build passed with signing disabled.
+
+The first full preflight on the shared iPhone simulator ended with two runner
+exits in Overview UI tests and subsequently reported another worktree's test
+paths. A dedicated simulator was created for the final preflight to avoid shared
+app installations. Both affected Overview tests passed in that isolated run.
+
+## Earlier simulator evidence
 
 Device: iPhone 17, iOS 26.5 simulator. Derived data:
 `/tmp/og-social-oauth-dd`.
