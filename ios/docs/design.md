@@ -157,23 +157,23 @@ back to the device preference — see `AppModel.applyThemePreference`.
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `background` | `#F8E9F6` | `#05051A` |
+| `background` | `#F8E9F6` | `#151533` |
 | `foreground` | `#46323E` | `#F7F2F7` |
-| `card` | `#FDF5F8` | `#141028` |
+| `card` | `#FDF5F8` | `#231E3E` |
 | `cardForeground` | `#46323E` | `#F7F2F7` |
-| `popover` | `#FDF5F8` | `#0F0B28` |
+| `popover` | `#FDF5F8` | `#1D1938` |
 | `popoverForeground` | `#46323E` | `#F7F2F7` |
 | `primary` | `#D23C77` | `#F58AB5` |
 | `primaryForeground` | `#FFFFFF` | `#381423` |
-| `secondary` | `#F6DCE6` | `#0F0B28` |
+| `secondary` | `#F6DCE6` | `#1D1938` |
 | `secondaryForeground` | `#46323E` | `#F7F2F7` |
-| `muted` | `#F3E4EC` | `#1C1636` |
+| `muted` | `#F3E4EC` | `#2D2749` |
 | `mutedForeground` | `#765669` | `#BEB1C3` |
 | `accent` | `#8535D4` | `#CAA4F9` |
-| `accentForeground` | `#FFFFFF` | `#05051A` |
-| `destructive` | `#C93A4C` | `#EA3E3E` |
+| `accentForeground` | `#FFFFFF` | `#151533` |
+| `destructive` | `#C93A4C` | `#F57E7E` |
 | `destructiveForeground` | `#FFFFFF` | `#F7F2F7` |
-| `border` | `#E5CDD9` | `#37304B` |
+| `border` | `#E5CDD9` | `#474059` |
 | `ring` | `#D23C77` | `#F58AB5` |
 
 `accent` stays the brand purple (`#8535D4`) from the original Organized
@@ -193,17 +193,22 @@ stock grouped-list grey.
 | Middle | `#F8E9F6` |
 | Bottom | `#E7DEFA` |
 
-- **Dark — "Berry Cream after dark"** paints a flat navy base (`#05051A`) with
-  a purple radial bloom rising from the bottom. The bloom is a circular
-  `RadialGradient` centered at `(0.56, 1.0)` with `endRadius` 0.55 × the
-  longer screen dimension, approximating the web app's elliptical
-  `radial-gradient(... at 56% 116%)` bloom:
+- **Dark — "Berry Cream after dark"** matches the web theme at revision
+  `70990b79c2883a46c6455618cf3abb17c582bc9a` (`src/index.css`). It paints an
+  opaque navy base (`#151533`) with a quiet translucent lavender ellipse.
+  Its center is `(0.5, 1.18)` and its radii are 120% of the viewport width
+  and 76% of its height. The glow stays below the viewport and scales
+  independently on each axis, including on iPad and in landscape.
 
-| Stop | Location | Color |
-| --- | --- | --- |
-| 0 | `0.0` | `#5C27B5` |
-| 1 | `0.38` | `#371475` |
-| 2 | `0.73` | transparent |
+| Stop | Location | Color | Opacity |
+| --- | --- | --- | --- |
+| 0 | `0.0` | `#8662A7` | 45% |
+| 1 | `0.42` | `#57406D` | 22% |
+| 2 | `0.72` | transparent | 0% |
+
+Dark `destructive` uses the web's `--destructive-text` value because native
+consumers use it as foreground text. The launch background matches the navy
+base. Light appearance retains its existing palette and gradient.
 
 ## Typography
 

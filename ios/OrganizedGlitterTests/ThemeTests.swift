@@ -16,6 +16,21 @@ struct ThemeTests {
     return (Int((r * 255).rounded()), Int((g * 255).rounded()), Int((b * 255).rounded()))
   }
 
+  private func composited(_ color: Color, over background: Color) -> Color {
+    var r: CGFloat = 0
+    var g: CGFloat = 0
+    var b: CGFloat = 0
+    var alpha: CGFloat = 0
+    UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &alpha)
+    let base = rgb(background)
+    return Color(
+      .sRGB,
+      red: r * alpha + Double(base.r) / 255 * (1 - alpha),
+      green: g * alpha + Double(base.g) / 255 * (1 - alpha),
+      blue: b * alpha + Double(base.b) / 255 * (1 - alpha)
+    )
+  }
+
   private func contrastRatio(_ first: Color, _ second: Color) -> Double {
     func luminance(_ color: Color) -> Double {
       let components = rgb(color)
@@ -47,7 +62,7 @@ struct ThemeTests {
   func darkStageHasBloomLightDoesNot() {
     #expect(Theme.light.backgroundBloom == nil)
     #expect(Theme.dark.backgroundBloom != nil)
-    #expect(rgb(Theme.dark.background) == (0x05, 0x05, 0x1A))
+    #expect(rgb(Theme.dark.background) == (0x15, 0x15, 0x33))
   }
 
   @Test
@@ -61,7 +76,9 @@ struct ThemeTests {
   func pageSecondaryTextRemainsReadableAcrossTheDarkGlow() throws {
     let bloom = try #require(Theme.dark.backgroundBloom)
     for stop in bloom.stops.dropLast() {
-      #expect(contrastRatio(Theme.dark.pageSecondaryForeground, stop.color) >= 4.5)
+      let surface = composited(stop.color, over: Theme.dark.background)
+      #expect(contrastRatio(Theme.dark.pageSecondaryForeground, surface) >= 4.5)
+      #expect(contrastRatio(Theme.dark.mutedForeground, surface) >= 4.5)
     }
     #expect(contrastRatio(Theme.dark.pageSecondaryForeground, Theme.dark.background) >= 4.5)
   }
@@ -70,6 +87,8 @@ struct ThemeTests {
   func errorTextMeetsMinimumContrastOnTheCard() {
     #expect(contrastRatio(Theme.light.foreground, Theme.light.card) >= 4.5)
     #expect(contrastRatio(Theme.dark.foreground, Theme.dark.card) >= 4.5)
+    #expect(contrastRatio(Theme.dark.destructive, Theme.dark.card) >= 4.5)
+    #expect(contrastRatio(Theme.dark.destructive, Theme.dark.background) >= 4.5)
   }
 
   @Test
