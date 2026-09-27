@@ -8,6 +8,7 @@ struct LibraryView: View {
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
   @State private var firstItemTarget: CreateTarget?
+  @State private var logEditor: LibraryItemDetailModel?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -44,6 +45,15 @@ struct LibraryView: View {
         .navigationDestination(for: LibraryItem.self) { item in
           detail(for: item)
         }
+    }
+    .inspector(isPresented: Binding(
+      get: { logEditor != nil },
+      set: { if !$0 { logEditor = nil } }
+    )) {
+      if let editor = logEditor {
+        ProgressNoteEditor(model: editor, onCollectionChanged: { await model.load() })
+          .inspectorColumnWidth(min: 300, ideal: 380, max: 440)
+      }
     }
     .task(id: model.listingIdentity) {
       path = []
@@ -360,6 +370,7 @@ struct LibraryView: View {
     LibraryItemDetailDestination(
       item: item,
       library: model.library,
+      logEditor: $logEditor,
       onCollectionChanged: { await model.load() }
     )
   }

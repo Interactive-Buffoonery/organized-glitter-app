@@ -10,6 +10,7 @@ struct DiamondProjectDetailView: View {
 
   let project: DiamondProjectRecord
   let model: LibraryItemDetailModel
+  @Binding var logEditor: LibraryItemDetailModel?
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   var body: some View {
@@ -25,6 +26,7 @@ struct DiamondProjectDetailView: View {
 
           ProgressNotesSection(
             model: model, onCollectionChanged: onCollectionChanged,
+            logEditor: $logEditor,
             onReveal: { proxy.scrollTo($0, anchor: .center) })
 
           detailSection("Details") {

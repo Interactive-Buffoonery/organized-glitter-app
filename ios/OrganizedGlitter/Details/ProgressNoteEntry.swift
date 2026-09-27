@@ -182,6 +182,7 @@ struct ProgressNotesSection: View {
 
   let model: LibraryItemDetailModel
   let onCollectionChanged: @MainActor @Sendable () async -> Void
+  @Binding var logEditor: LibraryItemDetailModel?
   var onOpenPhoto: ((ProgressNoteItem) -> Void)? = nil
   var onReveal: ((String) -> Void)? = nil
 
@@ -199,27 +200,29 @@ struct ProgressNotesSection: View {
             description: Text("Log a photo, a caption, or both as your work changes."))
             .frame(maxWidth: .infinity)
         } else {
-          ForEach(model.progressNotes) { note in
-            ProgressNoteEntry(
-              note: note,
-              photoURL: protectedFiles?.photoURL(for: note, thumb: ArtworkThumb.gallery),
-              onOpenPhoto: onOpenPhoto.map { open in { open(note) } },
-              onSave: { content, date in
-                let error = await model.updateProgressNote(note, content: content, date: date)
-                if error == nil { await onCollectionChanged() }
-                return error
-              },
-              onDelete: {
-                let error = await model.deleteProgressNote(note)
-                if error == nil { await onCollectionChanged() }
-                return error
-              },
-              actionsDisabled: model.isMutating || model.unresolvedWriteState != nil
-            )
-            .savedEntryReveal(
-              isPending: note.recordID == pendingNoteID,
-              isHighlighted: note.recordID == highlightedNoteID)
-            .id("note-\(note.recordID)")
+          LazyVStack(alignment: .leading, spacing: 12) {
+            ForEach(model.progressNotes) { note in
+              ProgressNoteEntry(
+                note: note,
+                photoURL: protectedFiles?.photoURL(for: note, thumb: ArtworkThumb.gallery),
+                onOpenPhoto: onOpenPhoto.map { open in { open(note) } },
+                onSave: { content, date in
+                  let error = await model.updateProgressNote(note, content: content, date: date)
+                  if error == nil { await onCollectionChanged() }
+                  return error
+                },
+                onDelete: {
+                  let error = await model.deleteProgressNote(note)
+                  if error == nil { await onCollectionChanged() }
+                  return error
+                },
+                actionsDisabled: model.isMutating || model.unresolvedWriteState != nil
+              )
+              .savedEntryReveal(
+                isPending: note.recordID == pendingNoteID,
+                isHighlighted: note.recordID == highlightedNoteID)
+              .id("note-\(note.recordID)")
+            }
           }
         }
         if model.canLoadMoreProgressNotes {
@@ -235,11 +238,11 @@ struct ProgressNotesSection: View {
           recovery
         }
       }
-      .inspector(isPresented: $isAddingNote) {
-        ProgressNoteEditor(model: model, onCollectionChanged: onCollectionChanged)
-      }
-      .onChange(of: isAddingNote) { wasPresented, isPresented in
-        if wasPresented && !isPresented { revealSavedNote(proxy) }
+      .onChange(of: logEditor == nil) { _, isDismissed in
+        if isAddingNote && isDismissed {
+          isAddingNote = false
+          revealSavedNote(proxy)
+        }
       }
       .task(id: highlightedNoteID) {
         guard highlightedNoteID != nil else { return }
@@ -262,6 +265,7 @@ struct ProgressNotesSection: View {
       if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
       Button {
         isAddingNote = true
+        logEditor = model
       } label: {
         Label("Log progress", systemImage: "plus.circle")
           .font(.subheadline)
