@@ -78,7 +78,7 @@ struct AppShellView: View {
           }
         }
       } else {
-        Tab("Library", systemImage: "books.vertical", value: .library) {
+        Tab("Library", systemImage: "rectangle.grid.2x2", value: .library) {
           library(.browse)
         }
       }

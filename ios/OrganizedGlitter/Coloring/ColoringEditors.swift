@@ -352,7 +352,7 @@ struct ColoringPageEditor: View {
                   RoundedRectangle(cornerRadius: Theme.Radius.medium)
                     .fill(theme.muted)
                     .overlay {
-                      Image(systemName: "doc.richtext")
+                      Image(systemName: "pencil.and.scribble")
                         .foregroundStyle(theme.mutedForeground)
                     }
                 }
