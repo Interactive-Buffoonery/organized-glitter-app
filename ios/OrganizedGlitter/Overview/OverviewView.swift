@@ -57,13 +57,16 @@ final class OverviewModel {
       for note in library.coloringPageProgressNotes where pageIDs.contains(note.page) {
         if note.date > dates[note.page, default: ""] { dates[note.page] = note.date }
       }
-      let activeProjects = projects.filter { $0.status == "progress" }
-        .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.diamond)
-      let activePages = pages.filter { $0.status == "in_progress" }
-        .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.page)
+      // Up to ten of each craft, so hiding either one never empties Continue.
+      let activeProjects = Self.continueOrder(
+        projects.filter { $0.status == "progress" }.map(LibraryItem.diamond), latestNoteDates: dates
+      ).prefix(10)
+      let activePages = Self.continueOrder(
+        pages.filter { $0.status == "in_progress" }.map(LibraryItem.page), latestNoteDates: dates
+      ).prefix(10)
       withAnimation(animation) {
         latestNoteDates = dates
-        items = Self.continueOrder(activeProjects + activePages, latestNoteDates: dates)
+        items = Self.continueOrder(Array(activeProjects + activePages), latestNoteDates: dates)
       }
       let kitted = projects.filter { $0.status == "kitted" }
         .sorted { $0.updated > $1.updated }.prefix(10).map(LibraryItem.diamond)

@@ -150,6 +150,28 @@ struct OverviewLoadingTests {
     #expect(model.errorMessage == nil)
   }
 
+  @Test func continueKeepsARecentlyLoggedProjectWithAnOldEdit() async throws {
+    let library = try localFeatureLibrary()
+    let projects = (0..<12).map { index in
+      #"{"id":"project-\#(index)","title":"Project \#(index)","user":"feature-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-\#(10 + index)"}"#
+    }
+    let snapshot = try JSONDecoder().decode(LocalFullSnapshot.self, from: Data(#"""
+    {
+      "version":1,
+      "projects":[\#(projects.joined(separator: ","))],
+      "coloringBooks":[],"coloringPages":[],"coloringPageProgressNotes":[],
+      "progressNotes":[
+        {"id":"note","project":"project-0","content":"Logged","date":"2026-09-25","created":"2026-09-25","updated":"2026-09-25"}
+      ]
+    }
+    """#.utf8))
+    try await library.store.ingestSnapshot(snapshot, scope: library.scope)
+    let model = OverviewModel(library: library)
+    await model.load()
+    #expect(model.items.count == 10)
+    #expect(model.items.first?.recordID == "project-0")
+  }
+
   @Test func reloadReflectsLocalRecordChanges() async throws {
     let library = try localFeatureLibrary()
     let project = featureProject("project", title: "Active", status: "progress")
