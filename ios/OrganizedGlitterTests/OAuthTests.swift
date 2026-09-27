@@ -4,191 +4,104 @@ import Testing
 
 @Suite(.serialized)
 struct OAuthTests {
-  @Test
-  func preservesProviderPKCEAndEncodesBackendRedirect() throws {
-    let provider = OAuthProvider(
-      name: "google",
-      authURL: "https://accounts.example.test/authorize?code_challenge=challenge&code_challenge_method=S256&redirect_uri=",
-      codeVerifier: "verifier"
-    )
-    let redirect = URL(string: "https://data.example.test/api/oauth2-redirect")!
-    let url = try provider.authorizationURL(redirectURL: redirect, clientID: "client + id")
-    let query = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
-
-    #expect(query.first(where: { $0.name == "redirect_uri" })?.value == redirect.absoluteString)
-    #expect(query.first(where: { $0.name == "code_challenge" })?.value == "challenge")
-    #expect(query.first(where: { $0.name == "code_challenge_method" })?.value == "S256")
-    #expect(query.first(where: { $0.name == "state" })?.value == "client + id")
-  }
-
-  @Test
-  func parsesPocketBaseConnectionAndOAuthCallback() throws {
-    var parser = OAuthSSEParser()
-    #expect(try parser.consume("event: PB_CONNECT") == nil)
-    #expect(try parser.consume("id: client-1") == nil)
-    #expect(try parser.consume("") == .connected("client-1"))
-    #expect(try parser.consume("event: @oauth2") == nil)
-    #expect(try parser.consume(#"data: {"state":"client-1","code":"code-1"}"#) == nil)
-    #expect(
-      try parser.consume("")
-        == .callback(OAuthCallback(state: "client-1", code: "code-1", error: nil))
-    )
-    #expect(throws: OAuthError.invalidResponse) {
-      _ = try parser.consume("event: @oauth2")
-      _ = try parser.consume("data: invalid")
-      _ = try parser.consume("")
-    }
-  }
-
-  @Test
-  func rejectsCumulativeOversizedSSEPayload() throws {
-    var parser = OAuthSSEParser()
-    _ = try parser.consume("event: @oauth2")
-    _ = try parser.consume("data: \(String(repeating: "a", count: 5_000))")
-    #expect(throws: OAuthError.invalidResponse) {
-      _ = try parser.consume("data: \(String(repeating: "b", count: 5_000))")
-    }
-  }
-
-  @Test
-  func urlSessionByteStreamPreservesSSEEventBoundaries() async throws {
-    OAuthHTTP.reset()
+  @MainActor
+  private func makeClient(_ store: KeychainSessionStore) -> PocketBaseClient {
     let configuration = URLSessionConfiguration.ephemeral
     configuration.protocolClasses = [OAuthHTTP.self]
-    let session = URLSession(configuration: configuration)
-    let connection = OAuthRealtime.open(
-      url: URL(string: "https://data.example.test/api/realtime")!,
-      session: session
+    return PocketBaseClient(
+      baseURL: URL(string: "https://data.example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
     )
-    defer { connection.cancel() }
-    var iterator = connection.events.makeAsyncIterator()
-    #expect(try await iterator.next() == .connected("client-1"))
-    #expect(
-      try await iterator.next()
-        == .callback(OAuthCallback(state: "client-1", code: "code-1", error: nil))
-    )
-    await #expect(throws: OAuthError.disconnected) { _ = try await iterator.next() }
   }
 
   @MainActor
   @Test
-  func subscribesBeforePresentationAndExchangesAsGuest() async throws {
+  func directCallbackPreservesPKCEAndExchangesAsGuestWithoutRealtime() async throws {
     OAuthHTTP.reset()
-    let store = KeychainSessionStore(
-      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
-    )
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
     defer { try? store.clear() }
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [OAuthHTTP.self]
-    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://data.example.test")!,
-      sessionStore: store,
-      urlSession: URLSession(configuration: configuration),
-      oauthEvents: { _, _ in OAuthRealtime.Connection(events: stream, stop: {}) }
-    )
-    continuation.yield(.connected("client-1"))
-    let presentation = OAuthPresentation()
-    let task = Task {
-      try await client.signInWithOAuth(
-        providerName: "google",
-        present: { url in
-          #expect(OAuthHTTP.paths().contains("POST /api/realtime"))
-          presentation.url = url
-          continuation.yield(.callback(OAuthCallback(state: "client-1", code: "code-1", error: nil)))
-        },
-        dismissAccepted: { presentation.dismissed = true }
-      )
+    let client = makeClient(store)
+    let session = try await client.signInWithOAuth(providerName: "google") { url, redirect in
+      let query = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+      #expect(query.first(where: { $0.name == "state" })?.value == "initial")
+      #expect(query.first(where: { $0.name == "code_challenge" })?.value == "challenge")
+      #expect(query.first(where: { $0.name == "redirect_uri" })?.value == redirect.absoluteString)
+      return URL(string: "\(redirect.absoluteString)?state=initial&code=test-code")!
     }
-    let session = try await task.value
-
     #expect(session.user.id == "user-1")
-    #expect(presentation.dismissed)
     #expect(try store.load()?.token == "test-token")
     #expect(OAuthHTTP.paths() == [
       "GET /api/collections/users/auth-methods",
-      "POST /api/realtime",
       "POST /api/collections/users/auth-with-oauth2",
     ])
-    let url = try #require(presentation.url)
-    let query = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
-    #expect(query.first(where: { $0.name == "state" })?.value == "client-1")
     let exchange = try #require(OAuthHTTP.exchangeBody())
     #expect(exchange["provider"] as? String == "google")
+    #expect(exchange["code"] as? String == "test-code")
     #expect(exchange["codeVerifier"] as? String == "verifier-1")
     #expect(exchange["redirectURL"] as? String == "https://data.example.test/api/oauth2-redirect")
     #expect(OAuthHTTP.exchangeAuthorization() == nil)
-    await client.signOut()
-    continuation.finish()
   }
 
   @MainActor
-  @Test
-  func rejectsWrongStateBeforeExchangeOrPersistence() async throws {
+  @Test(arguments: [
+    "https://data.example.test/api/oauth2-redirect?state=wrong&code=test-code",
+    "https://data.example.test/api/oauth2-redirect?code=test-code",
+    "https://data.example.test/api/oauth2-redirect?state=initial",
+    "https://data.example.test/api/oauth2-redirect?state=initial&code=",
+    "https://other.example.test/api/oauth2-redirect?state=initial&code=test-code",
+    "http://data.example.test/api/oauth2-redirect?state=initial&code=test-code",
+    "https://data.example.test/wrong?state=initial&code=test-code",
+    "https://data.example.test:444/api/oauth2-redirect?state=initial&code=test-code",
+    "https://data.example.test/api/oauth2-redirect?state=initial&state=other&code=test-code",
+    "https://data.example.test/api/oauth2-redirect?state=initial&code=one&code=two",
+  ])
+  func rejectsInvalidCallbackBeforeExchangeOrPersistence(callback: String) async throws {
     OAuthHTTP.reset()
-    let store = KeychainSessionStore(
-      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
-    )
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [OAuthHTTP.self]
-    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://data.example.test")!,
-      sessionStore: store,
-      urlSession: URLSession(configuration: configuration),
-      oauthEvents: { _, _ in OAuthRealtime.Connection(events: stream, stop: {}) }
-    )
-    continuation.yield(.connected("client-1"))
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
+    defer { try? store.clear() }
+    let client = makeClient(store)
     await #expect(throws: OAuthError.invalidResponse) {
-      _ = try await client.signInWithOAuth(
-        providerName: "discord",
-        present: { _ in
-          continuation.yield(.callback(OAuthCallback(state: "other-client", code: "code-1", error: nil)))
-        },
-        dismissAccepted: {}
-      )
+      _ = try await client.signInWithOAuth(providerName: "discord") { _, _ in URL(string: callback)! }
     }
-    #expect(!OAuthHTTP.paths().contains("POST /api/collections/users/auth-with-oauth2"))
+    #expect(OAuthHTTP.exchangeBody() == nil)
     #expect(try store.load() == nil)
-    continuation.finish()
   }
 
   @MainActor
   @Test
-  func signOutDuringExchangeCannotPersistLateOAuthResponse() async throws {
+  func providerDenialPreventsExchange() async throws {
+    OAuthHTTP.reset()
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
+    let client = makeClient(store)
+    await #expect(throws: OAuthError.denied) {
+      _ = try await client.signInWithOAuth(providerName: "google") { _, redirect in
+        URL(string: "\(redirect.absoluteString)?state=initial&error=access_denied")!
+      }
+    }
+    #expect(OAuthHTTP.exchangeBody() == nil)
+    #expect(try store.load() == nil)
+  }
+
+  @MainActor
+  @Test
+  func signOutDuringExchangeRejectsLateResponse() async throws {
     OAuthHTTP.reset()
     OAuthHTTP.holdExchange()
     defer { OAuthHTTP.releaseExchange() }
-    let store = KeychainSessionStore(
-      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
-    )
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [OAuthHTTP.self]
-    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://data.example.test")!,
-      sessionStore: store,
-      urlSession: URLSession(configuration: configuration),
-      oauthEvents: { _, _ in OAuthRealtime.Connection(events: stream, stop: {}) }
-    )
-    continuation.yield(.connected("client-1"))
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
+    defer { try? store.clear() }
+    let client = makeClient(store)
     let task = Task {
-      try await client.signInWithOAuth(
-        providerName: "google",
-        present: { _ in
-          continuation.yield(.callback(OAuthCallback(state: "client-1", code: "code-1", error: nil)))
-        },
-        dismissAccepted: {}
-      )
+      try await client.signInWithOAuth(providerName: "google") { _, redirect in
+        URL(string: "\(redirect.absoluteString)?state=initial&code=test-code")!
+      }
     }
-    while !OAuthHTTP.paths().contains("POST /api/collections/users/auth-with-oauth2") {
-      await Task.yield()
-    }
+    while OAuthHTTP.exchangeBody() == nil { await Task.yield() }
     await client.signOut()
     OAuthHTTP.releaseExchange()
     await #expect(throws: APIError.cancelled) { _ = try await task.value }
     #expect(try store.load() == nil)
-    continuation.finish()
   }
 
   @MainActor
@@ -197,57 +110,38 @@ struct OAuthTests {
     OAuthHTTP.reset()
     if duringExchange { OAuthHTTP.holdExchange() }
     defer { OAuthHTTP.releaseExchange() }
-    let store = KeychainSessionStore(
-      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
-    )
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
     defer { try? store.clear() }
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [OAuthHTTP.self]
-    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
-    let (stops, stopped) = AsyncStream<Void>.makeStream()
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://data.example.test")!,
-      sessionStore: store,
-      urlSession: URLSession(configuration: configuration),
-      oauthEvents: { _, _ in
-        OAuthRealtime.Connection(events: stream, stop: { stopped.yield(()) })
-      }
-    )
+    let client = makeClient(store)
     let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
     while model.phase == .restoring { await Task.yield() }
     model.socialProviders = [.google]
     let presentation = OAuthPresentation()
-    continuation.yield(.connected("client-1"))
-    model.signInWithOAuth(
-      provider: .google,
-      present: { presentation.url = $0 },
-      dismissAccepted: { presentation.dismissed = true }
-    )
-    while presentation.url == nil { await Task.yield() }
-
-    if duringExchange {
-      continuation.yield(.callback(OAuthCallback(state: "client-1", code: "code-1", error: nil)))
-      while !OAuthHTTP.paths().contains("POST /api/collections/users/auth-with-oauth2") {
-        await Task.yield()
+    model.signInWithOAuth(provider: .google, present: { _, redirect in
+      defer { presentation.finished = true }
+      if duringExchange {
+        return URL(string: "\(redirect.absoluteString)?state=initial&code=test-code")!
       }
+      return await withCheckedContinuation { presentation.continuation = $0 }
+    })
+    while duringExchange ? OAuthHTTP.exchangeBody() == nil : presentation.continuation == nil {
+      await Task.yield()
     }
     model.cancelOAuth()
     OAuthHTTP.releaseExchange()
-    continuation.yield(.callback(OAuthCallback(state: "client-1", code: "late-code", error: nil)))
-    var stoppedIterator = stops.makeAsyncIterator()
-    await stoppedIterator.next()
-
+    presentation.continuation?.resume(returning: URL(string:
+      "https://data.example.test/api/oauth2-redirect?state=initial&code=late-code"
+    )!)
+    while !presentation.finished { await Task.yield() }
+    // Await a subsequent actor call so callback validation has an opportunity to run.
+    let retry = await client.beginExternalAuthAttempt()
     #expect(model.phase == .signedOut)
     #expect(!model.isSubmitting)
-    #expect(presentation.dismissed == duringExchange)
     #expect(try store.load() == nil)
-    #expect(OAuthHTTP.paths().contains("POST /api/collections/users/auth-with-oauth2") == duringExchange)
-    continuation.finish()
-    stopped.finish()
-
-    let retry = await client.beginExternalAuthAttempt()
-    let response = AuthResponse(token: "retry-token", record: .preview)
-    _ = try await client.acceptExternalAuthResponse(response, attempt: retry)
+    #expect((OAuthHTTP.exchangeBody() != nil) == duringExchange)
+    _ = try await client.acceptExternalAuthResponse(
+      AuthResponse(token: "retry-token", record: .preview), attempt: retry
+    )
     #expect(try store.load()?.token == "retry-token")
   }
 
@@ -255,26 +149,16 @@ struct OAuthTests {
   @Test
   func timeoutEndsModelAttemptWithoutPublishingSession() async throws {
     OAuthHTTP.reset()
-    let store = KeychainSessionStore(
-      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
-    )
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
     defer { try? store.clear() }
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [OAuthHTTP.self]
-    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
-    defer { continuation.finish() }
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://data.example.test")!,
-      sessionStore: store,
-      urlSession: URLSession(configuration: configuration),
-      oauthEvents: { _, _ in OAuthRealtime.Connection(events: stream, stop: {}) }
-    )
-    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    let model = AppModel(client: makeClient(store), sessionStore: store, themeStore: ThemeStore())
     while model.phase == .restoring { await Task.yield() }
     model.socialProviders = [.google]
-    model.signInWithOAuth(provider: .google, present: { _ in }, dismissAccepted: {}, timeout: .zero)
+    model.signInWithOAuth(provider: .google, present: { _, _ in
+      try await Task.sleep(for: .seconds(30))
+      throw CancellationError()
+    }, timeout: .zero)
     while model.isSubmitting { await Task.yield() }
-
     #expect(model.phase == .signedOut)
     #expect(model.oauthError == "Sign-in timed out. Try again.")
     #expect(try store.load() == nil)
@@ -322,42 +206,12 @@ struct OAuthTests {
     #expect(try store.load()?.token == "retry-token")
   }
 
-  @MainActor
-  @Test
-  func providerDenialClosesAttemptBeforeExchange() async throws {
-    OAuthHTTP.reset()
-    let store = KeychainSessionStore(
-      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
-    )
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [OAuthHTTP.self]
-    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://data.example.test")!,
-      sessionStore: store,
-      urlSession: URLSession(configuration: configuration),
-      oauthEvents: { _, _ in OAuthRealtime.Connection(events: stream, stop: {}) }
-    )
-    continuation.yield(.connected("client-1"))
-    await #expect(throws: OAuthError.denied) {
-      _ = try await client.signInWithOAuth(
-        providerName: "google",
-        present: { _ in
-          continuation.yield(.callback(OAuthCallback(state: "client-1", code: nil, error: "access_denied")))
-        },
-        dismissAccepted: {}
-      )
-    }
-    #expect(!OAuthHTTP.paths().contains("POST /api/collections/users/auth-with-oauth2"))
-    #expect(try store.load() == nil)
-    continuation.finish()
-  }
 }
 
 @MainActor
 private final class OAuthPresentation {
-  var url: URL?
-  var dismissed = false
+  var continuation: CheckedContinuation<URL, Never>?
+  var finished = false
 }
 
 private final class OAuthHTTP: URLProtocol, @unchecked Sendable {
@@ -422,10 +276,6 @@ private final class OAuthHTTP: URLProtocol, @unchecked Sendable {
     switch request.url?.path {
     case "/api/collections/users/auth-methods":
       body = #"{"oauth2":{"enabled":true,"providers":[{"name":"google","state":"initial","authURL":"https://accounts.example.test/authorize?code_challenge=challenge&redirect_uri=","codeVerifier":"verifier-1"},{"name":"discord","state":"initial","authURL":"https://discord.example.test/authorize?code_challenge=challenge&redirect_uri=","codeVerifier":"verifier-2"}]}}"#
-    case "/api/realtime":
-      body = request.httpMethod == "GET"
-        ? "event: PB_CONNECT\nid: client-1\ndata: {}\n\nevent: @oauth2\ndata: {\"state\":\"client-1\",\"code\":\"code-1\"}\n\n"
-        : "{}"
     case "/api/collections/users/auth-with-oauth2":
       body = #"{"token":"test-token","record":{"id":"user-1","verified":true}}"#
     default:
@@ -435,8 +285,7 @@ private final class OAuthHTTP: URLProtocol, @unchecked Sendable {
       url: request.url!,
       statusCode: 200,
       httpVersion: nil,
-      headerFields: request.httpMethod == "GET" && request.url?.path == "/api/realtime"
-        ? ["Content-Type": "text/event-stream"] : nil
+      headerFields: nil
     )!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: Data(body.utf8))

@@ -7,16 +7,44 @@ before its button appears. Automated-test fixtures remain Debug-only.
 Native Apple and the public-launch checks in `social-sign-in-plan.md` remain
 separate work; enabling Release controls does not establish those checks passed.
 
+## Direct HTTPS callback revision
+
+The physical iPad reached an Auth Failed page before code exchange. A controlled
+callback without Discord failed in the browser but succeeded through native
+URLSession after resubscription. That isolates a browser/realtime handoff problem;
+the exact PocketBase rejection reason is unconfirmed. No Discord configuration
+change is justified by those diagnostics alone.
+
+The revised flow receives the existing `/api/oauth2-redirect` URL directly in
+ASWebAuthenticationSession, validates origin/path/state/code, and exchanges the
+code through PocketBase as a guest with the original PKCE verifier. It removes
+the realtime parser and subscription. Provider `state` is now used for validation,
+so decoding it is no longer dead state. Attempt invalidation and session guards
+remain in place. Temporary callback probes and logging are removed from source.
+
+Backend prerequisite: `fix/native-oauth-callback` in the backend repository adds
+the data-domain webcredentials association. It must land, deploy, and be verified
+before real native login can be validated. BackendContract.json remains unchanged.
+A successful build or mocked exchange does not establish provider login success.
+
+Validation for this revision:
+- All 169 unit tests in 27 suites passed on the connected physical iPad, including
+  parameterized callback validation and cancellation tests. Log:
+  `/tmp/og-pr16-direct-tests.log`.
+- Signed Release device build passed. Log:
+  `/tmp/og-pr16-direct-release.log`.
+- Production association deployment and real Discord authorization remain pending.
+
+
 ## Release controls
 
 At Sarah's request, provider buttons, errors, provider loading, and cancellation
 on navigation are available in Release as well as Debug. The focused Debug
 provider-button UI test passed after this change. A signed Release simulator
 build also passed and displayed Discord and Google using the live backend's
-auth-methods response, without test launch arguments. The simulator is ready
-for owner sign-in testing; successful provider authentication is still unverified.
+auth-methods response, without test launch arguments. The simulator was later shut down at Sarah's request; physical iPad testing exposed the callback failure described above.
 
-## Rebase and cancellation review
+## Earlier rebase and cancellation review
 
 Rebased onto `main` at `35a76ca`. Regenerated the Xcode project to resolve the
 project-file conflict. Review fixes are in `95b23fb`:
@@ -37,7 +65,7 @@ exits in Overview UI tests and subsequently reported another worktree's test
 paths. A dedicated simulator was created for the final preflight to avoid shared
 app installations. Both affected Overview tests passed in that isolated run.
 
-## Earlier simulator evidence
+## Earlier realtime implementation evidence
 
 Device: iPhone 17, iOS 26.5 simulator. Derived data:
 `/tmp/og-social-oauth-dd`.
