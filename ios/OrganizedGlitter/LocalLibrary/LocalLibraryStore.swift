@@ -306,6 +306,22 @@ actor LocalLibraryStore: ModelActor {
       data: encoder.encode(note), scope: scope)
   }
 
+  func removeNote(collection: String, id: String, scope: LocalAccountScope) throws {
+    let kind: String
+    switch collection {
+    case "progress_notes": kind = "diamond"
+    case "coloring_page_progress_notes": kind = "coloring"
+    default: return
+    }
+    let key = "\(scope.storageKey)|\(kind):\(id)"
+    var descriptor = FetchDescriptor<LocalStoredNote>(predicate: #Predicate { $0.key == key })
+    descriptor.fetchLimit = 1
+    if let note = try context.fetch(descriptor).first {
+      context.delete(note)
+      try commit()
+    }
+  }
+
   private func upsertNote(
     key: String, kind: String, parentID: String, data: Data, scope: LocalAccountScope
   ) throws {

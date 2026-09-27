@@ -149,6 +149,8 @@ struct ColoringPageDetailView: View {
           }
         }
 
+        ProgressNotesSection(model: model, onCollectionChanged: onCollectionChanged)
+
         if startedDate != nil || completedDate != nil {
           VStack(alignment: .leading, spacing: 12) {
             Text("Page details")

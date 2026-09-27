@@ -237,6 +237,12 @@ final class LibrarySession {
         try await loadLocal()
         generation &+= 1
       } catch { syncMessage = "Removed from your account. Refresh to update this device." }
+    } else if collection == "progress_notes" || collection == "coloring_page_progress_notes" {
+      do {
+        try await store.removeNote(collection: collection, id: id, scope: scope)
+        try await loadLocal()
+        generation &+= 1
+      } catch { syncMessage = "Removed from your account. Refresh to update this device." }
     }
     Task { try? await refresh(force: true) }
   }
