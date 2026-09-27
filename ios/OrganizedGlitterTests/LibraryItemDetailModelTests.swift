@@ -6,6 +6,38 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct LibraryItemDetailModelTests {
+  @Test func statusFeedbackFollowsCommittedChanges() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(model.lastConfirmedStatus == nil)
+    #expect(!(await model.setStatus("wishlist")))
+    #expect(model.lastConfirmedStatus == nil)
+    #expect(await model.setStatus("progress"))
+    #expect(model.lastConfirmedStatus == "progress")
+    #expect(model.item.status == "progress")
+    #expect(!(await model.setStatus("progress")))
+    #expect(model.lastConfirmedStatus == "progress")
+    #expect(await model.setStatus("completed"))
+    #expect(model.lastConfirmedStatus == "completed")
+    try await library.close(removingData: false)
+    #expect(!(await model.setStatus("stash")))
+    #expect(model.lastConfirmedStatus == "completed")
+    #expect(model.item.status == "completed")
+  }
+
+  @Test func bookStatusAlsoConfirmsCommittedChanges() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    try await library.store.ingest(.book(book), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .book(book), library: library)
+    #expect(await model.setStatus("completed"))
+    #expect(model.lastConfirmedStatus == "completed")
+    #expect(model.item.status == "completed")
+    try await library.close(removingData: false)
+  }
+
   @Test func lostNoteResponseNeedsAuthoritativeRefreshBeforeRetry() async throws {
     LostNoteURLProtocol.snapshotAvailable = false
     LostNoteURLProtocol.createRequests = 0
