@@ -49,6 +49,13 @@ final class AppModel {
             let session = try await client.signIn(identity: "fixture", password: "fixture")
             guard generation == sessionGeneration else { return }
             phase = .signedIn(session.user)
+            if ProcessInfo.processInfo.arguments.contains("-ui-testing-password-reset") {
+              open(
+                URL(
+                  string: "https://organizedglitter.app/auth/confirm-password-reset/fixture-token"
+                )!
+              )
+            }
           } catch {
             guard generation == sessionGeneration else { return }
             phase = .restorationFailed

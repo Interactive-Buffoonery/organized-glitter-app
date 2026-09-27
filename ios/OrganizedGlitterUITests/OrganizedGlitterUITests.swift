@@ -2,6 +2,42 @@ import XCTest
 
 @MainActor
 final class OrganizedGlitterUITests: XCTestCase {
+  func testUncertainPasswordResetOffersSignInWithoutRetryingToken() {
+    for scenario in ["reset-lost-connection", "reset-server-failure"] {
+      let app = XCUIApplication()
+      app.launchArguments += [
+        "-ui-testing-authenticated", "-ui-testing-password-reset",
+        "-overview-fixture", scenario,
+      ]
+      app.launch()
+
+      let password = app.secureTextFields["passwordResetNewPassword"]
+      XCTAssertTrue(password.waitForExistence(timeout: 5))
+      password.tap()
+      password.typeText("FixturePass1")
+      let confirmation = app.secureTextFields["passwordResetNewPasswordConfirmation"]
+      confirmation.tap()
+      confirmation.typeText("FixturePass1")
+      app.buttons["passwordResetConfirm"].tap()
+
+      XCTAssertTrue(app.staticTexts["passwordResetOutcomeUnknown"].waitForExistence(timeout: 5))
+      XCTAssertTrue(app.buttons["passwordResetTrySignIn"].exists)
+      XCTAssertTrue(app.buttons["passwordResetRequestNewLink"].exists)
+      XCTAssertFalse(app.buttons["passwordResetConfirm"].exists)
+      XCTAssertFalse(app.staticTexts["passwordResetComplete"].exists)
+
+      app.buttons["passwordResetTrySignIn"].tap()
+      XCTAssertTrue(app.buttons["welcomeSignIn"].waitForExistence(timeout: 5))
+      app.terminate()
+
+      let relaunched = XCUIApplication()
+      relaunched.launchArguments += ["-overview-fixture", scenario]
+      relaunched.launch()
+      XCTAssertTrue(relaunched.buttons["welcomeSignIn"].waitForExistence(timeout: 5))
+      relaunched.terminate()
+    }
+  }
+
   func testSignedOutAccountEntryPointsAreNative() {
     let app = XCUIApplication()
     app.launchArguments.append("-ui-testing-signed-out")
