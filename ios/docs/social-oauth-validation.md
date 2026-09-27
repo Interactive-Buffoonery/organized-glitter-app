@@ -33,8 +33,10 @@ Apple's CDN still returned a cached earlier 404 after the origin was fixed. A
 local development-signed Release build was prepared with an external entitlement
 override using `webcredentials:data.organizedglitter.app?mode=developer`, following
 Apple's TN3155 testing guidance. The repository's normal entitlement is unchanged.
-The device must enable Associated Domains Development before this test build is
-installed. Normal CDN association and real provider login remain separate gates.
+Sarah enabled Associated Domains Development, and the build was installed and
+launched. She confirmed real Discord sign-in succeeded on the physical iPad.
+Normal CDN association still returned 404 at the subsequent check; testing with
+the normal entitlement remains a separate distribution gate.
 
 A successful build or mocked exchange does not establish provider login success.
 
@@ -45,8 +47,18 @@ Validation for this revision:
   `/tmp/og-pr16-direct-rebased-tests.log`.
 - Signed Release device build passed. Log:
   `/tmp/og-pr16-direct-rebased-release.log`.
-- Origin association deployment passed; Apple CDN refresh and real Discord
-  authorization remain pending.
+- Sarah confirmed successful real Discord authorization in the development-mode
+  Release build. Origin association deployment passed; normal Apple CDN refresh
+  and Google authorization remain pending.
+- Rebased again onto main `a6c4345` after #20. OAuth now opens the account library
+  before publishing signed-in state, matching password login, and respects the
+  existing sign-out/submission guards. Fixed stale presentation-anchor delivery.
+- The anchor and library regressions failed before those fixes. All 178 unit
+  tests in 31 suites then passed on the iPad, including a late-callback test that
+  uses task cancellation alone without actor invalidation. Logs:
+  `/tmp/og-pr16-main20-red.log`, `/tmp/og-pr16-main20-green.log`.
+- Signed Release build passed after this rebase and fixes. Log:
+  `/tmp/og-pr16-main20-release.log`. The full UI suite was not rerun on this head.
 
 
 ## Release controls
@@ -98,9 +110,10 @@ screen. No credentials or identity were entered.
 
 ## Remaining release checks
 
-This evidence does not establish successful live provider code exchange, web/iOS
-record continuity, Keychain write failure recovery, iPad presentation behavior,
-or physical-device app switching and network-loss behavior. Those checks remain
+Discord sign-in succeeded on the physical iPad using development association.
+Normal CDN association, Google login, web/iOS record continuity, Keychain write
+failure recovery, broader iPad presentation behavior,
+and physical-device app switching and network-loss behavior remain unverified. Those checks remain
 open, along with native Apple support, backend grant/deletion work, deployed
 revision verification, and the wider release gates in the plan. The simulator
 provider exercise covered presentation, cancellation, and retry only.

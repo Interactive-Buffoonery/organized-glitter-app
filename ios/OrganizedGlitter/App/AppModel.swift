@@ -255,7 +255,8 @@ final class AppModel {
   }
 
   func signInWithOAuth(provider: SocialProvider, anchor: ASPresentationAnchor) {
-    guard client != nil, socialProviders.contains(provider) else { return }
+    guard !isSigningOut, !cleanupBlocked, !isSubmitting,
+      client != nil, socialProviders.contains(provider) else { return }
     let browser = OAuthWebSession(anchor: anchor)
     signInWithOAuth(
       provider: provider,
@@ -269,7 +270,8 @@ final class AppModel {
     present: @escaping @MainActor @Sendable (URL, URL) async throws -> URL,
     timeout: Duration = .seconds(120)
   ) {
-    guard let client, socialProviders.contains(provider) else { return }
+    guard !isSigningOut, !cleanupBlocked, !isSubmitting,
+      let client, socialProviders.contains(provider) else { return }
     let generation = beginSessionTransition()
     let attemptID = UUID()
     oauthAttemptID = attemptID
@@ -293,6 +295,8 @@ final class AppModel {
           attemptID: attemptID,
           present: present
         )
+        guard generation == sessionGeneration else { return }
+        try await openLibrary(for: session.user, generation: generation)
         guard generation == sessionGeneration else { return }
         phase = .signedIn(session.user)
         applyThemePreference(from: session.user)

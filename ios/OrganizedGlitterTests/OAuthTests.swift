@@ -1,9 +1,92 @@
 import Foundation
 import Testing
+import UIKit
 @testable import OrganizedGlitter
 
 @Suite(.serialized)
 struct OAuthTests {
+  @MainActor
+  @Test
+  func outgoingAnchorCannotClearReplacementWindow() async {
+    let window = UIWindow()
+    let outgoing = OAuthPresentationAnchor.AnchorView()
+    let incoming = OAuthPresentationAnchor.AnchorView()
+    var selected: UIWindow?
+    outgoing.onWindow = { selected = $0 }
+    incoming.onWindow = { selected = $0 }
+    window.addSubview(outgoing)
+    await withCheckedContinuation { continuation in
+      DispatchQueue.main.async { continuation.resume() }
+    }
+    window.addSubview(incoming)
+    outgoing.removeFromSuperview()
+    await withCheckedContinuation { continuation in
+      DispatchQueue.main.async { continuation.resume() }
+    }
+    #expect(selected === window)
+  }
+
+  @MainActor
+  @Test
+  func anchorDeliversToTheCallbackThatScheduledIt() async {
+    let window = UIWindow()
+    let anchor = OAuthPresentationAnchor.AnchorView()
+    var originalCalled = false
+    var replacementCalled = false
+    anchor.onWindow = { _ in originalCalled = true }
+    window.addSubview(anchor)
+    anchor.onWindow = { _ in replacementCalled = true }
+    await withCheckedContinuation { continuation in
+      DispatchQueue.main.async { continuation.resume() }
+    }
+    #expect(originalCalled)
+    #expect(!replacementCalled)
+  }
+
+  @MainActor
+  @Test
+  func successfulOAuthOpensLibraryBeforePublishingSession() async throws {
+    OAuthHTTP.reset()
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
+    defer { try? store.clear() }
+    let model = AppModel(client: makeClient(store), sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+    model.socialProviders = [.google]
+    model.signInWithOAuth(provider: .google, present: { _, redirect in
+      URL(string: "\(redirect.absoluteString)?state=initial&code=test-code")!
+    })
+    while model.isSubmitting { await Task.yield() }
+    guard case .signedIn(let user) = model.phase else {
+      Issue.record("OAuth did not publish the signed-in session")
+      return
+    }
+    #expect(model.library?.scope.userID == user.id)
+    try await model.library?.close(removingData: true)
+  }
+
+  @MainActor
+  @Test
+  func taskCancellationAloneRejectsLateCallback() async throws {
+    OAuthHTTP.reset()
+    let store = KeychainSessionStore(service: "oauth-tests.\(UUID().uuidString)")
+    defer { try? store.clear() }
+    let client = makeClient(store)
+    let presentation = OAuthPresentation()
+    let task = Task {
+      try await client.signInWithOAuth(providerName: "google") { _, _ in
+        await withCheckedContinuation { presentation.continuation = $0 }
+      }
+    }
+    while presentation.continuation == nil { await Task.yield() }
+    task.cancel()
+    presentation.continuation?.resume(returning: URL(string:
+      "https://data.example.test/api/oauth2-redirect?state=initial&code=late-code"
+    )!)
+    await #expect(throws: CancellationError.self) { _ = try await task.value }
+    #expect(OAuthHTTP.exchangeBody() == nil)
+    #expect(try store.load() == nil)
+  }
+
   @MainActor
   private func makeClient(_ store: KeychainSessionStore) -> PocketBaseClient {
     let configuration = URLSessionConfiguration.ephemeral
