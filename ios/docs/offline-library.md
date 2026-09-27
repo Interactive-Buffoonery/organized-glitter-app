@@ -19,7 +19,7 @@ refresh failed.
 - `LocalLibraryStore`: actor-owned SwiftData context, explicit saves, account
   isolation, server snapshots, pending operations, and conflict resolution.
 - `LocalSyncCoordinator`: download a complete snapshot, submit queued operations,
-  then download authoritative results. Cancellation invalidates late responses.
+  then download authoritative results after submitted operations. Cancellation invalidates late responses.
 - `LibrarySession`: observable feature boundary and session lifetime, local
   projections, online mutations, sync status, and user-facing conflict recovery.
 - `PocketBaseClient`: concrete authenticated HTTP transport. The same transport
@@ -42,7 +42,10 @@ its local library if connectivity is unavailable. A confirmed authentication
 rejection locks the library and preserves pending edits for signing back into
 that same account. Remote revocation cannot be discovered while offline.
 Explicit sign-out pauses new edits, checks pending work, requires an explicit
-discard decision when needed, and removes local account data. Losing or
+discard decision when needed, and removes local account data. A durable cleanup
+marker survives interruption; startup completes removal before opening any account.
+Sign-in stays unavailable until removal finishes, and account-setting saves are
+drained before deletion. Losing or
 uninstalling the app before synchronization can lose unsent changes.
 
 ## Wire contract
@@ -58,6 +61,11 @@ remove local records. There is no incremental cursor, timestamp pagination, or
 realtime dependency in v1. This intentionally favors a straightforward
 correctness contract for personal libraries; larger libraries require a
 separately designed paginated snapshot contract.
+
+Automatic edit sync coalesces nearby saves. Temporary failures retry queued work
+with increasing delays from 30 seconds to five minutes while the app is running;
+foreground entry and connectivity recovery also trigger sync. A cached response
+never counts as an authoritative refresh when recovering an ambiguous online write.
 
 Each edit contains a stable operation ID, target, partial patch, and original
 values. The server compares those values in the same transaction as the write

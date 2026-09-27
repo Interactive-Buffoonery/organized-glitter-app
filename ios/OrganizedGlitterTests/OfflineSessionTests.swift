@@ -64,6 +64,48 @@ struct OfflineSessionTests {
     #expect(try await library.store.pendingCount(scope: library.scope) == 0)
   }
 
+  @Test func launchRetriesInterruptedRemovalWithoutSavedCredentials() async throws {
+    let local = try LocalLibraryStore.inMemory()
+    let keychain = KeychainSessionStore(service: "OfflineCleanupTests.\(UUID().uuidString)")
+    defer { try? keychain.clear() }
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://cleanup.example.invalid")!, sessionStore: keychain)
+    let scope = LocalAccountScope(backendURL: client.baseURL, userID: UserRecord.preview.id)
+    try await local.saveUser(.preview, scope: scope)
+    try await local.ingest(.diamond(featureProject("private", title: "Private", user: scope.userID)), scope: scope)
+    try await local.beginRemoval(scope: scope)
+    let model = AppModel(client: client, sessionStore: keychain, themeStore: ThemeStore(), localStore: local)
+    while model.phase == .restoring || model.phase == .cleaningLocalData { await Task.yield() }
+    #expect(model.phase == .signedOut)
+    #expect(try await local.entries(scope: scope).isEmpty)
+    #expect(try await local.loadUser(scope: scope) == nil)
+    #expect(try await local.pendingRemovals().isEmpty)
+  }
+
+  @Test func signOutDrainsAccountSaveAndRejectsConcurrentSignIn() async throws {
+    let (model, local, keychain, scope) = try await makeOfflineModel()
+    defer { try? keychain.clear() }
+    while model.phase == .restoring { await Task.yield() }
+    model.replaceSignedInUser(.preview)
+    model.signOut(discardPending: true)
+    #expect(model.isSigningOut)
+    await model.signIn(identity: "ignored", password: "ignored")
+    while model.isSigningOut { await Task.yield() }
+    #expect(model.phase == .signedOut)
+    #expect(try await local.loadUser(scope: scope) == nil)
+    #expect(try await local.pendingRemovals().isEmpty)
+  }
+
+  @Test func cachedDataDoesNotCountAsAuthoritativeRefresh() async throws {
+    let (model, _, keychain, _) = try await makeOfflineModel()
+    defer { try? keychain.clear() }
+    while model.phase == .restoring { await Task.yield() }
+    let library = try #require(model.library)
+    try await library.refresh()
+    await #expect(throws: APIError.offline) { try await library.refreshFromServer() }
+    #expect(library.hasSnapshot)
+  }
+
   private func makeOfflineModel() async throws
     -> (AppModel, LocalLibraryStore, KeychainSessionStore, LocalAccountScope)
   {

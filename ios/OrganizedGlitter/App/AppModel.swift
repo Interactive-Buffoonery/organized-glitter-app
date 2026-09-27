@@ -7,6 +7,8 @@ import Observation
 final class AppModel {
   enum Phase: Equatable {
     case restoring
+    case cleaningLocalData
+    case cleanupFailed
     case signedOut
     case signedIn(UserRecord)
     case offline
@@ -28,6 +30,8 @@ final class AppModel {
   var requiresDiscardConfirmation = false
   private(set) var sessionError: String?
   private(set) var isSigningOut = false
+  private var userSaveTask: Task<Void, Never>?
+  private var cleanupBlocked = false
 
   var phase: Phase {
     didSet {
@@ -107,8 +111,16 @@ final class AppModel {
   }
 
   func restoreSession() async {
-    guard let client, let sessionStore, let localStore else { return }
+    guard !isSigningOut, let client, let sessionStore, let localStore else { return }
     let generation = beginSessionTransition()
+    do { try await finishPendingLocalRemoval() }
+    catch {
+      guard generation == sessionGeneration else { return }
+      cleanupBlocked = true
+      phase = .cleanupFailed
+      return
+    }
+    guard generation == sessionGeneration else { return }
     do {
       guard let stored = try sessionStore.load() else {
         await RemoteArtworkLoader.shared.purgeMemoryCache()
@@ -186,9 +198,7 @@ final class AppModel {
   }
 
   func signIn(identity: String, password: String) async {
-    guard let client else {
-      return
-    }
+    guard !isSigningOut, !cleanupBlocked, !isSubmitting, let client else { return }
 
     let trimmedIdentity = identity.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedIdentity.isEmpty, !password.isEmpty else {
@@ -220,7 +230,9 @@ final class AppModel {
   }
 
   func expireSession() async {
+    guard !isSigningOut else { return }
     sessionGeneration &+= 1
+    await drainUserSave()
     try? await library?.close(removingData: false)
     library = nil
     await client?.signOut()
@@ -246,21 +258,28 @@ final class AppModel {
           return
         }
         sessionGeneration &+= 1
+        await drainUserSave()
+        if let library { try await localStore?.beginRemoval(scope: library.scope) }
+        cleanupBlocked = true
+        phase = .cleaningLocalData
         try sessionStore?.clear()
         await client?.signOut()
-        let closingLibrary = library
+        try await library?.close(removingData: true)
         library = nil
-        phase = .signedOut
-        try await closingLibrary?.close(removingData: true)
         await RemoteArtworkLoader.shared.purgeMemoryCache()
         #if DEBUG
           UserDefaults.standard.removeObject(forKey: OverviewFixtureProtocol.sampleDataKey)
         #endif
+        requiresDiscardConfirmation = false
+        cleanupBlocked = false
         phase = .signedOut
       } catch {
         sessionError = "Sign-out could not finish clearing local data. Please try again."
-        if library == nil {
-          phase = .configurationError("Local data cleanup could not finish. Reopen the app before signing in again.")
+        if cleanupBlocked {
+          try? await library?.close(removingData: false)
+          library = nil
+          await RemoteArtworkLoader.shared.purgeMemoryCache()
+          phase = .cleanupFailed
         }
       }
     }
@@ -300,16 +319,47 @@ final class AppModel {
     phase = .signedOut
   }
 
-  func replaceSignedInUser(_ user: UserRecord) {
-    guard case .signedIn = phase else {
-      return
+  private func finishPendingLocalRemoval() async throws {
+    guard let localStore, let client else { return }
+    let scopes = try await localStore.pendingRemovals()
+    guard !scopes.isEmpty else { cleanupBlocked = false; return }
+    cleanupBlocked = true
+    phase = .cleaningLocalData
+    await drainUserSave()
+    try sessionStore?.clear()
+    await client.signOut()
+    for scope in scopes {
+      try await localStore.removeScope(scope)
+      try await client.removeDownloadedArtwork(scope: scope)
+      try await localStore.finishRemoval(scope: scope)
     }
+    await RemoteArtworkLoader.shared.purgeMemoryCache()
+    cleanupBlocked = false
+  }
+
+  private func drainUserSave() async {
+    userSaveTask?.cancel()
+    if let task = userSaveTask { await task.value }
+    userSaveTask = nil
+  }
+
+  func replaceSignedInUser(_ user: UserRecord) {
+    guard !isSigningOut, !cleanupBlocked, case .signedIn(let current) = phase,
+      current.id == user.id else { return }
     phase = .signedIn(user)
     applyThemePreference(from: user)
     if let library, let localStore {
-      Task {
+      let generation = sessionGeneration
+      let previous = userSaveTask
+      previous?.cancel()
+      userSaveTask = Task { [weak self] in
+        if let previous { await previous.value }
+        guard let self, !Task.isCancelled, generation == self.sessionGeneration else { return }
         do { try await localStore.saveUser(user, scope: library.scope) }
-        catch { sessionError = "Your account settings could not be saved on this device." }
+        catch {
+          guard generation == self.sessionGeneration, !Task.isCancelled else { return }
+          self.sessionError = "Your account settings could not be saved on this device."
+        }
       }
     }
   }
