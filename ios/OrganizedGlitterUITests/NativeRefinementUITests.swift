@@ -143,7 +143,7 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   func testBookPagesPaginateAndNavigateToTheNextPage() {
-    let app = launchFixture()
+    let app = launchFixture(scenario: "many-pages")
     openLibrary(app)
     selectCraft("Books", in: app)
     openCard(named: "Princesses", in: app)
@@ -152,11 +152,11 @@ final class NativeRefinementUITests: XCTestCase {
     let loadMore = element("detail.book.loadMore", in: app)
     makeHittable(loadMore, in: app)
     loadMore.tap()
-    let fifthPage = element("detail.book.page.design-page-4", in: app)
-    makeHittable(fifthPage, in: app)
-    fifthPage.tap()
+    let twentyFifthPage = element("detail.book.page.design-page-24", in: app)
+    makeHittable(twentyFifthPage, in: app)
+    twentyFifthPage.tap()
     XCTAssertTrue(element("detail.page", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Page 5"].exists || app.navigationBars["Page 5"].exists)
+    XCTAssertTrue(app.staticTexts["Page 25"].exists || app.navigationBars["Page 25"].exists)
   }
 
   func testPagePhotoPickerCanCancelWithoutChangingThePage() {
@@ -201,9 +201,9 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
-  private func launchFixture() -> XCUIApplication {
+  private func launchFixture(scenario: String = "design") -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", "design"]
+    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario]
     app.launch()
     return app
   }

@@ -72,7 +72,8 @@ struct LibraryView: View {
 
   /// A craft with nothing in it gets one prompt instead of an empty grid.
   private var isEmptyLibrary: Bool {
-    presentation != .search && model.hasLoaded && !model.isLoading && model.items.isEmpty
+    presentation != .search && model.library.hasSnapshot && model.hasLoaded
+      && !model.isLoading && model.items.isEmpty
       && model.errorMessage == nil && model.statusFilter == nil
       && model.committedSearch.isEmpty
   }
@@ -234,11 +235,16 @@ struct LibraryView: View {
 
   @ViewBuilder
   private var libraryBody: some View {
-    if let errorMessage = model.errorMessage, model.items.isEmpty {
+    if !model.library.hasSnapshot, model.library.syncMessage == nil,
+      model.errorMessage == nil
+    {
+      ProgressView("Loading \(model.section.rawValue.lowercased())")
+        .frame(maxWidth: .infinity, minHeight: 220)
+    } else if !model.library.hasSnapshot || (model.errorMessage != nil && model.items.isEmpty) {
       ContentUnavailableView {
         Label("Couldn’t load your library", systemImage: "exclamationmark.triangle")
       } description: {
-        Text(errorMessage)
+        Text(model.errorMessage ?? model.library.syncMessage ?? "Connect to download your library.")
       } actions: {
         retryButton
       }
@@ -343,10 +349,10 @@ struct LibraryView: View {
 
   private var retryButton: some View {
     Button("Try Again") {
-      Task { await model.load() }
+      Task { await model.refresh() }
     }
     .buttonStyle(QuietActionStyle())
-    .disabled(model.isLoading)
+    .disabled(model.isLoading || model.library.isSyncing)
   }
 
   @ViewBuilder
