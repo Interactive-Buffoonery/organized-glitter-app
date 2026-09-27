@@ -73,6 +73,25 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("shell-03-search")
   }
 
+  func testSyncStatusKeepsNavigationAvailable() {
+    for scenario in ["loading", "error"] {
+      let app = launchFixture(scenario: scenario)
+      let status = element("library.syncStatus", in: app)
+      XCTAssertTrue(status.waitForExistence(timeout: 5), "Missing sync status for \(scenario)")
+
+      let libraryTab = app.tabBars.buttons["Library"].firstMatch
+      if libraryTab.exists {
+        XCTAssertTrue(libraryTab.isHittable, "Library tab is covered during \(scenario)")
+      }
+      openLibrary(app)
+      XCTAssertTrue(
+        app.navigationBars["Library"].waitForExistence(timeout: 5)
+          || app.navigationBars["Diamond art"].exists,
+        "Library cannot be opened during \(scenario)")
+      app.terminate()
+    }
+  }
+
   func testDiamondEditCancelSaveAndDeleteRemainStateful() {
     let app = launchFixture()
     openLibrary(app)
@@ -103,8 +122,47 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertFalse(app.staticTexts["Yorkie & Roses updated"].exists)
   }
 
-  func testBookPagesPaginateAndNavigateToTheNextPage() {
+  func testDiamondDetailShowsSpecsDetailsAndChangesStatus() throws {
     let app = launchFixture()
+    openLibrary(app)
+    openCard(named: "Yorkie & Roses", in: app)
+    XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
+    XCTAssertTrue(element("detail.specs", in: app).waitForExistence(timeout: 5))
+    XCTAssertTrue(button("detail.diamond.addNote", in: app).exists)
+    let photo = app.images.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Progress photo from")
+    ).firstMatch
+    for _ in 0..<6 where !photo.waitForExistence(timeout: 1) {
+      app.swipeUp()
+    }
+    XCTAssertTrue(photo.exists)
+
+    let status = button("detail.status", in: app)
+    for _ in 0..<6 where !status.isHittable {
+      app.swipeDown()
+    }
+    XCTAssertEqual(status.value as? String, "In progress")
+    status.tap()
+    let completed = app.buttons["Completed"].firstMatch
+    XCTAssertTrue(completed.waitForExistence(timeout: 3))
+    completed.tap()
+    let changed = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "value == %@", "Completed"), object: status)
+    XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
+
+    let source = element("detail.diamond.source", in: app)
+    makeHittable(source, in: app)
+    XCTAssertTrue(
+      app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Dogs and Florals"))
+        .firstMatch.exists)
+    XCTAssertTrue(
+      app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Soft pink roses"))
+        .firstMatch.exists)
+    try capture("detail-diamond-lower")
+  }
+
+  func testBookPagesPaginateAndNavigateToTheNextPage() {
+    let app = launchFixture(scenario: "many-pages")
     openLibrary(app)
     selectCraft("Books", in: app)
     openCard(named: "Princesses", in: app)
@@ -113,11 +171,11 @@ final class NativeRefinementUITests: XCTestCase {
     let loadMore = element("detail.book.loadMore", in: app)
     makeHittable(loadMore, in: app)
     loadMore.tap()
-    let fifthPage = element("detail.book.page.design-page-4", in: app)
-    makeHittable(fifthPage, in: app)
-    fifthPage.tap()
+    let twentyFifthPage = element("detail.book.page.design-page-24", in: app)
+    makeHittable(twentyFifthPage, in: app)
+    twentyFifthPage.tap()
     XCTAssertTrue(element("detail.page", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Page 5"].exists || app.navigationBars["Page 5"].exists)
+    XCTAssertTrue(app.staticTexts["Page 25"].exists || app.navigationBars["Page 25"].exists)
   }
 
   func testPagePhotoPickerCanCancelWithoutChangingThePage() {
@@ -162,9 +220,9 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
-  private func launchFixture() -> XCUIApplication {
+  private func launchFixture(scenario: String = "design") -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", "design"]
+    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario]
     app.launch()
     return app
   }
@@ -272,10 +330,7 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
     field.tap()
-    field.press(forDuration: 1)
-    let selectAll = app.menuItems["Select All"]
-    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
-    selectAll.tap()
+    field.typeKey("a", modifierFlags: .command)
     field.typeText(value)
     XCTAssertEqual(field.value as? String, value)
   }

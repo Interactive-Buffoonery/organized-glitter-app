@@ -1,0 +1,119 @@
+# Google and Discord OAuth validation
+
+Updated: 2026-09-27. Branch: `feat/social-oauth`, rebased onto `main` after PR #5 merged.
+Google and Discord controls are enabled in both Debug and Release builds for
+prelaunch testing, including TestFlight. The backend must advertise a provider
+before its button appears. Automated-test fixtures remain Debug-only.
+Native Apple and the public-launch checks in `social-sign-in-plan.md` remain
+separate work; enabling Release controls does not establish those checks passed.
+
+## Direct HTTPS callback revision
+
+The physical iPad reached an Auth Failed page before code exchange. A controlled
+callback without Discord failed in the browser but succeeded through native
+URLSession after resubscription. That isolates a browser/realtime handoff problem;
+the exact PocketBase rejection reason is unconfirmed. No Discord configuration
+change is justified by those diagnostics alone.
+
+The revised flow receives the existing `/api/oauth2-redirect` URL directly in
+ASWebAuthenticationSession, validates origin/path/state/code, and exchanges the
+code through PocketBase as a guest with the original PKCE verifier. It removes
+the realtime parser and subscription. Provider `state` is now used for validation,
+so decoding it is no longer dead state. Attempt invalidation and session guards
+remain in place. Temporary callback probes and logging are removed from source.
+
+Backend [PR #348](https://github.com/Interactive-Buffoonery/organized-glitter/pull/348)
+merged into dev as `8515b9bf`. Only `native_association.pb.js` was deployed from
+that revision. A staged upload and final download matched the source SHA-256;
+the live association endpoint returned HTTP 200 with the exact expected JSON,
+and PocketBase health remained HTTP 200. This verifies the new hook, not the
+revision of every other production backend file; BackendContract.json is unchanged.
+
+Apple's CDN still returned a cached earlier 404 after the origin was fixed. A
+local development-signed Release build was prepared with an external entitlement
+override using `webcredentials:data.organizedglitter.app?mode=developer`, following
+Apple's TN3155 testing guidance. The repository's normal entitlement is unchanged.
+Sarah enabled Associated Domains Development, and the build was installed and
+launched. She confirmed real Discord sign-in succeeded on the physical iPad.
+Normal CDN association still returned 404 at the subsequent check; testing with
+the normal entitlement remains a separate distribution gate.
+
+A successful build or mocked exchange does not establish provider login success.
+
+Validation for this revision:
+- After rebasing onto main `45f1bed` (PR #19), all 184 unit tests in 29 suites
+  passed on the connected physical iPad, including
+  parameterized callback validation and cancellation tests. Log:
+  `/tmp/og-pr16-direct-rebased-tests.log`.
+- Signed Release device build passed. Log:
+  `/tmp/og-pr16-direct-rebased-release.log`.
+- Sarah confirmed successful real Discord authorization in the development-mode
+  Release build. Origin association deployment passed; normal Apple CDN refresh
+  and Google authorization remain pending.
+- Rebased again onto main `a6c4345` after #20. OAuth now opens the account library
+  before publishing signed-in state, matching password login, and respects the
+  existing sign-out/submission guards. Fixed stale presentation-anchor delivery.
+- The anchor and library regressions failed before those fixes. All 178 unit
+  tests in 31 suites then passed on the iPad, including a late-callback test that
+  uses task cancellation alone without actor invalidation. Logs:
+  `/tmp/og-pr16-main20-red.log`, `/tmp/og-pr16-main20-green.log`.
+- Signed Release build passed after this rebase and fixes. Log:
+  `/tmp/og-pr16-main20-release.log`. The full UI suite was not rerun on this head.
+
+
+## Release controls
+
+At Sarah's request, provider buttons, errors, provider loading, and cancellation
+on navigation are available in Release as well as Debug. The focused Debug
+provider-button UI test passed after this change. A signed Release simulator
+build also passed and displayed Discord and Google using the live backend's
+auth-methods response, without test launch arguments. The simulator was later shut down at Sarah's request; physical iPad testing exposed the callback failure described above.
+
+## Earlier rebase and cancellation review
+
+Rebased onto `main` at `35a76ca`. Regenerated the Xcode project to resolve the
+project-file conflict. Review fixes are in `95b23fb`:
+
+- Session transitions cancel the task and invalidate its specific client attempt
+  ID. Cleanup from an older attempt cannot invalidate a newer attempt.
+- Tests cover model cancellation while waiting for a callback and during exchange,
+  timeout, rejection of a late response without task cancellation, and delayed
+  cleanup after a retry starts.
+- Removed unused provider `state` decoding and the unused `OAuthError.timedOut`
+  case. Callback state validation remains in place. Provider names and symbols
+  now come from one `SocialProvider` mapping.
+- `DESTINATION='platform=iOS Simulator,id=C3F25292-F37D-4B34-BBA7-7955D3883C06' ./ios/script/pre-pr.sh` passed on a dedicated iOS 26.5 simulator: 173 unit tests in 27 suites and the full UI suite, including provider buttons. Device-specific and opt-in checks were skipped where their prerequisites were absent.
+- The Release simulator build passed with signing disabled.
+
+The first full preflight on the shared iPhone simulator ended with two runner
+exits in Overview UI tests and subsequently reported another worktree's test
+paths. A dedicated simulator was created for the final preflight to avoid shared
+app installations. Both affected Overview tests passed in that isolated run.
+
+## Earlier realtime implementation evidence
+
+Device: iPhone 17, iOS 26.5 simulator. Derived data:
+`/tmp/og-social-oauth-dd`.
+
+- `xcodebuild -project OrganizedGlitter.xcodeproj -scheme OrganizedGlitter -destination 'platform=iOS Simulator,id=BD25AF72-E96B-47EB-81CA-4D62004D72A0' -derivedDataPath /tmp/og-social-oauth-dd -only-testing:OrganizedGlitterTests test` passed 152 tests in 26 suites. Log: `/tmp/og-social-oauth-alltests.log`.
+- The same command with `-only-testing:OrganizedGlitterUITests/OrganizedGlitterUITests/testConfiguredSocialProvidersAppearInDebugAccountMethods` passed. The UI fixture showed both configured provider buttons. Log: `/tmp/og-social-oauth-uitest.log`.
+- `xcodebuild -project OrganizedGlitter.xcodeproj -scheme OrganizedGlitter -configuration Release -destination 'platform=iOS Simulator,id=BD25AF72-E96B-47EB-81CA-4D62004D72A0' -derivedDataPath /tmp/og-social-oauth-dd CODE_SIGNING_ALLOWED=NO build` passed. Log: `/tmp/og-social-oauth-release.log`.
+- A direct `URLSession.bytes(for:)` test with an SSE fixture delivered `PB_CONNECT` and `@oauth2` through the production byte parser. This caught that `AsyncBytes.lines` dropped blank event delimiters on this simulator; byte-level newline parsing now preserves them.
+- The OAuth transport fixture proved subscription POST completes before browser presentation, the exchange request omits an existing bearer token, the backend redirect and PKCE verifier are preserved, and wrong-state, provider-denied, and sign-out-during-exchange paths do not save a session.
+
+Using the assigned `agent-device` session, the installed Debug app showed Google and
+Discord from configured auth methods. Discord presented the system sign-in
+consent, then opened the Discord page in SafariViewService. Cancelling returned
+to the signed-out method screen; a fresh attempt presented consent again.
+Google presented its system sign-in consent and cancelled back to the same
+screen. No credentials or identity were entered.
+
+## Remaining release checks
+
+Discord sign-in succeeded on the physical iPad using development association.
+Normal CDN association, Google login, web/iOS record continuity, Keychain write
+failure recovery, broader iPad presentation behavior,
+and physical-device app switching and network-loss behavior remain unverified. Those checks remain
+open, along with native Apple support, backend grant/deletion work, deployed
+revision verification, and the wider release gates in the plan. The simulator
+provider exercise covered presentation, cancellation, and retry only.

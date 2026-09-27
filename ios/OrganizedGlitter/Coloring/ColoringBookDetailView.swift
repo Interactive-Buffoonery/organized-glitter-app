@@ -3,6 +3,7 @@ import SwiftUI
 struct ColoringBookDetailView: View {
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
 
   let book: ColoringBookRecord
@@ -12,8 +13,10 @@ struct ColoringBookDetailView: View {
 
   var body: some View {
     ScrollView {
-      LazyVStack(alignment: .leading, spacing: 18) {
+      VStack(alignment: .leading, spacing: 18) {
         bookHeader
+
+        DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
         pagesHeader
 
@@ -33,20 +36,19 @@ struct ColoringBookDetailView: View {
           )
           .frame(maxWidth: .infinity)
         } else {
-          LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+          LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
             ForEach(model.bookPages) { page in
               NavigationLink {
                 LibraryItemDetailDestination(
                   item: .page(page),
-                  client: model.client,
-                  userID: model.userID,
+                  library: model.library,
                   onCollectionChanged: {
                     model.needsBookPageRefresh = true
                     await onCollectionChanged()
                   }
                 )
               } label: {
-                ColoringBookPageCard(page: page, client: model.client)
+                ColoringBookPageCard(page: page)
               }
               .buttonStyle(.plain)
               .accessibilityIdentifier("detail.book.page.\(page.id)")
@@ -103,7 +105,9 @@ struct ColoringBookDetailView: View {
           }
         }
 
-        if let mutationErrorMessage = model.mutationErrorMessage {
+        if let mutationErrorMessage = model.mutationErrorMessage,
+          !model.unresolvedStatusWrite
+        {
           AccessibleErrorLabel(message: mutationErrorMessage)
         }
       }
@@ -115,53 +119,54 @@ struct ColoringBookDetailView: View {
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
-    .refreshable { await model.load() }
+    .refreshable { await model.refresh() }
   }
 
-  @ViewBuilder
   private var bookHeader: some View {
-    let layout =
-      dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
-      : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
-
-    layout {
+    VStack(spacing: 8) {
       CoverArtwork(
         item: .book(book),
-        url: LibraryItem.book(book).artworkURL(
-          using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token),
-        maxPixelDimension: 360,
+        url: protectedFiles?.artworkURL(for: .book(book)),
+        maxPixelDimension: 900,
         loadedAccessibilityLabel: "Book cover"
       )
-      .frame(width: dynamicTypeSize.isAccessibilitySize ? 200 : 120)
+      .frame(width: horizontalSizeClass == .regular ? 240 : 184)
+      .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
+      .padding(.bottom, 8)
       .accessibilityIdentifier("detail.hero")
 
-      VStack(alignment: .leading, spacing: 8) {
-        Text(book.title)
-          .font(.title2.bold())
-          .foregroundStyle(theme.foreground)
-        if let series = book.series?.nonEmpty {
-          Text(series)
-            .foregroundStyle(theme.pageSecondaryForeground)
-        }
-        Text("Coloring book")
-          .font(.subheadline)
+      Text(book.title)
+        .font(.title2.bold())
+        .foregroundStyle(theme.foreground)
+        .accessibilityAddTraits(.isHeader)
+      if let credits = credits {
+        Text(credits)
           .foregroundStyle(theme.pageSecondaryForeground)
-        StatusBadge(
-          label: BookStatus.label(for: book.status),
-          systemImage: BookStatus.systemImage(for: book.status))
-        Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
-          .font(.subheadline)
-          .foregroundStyle(theme.pageSecondaryForeground)
-        ProgressView(
-          value: min(max(book.completionPercentage ?? 0, 0), 100),
-          total: 100
-        )
-        .accessibilityLabel("Book completion")
-        .accessibilityValue("\(book.completedPages ?? 0) of \(book.totalPages) pages")
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
+      DetailStatusMenu<BookStatus>(
+        current: book.status, model: model, onCollectionChanged: onCollectionChanged)
+      .padding(.top, 4)
+      Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
+        .font(.subheadline)
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .padding(.top, 8)
+      ProgressView(
+        value: min(max(book.completionPercentage ?? 0, 0), 100),
+        total: 100
+      )
+      .frame(maxWidth: 240)
+      .accessibilityLabel("Book completion")
+      .accessibilityValue("\(book.completedPages ?? 0) of \(book.totalPages) pages")
     }
+    .multilineTextAlignment(.center)
+    .frame(maxWidth: .infinity)
+  }
+
+  private var credits: String? {
+    [book.series, book.expand?.publisher?.name, book.expand?.illustrator?.name]
+      .compactMap { $0?.nonEmpty }
+      .joined(separator: " · ")
+      .nonEmpty
   }
 
   private var emptyPagesMessage: String {
@@ -174,9 +179,12 @@ struct ColoringBookDetailView: View {
 
   private var columns: [GridItem] {
     if dynamicTypeSize.isAccessibilitySize {
-      return [GridItem(.flexible())]
+      return Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
     }
-    return [GridItem(.adaptive(minimum: 142, maximum: 220), spacing: 14)]
+    if horizontalSizeClass == .regular {
+      return [GridItem(.adaptive(minimum: 110, maximum: 160), spacing: 10)]
+    }
+    return Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
   }
 
   private var pageFilterPicker: some View {
@@ -223,38 +231,53 @@ struct ColoringBookDetailView: View {
     Button {
       onEditPageCount()
     } label: {
-      Label("Edit page count", systemImage: "list.number")
+      Text("Edit page count")
+        .font(.subheadline)
+        .frame(minHeight: 44)
+        .contentShape(.rect)
     }
-    .buttonStyle(.bordered)
+    .buttonStyle(.plain)
+    .foregroundStyle(theme.pageAction)
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }
 
+/// A contact-sheet cell: the page, its number, and a status glyph.
 private struct ColoringBookPageCard: View {
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
 
   let page: ColoringPageRecord
-  let client: PocketBaseClient
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(spacing: 4) {
       CoverArtwork(
         item: .page(page),
-        url: LibraryItem.page(page).artworkURL(
-          using: client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token)
+        url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery)
       )
 
-      Text(LibraryItem.page(page).title)
-        .font(.headline)
-        .foregroundStyle(theme.foreground)
-        .fixedSize(horizontal: false, vertical: true)
-      StatusBadge(
-        label: PageStatus.label(for: page.status),
-        systemImage: PageStatus.systemImage(for: page.status))
+      HStack(spacing: 3) {
+        Text(page.pageNumber, format: .number)
+          .monospacedDigit()
+        if PageStatus(rawValue: page.status) != .notStarted {
+          Image(systemName: PageStatus.systemImage(for: page.status))
+            .foregroundStyle(theme.primary)
+        }
+      }
+      .font(.caption)
+      .foregroundStyle(theme.pageSecondaryForeground)
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
+    .frame(maxWidth: .infinity)
     .contentShape(.rect)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(accessibilityLabel)
+  }
+
+  private var accessibilityLabel: String {
+    [
+      "Page \(page.pageNumber)",
+      page.revealedSubject?.nonEmpty,
+      PageStatus.label(for: page.status),
+    ].compactMap { $0 }.joined(separator: ", ")
   }
 }

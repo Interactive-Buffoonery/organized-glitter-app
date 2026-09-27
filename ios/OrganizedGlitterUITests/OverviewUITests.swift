@@ -23,6 +23,10 @@ final class OverviewUITests: XCTestCase {
     }
   }
 
+  private func isOnScreen(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+    element.exists && !element.frame.isEmpty && app.frame.contains(element.frame)
+  }
+
   func testContinueOpensDetailAndLogsProgress() throws {
     let app = launch("populated")
     let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden"))
@@ -40,6 +44,26 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(app.descendants(matching: .any)["detail.diamond.noteEditor"].waitForExistence(timeout: 5))
     try capture(app, "overview-log-sheet")
     app.buttons["Cancel"].tap()
+
+    let shelf = app.scrollViews["overview.continue.shelf"]
+    let logLast = app.buttons["overview.log.fictional-project-2"]
+    for _ in 0..<6 where !isOnScreen(logLast, in: app) { shelf.swipeLeft() }
+    logLast.tap()
+    let caption = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "placeholderValue == %@", "Caption (optional)")).firstMatch
+    XCTAssertTrue(caption.waitForExistence(timeout: 5))
+    caption.tap()
+    caption.typeText("Filled the corner")
+    app.buttons["detail.diamond.noteSubmit"].tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond.noteEditor"].waitForNonExistence(timeout: 5))
+    let moved = XCTNSPredicateExpectation(
+      predicate: NSPredicate { _, _ in
+        self.isOnScreen(logLast, in: app) && logLast.frame.minX < log.frame.minX
+      }, object: nil)
+    XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 5), .completed)
+    XCTAssertTrue(
+      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Logged today"))
+        .firstMatch.exists)
 
     page.tap()
     XCTAssertTrue(

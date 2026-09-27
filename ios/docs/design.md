@@ -8,9 +8,10 @@ screen backgrounds. The Shelf redesign (Option B in
 
 ## Shelf
 
-- **Shell.** Home, Library, and on iOS 26 a `Tab(role: .search)`. iOS 18
-  searches inside Library with `.searchable`. Account opens from the Home
-  toolbar avatar. Create is the toolbar `+` `CreateMenu` on Home and Library.
+- **Shell.** Home, Library, and on iOS 26 an ordinary labeled Search tab in
+  the native tab bar. iOS 18 searches inside Library with `.searchable`.
+  Account opens from the Home toolbar avatar. Create is the toolbar `+`
+  `CreateMenu` on Home and Library.
   The randomizer code stays but has no tab.
 - **iPad.** The `.sidebarAdaptable` `TabView` lists one sidebar row per craft
   in a `TabSection("Library")`. The single Library tab shows only in the tab
@@ -26,6 +27,16 @@ screen backgrounds. The Shelf redesign (Option B in
   In stash covers. A single "N finished this month" row opens Completed.
   Section titles open the matching Library filter; a menu picks the craft when
   both are enabled.
+- **Detail.** A centered hero cover sits above the title and credits. A compact
+  status `Menu` below them uses a soft tint from the web status color family,
+  a status icon, and a written label; its touch target remains at least 44 points.
+  Diamonds show a spec strip (size, drill, diamonds, started) that turns into
+  rows at accessibility sizes, then a Progress heading with a small Log progress
+  action, a progress contact sheet, and a Details card (company, artist, kit,
+  dates, tags, source link, notes as plain text). Books keep the page count and
+  completion bar below status, then show pages as a contact sheet with a status
+  glyph per page. Detail scroll content uses a plain `VStack`; a `LazyVGrid`
+  inside a `LazyVStack` loops layout at AX5.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
   clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient
   seeded by record id, the title in Caveat, and a craft glyph.
@@ -36,10 +47,16 @@ screen backgrounds. The Shelf redesign (Option B in
 
 ## Current design reference
 
-The current six-screen references are in
-[native refinement](design-previews/native-refinement/README.md). Generated
-boards guide hierarchy and composition; real model values and native platform
-behavior take precedence over their illustrative labels and tab bars.
+Detail and navigation follow the approved artwork-first Option 2 B described
+above: soft status chips, compact section actions, and Home, Library, and Search
+in one native tab group. Simulator screenshots in the implementation PRs record
+the native result.
+
+The earlier six-screen boards in
+[native refinement](design-previews/native-refinement/README.md) remain references
+for unaffected screens. Their detail layouts and tab bars are superseded by
+Option 2 B. Real record content and native platform behavior take precedence
+over illustrative labels and artwork in design mockups.
 
 ## Historical D reference
 
@@ -255,10 +272,15 @@ worth the Dynamic Type / weight-matching loss today.
   written label (`StatusBadge`).
 - Rows and cards combine into single accessibility elements where the parts
   read as one thing.
-- Motion uses `Theme.motion` (ease-out-quart, 0.24 s) — no bounce, no elastic.
+- General transitions use `Theme.motion` (ease-out-quart, 0.24 s), without
+  bounce or elastic motion. A successful detail-menu status save is the exception:
+  its status symbol plays one native bounce and a success haptic after the local
+  save commits. Reduce Motion removes the bounce; the written status remains
+  visible. Failed saves and unchanged selections do not trigger feedback.
 
 ## App icon artwork
 
-The approved Sorted icon uses berry and lilac pieces on deep navy (`#05051A`),
-with no outer border in either appearance. See [App icon](app-icon.md) for
-source, export, and alignment rules. The Caveat wordmark remains separate.
+The app icon uses Sarah's supplied hand-drawn pink and lilac artwork on navy
+(`#05051A`), with no added outer border in either appearance. See
+[App icon](app-icon.md) for the source and export rules. The Caveat wordmark
+remains separate.

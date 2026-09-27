@@ -14,15 +14,14 @@ struct LibraryView: View {
   let request: LibraryRequest?
 
   init(
-    client: PocketBaseClient,
-    userID: String,
+    library: LibrarySession,
     presentation: LibraryPresentation = .browse,
     libraryRefresh: LibraryRefresh,
     verticals: VerticalPreferences = .defaultValue,
     request: LibraryRequest? = nil,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
-    let model = LibraryModel(client: client, userID: userID)
+    let model = LibraryModel(library: library)
     model.onSessionExpired = onSessionExpired
     if case .craft(let section) = presentation {
       model.select(section)
@@ -46,10 +45,13 @@ struct LibraryView: View {
           detail(for: item)
         }
     }
-    .task(id: "\(model.listingIdentity)|\(libraryRefresh.generation)") {
+    .task(id: model.listingIdentity) {
       path = []
       guard !isAwaitingSearch else { return }
       await model.load()
+    }
+    .onChange(of: libraryRefresh.generation) { _, _ in
+      Task { await model.load() }
     }
     .onChange(of: request) { _, request in
       guard let request, presentation.accepts(request) else { return }
@@ -70,7 +72,8 @@ struct LibraryView: View {
 
   /// A craft with nothing in it gets one prompt instead of an empty grid.
   private var isEmptyLibrary: Bool {
-    presentation != .search && model.hasLoaded && !model.isLoading && model.items.isEmpty
+    presentation != .search && model.library.hasSnapshot && model.hasLoaded
+      && !model.isLoading && model.items.isEmpty
       && model.errorMessage == nil && model.statusFilter == nil
       && model.committedSearch.isEmpty
   }
@@ -99,7 +102,7 @@ struct LibraryView: View {
       .padding(.bottom, 32)
       .frame(maxWidth: .infinity)
     }
-    .refreshable { await model.load() }
+    .refreshable { await model.refresh() }
     .navigationTitle(presentation.title)
     .background {
       theme.themedBackground.ignoresSafeArea()
@@ -111,8 +114,7 @@ struct LibraryView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
           CreateMenu(
-            client: model.client,
-            userID: model.userID,
+            library: model.library,
             verticals: verticals,
             onRefresh: { await model.load() },
             onSaved: created
@@ -122,7 +124,7 @@ struct LibraryView: View {
     }
     .sheet(item: $firstItemTarget) { target in
       CreateEditor(
-        target: target, client: model.client, userID: model.userID,
+        target: target, library: model.library,
         onRefresh: { await model.load() }, onSaved: created)
     }
     .overlay(alignment: .bottom) {
@@ -233,11 +235,16 @@ struct LibraryView: View {
 
   @ViewBuilder
   private var libraryBody: some View {
-    if let errorMessage = model.errorMessage, model.items.isEmpty {
+    if !model.library.hasSnapshot, model.library.syncMessage == nil,
+      model.errorMessage == nil
+    {
+      ProgressView("Loading \(model.section.rawValue.lowercased())")
+        .frame(maxWidth: .infinity, minHeight: 220)
+    } else if !model.library.hasSnapshot || (model.errorMessage != nil && model.items.isEmpty) {
       ContentUnavailableView {
         Label("Couldn’t load your library", systemImage: "exclamationmark.triangle")
       } description: {
-        Text(errorMessage)
+        Text(model.errorMessage ?? model.library.syncMessage ?? "Connect to download your library.")
       } actions: {
         retryButton
       }
@@ -335,26 +342,24 @@ struct LibraryView: View {
     NavigationLink(value: item) {
       LibraryGalleryCard(
         item: item,
-        imageURL: item.artworkURL(
-          using: model.client, thumb: ArtworkThumb.gallery, token: protectedFiles?.token))
+        imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery))
     }
     .buttonStyle(.plain)
   }
 
   private var retryButton: some View {
     Button("Try Again") {
-      Task { await model.load() }
+      Task { await model.refresh() }
     }
     .buttonStyle(QuietActionStyle())
-    .disabled(model.isLoading)
+    .disabled(model.isLoading || model.library.isSyncing)
   }
 
   @ViewBuilder
   private func detail(for item: LibraryItem) -> some View {
     LibraryItemDetailDestination(
       item: item,
-      client: model.client,
-      userID: model.userID,
+      library: model.library,
       onCollectionChanged: { await model.load() }
     )
   }

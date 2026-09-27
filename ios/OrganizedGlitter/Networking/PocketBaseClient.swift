@@ -1,14 +1,22 @@
 import Foundation
 
 actor PocketBaseClient {
-  private let baseURL: URL
+  struct ExternalAuthAttempt: Sendable {
+    fileprivate let sessionGeneration: Int
+    fileprivate let authGeneration: Int
+  }
+
+  nonisolated let baseURL: URL
   private let sessionStore: KeychainSessionStore
   private let urlSession: URLSession
+  private let artworkStore = PrivateArtworkStore()
 
   private var authentication: AuthenticatedSession?
   private var refreshTask: Task<AuthenticatedSession, Error>?
   private var refreshGeneration: Int?
   private var sessionGeneration = 0
+  private var oauthGeneration = 0
+  private var oauthAttemptID: UUID?
 
   init(
     baseURL: URL,
@@ -21,12 +29,13 @@ actor PocketBaseClient {
   }
 
   func signIn(identity: String, password: String) async throws -> AuthenticatedSession {
+    sessionGeneration &+= 1
+    let generation = sessionGeneration
     struct Body: Encodable {
       let identity: String
       let password: String
     }
 
-    let generation = sessionGeneration
     let response: AuthResponse = try await request(
       path: "/api/collections/users/auth-with-password",
       method: "POST",
@@ -34,13 +43,99 @@ actor PocketBaseClient {
       includesAuthentication: false
     )
 
+    guard generation == sessionGeneration else { throw APIError.cancelled }
     guard response.record.verified == true else {
       throw APIError.emailUnverified
     }
-    guard generation == sessionGeneration else {
+    return try persist(response.session)
+  }
+
+  func oauthProviders() async throws -> [OAuthProvider] {
+    struct Methods: Decodable {
+      struct OAuth2: Decodable {
+        let enabled: Bool
+        let providers: [OAuthProvider]
+      }
+      let oauth2: OAuth2
+    }
+
+    let methods: Methods = try await request(
+      path: "/api/collections/users/auth-methods",
+      includesAuthentication: false
+    )
+    return methods.oauth2.enabled
+      ? methods.oauth2.providers.filter { $0.name == "google" || $0.name == "discord" }
+      : []
+  }
+
+  func signInWithOAuth(
+    providerName: String,
+    attemptID: UUID = UUID(),
+    present: @MainActor @Sendable (URL, URL) async throws -> URL
+  ) async throws -> AuthenticatedSession {
+    try Task.checkCancellation()
+    let attempt = beginExternalAuthAttempt(id: attemptID)
+    guard let provider = try await oauthProviders().first(where: { $0.name == providerName }) else {
+      throw OAuthError.unavailable
+    }
+    try checkExternalAuthAttempt(attempt)
+    let redirectURL = baseURL.appending(path: "/api/oauth2-redirect")
+    let authorizationURL = try provider.authorizationURL(redirectURL: redirectURL)
+    let callback = try await present(authorizationURL, redirectURL)
+    try checkExternalAuthAttempt(attempt)
+    let code = try provider.authorizationCode(from: callback, redirectURL: redirectURL)
+
+    struct Exchange: Encodable {
+      let provider: String
+      let code: String
+      let codeVerifier: String
+      let redirectURL: String
+    }
+    let response: AuthResponse = try await request(
+      path: "/api/collections/users/auth-with-oauth2",
+      method: "POST",
+      body: Exchange(
+        provider: provider.name,
+        code: code,
+        codeVerifier: provider.codeVerifier,
+        redirectURL: redirectURL.absoluteString
+      ),
+      includesAuthentication: false
+    )
+    return try acceptExternalAuthResponse(response, attempt: attempt)
+  }
+
+  func beginExternalAuthAttempt(id: UUID = UUID()) -> ExternalAuthAttempt {
+    oauthAttemptID = id
+    oauthGeneration &+= 1
+    return ExternalAuthAttempt(
+      sessionGeneration: sessionGeneration,
+      authGeneration: oauthGeneration
+    )
+  }
+
+  func cancelExternalAuthAttempt(id: UUID) {
+    guard oauthAttemptID == id else { return }
+    oauthAttemptID = nil
+    oauthGeneration &+= 1
+  }
+
+  func acceptExternalAuthResponse(
+    _ response: AuthResponse,
+    attempt: ExternalAuthAttempt
+  ) throws -> AuthenticatedSession {
+    guard response.record.verified == true else { throw APIError.emailUnverified }
+    try checkExternalAuthAttempt(attempt)
+    return try persist(response.session)
+  }
+
+  private func checkExternalAuthAttempt(_ attempt: ExternalAuthAttempt) throws {
+    try Task.checkCancellation()
+    guard attempt.authGeneration == oauthGeneration,
+      attempt.sessionGeneration == sessionGeneration
+    else {
       throw APIError.cancelled
     }
-    return try persist(response.session)
   }
 
   func register(email: String, username: String, password: String) async throws {
@@ -120,6 +215,15 @@ actor PocketBaseClient {
   }
 
   func restore(_ stored: StoredSession) async throws -> AuthenticatedSession {
+    prepareOfflineSession(stored)
+    return try await refreshAuthentication()
+  }
+
+  func prepareOfflineSession(_ stored: StoredSession) {
+    sessionGeneration &+= 1
+    refreshTask?.cancel()
+    refreshTask = nil
+    refreshGeneration = nil
     authentication = AuthenticatedSession(
       token: stored.token,
       user: UserRecord(
@@ -136,7 +240,6 @@ actor PocketBaseClient {
       )
     )
 
-    return try await refreshAuthentication()
   }
 
   func refreshAuthentication() async throws -> AuthenticatedSession {
@@ -213,6 +316,7 @@ actor PocketBaseClient {
 
   func signOut() {
     sessionGeneration &+= 1
+    oauthGeneration &+= 1
     authentication = nil
     refreshTask?.cancel()
     refreshTask = nil
@@ -339,6 +443,52 @@ actor PocketBaseClient {
     )
   }
 
+  func mobileSnapshot() async throws -> LocalFullSnapshot {
+    try await request(path: "/api/mobile/sync/snapshot")
+  }
+
+  func applyLocalOperation(_ operation: LocalPendingOperation) async throws -> LibraryItem {
+    struct Body: Encodable {
+      let operationId: String
+      let collection: String
+      let recordId: String
+      let base: [String: LocalJSONValue]
+      let patch: [String: LocalJSONValue]
+    }
+    let body = Body(
+      operationId: operation.id.uuidString, collection: operation.key.kind.rawValue,
+      recordId: operation.key.id, base: operation.base, patch: operation.patch)
+    let result = try await sendResponseEncoded(
+      path: "/api/mobile/sync/apply", method: "POST",
+      body: PocketBaseRequestBody(json: body), acceptedStatusCodes: [409])
+    let object = try JSONSerialization.jsonObject(with: result.data) as? [String: Any]
+    guard let object else { throw APIError.decoding }
+    if result.status == 409 {
+      guard object["reason"] as? String == "field_conflict" else {
+        throw APIError.validation("This edit could not be retried safely.")
+      }
+    }
+    guard let recordObject = object["record"] else { throw APIError.decoding }
+    let recordData = try JSONSerialization.data(withJSONObject: recordObject)
+    let record: LibraryItem
+    do {
+      let decoder = JSONDecoder()
+      switch operation.key.kind {
+      case .project:
+        record = .diamond(try decoder.decode(DiamondProjectRecord.self, from: recordData))
+      case .book:
+        record = .book(try decoder.decode(ColoringBookRecord.self, from: recordData))
+      case .page:
+        record = .page(try decoder.decode(ColoringPageRecord.self, from: recordData))
+      }
+    } catch {
+      throw APIError.decoding
+    }
+    guard record.localRecordKey == operation.key else { throw APIError.decoding }
+    if result.status == 409 { throw LocalSyncConflict(current: record) }
+    return record
+  }
+
   /// Fetches a short-lived token for protected file URLs.
   func fileToken() async throws -> String {
     struct Response: Decodable { let token: String }
@@ -393,38 +543,76 @@ actor PocketBaseClient {
     return url
   }
 
-  /// Downloads a protected PocketBase file using the token-bearing URL.
+  /// Empty-token URLs identify cached artwork and never authorize a download.
   func fileData(at url: URL, maximumByteCount: Int) async throws -> Data {
+    guard let authentication else { throw APIError.unauthenticated }
+    guard url.scheme == baseURL.scheme, url.host == baseURL.host, url.port == baseURL.port,
+      url.path.hasPrefix(baseURL.appending(path: "api/files").path + "/")
+    else { throw APIError.forbidden }
+    let generation = sessionGeneration
+    let scope = LocalAccountScope(backendURL: baseURL, userID: authentication.user.id)
+    if let cached = try? await artworkStore.data(for: url, scope: scope) {
+      guard generation == sessionGeneration else { throw APIError.cancelled }
+      guard cached.count <= maximumByteCount else { throw RemoteArtworkError.payloadTooLarge }
+      return cached
+    }
+    let token = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+      .first(where: { $0.name == "token" })?.value
+    guard let token, !token.isEmpty else { throw APIError.offline }
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
     request.cachePolicy = .reloadIgnoringLocalCacheData
-    if let authentication {
-      request.setValue(authentication.token, forHTTPHeaderField: "Authorization")
-    }
-
+    request.setValue(authentication.token, forHTTPHeaderField: "Authorization")
     let fileURL: URL
     let response: URLResponse
     do {
       (fileURL, response) = try await urlSession.download(for: request)
-    } catch {
-      throw APIError.from(error)
-    }
+    } catch { throw APIError.from(error) }
     defer { try? FileManager.default.removeItem(at: fileURL) }
-
-    guard let httpResponse = response as? HTTPURLResponse else {
-      throw APIError.server
-    }
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    guard let httpResponse = response as? HTTPURLResponse,
+      response.url?.host == baseURL.host, response.url?.scheme == baseURL.scheme
+    else { throw APIError.server }
     guard (200..<300).contains(httpResponse.statusCode) else {
       throw APIError.from(statusCode: httpResponse.statusCode, body: Data())
     }
+    let size = try fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+    guard size <= maximumByteCount else { throw RemoteArtworkError.payloadTooLarge }
+    let data = try Data(contentsOf: fileURL)
+    try? await artworkStore.save(data, for: url, scope: scope)
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    return data
+  }
 
-    let size =
-      (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int)
-      ?? 0
-    guard size <= maximumByteCount else {
-      throw RemoteArtworkError.payloadTooLarge
+  func retainDownloadedArtwork(
+    items: [LibraryItem], notes: [DiamondProgressNoteRecord],
+    coloringNotes: [ColoringProgressNoteRecord], scope: LocalAccountScope
+  ) async throws {
+    guard authentication?.user.id == scope.userID, scope.backendURL == baseURL else {
+      throw APIError.unauthenticated
     }
-    return try Data(contentsOf: fileURL)
+    var urls: [URL] = []
+    func include(_ collection: String, _ id: String, _ filenames: [String]) {
+      for filename in filenames where !filename.isEmpty {
+        for thumb in [nil, ArtworkThumb.gallery, ArtworkThumb.compact] as [String?] {
+          urls.append(fileURL(collection: collection, recordID: id, filename: filename, thumb: thumb, token: ""))
+        }
+      }
+    }
+    for item in items {
+      switch item {
+      case .diamond(let record): include("projects", record.id, [record.image].compactMap { $0 })
+      case .book(let record): include("coloring_books", record.id, [record.coverImage].compactMap { $0 })
+      case .page(let record): include("coloring_pages", record.id, record.photos)
+      }
+    }
+    for note in notes { include("progress_notes", note.id, [note.image].compactMap { $0 }) }
+    for note in coloringNotes { include("coloring_page_progress_notes", note.id, [note.image].compactMap { $0 }) }
+    try await artworkStore.retain(urls, scope: scope)
+  }
+
+  func removeDownloadedArtwork(scope: LocalAccountScope) async throws {
+    try await artworkStore.remove(scope: scope)
   }
 
   private func persist(_ session: AuthenticatedSession) throws -> AuthenticatedSession {
@@ -520,6 +708,22 @@ actor PocketBaseClient {
     includesAuthentication: Bool = true,
     canRefreshAuthentication: Bool = true
   ) async throws -> Data {
+    try await sendResponseEncoded(
+      path: path, queryItems: queryItems, method: method, body: body,
+      includesAuthentication: includesAuthentication,
+      canRefreshAuthentication: canRefreshAuthentication).data
+  }
+
+  private func sendResponseEncoded(
+    path: String,
+    queryItems: [URLQueryItem] = [],
+    method: String = "GET",
+    body: PocketBaseRequestBody? = nil,
+    includesAuthentication: Bool = true,
+    canRefreshAuthentication: Bool = true,
+    acceptedStatusCodes: Set<Int> = []
+  ) async throws -> (data: Data, status: Int) {
+    let requestGeneration = sessionGeneration
     guard
       var components = URLComponents(
         url: baseURL.appending(path: path),
@@ -558,6 +762,10 @@ actor PocketBaseClient {
       throw APIError.from(error)
     }
 
+    if includesAuthentication, requestGeneration != sessionGeneration {
+      throw APIError.cancelled
+    }
+
     guard let httpResponse = response as? HTTPURLResponse else {
       throw APIError.server
     }
@@ -567,17 +775,20 @@ actor PocketBaseClient {
       canRefreshAuthentication
     {
       _ = try await refreshAuthentication()
-      return try await sendEncoded(
+      return try await sendResponseEncoded(
         path: path,
         queryItems: queryItems,
         method: method,
         body: body,
         includesAuthentication: true,
-        canRefreshAuthentication: false
+        canRefreshAuthentication: false,
+        acceptedStatusCodes: acceptedStatusCodes
       )
     }
 
-    guard 200..<300 ~= httpResponse.statusCode else {
+    guard 200..<300 ~= httpResponse.statusCode
+      || acceptedStatusCodes.contains(httpResponse.statusCode)
+    else {
       throw APIError.from(
         statusCode: httpResponse.statusCode,
         body: data,
@@ -586,7 +797,7 @@ actor PocketBaseClient {
           && !includesAuthentication
       )
     }
-    return data
+    return (data, httpResponse.statusCode)
   }
 }
 

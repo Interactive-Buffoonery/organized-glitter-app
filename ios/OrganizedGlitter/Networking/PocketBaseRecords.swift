@@ -8,6 +8,26 @@ struct NamedRelationRecord: Codable, Hashable, Sendable {
 struct DiamondProjectExpand: Codable, Hashable, Sendable {
   let company: NamedRelationRecord?
   let artist: NamedRelationRecord?
+  var projectTags: [ProjectTagRecord]? = nil
+
+  enum CodingKeys: String, CodingKey {
+    case company, artist
+    case projectTags = "project_tags_via_project"
+  }
+}
+
+struct TagRecord: Codable, Hashable, Identifiable, Sendable {
+  let id: String
+  let name: String
+}
+
+struct ProjectTagRecord: Codable, Hashable, Sendable {
+  struct Expand: Codable, Hashable, Sendable {
+    let tag: TagRecord?
+  }
+
+  let id: String
+  let expand: Expand?
 }
 
 struct DiamondProjectRecord: Codable, Hashable, Identifiable, Sendable {
@@ -27,7 +47,12 @@ struct DiamondProjectRecord: Codable, Hashable, Identifiable, Sendable {
   let dateCompleted: String?
   let created: String
   let updated: String
-  let expand: DiamondProjectExpand?
+  var expand: DiamondProjectExpand?
+  var totalDiamonds: Double? = nil
+  var colorCount: Double? = nil
+  var sourceURL: String? = nil
+  var datePurchased: String? = nil
+  var dateReceived: String? = nil
 
   enum CodingKeys: String, CodingKey {
     case id, title, user, company, artist, status, width, height, image, created, updated, expand
@@ -36,21 +61,43 @@ struct DiamondProjectRecord: Codable, Hashable, Identifiable, Sendable {
     case generalNotes = "general_notes"
     case dateStarted = "date_started"
     case dateCompleted = "date_completed"
+    case totalDiamonds = "total_diamonds"
+    case colorCount = "color_count"
+    case sourceURL = "source_url"
+    case datePurchased = "date_purchased"
+    case dateReceived = "date_received"
+  }
+
+  var tags: [TagRecord] {
+    (expand?.projectTags ?? []).compactMap(\.expand?.tag)
+      .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
   }
 
   func withExpand(_ expand: DiamondProjectExpand?) -> DiamondProjectRecord {
-    DiamondProjectRecord(
-      id: id, title: title, user: user, company: company, artist: artist,
-      status: status, kitCategory: kitCategory, drillShape: drillShape,
-      generalNotes: generalNotes, width: width, height: height, image: image,
-      dateStarted: dateStarted, dateCompleted: dateCompleted, created: created,
-      updated: updated, expand: expand)
+    var copy = self
+    copy.expand = expand
+    return copy
   }
 }
 
 struct ColoringBookExpand: Codable, Hashable, Sendable {
   let publisher: NamedRelationRecord?
   let illustrator: NamedRelationRecord?
+  var bookTags: [ColoringBookTagRecord]? = nil
+
+  enum CodingKeys: String, CodingKey {
+    case publisher, illustrator
+    case bookTags = "coloring_book_tags_via_book"
+  }
+}
+
+struct ColoringBookTagRecord: Codable, Hashable, Sendable {
+  struct Expand: Codable, Hashable, Sendable {
+    let tag: TagRecord?
+  }
+
+  let id: String
+  let expand: Expand?
 }
 
 struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
@@ -68,6 +115,8 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
   let created: String
   let updated: String
   let expand: ColoringBookExpand?
+  var dateStarted: String? = nil
+  var dateCompleted: String? = nil
 
   enum CodingKeys: String, CodingKey {
     case id, user, title, series, status, publisher, illustrator, created, updated, expand
@@ -75,6 +124,8 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
     case completedPages = "completed_pages"
     case completionPercentage = "completion_percentage"
     case coverImage = "cover_image"
+    case dateStarted = "date_started"
+    case dateCompleted = "date_completed"
   }
 
   func withExpand(_ expand: ColoringBookExpand?) -> ColoringBookRecord {
@@ -84,11 +135,32 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
       completionPercentage: completionPercentage, coverImage: coverImage,
       publisher: publisher, illustrator: illustrator, created: created,
       updated: updated, expand: expand)
+      .withDates(dateStarted: dateStarted, dateCompleted: dateCompleted)
+  }
+
+  private func withDates(dateStarted: String?, dateCompleted: String?) -> ColoringBookRecord {
+    var copy = self
+    copy.dateStarted = dateStarted
+    copy.dateCompleted = dateCompleted
+    return copy
   }
 }
 
 struct ColoringPageExpand: Codable, Hashable, Sendable {
-  let book: ColoringBookRecord?
+  let book: ColoringPageBook?
+  var mediums: [NamedRelationRecord]? = nil
+}
+
+struct ColoringPageBook: Codable, Hashable, Sendable {
+  let id: String
+  let title: String
+  let user: String?
+}
+
+extension ColoringPageExpand {
+  init(book: ColoringBookRecord) {
+    self.init(book: ColoringPageBook(id: book.id, title: book.title, user: book.user))
+  }
 }
 
 struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
@@ -103,6 +175,7 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
   let created: String
   let updated: String
   let expand: ColoringPageExpand?
+  var revealedAt: String? = nil
 
   enum CodingKeys: String, CodingKey {
     case id, book, status, photos, created, updated, expand
@@ -110,13 +183,16 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
     case revealedSubject = "revealed_subject"
     case completedAt = "completed_at"
     case startedAt = "started_at"
+    case revealedAt = "revealed_at"
   }
 
   func withExpand(_ expand: ColoringPageExpand?) -> ColoringPageRecord {
-    ColoringPageRecord(
+    var copy = ColoringPageRecord(
       id: id, book: book, pageNumber: pageNumber, status: status, photos: photos,
       revealedSubject: revealedSubject, completedAt: completedAt,
       startedAt: startedAt, created: created, updated: updated, expand: expand)
+    copy.revealedAt = revealedAt
+    return copy
   }
 }
 
