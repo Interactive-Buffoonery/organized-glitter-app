@@ -7,17 +7,22 @@ final class LocalStoredRecord {
   var scope: String
   var kind: String
   var recordID: String
+  var parentID: String?
   var serverData: Data
   var activeData: Data?
   var nextData: Data?
   var nextBaseData: Data?
   var conflictValue: String?
 
-  init(key: String, scope: String, kind: String, recordID: String, serverData: Data) {
+  init(
+    key: String, scope: String, kind: String, recordID: String, serverData: Data,
+    parentID: String? = nil
+  ) {
     self.key = key
     self.scope = scope
     self.kind = kind
     self.recordID = recordID
+    self.parentID = parentID
     self.serverData = serverData
   }
 }
@@ -40,12 +45,14 @@ final class LocalStoredNote {
   @Attribute(.unique) var key: String
   var scope: String
   var kind: String
+  var parentID: String
   var recordData: Data
 
-  init(key: String, scope: String, kind: String, recordData: Data) {
+  init(key: String, scope: String, kind: String, recordData: Data, parentID: String) {
     self.key = key
     self.scope = scope
     self.kind = kind
+    self.parentID = parentID
     self.recordData = recordData
   }
 }
@@ -142,32 +149,35 @@ actor LocalLibraryStore: ModelActor {
 
   func ingestSnapshot(_ snapshot: LocalFullSnapshot, scope: LocalAccountScope) throws {
     guard snapshot.version == 1 else { throw LocalLibraryError.invalidValue }
-    var incoming: [(LocalRecordKey, Data)] = []
+    var incoming: [(LocalRecordKey, Data, String?)] = []
     for record in snapshot.projects {
       guard record.user == scope.userID else { throw LocalLibraryError.wrongAccount }
-      incoming.append((LocalRecordKey(kind: .project, id: record.id), try encoder.encode(record)))
+      incoming.append((
+        LocalRecordKey(kind: .project, id: record.id), try encoder.encode(record), nil))
     }
     for record in snapshot.coloringBooks {
       guard record.user == scope.userID else { throw LocalLibraryError.wrongAccount }
-      incoming.append((LocalRecordKey(kind: .book, id: record.id), try encoder.encode(record)))
+      incoming.append((
+        LocalRecordKey(kind: .book, id: record.id), try encoder.encode(record), nil))
     }
     let bookIDs = Set(snapshot.coloringBooks.map(\.id))
     for record in snapshot.coloringPages {
       guard bookIDs.contains(record.book) else { throw LocalLibraryError.wrongAccount }
-      incoming.append((LocalRecordKey(kind: .page, id: record.id), try encoder.encode(record)))
+      incoming.append((
+        LocalRecordKey(kind: .page, id: record.id), try encoder.encode(record), record.book))
     }
     let projectIDs = Set(snapshot.projects.map(\.id))
     let pageIDs = Set(snapshot.coloringPages.map(\.id))
-    var notes: [(String, String, Data)] = []
+    var notes: [(String, String, Data, String)] = []
     for note in snapshot.progressNotes {
       guard projectIDs.contains(note.project) else { throw LocalLibraryError.wrongAccount }
-      notes.append(("diamond:\(note.id)", "diamond", try encoder.encode(note)))
+      notes.append(("diamond:\(note.id)", "diamond", try encoder.encode(note), note.project))
     }
     for note in snapshot.coloringPageProgressNotes {
       guard note.user == scope.userID, pageIDs.contains(note.page) else {
         throw LocalLibraryError.wrongAccount
       }
-      notes.append(("coloring:\(note.id)", "coloring", try encoder.encode(note)))
+      notes.append(("coloring:\(note.id)", "coloring", try encoder.encode(note), note.page))
     }
 
     let scopeKey = scope.storageKey
@@ -185,15 +195,16 @@ actor LocalLibraryStore: ModelActor {
           context.insert(LocalStoredAccount(
             scope: scopeKey, userData: Data(), hasSnapshot: true))
         }
-        for (recordKey, data) in incoming {
+        for (recordKey, data, parentID) in incoming {
           let key = storageKey(scope: scopeKey, key: recordKey)
           if let stored = byKey[key] {
             stored.serverData = data
+            stored.parentID = parentID
             if stored.activeData == nil { stored.conflictValue = nil }
           } else {
             context.insert(LocalStoredRecord(
               key: key, scope: scopeKey, kind: recordKey.kind.rawValue,
-              recordID: recordKey.id, serverData: data))
+              recordID: recordKey.id, serverData: data, parentID: parentID))
           }
         }
         for stored in existing where !incomingKeys.contains(stored.key) {
@@ -203,12 +214,16 @@ actor LocalLibraryStore: ModelActor {
             context.delete(stored)
           }
         }
-        for (noteKey, kind, data) in notes {
+        for (noteKey, kind, data, parentID) in notes {
           let key = "\(scopeKey)|\(noteKey)"
-          if let stored = notesByKey[key] { stored.recordData = data }
+          if let stored = notesByKey[key] {
+            stored.recordData = data
+            stored.parentID = parentID
+          }
           else {
             context.insert(LocalStoredNote(
-              key: key, scope: scopeKey, kind: kind, recordData: data))
+              key: key, scope: scopeKey, kind: kind, recordData: data,
+              parentID: parentID))
           }
         }
         for stored in existingNotes where !noteKeys.contains(stored.key) {
@@ -227,12 +242,17 @@ actor LocalLibraryStore: ModelActor {
     let key = item.localRecordKey
     let scopeKey = scope.storageKey
     let data = try data(for: item)
+    let parentID: String?
+    if case .page(let page) = item { parentID = page.book }
+    else { parentID = nil }
     if let stored = try record(scopeKey, key) {
       stored.serverData = data
+      stored.parentID = parentID
     } else {
       context.insert(LocalStoredRecord(
         key: storageKey(scope: scopeKey, key: key), scope: scopeKey,
-        kind: key.kind.rawValue, recordID: key.id, serverData: data))
+        kind: key.kind.rawValue, recordID: key.id, serverData: data,
+        parentID: parentID))
     }
     try commit()
   }
@@ -240,10 +260,16 @@ actor LocalLibraryStore: ModelActor {
   func entries(scope: LocalAccountScope, kind: LocalRecordKind? = nil) throws
     -> [LocalLibraryEntry]
   {
-    try storedRecords(scope.storageKey).compactMap { stored in
-      if let kind, stored.kind != kind.rawValue { return nil }
-      return try entry(stored)
+    let scopeKey = scope.storageKey
+    let records: [LocalStoredRecord]
+    if let kind {
+      let kindValue = kind.rawValue
+      records = try context.fetch(FetchDescriptor<LocalStoredRecord>(
+        predicate: #Predicate { $0.scope == scopeKey && $0.kind == kindValue }))
+    } else {
+      records = try storedRecords(scopeKey)
     }
+    return try records.map(entry)
   }
 
   func projection(scope: LocalAccountScope) throws -> LocalLibraryProjection {
@@ -290,7 +316,8 @@ actor LocalLibraryStore: ModelActor {
     guard try record(scope.storageKey, LocalRecordKey(kind: .project, id: note.project)) != nil
     else { throw LocalLibraryError.wrongAccount }
     try upsertNote(
-      key: "diamond:\(note.id)", kind: "diamond", data: encoder.encode(note), scope: scope)
+      key: "diamond:\(note.id)", kind: "diamond", parentID: note.project,
+      data: encoder.encode(note), scope: scope)
   }
 
   func ingestNote(_ note: ColoringProgressNoteRecord, scope: LocalAccountScope) throws {
@@ -298,11 +325,12 @@ actor LocalLibraryStore: ModelActor {
       try record(scope.storageKey, LocalRecordKey(kind: .page, id: note.page)) != nil
     else { throw LocalLibraryError.wrongAccount }
     try upsertNote(
-      key: "coloring:\(note.id)", kind: "coloring", data: encoder.encode(note), scope: scope)
+      key: "coloring:\(note.id)", kind: "coloring", parentID: note.page,
+      data: encoder.encode(note), scope: scope)
   }
 
   private func upsertNote(
-    key: String, kind: String, data: Data, scope: LocalAccountScope
+    key: String, kind: String, parentID: String, data: Data, scope: LocalAccountScope
   ) throws {
     let scopeKey = scope.storageKey
     let storageKey = "\(scopeKey)|\(key)"
@@ -311,9 +339,11 @@ actor LocalLibraryStore: ModelActor {
     descriptor.fetchLimit = 1
     if let stored = try context.fetch(descriptor).first {
       stored.recordData = data
+      stored.parentID = parentID
     } else {
       context.insert(LocalStoredNote(
-        key: storageKey, scope: scopeKey, kind: kind, recordData: data))
+        key: storageKey, scope: scopeKey, kind: kind, recordData: data,
+        parentID: parentID))
     }
     try commit()
   }
@@ -368,8 +398,13 @@ actor LocalLibraryStore: ModelActor {
   }
 
   func pendingOperations(scope: LocalAccountScope) throws -> [LocalPendingOperation] {
-    try storedRecords(scope.storageKey).compactMap { stored in
-      guard let data = stored.activeData, stored.conflictValue == nil else { return nil }
+    let scopeKey = scope.storageKey
+    let records = try context.fetch(FetchDescriptor<LocalStoredRecord>(
+      predicate: #Predicate {
+        $0.scope == scopeKey && $0.activeData != nil && $0.conflictValue == nil
+      }))
+    return try records.compactMap { stored in
+      guard let data = stored.activeData else { return nil }
       return try decoder.decode(LocalPendingOperation.self, from: data)
     }
   }
@@ -387,7 +422,9 @@ actor LocalLibraryStore: ModelActor {
   }
 
   func pendingCount(scope: LocalAccountScope) throws -> Int {
-    try storedRecords(scope.storageKey).filter { $0.activeData != nil }.count
+    let scopeKey = scope.storageKey
+    return try context.fetchCount(FetchDescriptor<LocalStoredRecord>(
+      predicate: #Predicate { $0.scope == scopeKey && $0.activeData != nil }))
   }
 
   func conflictChanges(scope: LocalAccountScope, key: LocalRecordKey) throws
@@ -586,37 +623,33 @@ actor LocalLibraryStore: ModelActor {
 
   func removeConfirmed(scope: LocalAccountScope, key: LocalRecordKey) throws {
     let scopeKey = scope.storageKey
-    let records = try storedRecords(scopeKey)
-    let notes = try storedNotes(scopeKey)
-    let matching = records.filter { $0.kind == key.kind.rawValue && $0.recordID == key.id }
+    let matching = try record(scopeKey, key)
     var children: [LocalStoredRecord] = []
     if key.kind == .book {
-      children = try records.filter { $0.kind == LocalRecordKind.page.rawValue }.filter {
-        try decoder.decode(ColoringPageRecord.self, from: $0.serverData).book == key.id
-      }
+      let pageKind = LocalRecordKind.page.rawValue
+      let bookID = key.id
+      children = try context.fetch(FetchDescriptor<LocalStoredRecord>(
+        predicate: #Predicate {
+          $0.scope == scopeKey && $0.kind == pageKind && $0.parentID == bookID
+        }))
     }
-    guard (matching + children).allSatisfy({ $0.activeData == nil }) else {
+    let recordsToDelete = [matching].compactMap { $0 } + children
+    guard recordsToDelete.allSatisfy({ $0.activeData == nil }) else {
       throw LocalLibraryError.conflict
     }
     let pageIDs = Set(children.map(\.recordID))
-    let matchingNotes = try notes.filter { note in
-      if note.kind == "diamond", key.kind == .project {
-        return try decoder.decode(DiamondProgressNoteRecord.self, from: note.recordData)
-          .project == key.id
-      }
-      if note.kind == "coloring", key.kind == .page {
-        return try decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData)
-          .page == key.id
-      }
-      if note.kind == "coloring", key.kind == .book {
-        return try pageIDs.contains(
-          decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData).page)
-      }
-      return false
+    let noteKind = key.kind == .project ? "diamond" : "coloring"
+    let affectedIDs = key.kind == .book ? pageIDs : Set([key.id])
+    var matchingNotes: [LocalStoredNote] = []
+    for parentID in affectedIDs {
+      matchingNotes += try context.fetch(FetchDescriptor<LocalStoredNote>(
+        predicate: #Predicate {
+          $0.scope == scopeKey && $0.kind == noteKind && $0.parentID == parentID
+        }))
     }
     do {
       try context.transaction {
-        for record in matching + children { context.delete(record) }
+        for record in recordsToDelete { context.delete(record) }
         for note in matchingNotes { context.delete(note) }
         try context.save()
       }

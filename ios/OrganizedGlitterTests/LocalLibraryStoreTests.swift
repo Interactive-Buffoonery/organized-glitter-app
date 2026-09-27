@@ -244,6 +244,66 @@ struct LocalLibraryStoreTests {
   }
 
   @Test
+  func confirmedRemovalDeletesOnlyRelatedRecordsAndNotes() async throws {
+    let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
+    let store = try LocalLibraryStore.inMemory()
+    let firstProject = try project(id: "project-1", user: "user-1", title: "First")
+    let secondProject = try project(id: "project-2", user: "user-1", title: "Second")
+    let books = try ["book-1", "book-2"].map { id in
+      try decode(ColoringBookRecord.self, [
+        "id": id, "user": "user-1", "title": id, "status": "wishlist",
+        "total_pages": 1, "created": "2026-01-01", "updated": "2026-01-01",
+      ])
+    }
+    let pages = try [("page-1", "book-1"), ("page-2", "book-2")].map { id, book in
+      try decode(ColoringPageRecord.self, [
+        "id": id, "book": book, "page_number": 1, "status": "wishlist",
+        "photos": [], "created": "2026-01-01", "updated": "2026-01-01",
+      ])
+    }
+    let diamondNotes = try ["project-1", "project-2"].map { project in
+      try decode(DiamondProgressNoteRecord.self, [
+        "id": "note-\(project)", "project": project, "content": "Note", "date": "2026-01-01",
+        "created": "2026-01-01", "updated": "2026-01-01",
+      ])
+    }
+    let coloringNotes = try ["page-1", "page-2"].map { page in
+      try decode(ColoringProgressNoteRecord.self, [
+        "id": "note-\(page)", "user": "user-1", "page": page, "content": "Note",
+        "date": "2026-01-01", "created": "2026-01-01", "updated": "2026-01-01",
+      ])
+    }
+    try await store.ingestSnapshot(LocalFullSnapshot(
+      version: 1, projects: [firstProject, secondProject].compactMap {
+        if case .diamond(let record) = $0 { return record }
+        return nil
+      }, coloringBooks: books, coloringPages: pages,
+      progressNotes: diamondNotes, coloringPageProgressNotes: coloringNotes), scope: scope)
+
+    try await store.removeConfirmed(
+      scope: scope, key: LocalRecordKey(kind: .project, id: "project-1"))
+    try await store.removeConfirmed(
+      scope: scope, key: LocalRecordKey(kind: .book, id: "book-1"))
+
+    let records = try await store.entries(scope: scope)
+    #expect(Set(records.map(\.item.recordID)) == ["project-2", "book-2", "page-2"])
+    let remainingNotes = try await store.notes(scope: scope)
+    #expect(remainingNotes.diamonds.map(\.project) == ["project-2"])
+    #expect(remainingNotes.coloring.map(\.page) == ["page-2"])
+  }
+
+  @Test
+  func pageDecodesWhenExpandedBookOmitsUser() throws {
+    let page = try decode(ColoringPageRecord.self, [
+      "id": "page-1", "book": "book-1", "page_number": 1, "status": "wishlist",
+      "photos": [], "created": "2026-01-01", "updated": "2026-01-01",
+      "expand": ["book": ["id": "book-1", "title": "Book"]],
+    ])
+    #expect(page.expand?.book?.title == "Book")
+    #expect(page.expand?.book?.user == nil)
+  }
+
+  @Test
   func databaseOpenFailureIsReported() throws {
     let regularFile = FileManager.default.temporaryDirectory
       .appending(path: UUID().uuidString)
@@ -276,5 +336,9 @@ struct LocalLibraryStoreTests {
     if let dateStarted { object["date_started"] = dateStarted }
     let data = try JSONSerialization.data(withJSONObject: object)
     return .diamond(try JSONDecoder().decode(DiamondProjectRecord.self, from: data))
+  }
+
+  private func decode<T: Decodable>(_ type: T.Type, _ object: [String: Any]) throws -> T {
+    try JSONDecoder().decode(type, from: JSONSerialization.data(withJSONObject: object))
   }
 }

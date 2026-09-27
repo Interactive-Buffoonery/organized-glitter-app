@@ -154,7 +154,7 @@ struct ColoringPageExpand: Codable, Hashable, Sendable {
 struct ColoringPageBook: Codable, Hashable, Sendable {
   let id: String
   let title: String
-  let user: String
+  let user: String?
 }
 
 extension ColoringPageExpand {
