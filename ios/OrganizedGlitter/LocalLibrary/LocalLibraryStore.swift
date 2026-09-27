@@ -462,6 +462,48 @@ actor LocalLibraryStore {
     }
   }
 
+  func removeConfirmed(scope: LocalAccountScope, key: LocalRecordKey) throws {
+    let scopeKey = scope.storageKey
+    let records = try storedRecords(scopeKey)
+    let notes = try storedNotes(scopeKey)
+    let matching = records.filter { $0.kind == key.kind.rawValue && $0.recordID == key.id }
+    var children: [LocalStoredRecord] = []
+    if key.kind == .book {
+      children = try records.filter { $0.kind == LocalRecordKind.page.rawValue }.filter {
+        try decoder.decode(ColoringPageRecord.self, from: $0.serverData).book == key.id
+      }
+    }
+    guard (matching + children).allSatisfy({ $0.activeData == nil }) else {
+      throw LocalLibraryError.conflict
+    }
+    let pageIDs = Set(children.map(\.recordID))
+    let matchingNotes = try notes.filter { note in
+      if note.kind == "diamond", key.kind == .project {
+        return try decoder.decode(DiamondProgressNoteRecord.self, from: note.recordData)
+          .project == key.id
+      }
+      if note.kind == "coloring", key.kind == .page {
+        return try decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData)
+          .page == key.id
+      }
+      if note.kind == "coloring", key.kind == .book {
+        return try pageIDs.contains(
+          decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData).page)
+      }
+      return false
+    }
+    do {
+      try context.transaction {
+        for record in matching + children { context.delete(record) }
+        for note in matchingNotes { context.delete(note) }
+        try context.save()
+      }
+    } catch {
+      context.rollback()
+      throw error
+    }
+  }
+
   private static let allowedFields: [LocalRecordKind: Set<String>] = [
     .project: [
       "title", "status", "kit_category", "drill_shape", "source_url", "general_notes",
