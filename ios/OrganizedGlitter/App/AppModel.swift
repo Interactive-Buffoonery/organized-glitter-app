@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices
 import OSLog
 import Observation
 
@@ -32,6 +33,10 @@ final class AppModel {
   private(set) var isSigningOut = false
   private var userSaveTask: Task<Void, Never>?
   private var cleanupBlocked = false
+  @ObservationIgnored private var oauthAttemptID: UUID?
+  @ObservationIgnored private var oauthTask: Task<Void, Never>?
+  @ObservationIgnored private var oauthTimeoutTask: Task<Void, Never>?
+  @ObservationIgnored private var oauthBrowser: OAuthWebSession?
 
   var phase: Phase {
     didSet {
@@ -39,6 +44,8 @@ final class AppModel {
     }
   }
   var signInError: String?
+  var oauthError: String?
+  var socialProviders: [SocialProvider] = []
   var isSubmitting = false
   var passwordResetDestination: PasswordResetDestination?
   var showsSignedInPasswordResetNotice = false
@@ -229,6 +236,114 @@ final class AppModel {
     }
   }
 
+  func loadSocialProviders() async {
+    #if DEBUG
+      if ProcessInfo.processInfo.arguments.contains("-ui-testing-signed-out") {
+        socialProviders = ProcessInfo.processInfo.arguments.contains("-ui-testing-social-providers")
+          ? [.google, .discord] : []
+        return
+      }
+    #endif
+    guard let client else { return }
+    do {
+      let providers = try await client.oauthProviders()
+      guard case .signedOut = phase else { return }
+      socialProviders = providers.compactMap { SocialProvider(rawValue: $0.name) }
+    } catch {
+      socialProviders = []
+    }
+  }
+
+  func signInWithOAuth(provider: SocialProvider, anchor: ASPresentationAnchor) {
+    guard !isSigningOut, !cleanupBlocked, !isSubmitting,
+      client != nil, socialProviders.contains(provider) else { return }
+    let browser = OAuthWebSession(anchor: anchor)
+    signInWithOAuth(
+      provider: provider,
+      present: { try await browser.start($0, redirectURL: $1) }
+    )
+    if oauthTask != nil { oauthBrowser = browser }
+  }
+
+  func signInWithOAuth(
+    provider: SocialProvider,
+    present: @escaping @MainActor @Sendable (URL, URL) async throws -> URL,
+    timeout: Duration = .seconds(120)
+  ) {
+    guard !isSigningOut, !cleanupBlocked, !isSubmitting,
+      let client, socialProviders.contains(provider) else { return }
+    let generation = beginSessionTransition()
+    let attemptID = UUID()
+    oauthAttemptID = attemptID
+    isSubmitting = true
+    oauthError = nil
+    oauthTask = Task {
+      defer {
+        if generation == sessionGeneration {
+          isSubmitting = false
+          oauthBrowser?.cancel()
+          oauthBrowser = nil
+          oauthTimeoutTask?.cancel()
+          oauthTimeoutTask = nil
+          oauthTask = nil
+          oauthAttemptID = nil
+        }
+      }
+      do {
+        let session = try await client.signInWithOAuth(
+          providerName: provider.rawValue,
+          attemptID: attemptID,
+          present: present
+        )
+        guard generation == sessionGeneration else { return }
+        try await openLibrary(for: session.user, generation: generation)
+        guard generation == sessionGeneration else { return }
+        phase = .signedIn(session.user)
+        applyThemePreference(from: session.user)
+      } catch is CancellationError {
+        return
+      } catch APIError.cancelled {
+        return
+      } catch {
+        guard generation == sessionGeneration else { return }
+        oauthError = Self.oauthMessage(for: error)
+      }
+    }
+    oauthTimeoutTask = Task {
+      try? await Task.sleep(for: timeout)
+      guard !Task.isCancelled, generation == sessionGeneration else { return }
+      cancelOAuth()
+      oauthError = "Sign-in timed out. Try again."
+    }
+  }
+
+  func cancelOAuth() {
+    guard oauthTask != nil else { return }
+    _ = beginSessionTransition()
+    isSubmitting = false
+  }
+
+  private static func oauthMessage(for error: Error) -> String {
+    switch error {
+    case OAuthError.unavailable:
+      return "This sign-in provider is unavailable right now."
+    case OAuthError.denied:
+      return "The provider did not approve sign-in. Try again."
+    case OAuthError.invalidResponse:
+      return "The provider did not complete sign-in. Try again."
+    case OAuthError.presentationFailed:
+      return "The sign-in window could not open. Try again."
+    case APIError.conflict:
+      return "This sign-in conflicts with an existing account. Sign in with your existing method and manage connections on the web."
+    case APIError.emailUnverified:
+      return "Verify your account before signing in. You can request a new verification email with the email method."
+    case APIError.offline:
+      return APIError.offlineMessage
+    default:
+      return "Organized Glitter could not sign you in. Try again."
+    }
+  }
+
   func expireSession() async {
     guard !isSigningOut else { return }
     isSigningOut = true
@@ -377,6 +492,16 @@ final class AppModel {
   }
 
   private func beginSessionTransition() -> Int {
+    oauthTask?.cancel()
+    if let attemptID = oauthAttemptID {
+      Task { await client?.cancelExternalAuthAttempt(id: attemptID) }
+    }
+    oauthAttemptID = nil
+    oauthTimeoutTask?.cancel()
+    oauthBrowser?.cancel()
+    oauthTask = nil
+    oauthTimeoutTask = nil
+    oauthBrowser = nil
     sessionGeneration &+= 1
     return sessionGeneration
   }
@@ -396,6 +521,8 @@ extension Error {
         "Verify your email address before signing in. You can request a new verification email below."
     case .forbidden:
       return "This account does not have permission to sign in."
+    case .conflict:
+      return "This account conflicts with an existing sign-in method."
     case .validation(let message):
       return message
     case .offline:

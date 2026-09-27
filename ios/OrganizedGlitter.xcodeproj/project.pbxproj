@@ -37,6 +37,7 @@
 		34401C9DCE7231B3465C4D13 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCC5D630FB65A58EB27EDEC /* AppConfiguration.swift */; };
 		37404AF106CABEFE16BA8F10 /* LibrarySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554D2223736BF1D4902B498D /* LibrarySession.swift */; };
 		3D6BFE41A3B50BDD4E82CCC5 /* Caveat.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 63076BFAC078AAEE6B474418 /* Caveat.ttf */; };
+		3F93AFCA88B2EB743C6B67D5 /* OAuthWebSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C461A07DF1FA06B1AB75C0 /* OAuthWebSession.swift */; };
 		4026BC25DE6D2DCB70DB696B /* LibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */; };
 		415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371EA167F285531DE866936F /* PocketBaseDateTests.swift */; };
 		42DB3225654CE75C370E028F /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */; };
@@ -59,6 +60,7 @@
 		71061F17395CBB8B0635D586 /* LibrarySyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5207C33DF1810FC65A8ED7EB /* LibrarySyncStatusView.swift */; };
 		71AE29C0F11977F5A7B2259C /* OfflineSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EFEA0FDF0D2A4FD5A59E4B /* OfflineSessionTests.swift */; };
 		7294FB2A6664672A48BA860A /* CreateMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FEE06635DBC0A5ECF26E1C /* CreateMenu.swift */; };
+		7452D060DBE34C698FA59CC7 /* PocketBaseOAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 512ABFA7EC94F056C621781C /* PocketBaseOAuth.swift */; };
 		7597BB520C596F016BB189A1 /* ProtectedFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24460756B5AEB105F2D459F5 /* ProtectedFileAccess.swift */; };
 		7B77225BDD6B7888A3C1A0D3 /* DetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD03178006CC4D181EC25E88 /* DetailHeader.swift */; };
 		7EFBD5D056D07BC5637C0068 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6514166844D26328882B320 /* ThemeStore.swift */; };
@@ -107,6 +109,7 @@
 		F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */; };
 		F2EB4D73479C7792156305A5 /* AccountEntryRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66315A4B533EEEAF9FEFE7D /* AccountEntryRoute.swift */; };
 		F318A1BFDA2F6C1781E7799B /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728912BD866D6E64A64A1156 /* WelcomeView.swift */; };
+		F604ED93EC6E10B6696CC90B /* OAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF7448BB4586E06FB910036 /* OAuthTests.swift */; };
 		FD47E1CEADB3F3BA9B3A74C1 /* RemoteArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02EA4614FC4C10D918E0879 /* RemoteArtwork.swift */; };
 		FD4D6BABAD2181AC7A09236A /* LocalLibraryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7567298DEDD48B2D921E5BC /* LocalLibraryStoreTests.swift */; };
 		FD7CA4ED75B15A0B645235F5 /* NumberSectionPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3277359BD8C95E73E0D0287 /* NumberSectionPickerTests.swift */; };
@@ -150,6 +153,7 @@
 		2E7976C3250DB200B8D6BC78 /* ColoringEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringEditorTests.swift; sourceTree = "<group>"; };
 		2F4C3D5F5234F13224CA4205 /* LibraryRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryRefresh.swift; sourceTree = "<group>"; };
 		3243054F78356C39C4024422 /* AccountMethodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountMethodView.swift; sourceTree = "<group>"; };
+		32C461A07DF1FA06B1AB75C0 /* OAuthWebSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthWebSession.swift; sourceTree = "<group>"; };
 		33736DFA39E0AD4255D9B3D3 /* OrganizedGlitter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OrganizedGlitter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		371EA167F285531DE866936F /* PocketBaseDateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseDateTests.swift; sourceTree = "<group>"; };
 		39A9F5EB63F7156CCDA9FAB6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -163,6 +167,7 @@
 		4964692269A5F0000FBCF10D /* LocalSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSyncCoordinator.swift; sourceTree = "<group>"; };
 		4BA4E4CDD670B63EB681D20F /* NativeRefinementUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRefinementUITests.swift; sourceTree = "<group>"; };
 		4F9D28127350CFA29235E456 /* PocketBaseClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseClientTests.swift; sourceTree = "<group>"; };
+		512ABFA7EC94F056C621781C /* PocketBaseOAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseOAuth.swift; sourceTree = "<group>"; };
 		5207C33DF1810FC65A8ED7EB /* LibrarySyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySyncStatusView.swift; sourceTree = "<group>"; };
 		53BE7051E60073DC0E722076 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		54D26744B389FC6CAD1C8367 /* RemoteArtworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteArtworkTests.swift; sourceTree = "<group>"; };
@@ -185,8 +190,9 @@
 		6FCC5D630FB65A58EB27EDEC /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		728912BD866D6E64A64A1156 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		77D37503C19C43867510A924 /* AccountPreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPreferencesTests.swift; sourceTree = "<group>"; };
-		7FA4FE68327F5F2276F1EC0D /* PasswordResetLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetLink.swift; sourceTree = "<group>"; };
 		78CA823F6822F1CC0582249F /* LocalFeatureFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFeatureFixtures.swift; sourceTree = "<group>"; };
+		7DF7448BB4586E06FB910036 /* OAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthTests.swift; sourceTree = "<group>"; };
+		7FA4FE68327F5F2276F1EC0D /* PasswordResetLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetLink.swift; sourceTree = "<group>"; };
 		845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIErrorTests.swift; sourceTree = "<group>"; };
 		84804F12B2E01DD51C4BD891 /* VerificationRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationRequestView.swift; sourceTree = "<group>"; };
 		851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetailModel.swift; sourceTree = "<group>"; };
@@ -340,6 +346,7 @@
 				911823E33E157F4AA5946C5D /* PocketBaseFilter.swift */,
 				96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */,
 				3B9D772610290CBFD91AE91A /* PocketBaseMultipart.swift */,
+				512ABFA7EC94F056C621781C /* PocketBaseOAuth.swift */,
 				187EF4472F90566B37B087AF /* PocketBaseRecords.swift */,
 				E0CD4E065759D3DC0D45CF73 /* PrivateArtworkStore.swift */,
 				24460756B5AEB105F2D459F5 /* ProtectedFileAccess.swift */,
@@ -355,6 +362,7 @@
 				3243054F78356C39C4024422 /* AccountMethodView.swift */,
 				F9079468E04D40FFDADAC626 /* AuthChrome.swift */,
 				0E89DA838AA385CE7F6B8903 /* BrandWordmarkArt.swift */,
+				32C461A07DF1FA06B1AB75C0 /* OAuthWebSession.swift */,
 				190EF4B42B1FBBEE517D2F54 /* PasswordResetConfirmationView.swift */,
 				7FA4FE68327F5F2276F1EC0D /* PasswordResetLink.swift */,
 				F07BA0F2894320D34E13F322 /* PasswordResetView.swift */,
@@ -462,6 +470,7 @@
 				D7567298DEDD48B2D921E5BC /* LocalLibraryStoreTests.swift */,
 				2360F3205301A955F7A2898C /* LocalSyncTransportTests.swift */,
 				A3277359BD8C95E73E0D0287 /* NumberSectionPickerTests.swift */,
+				7DF7448BB4586E06FB910036 /* OAuthTests.swift */,
 				A0EFEA0FDF0D2A4FD5A59E4B /* OfflineSessionTests.swift */,
 				1A580F5FC13D7331BCA7E222 /* OverviewTests.swift */,
 				ABD86FAEE4E3F2BEF344FBC2 /* PasswordResetLinkTests.swift */,
@@ -644,6 +653,7 @@
 				FD4D6BABAD2181AC7A09236A /* LocalLibraryStoreTests.swift in Sources */,
 				7F5BD6B19D638072E887F982 /* LocalSyncTransportTests.swift in Sources */,
 				FD7CA4ED75B15A0B645235F5 /* NumberSectionPickerTests.swift in Sources */,
+				F604ED93EC6E10B6696CC90B /* OAuthTests.swift in Sources */,
 				71AE29C0F11977F5A7B2259C /* OfflineSessionTests.swift in Sources */,
 				B5F6DF03D4C7892E8879D9A2 /* OverviewTests.swift in Sources */,
 				8EE07AF430A1E7770993BC6F /* PasswordResetLinkTests.swift in Sources */,
@@ -698,6 +708,7 @@
 				6E39CCEC3FABC42CB0773544 /* LocalLibraryTypes.swift in Sources */,
 				17620B17A9D08B3E442FA6A5 /* LocalSyncCoordinator.swift in Sources */,
 				86A3987AD8A99D6D11B976DA /* NumberSectionPicker.swift in Sources */,
+				3F93AFCA88B2EB743C6B67D5 /* OAuthWebSession.swift in Sources */,
 				81B74D4319E12928F38EE396 /* OrganizedGlitterApp.swift in Sources */,
 				DADD24FA4D40EDDA6A2F5541 /* OrganizedGlitterTheme.swift in Sources */,
 				BCF12EEA076B4ED0113A1363 /* OverviewFixtures.swift in Sources */,
@@ -710,6 +721,7 @@
 				194236C29D621F54421005AB /* PocketBaseFilter.swift in Sources */,
 				B487C0A1F2EF4330C3511E7E /* PocketBaseModels.swift in Sources */,
 				457DC3FD1C9AADB965223612 /* PocketBaseMultipart.swift in Sources */,
+				7452D060DBE34C698FA59CC7 /* PocketBaseOAuth.swift in Sources */,
 				02B1B1F48B151EA280F5E87F /* PocketBaseRecords.swift in Sources */,
 				CCD03CD3345C5BDCCCEAEA0F /* PrivateArtworkStore.swift in Sources */,
 				7597BB520C596F016BB189A1 /* ProtectedFileAccess.swift in Sources */,
