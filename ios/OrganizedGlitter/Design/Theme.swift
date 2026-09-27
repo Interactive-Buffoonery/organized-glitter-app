@@ -1,9 +1,6 @@
 import SwiftUI
 
-/// Semantic color tokens for the iOS app's own design system ("Berry Cream").
-/// The web application keeps its Catppuccin themes; iOS ships one bright theme
-/// with a light and a dark variant. Hex values, rules, and the approved
-/// mockups are documented in `docs/design.md` and `docs/mockups/`.
+/// Semantic Berry Cream colors shared with the web app, expressed in sRGB.
 struct Theme: Equatable, Sendable {
   let background: Color
   let foreground: Color
@@ -26,10 +23,7 @@ struct Theme: Equatable, Sendable {
 
   /// Page background, top to bottom.
   let gradientStops: [Color]
-  /// Optional radial bloom drawn over a flat `background` base. `nil` for the
-  /// light variant, which uses `backgroundGradient`. The dark "Berry Cream
-  /// after dark" stage paints a deep navy base with a purple bloom rising
-  /// from the bottom of the page.
+  /// Optional elliptical bloom over the opaque page background.
   let backgroundBloom: Bloom?
 
   /// Secondary text directly over the page must remain readable across the glow.
@@ -51,15 +45,12 @@ struct Theme: Equatable, Sendable {
 }
 
 extension Theme {
-  /// A radial color bloom drawn over the flat dark `background`. The web app's
-  /// "Berry Cream after dark" stage paints an elliptical bloom from the bottom
-  /// of the page; iOS approximates it with a circular radial gradient whose
-  /// end radius scales with the longer screen dimension.
+  /// Ellipse radii are fractions of the viewport width and height, matching
+  /// the web theme independently of device size and orientation.
   struct Bloom: Equatable, Sendable {
     let center: UnitPoint
     let stops: [Stop]
-    /// End radius as a fraction of `max(width, height)`.
-    let radiusFraction: CGFloat
+    let radiusFraction: CGSize
 
     struct Stop: Equatable, Sendable {
       let color: Color

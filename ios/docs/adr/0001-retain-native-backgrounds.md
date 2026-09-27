@@ -1,6 +1,14 @@
 # ADR 0001: Retain the native palette and backgrounds
 
-Status: Accepted by Sarah
+Status: Accepted by Sarah; dark palette and bloom superseded on 2026-09-27
+
+## Dark theme update (2026-09-27)
+
+Sarah requested matching the web app's improved dark colors and gradients.
+The dark palette and circular bloom below are historical. Current dark values
+and elliptical geometry follow the web theme and are recorded in
+[the design system](../design.md#page-background). Light appearance and the
+shared `Theme.themedBackground` entry point remain unchanged.
 
 ## Context
 
