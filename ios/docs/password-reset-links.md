@@ -1,6 +1,7 @@
 # Password reset links
 
-Status: native implementation prepared; production association not yet verified.
+Status: native implementation prepared. The canonical AASA response is verified;
+physical-device link handling and live-email flow remain unverified.
 
 ## Contract
 
@@ -29,22 +30,28 @@ use that full identifier and match `/auth/confirm-password-reset/*`.
 3. The recovery screen can request a new reset email.
 4. A successful reset clears any local signed-in session and offers a direct
    return to sign in.
-5. Offline and temporary server failures keep the form available for retry.
+5. When a confirmation response is lost or the server fails, the result may be
+   unknown. The app clears the local session and password fields, then offers
+   sign-in with the new password or a fresh reset link.
 
 The legacy `/reset-password?token=...` web route is not a native route. It
 remains a web compatibility shim and redirects to the canonical path.
 
 ## Deployment gate
 
-The app carries `applinks:organizedglitter.app`, but the entitlement alone does
-not make universal links work. Before claiming deployed native support:
+The app carries `applinks:organizedglitter.app`. On September 26, 2026, a direct
+HTTPS GET of the canonical AASA file returned
+`7CNK4YPCQX.com.interactivebuffoonery.organizedglitter` with the
+`/auth/confirm-password-reset/*` component. The coordinated backend PR #261
+merged on September 21, 2026. Neither observation verifies the deployed backend
+revision or proves that iOS opens the link. Before claiming deployed native
+support:
 
-1. Deploy the AASA file from the coordinated web change.
-2. Verify the file over HTTPS with the exact application identifier and path.
-3. Verify a newly generated reset email on a physical iOS 18 or newer device,
+1. Verify a newly generated reset email on a physical iOS 18 or newer device,
    including app-open, web fallback, success, expired, and reused-token cases.
-4. Record the verified deployed backend revision in `BackendContract.json`.
+2. Check the native flow with VoiceOver.
+3. Verify the deployed backend revision, then record it in
+   `BackendContract.json`.
 
-`BackendContract.json` intentionally remains unchanged in this preparatory
-change because the coordinated backend revision has not shipped or been
-verified in production.
+`BackendContract.json` remains unchanged because the deployed backend revision
+has not been verified.
