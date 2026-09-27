@@ -57,7 +57,7 @@ The App Store / home-screen icon was regenerated from
 | Surface | Behavior |
 | --- | --- |
 | System launch screen | Solid `LaunchBackground` (`#F8E9F6` light / `#05051A` dark) with the `LaunchWordmark` asset at Welcome's wordmark position (70pt above the safe-area center). Regenerate with `script/render-launch-wordmark.swift`. |
-| In-app restoration | Welcome's layout with twinkling sparkles and hidden actions; the themed background fades in over the launch color. VoiceOver reads “Opening your library” on the wordmark. Sparkles hold still with Reduce Motion. No artificial delay. |
+| In-app restoration | Welcome's layout with twinkling sparkles and hidden actions; the themed background fades in over the launch color. VoiceOver exposes “Opening your library” as a separate `launchProgress` status after the wordmark header. Sparkles hold still with Reduce Motion. No artificial delay. |
 | Welcome | Stacked Caveat wordmark with still sparkles, Create account, Sign in. Owns `NavigationStack` path. No authenticated tabs. |
 | Method selection | Wordmark, Welcome back / Create account, Continue with email, switch link. Mode switches in place without stacking duplicate method screens. |
 | Email sign-in | Email, password, Sign in, Forgot password?, Privacy, Terms, Resend verification. Password reset and verification use the shared path, not nested `NavigationLink` destinations. |
