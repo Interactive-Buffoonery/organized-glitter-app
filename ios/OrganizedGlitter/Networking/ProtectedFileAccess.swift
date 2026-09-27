@@ -53,16 +53,19 @@ final class ProtectedFileAccess {
     return max(30, timeUntilExpiry - 30)
   }
 
+  func artworkURL(for item: LibraryItem, thumb: String? = nil) -> URL? {
+    item.artworkURL(using: client, thumb: thumb, token: token ?? "")
+  }
+
   func url(
     collection: String,
     recordID: String,
     filename: String,
     thumb: String? = nil
   ) -> URL? {
-    guard let token else { return nil }
     return client.fileURL(
       collection: collection, recordID: recordID, filename: filename,
-      thumb: thumb, token: token
+      thumb: thumb, token: token ?? ""
     )
   }
 }

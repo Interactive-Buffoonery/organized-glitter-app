@@ -2,7 +2,7 @@
 
 ## Product
 
-Organized Glitter is publicly distributed through the App Store. Each user’s
+Organized Glitter is a new native app being prepared for the App Store. Each user’s
 craft-project library and files are private. Read `README.md` and
 `ios/docs/architecture.md` before changing application structure or backend behavior.
 
@@ -20,6 +20,8 @@ craft-project library and files are private. Read `README.md` and
 - Keep creates, deletes, notes, uploads, taxonomy, account settings, and book
   page-count changes online. Preserve pending work across authentication and
   download failures; require confirmation before discarding it at sign-out.
+- Store library records and pending supported edits in the account-scoped
+  SwiftData store. Route feature reads and writes through `LibrarySession`.
 - Use Apple platform APIs before third-party dependencies.
 - Never log credentials, auth tokens, OAuth codes, user content, private file
   URLs, email addresses, or other PII.
@@ -45,7 +47,8 @@ craft-project library and files are private. Read `README.md` and
 - `PocketBaseClient` is the concrete transport. Do not add a protocol with one
   implementation or a generic repository layer.
 - Treat task cancellation as normal.
-- Use partial updates and refresh after writes.
+- Use partial updates. Commit local edits before reporting success; synchronize
+  through the transactional mobile contract and refresh after accepted writes.
 - Use role-appropriate native controls and provide accessibility labels.
 
 ## Git
