@@ -83,6 +83,21 @@ struct DiamondProjectRecord: Codable, Hashable, Identifiable, Sendable {
 struct ColoringBookExpand: Codable, Hashable, Sendable {
   let publisher: NamedRelationRecord?
   let illustrator: NamedRelationRecord?
+  var bookTags: [ColoringBookTagRecord]? = nil
+
+  enum CodingKeys: String, CodingKey {
+    case publisher, illustrator
+    case bookTags = "coloring_book_tags_via_book"
+  }
+}
+
+struct ColoringBookTagRecord: Codable, Hashable, Sendable {
+  struct Expand: Codable, Hashable, Sendable {
+    let tag: TagRecord?
+  }
+
+  let id: String
+  let expand: Expand?
 }
 
 struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
@@ -100,6 +115,8 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
   let created: String
   let updated: String
   let expand: ColoringBookExpand?
+  var dateStarted: String? = nil
+  var dateCompleted: String? = nil
 
   enum CodingKeys: String, CodingKey {
     case id, user, title, series, status, publisher, illustrator, created, updated, expand
@@ -107,6 +124,8 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
     case completedPages = "completed_pages"
     case completionPercentage = "completion_percentage"
     case coverImage = "cover_image"
+    case dateStarted = "date_started"
+    case dateCompleted = "date_completed"
   }
 
   func withExpand(_ expand: ColoringBookExpand?) -> ColoringBookRecord {
@@ -116,11 +135,32 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
       completionPercentage: completionPercentage, coverImage: coverImage,
       publisher: publisher, illustrator: illustrator, created: created,
       updated: updated, expand: expand)
+      .withDates(dateStarted: dateStarted, dateCompleted: dateCompleted)
+  }
+
+  private func withDates(dateStarted: String?, dateCompleted: String?) -> ColoringBookRecord {
+    var copy = self
+    copy.dateStarted = dateStarted
+    copy.dateCompleted = dateCompleted
+    return copy
   }
 }
 
 struct ColoringPageExpand: Codable, Hashable, Sendable {
-  let book: ColoringBookRecord?
+  let book: ColoringPageBook?
+  var mediums: [NamedRelationRecord]? = nil
+}
+
+struct ColoringPageBook: Codable, Hashable, Sendable {
+  let id: String
+  let title: String
+  let user: String?
+}
+
+extension ColoringPageExpand {
+  init(book: ColoringBookRecord) {
+    self.init(book: ColoringPageBook(id: book.id, title: book.title, user: book.user))
+  }
 }
 
 struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
@@ -135,6 +175,7 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
   let created: String
   let updated: String
   let expand: ColoringPageExpand?
+  var revealedAt: String? = nil
 
   enum CodingKeys: String, CodingKey {
     case id, book, status, photos, created, updated, expand
@@ -142,13 +183,16 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
     case revealedSubject = "revealed_subject"
     case completedAt = "completed_at"
     case startedAt = "started_at"
+    case revealedAt = "revealed_at"
   }
 
   func withExpand(_ expand: ColoringPageExpand?) -> ColoringPageRecord {
-    ColoringPageRecord(
+    var copy = ColoringPageRecord(
       id: id, book: book, pageNumber: pageNumber, status: status, photos: photos,
       revealedSubject: revealedSubject, completedAt: completedAt,
       startedAt: startedAt, created: created, updated: updated, expand: expand)
+    copy.revealedAt = revealedAt
+    return copy
   }
 }
 

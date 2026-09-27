@@ -13,8 +13,13 @@ craft-project library and files are private. Read `README.md` and
 - Guard APIs newer than iOS 18 with availability checks.
 - Keep PocketBase as the only backend and identity system.
 - Never merge accounts by email or reassign records on the client.
-- Keep server data in memory. Do not add offline writes or a persistent record
-  cache.
+- The approved offline-library policy supersedes the in-memory-only rule.
+  Permit account- and backend-scoped SwiftData storage of downloaded records
+  and pending existing-record metadata/status edits, plus bounded private
+  artwork caching. PocketBase remains authoritative for data and authorization.
+- Keep creates, deletes, notes, uploads, taxonomy, account settings, and book
+  page-count changes online. Preserve pending work across authentication and
+  download failures; require confirmation before discarding it at sign-out.
 - Use Apple platform APIs before third-party dependencies.
 - Never log credentials, auth tokens, OAuth codes, user content, private file
   URLs, email addresses, or other PII.
