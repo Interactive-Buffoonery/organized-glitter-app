@@ -32,6 +32,44 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
   }
 }
 
+struct DetailStatusRecovery: View {
+  let model: LibraryItemDetailModel
+  let onCollectionChanged: @MainActor @Sendable () async -> Void
+
+  var body: some View {
+    if let message = model.statusErrorMessage {
+      AccessibleErrorLabel(message: message)
+    }
+    if model.unresolvedStatusWrite {
+      VStack(alignment: .leading, spacing: 8) {
+        if let message = model.mutationErrorMessage {
+          AccessibleErrorLabel(message: message)
+        }
+        switch model.unresolvedWriteState {
+        case .needsRefresh:
+          Button("Refresh status") {
+            Task {
+              if await model.refreshUnresolvedWriteStatus() {
+                await onCollectionChanged()
+              }
+            }
+          }
+          .disabled(model.isMutating)
+          .accessibilityIdentifier("detail.status.refresh")
+        case .refreshed:
+          Button("Done reviewing status") {
+            model.clearUnresolvedWriteRecovery()
+          }
+          .accessibilityIdentifier("detail.status.reviewed")
+        case nil:
+          EmptyView()
+        }
+      }
+      .buttonStyle(.bordered)
+    }
+  }
+}
+
 struct DetailSpec: Identifiable {
   let title: String
   let value: String

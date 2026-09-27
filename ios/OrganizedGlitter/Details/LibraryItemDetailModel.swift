@@ -46,7 +46,9 @@ final class LibraryItemDetailModel {
   var isMutating = false
   var errorMessage: String?
   var mutationErrorMessage: String?
+  private(set) var statusErrorMessage: String?
   private(set) var unresolvedWriteState: DetailUnresolvedWriteState?
+  private(set) var unresolvedStatusWrite = false
 
   private var bookPagesPage = 0
   private var bookPagesTotalPages = 0
@@ -282,6 +284,7 @@ final class LibraryItemDetailModel {
 
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
     do {
       try await client.delete(collection: collection, id: recordID)
@@ -316,6 +319,7 @@ final class LibraryItemDetailModel {
     guard !isMutating, unresolvedWriteState == nil, item.status != status else { return false }
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
     let patch = ["status": status]
     do {
@@ -332,10 +336,13 @@ final class LibraryItemDetailModel {
       item = saved.retainingListingContext(from: item)
       await load()
       return true
-    } catch APIError.cancelled {
+    } catch APIError.offline, APIError.server, APIError.cancelled {
+      unresolvedStatusWrite = true
+      unresolvedWriteState = .needsRefresh
+      _ = await reconcileUnresolvedWrite()
       return false
     } catch {
-      mutationErrorMessage = error.userMessage(
+      statusErrorMessage = error.userMessage(
         permission: "Your account does not have permission to change the status.",
         fallback: "The status could not be changed. Try again."
       )
@@ -356,6 +363,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
 
     var files: [PocketBaseMultipartFile] = []
@@ -408,6 +416,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
+    statusErrorMessage = nil
     defer { isMutating = false }
 
     let form = PocketBaseMultipartForm(
@@ -455,6 +464,7 @@ final class LibraryItemDetailModel {
     guard unresolvedWriteState == .refreshed else { return }
     unresolvedWriteState = nil
     unresolvedDiamondWriteIncludesPhoto = false
+    unresolvedStatusWrite = false
     mutationErrorMessage = nil
   }
 
@@ -462,6 +472,11 @@ final class LibraryItemDetailModel {
     let didRefresh = await load()
     if didRefresh {
       unresolvedWriteState = .refreshed
+      if unresolvedStatusWrite {
+        mutationErrorMessage =
+          "The status response was lost. Review the refreshed status before changing it again."
+        return true
+      }
       switch item {
       case .diamond:
         mutationErrorMessage =
@@ -478,6 +493,11 @@ final class LibraryItemDetailModel {
     }
 
     unresolvedWriteState = .needsRefresh
+    if unresolvedStatusWrite {
+      mutationErrorMessage =
+        "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
+      return false
+    }
     switch item {
     case .diamond:
       mutationErrorMessage =
