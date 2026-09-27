@@ -10,6 +10,9 @@ final class LibrarySession {
   let store: LocalLibraryStore
   private let coordinator: LocalSyncCoordinator
   private var syncTask: Task<Void, Error>?
+  private var retryTask: Task<Void, Never>?
+  private var retryAttempt = 0
+  private var loadGeneration = 0
   private var active = true
   private var acceptsChanges = true
   private var onlineWrites = 0
@@ -38,25 +41,34 @@ final class LibrarySession {
 
   func loadLocal() async throws {
     try checkActive()
-    let loaded = try await store.entries(scope: scope)
-    let notes = try await store.notes(scope: scope)
-    let complete = try await store.hasSnapshot(scope: scope)
-    let pending = try await store.pendingCount(scope: scope)
+    loadGeneration &+= 1
+    let requestedGeneration = loadGeneration
+    let projection = try await store.projection(scope: scope)
     try checkActive()
-    entries = loaded
-    items = loaded.map(\.item)
-    progressNotes = notes.diamonds
-    coloringPageProgressNotes = notes.coloring
-    hasSnapshot = complete
-    pendingCount = pending
+    guard requestedGeneration == loadGeneration else { return }
+    entries = projection.entries
+    items = entries.map(\.item)
+    progressNotes = projection.progressNotes
+    coloringPageProgressNotes = projection.coloringPageProgressNotes
+    hasSnapshot = projection.hasSnapshot
+    pendingCount = projection.pendingCount
   }
 
   func refresh(force: Bool = false) async throws {
+    do { try await refreshFromServer() }
+    catch {
+      if force || !hasSnapshot || error as? APIError == .unauthenticated
+        || error as? APIError == .forbidden || error as? APIError == .cancelled
+        || error is CancellationError { throw error }
+    }
+  }
+
+  func refreshFromServer() async throws {
     try checkActive()
-    if onlineWrites > 0 { return }
+    guard onlineWrites == 0 else { throw LibrarySessionError.onlineWriteInProgress }
     if let syncTask { return try await syncTask.value }
     let task = Task { [weak self] in
-      guard let self else { return }
+      guard let self else { throw APIError.cancelled }
       self.isSyncing = true
       defer { self.isSyncing = false }
       do {
@@ -69,6 +81,10 @@ final class LibrarySession {
         try self.checkActive()
         self.syncMessage = nil
         self.generation &+= 1
+        self.retryAttempt = 0
+        self.retryTask?.cancel()
+        self.retryTask = nil
+        if self.hasQueuedChanges { self.scheduleSync(after: .seconds(10)) }
       } catch {
         guard self.active else { throw APIError.cancelled }
         try await self.loadLocal()
@@ -81,12 +97,31 @@ final class LibrarySession {
         self.syncMessage = self.hasSnapshot
           ? "Showing your downloaded library. Changes will sync when the service is available."
           : "Connect to download your library."
-        if !self.hasSnapshot { throw error }
+        if self.hasQueuedChanges {
+          self.retryAttempt = min(self.retryAttempt + 1, 5)
+          let delay = min(15 * (1 << self.retryAttempt), 300)
+          self.scheduleSync(after: .seconds(delay))
+        }
+        throw error
       }
     }
     syncTask = task
     defer { syncTask = nil }
     try await task.value
+  }
+
+  private var hasQueuedChanges: Bool {
+    entries.contains { $0.pending && $0.conflict == nil }
+  }
+
+  private func scheduleSync(after delay: Duration = .seconds(1)) {
+    guard active, retryTask == nil else { return }
+    retryTask = Task { [weak self] in
+      do { try await Task.sleep(for: delay) } catch { return }
+      guard let self, self.active, !Task.isCancelled else { return }
+      self.retryTask = nil
+      try? await self.refreshFromServer()
+    }
   }
 
   func monitorConnectivity() async {
@@ -118,9 +153,14 @@ final class LibrarySession {
     let entry = try await store.queueEdit(
       scope: scope, key: LocalRecordKey(kind: kind, id: id), patch: patch)
     try checkActive()
-    try await loadLocal()
+    loadGeneration &+= 1
+    if let index = entries.firstIndex(where: { $0.item.localRecordKey == key }) {
+      entries[index] = entry
+    } else { entries.append(entry) }
+    items = entries.map(\.item)
+    pendingCount = entries.filter(\.pending).count
     generation &+= 1
-    Task { try? await refresh() }
+    scheduleSync()
     return try Self.decode(entry.item)
   }
 
@@ -210,7 +250,11 @@ final class LibrarySession {
   func resumeWrites() { if active { acceptsChanges = true } }
 
   func close(removingData: Bool) async throws {
+    if removingData { try await store.beginRemoval(scope: scope) }
     active = false
+    loadGeneration &+= 1
+    retryTask?.cancel()
+    retryTask = nil
     syncTask?.cancel()
     await coordinator.cancel()
     if let task = syncTask { _ = await task.result }
@@ -222,6 +266,7 @@ final class LibrarySession {
     if removingData {
       try await store.removeScope(scope)
       try await client.removeDownloadedArtwork(scope: scope)
+      try await store.finishRemoval(scope: scope)
     }
   }
 
@@ -306,8 +351,12 @@ final class LibrarySession {
 
 enum LibrarySessionError: LocalizedError {
   case pendingChanges
+  case onlineWriteInProgress
 
   var errorDescription: String? {
-    "Synchronize or resolve this item's pending changes before continuing."
+    switch self {
+    case .pendingChanges: "Synchronize or resolve this item's pending changes before continuing."
+    case .onlineWriteInProgress: "Wait for the current save to finish, then try again."
+    }
   }
 }
