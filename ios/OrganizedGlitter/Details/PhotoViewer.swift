@@ -214,6 +214,11 @@ struct PhotoViewer: View {
 private struct PhotoViewerPage: View {
   static let fullPixelDimension: CGFloat = 4_096
 
+  private struct LoadID: Equatable {
+    let url: URL
+    let retry: Int
+  }
+
   @Environment(\.pocketBaseClient) private var client
 
   let photo: DetailPhoto
@@ -222,6 +227,10 @@ private struct PhotoViewerPage: View {
 
   @State private var image: UIImage?
   @State private var failed = false
+  @State private var fullSizeFailed = false
+  @State private var activeFileURL: URL?
+  @State private var loadedFullSizeURL: URL?
+  @State private var retryCount = 0
 
   var body: some View {
     ZStack {
@@ -232,7 +241,12 @@ private struct PhotoViewerPage: View {
           .accessibilityAddTraits(.isImage)
           .accessibilityIdentifier("photoViewer.image")
       } else if failed {
-        ContentUnavailableView("Photo unavailable", systemImage: "photo.badge.exclamationmark")
+        VStack(spacing: 12) {
+          ContentUnavailableView("Photo unavailable", systemImage: "photo.badge.exclamationmark")
+          Button("Try again") { retryCount &+= 1 }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("photoViewer.retry")
+        }
       } else {
         ProgressView()
           .accessibilityLabel("Loading photo")
@@ -240,15 +254,24 @@ private struct PhotoViewerPage: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .overlay(alignment: .bottom) { footer }
-    // Token renewals change the URL, not the file.
-    .task(id: photo.fullSizeURL) { await load() }
+    .task(id: LoadID(url: photo.fullSizeURL, retry: retryCount)) { await load() }
   }
 
   @ViewBuilder
   private var footer: some View {
     let hasCaption = photo.date != nil || photo.caption != nil
-    if hasCaption {
+    if hasCaption || fullSizeFailed {
       VStack(alignment: .leading, spacing: 4) {
+        if fullSizeFailed {
+          HStack {
+            Label("Full-size photo unavailable", systemImage: "exclamationmark.triangle")
+              .font(.subheadline)
+            Spacer(minLength: 8)
+            Button("Retry") { retryCount &+= 1 }
+              .accessibilityIdentifier("photoViewer.retry")
+          }
+          .padding(.bottom, hasCaption ? 8 : 0)
+        }
         if let date = photo.date {
           Text(date)
             .font(.subheadline.weight(.semibold))
@@ -260,7 +283,6 @@ private struct PhotoViewerPage: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      .accessibilityElement(children: .combine)
       .foregroundStyle(.white)
       .padding(.horizontal, 20)
       .padding(.top, 32)
@@ -274,11 +296,20 @@ private struct PhotoViewerPage: View {
   }
 
   private func load() async {
+    let fileURL = RemoteArtworkCacheKey.url(for: photo.fullSizeURL)
+    if activeFileURL != fileURL {
+      image = nil
+      loadedFullSizeURL = nil
+      activeFileURL = fileURL
+    }
     failed = false
+    fullSizeFailed = false
+    if loadedFullSizeURL == fileURL { return }
     if image == nil,
       let thumbnail = try? await RemoteArtworkLoader.shared.load(
         from: photo.url, maxPixelDimension: 480, client: client)
     {
+      guard !Task.isCancelled, activeFileURL == fileURL else { return }
       image = UIImage(cgImage: thumbnail.cgImage)
     }
     do {
@@ -288,11 +319,14 @@ private struct PhotoViewerPage: View {
         client: client,
         cachesDecodedImage: false
       )
+      guard !Task.isCancelled, activeFileURL == fileURL else { return }
       image = UIImage(cgImage: full.cgImage)
+      loadedFullSizeURL = fileURL
     } catch is CancellationError {
       return
     } catch {
-      // Offline without a cached original: keep the thumbnail.
+      guard !Task.isCancelled, activeFileURL == fileURL else { return }
+      fullSizeFailed = image != nil
       failed = image == nil
     }
   }
