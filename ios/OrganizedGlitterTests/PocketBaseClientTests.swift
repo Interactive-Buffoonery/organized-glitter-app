@@ -128,6 +128,40 @@ struct PocketBaseClientTests {
   }
 
   @Test
+  func appleSignOutDuringExchangeCannotPersistLateResponse() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (200, #"{"token":"token-1","record":{"id":"user-1","verified":true}}"#)
+    ]
+    PocketBaseClientURLProtocol.responseDelay = 0.1
+    defer { PocketBaseClientURLProtocol.responseDelay = 0 }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    let signIn = Task {
+      try await client.signInWithApple(code: "code", nonce: "nonce", name: nil)
+    }
+    while PocketBaseClientURLProtocol.requests.isEmpty {
+      await Task.yield()
+    }
+    await client.signOut()
+
+    await #expect(throws: APIError.cancelled) {
+      _ = try await signIn.value
+    }
+    #expect(try store.load() == nil)
+  }
+
+  @Test
   func registersAndRequestsVerificationWithoutAuthentication() async throws {
     PocketBaseClientURLProtocol.requests = []
     PocketBaseClientURLProtocol.requestBodies = []
