@@ -81,3 +81,30 @@ dashboard and confirmed `users.authRule = verified = true` and a reset-email
 template using `{APP_URL}/auth/confirm-password-reset/{TOKEN}`. Neither setting
 needed a change. These targeted checks do not establish the full deployed
 backend revision.
+
+The live web page's build identifier was
+`851a929696fc8d3d1e8cfcb450aa26c394199d7a`, which includes the companion
+reset-link PR #261. This identifies the web build, not the independently
+deployed PocketBase hooks or configuration.
+
+## Physical-device checklist
+
+Use a development build of the current PR head and a disposable test account.
+Record the device, OS, app revision, and results without recording credentials
+or reset tokens.
+
+1. Confirm PocketBase's application URL is `https://organizedglitter.app`.
+   Request a real reset email and tap its button from the device's mail app.
+   Confirm the native password-reset sheet opens.
+2. Submit a valid new password. Confirm the success message, local sign-out,
+   and sign-in with the new password. The old password must no longer work.
+3. Open the same email link again and submit matching valid passwords. Confirm
+   invalid/expired recovery and the option to request a new email.
+4. Check a genuinely expired, unused link after its configured lifetime.
+   Changing token text only tests an invalid token, not expiry. Do not shorten
+   the production token lifetime for testing.
+5. Request a separate fresh link and complete a reset in a desktop browser to
+   verify the web fallback without an installed iOS app.
+6. With VoiceOver enabled, traverse the form, trigger a validation error, and
+   complete or reject a reset. Confirm meaningful labels, accessible actions,
+   and outcome announcements without exposing token details.
