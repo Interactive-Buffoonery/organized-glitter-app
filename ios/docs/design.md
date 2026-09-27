@@ -26,7 +26,12 @@ screen backgrounds. The Shelf redesign (Option B in
   carrying a glass Log button. "Up next from your stash" shows Kitted up then
   In stash covers. A single "N finished this month" row opens Completed.
   Section titles open the matching Library filter; a menu picks the craft when
-  both are enabled.
+  both are enabled. A Notes shortcut opens the cross-craft progress feed.
+- **Notes.** Group progress notes by month, newest first, with craft and year
+  filters. Each entry identifies its diamond project or coloring page above the
+  shared photo, date, and caption. Home and Create can open the Notes target
+  picker; it lists in-progress work first and can search older projects/pages.
+  The picker uses a trailing inspector on iPad and an adaptive sheet on iPhone.
 - **Detail.** A centered hero cover sits above the title and credits. A compact
   status `Menu` below them uses a soft tint from the web status color family,
   a status icon, and a written label; its touch target remains at least 44 points.
