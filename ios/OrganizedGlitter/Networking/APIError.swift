@@ -90,6 +90,7 @@ extension Error {
 extension APIError {
   static let sessionExpiredMessage = "Your session has expired. Sign in again."
   static let offlineMessage = "You’re offline. Reconnect and try again."
+  static let deleteNeedsConnectionMessage = needsConnection("Deleting an item")
 
   static func needsConnection(_ action: String) -> String {
     "\(action) needs a connection. Reconnect and try again."
