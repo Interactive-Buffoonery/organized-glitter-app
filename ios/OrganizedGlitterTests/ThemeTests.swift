@@ -127,4 +127,16 @@ struct ThemeTests {
     defaults.set("catppuccin-mocha", forKey: "selectedThemeFlavor")
     #expect(ThemeStore(defaults: defaults).flavor == .system)
   }
+
+  @Test
+  func openingAnotherFormPreservesTheActiveDraft() throws {
+    let drawer = FormDrawer()
+    drawer.present(detents: [.large]) { Text("Draft in progress") }
+    let activeID = try #require(drawer.route?.id)
+
+    drawer.present(detents: [.medium]) { Text("Another form") }
+
+    #expect(drawer.route?.id == activeID)
+    #expect(drawer.route?.detents == [.large])
+  }
 }

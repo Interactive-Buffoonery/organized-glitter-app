@@ -3,21 +3,20 @@ import SwiftUI
 /// The toolbar `+`. Create is an action, not a destination, so it lives here
 /// instead of in a tab. Coloring pages are created from their book.
 struct CreateMenu: View {
+  @Environment(FormDrawer.self) private var formDrawer
   let library: LibrarySession
   let verticals: VerticalPreferences
   let onRefresh: () async -> Void
   let onSaved: (LibraryItem) -> Void
 
-  @State private var target: CreateTarget?
-
   var body: some View {
     Menu {
       if verticals.diamondPainting {
-        Button("Diamond painting project", systemImage: "diamond") { target = .diamond }
+        Button("Diamond painting project", systemImage: "diamond") { present(.diamond) }
           .accessibilityIdentifier("create.diamond")
       }
       if verticals.coloringBooks {
-        Button("Coloring book", systemImage: "books.vertical") { target = .book }
+        Button("Coloring book", systemImage: "books.vertical") { present(.book) }
           .accessibilityIdentifier("create.book")
       }
     } label: {
@@ -25,10 +24,11 @@ struct CreateMenu: View {
     }
     .disabled(!verticals.diamondPainting && !verticals.coloringBooks)
     .accessibilityIdentifier("create.menu")
-    .sheet(item: $target) { target in
-      CreateEditor(
-        target: target, library: library, onRefresh: onRefresh, onSaved: onSaved)
-        .drawer([.large])
+  }
+
+  private func present(_ target: CreateTarget) {
+    formDrawer.present(detents: [.large]) {
+      CreateEditor(target: target, library: library, onRefresh: onRefresh, onSaved: onSaved)
     }
   }
 }

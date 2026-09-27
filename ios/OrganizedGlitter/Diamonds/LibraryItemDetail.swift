@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct LibraryItemDetailDestination: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
   @State private var model: LibraryItemDetailModel
-  @State private var editor: DetailEditor?
   @State private var isConfirmingDelete = false
   @State private var deleteErrorMessage: String?
 
@@ -58,7 +58,10 @@ struct LibraryItemDetailDestination: View {
     .toolbar {
       ToolbarItemGroup(placement: .topBarTrailing) {
         Button("Edit") {
-          editor = DetailEditor(item: model.item)
+          let editor = DetailEditor(item: model.item)
+          formDrawer.present(detents: editor.detents) {
+            editorView(for: editor)
+          }
         }
         .disabled(model.isMutating)
         .accessibilityIdentifier("detail.edit")
@@ -95,10 +98,6 @@ struct LibraryItemDetailDestination: View {
           model.needsBookPageRefresh = true
         }
       }
-    }
-    .sheet(item: $editor) { editor in
-      editorView(for: editor)
-        .drawer(editor.detents)
     }
     .confirmationDialog(
       "Delete \(model.item.title)?",
