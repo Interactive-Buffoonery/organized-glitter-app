@@ -3,7 +3,7 @@ import SwiftUI
 struct RootView: View {
   @Environment(\.theme) private var theme
 
-  let model: AppModel
+  @Bindable var model: AppModel
 
   var body: some View {
     Group {
