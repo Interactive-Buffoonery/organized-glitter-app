@@ -61,36 +61,36 @@ extension Theme {
     backgroundBloom: nil
   )
 
-  /// "Berry Cream after dark" — deep navy stage with a purple bloom rising
+  /// "Berry Cream after dark" — navy stage with a quiet lavender bloom rising
   /// from the bottom.
   static let dark = Theme(
-    background: Color(hex: 0x05051A),
+    background: Color(hex: 0x151533),
     foreground: Color(hex: 0xF7F2F7),
-    card: Color(hex: 0x141028),
+    card: Color(hex: 0x231E3E),
     cardForeground: Color(hex: 0xF7F2F7),
-    popover: Color(hex: 0x0F0B28),
+    popover: Color(hex: 0x1D1938),
     popoverForeground: Color(hex: 0xF7F2F7),
     primary: Color(hex: 0xF58AB5),
     primaryForeground: Color(hex: 0x381423),
-    secondary: Color(hex: 0x0F0B28),
+    secondary: Color(hex: 0x1D1938),
     secondaryForeground: Color(hex: 0xF7F2F7),
-    muted: Color(hex: 0x1C1636),
+    muted: Color(hex: 0x2D2749),
     mutedForeground: Color(hex: 0xBEB1C3),
     accent: Color(hex: 0xCAA4F9),
-    accentForeground: Color(hex: 0x05051A),
-    destructive: Color(hex: 0xEA3E3E),
+    accentForeground: Color(hex: 0x151533),
+    destructive: Color(hex: 0xF57E7E),
     destructiveForeground: Color(hex: 0xF7F2F7),
-    border: Color(hex: 0x37304B),
+    border: Color(hex: 0x474059),
     ring: Color(hex: 0xF58AB5),
-    gradientStops: [Color(hex: 0x05051A), Color(hex: 0x05051A)],
+    gradientStops: [Color(hex: 0x151533), Color(hex: 0x151533)],
     backgroundBloom: Bloom(
-      center: UnitPoint(x: 0.56, y: 1.0),
+      center: UnitPoint(x: 0.5, y: 1.18),
       stops: [
-        Bloom.Stop(color: Color(hex: 0x5C27B5), location: 0.0),
-        Bloom.Stop(color: Color(hex: 0x371475), location: 0.38),
-        Bloom.Stop(color: .clear, location: 0.73),
+        Bloom.Stop(color: Color(hex: 0x8662A7, opacity: 0.45), location: 0.0),
+        Bloom.Stop(color: Color(hex: 0x57406D, opacity: 0.22), location: 0.42),
+        Bloom.Stop(color: .clear, location: 0.72),
       ],
-      radiusFraction: 0.55
+      radiusFraction: CGSize(width: 1.2, height: 0.76)
     )
   )
 }

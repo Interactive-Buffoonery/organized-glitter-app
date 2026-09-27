@@ -46,14 +46,21 @@ struct ThemeBackground: View {
   var body: some View {
     if let bloom = theme.backgroundBloom {
       GeometryReader { geo in
+        let radiusX = max(geo.size.width * bloom.radiusFraction.width, 1)
+        let radiusY = geo.size.height * bloom.radiusFraction.height
+
         RadialGradient(
           stops: bloom.stops.map { Gradient.Stop(color: $0.color, location: $0.location) },
-          center: bloom.center,
+          center: .center,
           startRadius: 0,
-          endRadius: max(geo.size.width, geo.size.height) * bloom.radiusFraction
+          endRadius: radiusX
         )
+        .frame(width: radiusX * 2, height: radiusX * 2)
+        .scaleEffect(x: 1, y: radiusY / radiusX)
+        .position(x: geo.size.width * bloom.center.x, y: geo.size.height * bloom.center.y)
       }
       .background(theme.background)
+      .clipped()
     } else {
       theme.backgroundGradient
     }
