@@ -33,6 +33,7 @@ final class AppModel {
   private(set) var isSigningOut = false
   private var userSaveTask: Task<Void, Never>?
   private var cleanupBlocked = false
+  @ObservationIgnored private var oauthAttemptID: UUID?
   @ObservationIgnored private var oauthTask: Task<Void, Never>?
   @ObservationIgnored private var oauthTimeoutTask: Task<Void, Never>?
   @ObservationIgnored private var oauthBrowser: OAuthWebSession?
@@ -44,7 +45,7 @@ final class AppModel {
   }
   var signInError: String?
   var oauthError: String?
-  var socialProviders: [String] = []
+  var socialProviders: [SocialProvider] = []
   var isSubmitting = false
   var passwordResetDestination: PasswordResetDestination?
   var showsSignedInPasswordResetNotice = false
@@ -239,7 +240,7 @@ final class AppModel {
     #if DEBUG
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-signed-out") {
         socialProviders = ProcessInfo.processInfo.arguments.contains("-ui-testing-social-providers")
-          ? ["google", "discord"] : []
+          ? [.google, .discord] : []
         return
       }
     #endif
@@ -247,21 +248,37 @@ final class AppModel {
     do {
       let providers = try await client.oauthProviders()
       guard case .signedOut = phase else { return }
-      socialProviders = providers.map(\.name)
+      socialProviders = providers.compactMap { SocialProvider(rawValue: $0.name) }
     } catch {
       socialProviders = []
     }
   }
 
-  func signInWithOAuth(provider: String, anchor: ASPresentationAnchor) {
-    guard let client, socialProviders.contains(provider) else { return }
-    let generation = beginSessionTransition()
-    isSubmitting = true
-    oauthError = nil
+  func signInWithOAuth(provider: SocialProvider, anchor: ASPresentationAnchor) {
+    guard client != nil, socialProviders.contains(provider) else { return }
     let browser = OAuthWebSession(anchor: anchor) { [weak self] in
       self?.cancelOAuth()
     }
-    oauthBrowser = browser
+    signInWithOAuth(
+      provider: provider,
+      present: { try browser.start($0) },
+      dismissAccepted: { browser.dismissAccepted() }
+    )
+    if oauthTask != nil { oauthBrowser = browser }
+  }
+
+  func signInWithOAuth(
+    provider: SocialProvider,
+    present: @escaping @MainActor @Sendable (URL) throws -> Void,
+    dismissAccepted: @escaping @MainActor @Sendable () -> Void,
+    timeout: Duration = .seconds(120)
+  ) {
+    guard let client, socialProviders.contains(provider) else { return }
+    let generation = beginSessionTransition()
+    let attemptID = UUID()
+    oauthAttemptID = attemptID
+    isSubmitting = true
+    oauthError = nil
     oauthTask = Task {
       defer {
         if generation == sessionGeneration {
@@ -271,13 +288,15 @@ final class AppModel {
           oauthTimeoutTask?.cancel()
           oauthTimeoutTask = nil
           oauthTask = nil
+          oauthAttemptID = nil
         }
       }
       do {
         let session = try await client.signInWithOAuth(
-          providerName: provider,
-          present: { try browser.start($0) },
-          dismissAccepted: { browser.dismissAccepted() }
+          providerName: provider.rawValue,
+          attemptID: attemptID,
+          present: present,
+          dismissAccepted: dismissAccepted
         )
         guard generation == sessionGeneration else { return }
         phase = .signedIn(session.user)
@@ -292,7 +311,7 @@ final class AppModel {
       }
     }
     oauthTimeoutTask = Task {
-      try? await Task.sleep(for: .seconds(120))
+      try? await Task.sleep(for: timeout)
       guard !Task.isCancelled, generation == sessionGeneration else { return }
       cancelOAuth()
       oauthError = "Sign-in timed out. Try again."
@@ -311,7 +330,7 @@ final class AppModel {
       return "This sign-in provider is unavailable right now."
     case OAuthError.denied:
       return "The provider did not approve sign-in. Try again."
-    case OAuthError.disconnected, OAuthError.timedOut:
+    case OAuthError.disconnected:
       return "The sign-in connection was interrupted. Try again."
     case OAuthError.invalidResponse:
       return "The provider did not complete sign-in. Try again."
@@ -477,6 +496,10 @@ final class AppModel {
 
   private func beginSessionTransition() -> Int {
     oauthTask?.cancel()
+    if let attemptID = oauthAttemptID {
+      Task { await client?.cancelExternalAuthAttempt(id: attemptID) }
+    }
+    oauthAttemptID = nil
     oauthTimeoutTask?.cancel()
     oauthBrowser?.cancel()
     oauthTask = nil

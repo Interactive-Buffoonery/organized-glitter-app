@@ -79,13 +79,13 @@ struct AccountMethodView: View {
                 model.signInWithOAuth(provider: provider, anchor: presentationAnchor)
               } label: {
                 Label(
-                  "Continue with \(provider == "google" ? "Google" : "Discord")",
-                  systemImage: provider == "google" ? "globe" : "bubble.left.and.bubble.right"
+                  "Continue with \(provider.displayName)",
+                  systemImage: provider.symbolName
                 )
               }
               .buttonStyle(AuthMethodButtonStyle())
               .disabled(model.isSubmitting || presentationAnchor == nil)
-              .accessibilityIdentifier("continueWith\(provider.capitalized)")
+              .accessibilityIdentifier("continueWith\(provider.displayName)")
             }
             if let error = model.oauthError {
               AccessibleErrorLabel(message: error)
@@ -142,5 +142,24 @@ struct AuthMethodButtonStyle: ButtonStyle {
         Capsule().stroke(theme.border, lineWidth: 1)
       }
       .opacity(configuration.isPressed ? 0.85 : (isEnabled ? 1 : 0.5))
+  }
+}
+
+enum SocialProvider: String, Sendable {
+  case google
+  case discord
+
+  var displayName: String {
+    switch self {
+    case .google: "Google"
+    case .discord: "Discord"
+    }
+  }
+
+  var symbolName: String {
+    switch self {
+    case .google: "globe"
+    case .discord: "bubble.left.and.bubble.right"
+    }
   }
 }
