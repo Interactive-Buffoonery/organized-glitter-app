@@ -33,6 +33,79 @@ struct LocalLibraryStoreTests {
   }
 
   @Test
+  func removalMarkerSurvivesRestartAndBlocksNewWrites() async throws {
+    let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
+    let database = FileManager.default.temporaryDirectory
+      .appending(path: UUID().uuidString)
+      .appending(path: "library.store")
+    let item = try project(id: "project-1", user: "user-1", title: "Private")
+    do {
+      let store = try LocalLibraryStore(databaseURL: database)
+      try await store.ingestSnapshot(snapshot(projects: [item]), scope: scope)
+      try await store.beginRemoval(scope: scope)
+      try await store.removeScope(scope)
+    }
+
+    let reopened = try LocalLibraryStore(databaseURL: database)
+    #expect(try await reopened.pendingRemovals() == [scope])
+    #expect(try await reopened.entries(scope: scope).isEmpty)
+    do {
+      try await reopened.saveUser(
+        UserRecord(
+          id: scope.userID, email: nil, verified: true, username: nil, name: nil,
+          avatar: nil, timezone: nil, themePreference: nil, created: nil, updated: nil),
+        scope: scope)
+      Issue.record("Expected removal marker to reject a stale account save")
+    } catch LocalLibraryError.storageUnavailable {}
+    do {
+      _ = try await reopened.queueEdit(
+        scope: scope, key: item.localRecordKey, patch: ["title": .string("Stale")])
+      Issue.record("Expected removal marker to reject a stale edit")
+    } catch LocalLibraryError.storageUnavailable {}
+    try await reopened.finishRemoval(scope: scope)
+    #expect(try await reopened.pendingRemovals().isEmpty)
+  }
+
+  @Test
+  func projectionIncludesSavedValuesAndPendingCount() async throws {
+    let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
+    let store = try LocalLibraryStore.inMemory()
+    let first = try project(id: "project-1", user: "user-1", title: "First")
+    let second = try project(id: "project-2", user: "user-1", title: "Second")
+    try await store.ingestSnapshot(snapshot(projects: [first, second]), scope: scope)
+    _ = try await store.queueEdit(
+      scope: scope, key: second.localRecordKey, patch: ["title": .string("Offline")])
+
+    let projection = try await store.projection(scope: scope)
+    #expect(projection.hasSnapshot)
+    #expect(projection.pendingCount == 1)
+    #expect(projection.entries.count == 2)
+    #expect(projection.entries.first(where: { $0.item.recordID == second.recordID })?.item.title == "Offline")
+    #expect(projection.progressNotes.isEmpty)
+    #expect(projection.coloringPageProgressNotes.isEmpty)
+  }
+
+  @Test
+  func nextPendingOperationUsesStableRecordOrder() async throws {
+    let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
+    let store = try LocalLibraryStore.inMemory()
+    let first = try project(id: "project-a", user: "user-1", title: "First")
+    let second = try project(id: "project-z", user: "user-1", title: "Second")
+    try await store.ingestSnapshot(snapshot(projects: [second, first]), scope: scope)
+    _ = try await store.queueEdit(
+      scope: scope, key: second.localRecordKey, patch: ["title": .string("Z")])
+    _ = try await store.queueEdit(
+      scope: scope, key: first.localRecordKey, patch: ["title": .string("A")])
+
+    let next = try #require(await store.nextPendingOperation(scope: scope))
+    #expect(next.key == first.localRecordKey)
+    _ = try await store.acknowledge(
+      scope: scope, operationID: next.id,
+      record: try project(id: "project-a", user: "user-1", title: "A"))
+    #expect(try await store.nextPendingOperation(scope: scope)?.key == second.localRecordKey)
+  }
+
+  @Test
   func responseForFirstEditKeepsLaterEdit() async throws {
     let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
     let store = try LocalLibraryStore.inMemory()
@@ -114,6 +187,32 @@ struct LocalLibraryStoreTests {
   }
 
   @Test
+  func lifecycleConflictShowsComparedFieldsAlongsideEditedFields() async throws {
+    let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
+    let store = try LocalLibraryStore.inMemory()
+    let original = try project(id: "project-1", user: "user-1", title: "First")
+    try await store.ingestSnapshot(snapshot(projects: [original]), scope: scope)
+    _ = try await store.queueEdit(
+      scope: scope, key: original.localRecordKey,
+      patch: ["status": .string("progress")])
+    let operation = try #require(await store.nextPendingOperation(scope: scope))
+    let server = try project(
+      id: "project-1", user: "user-1", title: "First",
+      dateStarted: "2026-09-01 00:00:00.000Z")
+    _ = try await store.recordConflict(
+      scope: scope, operationID: operation.id, server: server)
+
+    let changes = try await store.conflictChanges(scope: scope, key: original.localRecordKey)
+    let date = try #require(changes.first(where: { $0.field == "date_started" }))
+    #expect(date.local == .null)
+    #expect(date.server == .string("2026-09-01 00:00:00.000Z"))
+    #expect(date.isComparisonOnly)
+    let status = try #require(changes.first(where: { $0.field == "status" }))
+    #expect(status.local == .string("progress"))
+    #expect(!status.isComparisonOnly)
+  }
+
+  @Test
   func scopesKeepAccountsAndBackendsSeparate() async throws {
     let store = try LocalLibraryStore.inMemory()
     let first = LocalAccountScope(backendURL: backendURL, userID: "user-1")
@@ -166,12 +265,15 @@ struct LocalLibraryStoreTests {
       coloringPageProgressNotes: [])
   }
 
-  private func project(id: String, user: String, title: String) throws -> LibraryItem {
-    let object: [String: Any] = [
+  private func project(
+    id: String, user: String, title: String, dateStarted: String? = nil
+  ) throws -> LibraryItem {
+    var object: [String: Any] = [
       "id": id, "user": user, "title": title, "status": "wishlist",
       "kit_category": "full", "created": "2026-01-01 00:00:00.000Z",
       "updated": "2026-01-01 00:00:00.000Z",
     ]
+    if let dateStarted { object["date_started"] = dateStarted }
     let data = try JSONSerialization.data(withJSONObject: object)
     return .diamond(try JSONDecoder().decode(DiamondProjectRecord.self, from: data))
   }
