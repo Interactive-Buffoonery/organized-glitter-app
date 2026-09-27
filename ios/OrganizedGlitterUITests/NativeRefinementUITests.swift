@@ -26,20 +26,20 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("refinement-01-overview")
 
     openLibrary(app)
-    XCTAssertTrue(app.staticTexts["Peony garden"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Yorkie & Roses"].waitForExistence(timeout: 5))
     try capture("refinement-02-diamond-gallery")
 
-    openCard(named: "Peony garden", in: app)
+    openCard(named: "Yorkie & Roses", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     assertArtworkLoaded("Project artwork", in: app)
     try capture("refinement-03-diamond-detail")
 
     app.navigationBars.buttons.element(boundBy: 0).tap()
     selectCraft("Books", in: app)
-    XCTAssertTrue(app.staticTexts["Botanical days"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Princesses"].waitForExistence(timeout: 5))
     try capture("refinement-04-book-gallery")
 
-    openCard(named: "Botanical days", in: app)
+    openCard(named: "Princesses", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(element("detail.book.pages", in: app).waitForExistence(timeout: 5))
     assertArtworkLoaded("Book cover", in: app)
@@ -76,22 +76,22 @@ final class NativeRefinementUITests: XCTestCase {
   func testDiamondEditCancelSaveAndDeleteRemainStateful() {
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Peony garden", in: app)
+    openCard(named: "Yorkie & Roses", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
     button("detail.edit", in: app).tap()
     XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
     app.buttons["Cancel"].tap()
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Peony garden"].exists)
+    XCTAssertTrue(app.staticTexts["Yorkie & Roses"].exists)
 
     button("detail.edit", in: app).tap()
     let title = app.textFields["Title"]
     XCTAssertTrue(title.waitForExistence(timeout: 5))
-    replaceText(in: title, with: "Peony garden updated", app: app)
+    replaceText(in: title, with: "Yorkie & Roses updated", app: app)
     app.buttons["Save"].tap()
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Peony garden updated"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Yorkie & Roses updated"].waitForExistence(timeout: 5))
 
     button("detail.more", in: app).tap()
     button("detail.delete", in: app).tap()
@@ -100,14 +100,14 @@ final class NativeRefinementUITests: XCTestCase {
       confirmation.tap()
     }
     XCTAssertFalse(element("detail.diamond", in: app).waitForExistence(timeout: 3))
-    XCTAssertFalse(app.staticTexts["Peony garden updated"].exists)
+    XCTAssertFalse(app.staticTexts["Yorkie & Roses updated"].exists)
   }
 
   func testBookPagesPaginateAndNavigateToTheNextPage() {
     let app = launchFixture()
     openLibrary(app)
     selectCraft("Books", in: app)
-    openCard(named: "Botanical days", in: app)
+    openCard(named: "Princesses", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 
     let loadMore = element("detail.book.loadMore", in: app)
@@ -235,7 +235,7 @@ final class NativeRefinementUITests: XCTestCase {
   private func openFirstDesignPage(in app: XCUIApplication) {
     openLibrary(app)
     selectCraft("Books", in: app)
-    openCard(named: "Botanical days", in: app)
+    openCard(named: "Princesses", in: app)
     let page = element("detail.book.page.design-page-0", in: app)
     makeHittable(page, in: app)
     page.tap()
