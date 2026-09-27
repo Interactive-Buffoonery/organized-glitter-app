@@ -79,9 +79,8 @@ Apple console settings, and device flows were not verified.
 - The native Apple client uses `GET /api/auth/apple/native/readiness` returning
   `{ "available": Bool }` and guest-only `POST /api/auth/apple/native`. Its
   button remains Debug-only until the backend is deployed and verified.
-- The original plan identifies PR #5, native password reset, as the owner of
-  session-publication ordering. Recheck its status and implementation before
-  coding. This planning branch is not yet stacked on that PR.
+- PR #5 owns session-publication ordering. The implementation stack is
+  PR #5 -> PR #16 (Google/Discord) -> PR #18 (native Apple Debug client).
 - Do not infer web/native Apple identity continuity solely from console setup.
   Verify the resulting PocketBase record is identical in both directions.
 
