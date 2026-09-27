@@ -72,8 +72,10 @@ struct LocalFullSnapshot: Decodable, Sendable {
   let coloringPageProgressNotes: [ColoringProgressNoteRecord]
 }
 
-actor LocalLibraryStore {
-  private let context: ModelContext
+actor LocalLibraryStore: ModelActor {
+  nonisolated let modelContainer: ModelContainer
+  nonisolated let modelExecutor: any ModelExecutor
+  private var context: ModelContext { modelContext }
   private let encoder = JSONEncoder()
   private let decoder = JSONDecoder()
 
@@ -91,8 +93,7 @@ actor LocalLibraryStore {
     let configuration = ModelConfiguration(
       "LocalLibrary", schema: schema, url: databaseURL, cloudKitDatabase: .none)
     let container = try ModelContainer(for: schema, configurations: [configuration])
-    context = ModelContext(container)
-    context.autosaveEnabled = false
+    self.init(container: container)
   }
 
   static func inMemory() throws -> LocalLibraryStore {
@@ -108,8 +109,10 @@ actor LocalLibraryStore {
   }
 
   private init(container: ModelContainer) {
-    context = ModelContext(container)
+    let context = ModelContext(container)
     context.autosaveEnabled = false
+    modelContainer = container
+    modelExecutor = DefaultSerialModelExecutor(modelContext: context)
   }
 
   func saveUser(_ user: UserRecord, scope: LocalAccountScope) throws {
