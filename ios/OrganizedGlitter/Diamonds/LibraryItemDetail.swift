@@ -63,7 +63,7 @@ struct LibraryItemDetailDestination: View {
             editorView(for: editor)
           }
         }
-        .disabled(model.isMutating)
+        .disabled(model.isMutating || formDrawer.isPresenting)
         .accessibilityIdentifier("detail.edit")
 
         if model.item.canDeleteFromDetail {

@@ -22,7 +22,7 @@ struct CreateMenu: View {
     } label: {
       Label("Create", systemImage: "plus")
     }
-    .disabled(!verticals.diamondPainting && !verticals.coloringBooks)
+    .disabled(formDrawer.isPresenting || (!verticals.diamondPainting && !verticals.coloringBooks))
     .accessibilityIdentifier("create.menu")
   }
 

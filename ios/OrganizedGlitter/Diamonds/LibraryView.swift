@@ -325,6 +325,7 @@ struct LibraryView: View {
       }
       .buttonStyle(.borderedProminent)
       .foregroundStyle(theme.primaryForeground)
+      .disabled(formDrawer.isPresenting)
       .accessibilityIdentifier("library.first")
     }
   }
