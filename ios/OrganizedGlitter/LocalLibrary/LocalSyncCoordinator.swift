@@ -27,16 +27,19 @@ actor LocalSyncCoordinator {
   }
 
   func syncPending() async throws {
-    try await syncPending(expectedGeneration: generation)
+    _ = try await syncPending(expectedGeneration: generation)
   }
 
-  private func syncPending(expectedGeneration: Int) async throws {
+  private func syncPending(expectedGeneration: Int) async throws -> Bool {
     // A promoted follow-up edit gets its own baseline and operation ID. The
     // bound also prevents a stream of new UI edits from keeping one call alive.
+    var attempted = false
     for _ in 0..<1_000 {
       try checkActive(expectedGeneration)
-      let operations = try await store.pendingOperations(scope: scope)
-      guard let operation = operations.first else { return }
+      guard let operation = try await store.nextPendingOperation(scope: scope) else {
+        return attempted
+      }
+      attempted = true
       do {
         let record = try await client.applyLocalOperation(operation)
         try checkActive(expectedGeneration)
@@ -57,15 +60,16 @@ actor LocalSyncCoordinator {
           scope: scope, operationID: operation.id, key: operation.key)
       }
     }
+    return attempted
   }
 
   func refreshAndSync() async throws {
     let expectedGeneration = generation
     try await refresh(expectedGeneration: expectedGeneration)
     try checkActive(expectedGeneration)
-    try await syncPending(expectedGeneration: expectedGeneration)
+    let attempted = try await syncPending(expectedGeneration: expectedGeneration)
     try checkActive(expectedGeneration)
-    try await refresh(expectedGeneration: expectedGeneration)
+    if attempted { try await refresh(expectedGeneration: expectedGeneration) }
   }
 
   private func checkActive(_ expectedGeneration: Int) throws {

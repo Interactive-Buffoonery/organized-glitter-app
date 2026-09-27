@@ -50,6 +50,19 @@ final class LocalStoredNote {
   }
 }
 
+@Model
+final class LocalPendingRemoval {
+  @Attribute(.unique) var scope: String
+  var backendURL: String
+  var userID: String
+
+  init(scope: LocalAccountScope) {
+    self.scope = scope.storageKey
+    backendURL = scope.backendURL.absoluteString
+    userID = scope.userID
+  }
+}
+
 struct LocalFullSnapshot: Decodable, Sendable {
   let version: Int
   let projects: [DiamondProjectRecord]
@@ -71,7 +84,10 @@ actor LocalLibraryStore {
     try FileManager.default.setAttributes(
       [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
       ofItemAtPath: directory.path)
-    let schema = Schema([LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self])
+    let schema = Schema([
+      LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self,
+      LocalPendingRemoval.self,
+    ])
     let configuration = ModelConfiguration(
       "LocalLibrary", schema: schema, url: databaseURL, cloudKitDatabase: .none)
     let container = try ModelContainer(for: schema, configurations: [configuration])
@@ -80,7 +96,10 @@ actor LocalLibraryStore {
   }
 
   static func inMemory() throws -> LocalLibraryStore {
-    let schema = Schema([LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self])
+    let schema = Schema([
+      LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self,
+      LocalPendingRemoval.self,
+    ])
     let configuration = ModelConfiguration(
       "LocalLibraryTests", schema: schema, isStoredInMemoryOnly: true,
       cloudKitDatabase: .none)
@@ -94,6 +113,7 @@ actor LocalLibraryStore {
   }
 
   func saveUser(_ user: UserRecord, scope: LocalAccountScope) throws {
+    guard try !hasPendingRemoval(scope: scope) else { throw LocalLibraryError.storageUnavailable }
     guard user.id == scope.userID else { throw LocalLibraryError.wrongAccount }
     let data = try encoder.encode(user)
     let scopeKey = scope.storageKey
@@ -223,6 +243,26 @@ actor LocalLibraryStore {
     }
   }
 
+  func projection(scope: LocalAccountScope) throws -> LocalLibraryProjection {
+    let records = try storedRecords(scope.storageKey)
+    let notes = try storedNotes(scope.storageKey)
+    var progressNotes: [DiamondProgressNoteRecord] = []
+    var coloringPageProgressNotes: [ColoringProgressNoteRecord] = []
+    for note in notes {
+      if note.kind == "diamond" {
+        progressNotes.append(try decoder.decode(DiamondProgressNoteRecord.self, from: note.recordData))
+      } else {
+        coloringPageProgressNotes.append(
+          try decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData))
+      }
+    }
+    return try LocalLibraryProjection(
+      entries: records.map(entry), progressNotes: progressNotes,
+      coloringPageProgressNotes: coloringPageProgressNotes,
+      hasSnapshot: account(scope.storageKey)?.hasSnapshot == true,
+      pendingCount: records.reduce(0) { $0 + ($1.activeData == nil ? 0 : 1) })
+  }
+
   func entry(scope: LocalAccountScope, key: LocalRecordKey) throws -> LocalLibraryEntry? {
     guard let stored = try record(scope.storageKey, key) else { return nil }
     return try entry(stored)
@@ -280,6 +320,7 @@ actor LocalLibraryStore {
     scope: LocalAccountScope, key: LocalRecordKey,
     patch: [String: LocalJSONValue]
   ) throws -> LocalLibraryEntry {
+    guard try !hasPendingRemoval(scope: scope) else { throw LocalLibraryError.storageUnavailable }
     guard !patch.isEmpty else { throw LocalLibraryError.invalidValue }
     guard patch.keys.allSatisfy({ Self.allowedFields[key.kind]?.contains($0) == true }) else {
       throw LocalLibraryError.unsupportedField
@@ -330,6 +371,18 @@ actor LocalLibraryStore {
     }
   }
 
+  func nextPendingOperation(scope: LocalAccountScope) throws -> LocalPendingOperation? {
+    let scopeKey = scope.storageKey
+    var descriptor = FetchDescriptor<LocalStoredRecord>(
+      predicate: #Predicate {
+        $0.scope == scopeKey && $0.activeData != nil && $0.conflictValue == nil
+      },
+      sortBy: [SortDescriptor(\.key)])
+    descriptor.fetchLimit = 1
+    guard let data = try context.fetch(descriptor).first?.activeData else { return nil }
+    return try decoder.decode(LocalPendingOperation.self, from: data)
+  }
+
   func pendingCount(scope: LocalAccountScope) throws -> Int {
     try storedRecords(scope.storageKey).filter { $0.activeData != nil }.count
   }
@@ -348,13 +401,21 @@ actor LocalLibraryStore {
         _, newest in newest
       }
     }
+    let baseline = try stored.nextBaseData.map {
+      try decoder.decode([String: LocalJSONValue].self, from: $0)
+    } ?? [:]
+    let fields = Set(desired.keys).union(active.base.keys).union(baseline.keys)
     let server = try jsonObject(stored.serverData)
-    let current = try values(for: Array(desired.keys), in: server)
-    return desired.keys.sorted().compactMap { field in
-      guard let local = desired[field], let server = current[field], local != server else {
+    let current = try values(for: Array(fields), in: server)
+    return fields.sorted().compactMap { field in
+      guard let local = desired[field] ?? baseline[field] ?? active.base[field],
+        let server = current[field], local != server
+      else {
         return nil
       }
-      return LocalConflictChange(field: field, local: local, server: server)
+      return LocalConflictChange(
+        field: field, local: local, server: server,
+        isComparisonOnly: desired[field] == nil)
     }
   }
 
@@ -481,6 +542,43 @@ actor LocalLibraryStore {
       context.rollback()
       throw error
     }
+  }
+
+  func beginRemoval(scope: LocalAccountScope) throws {
+    if try pendingRemoval(scope: scope) == nil {
+      context.insert(LocalPendingRemoval(scope: scope))
+      try commit()
+    }
+  }
+
+  func pendingRemovals() throws -> [LocalAccountScope] {
+    try context.fetch(FetchDescriptor<LocalPendingRemoval>()).map { marker in
+      guard let backendURL = URL(string: marker.backendURL) else {
+        throw LocalLibraryError.invalidValue
+      }
+      let scope = LocalAccountScope(backendURL: backendURL, userID: marker.userID)
+      guard scope.storageKey == marker.scope else { throw LocalLibraryError.invalidValue }
+      return scope
+    }
+  }
+
+  func finishRemoval(scope: LocalAccountScope) throws {
+    if let marker = try pendingRemoval(scope: scope) {
+      context.delete(marker)
+      try commit()
+    }
+  }
+
+  private func hasPendingRemoval(scope: LocalAccountScope) throws -> Bool {
+    try pendingRemoval(scope: scope) != nil
+  }
+
+  private func pendingRemoval(scope: LocalAccountScope) throws -> LocalPendingRemoval? {
+    let scopeKey = scope.storageKey
+    var descriptor = FetchDescriptor<LocalPendingRemoval>(
+      predicate: #Predicate { $0.scope == scopeKey })
+    descriptor.fetchLimit = 1
+    return try context.fetch(descriptor).first
   }
 
   func removeConfirmed(scope: LocalAccountScope, key: LocalRecordKey) throws {
