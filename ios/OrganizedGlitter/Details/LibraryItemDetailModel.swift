@@ -336,7 +336,7 @@ final class LibraryItemDetailModel {
       item = saved.retainingListingContext(from: item)
       await load()
       return true
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
       unresolvedStatusWrite = true
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
