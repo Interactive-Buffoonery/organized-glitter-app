@@ -7,9 +7,9 @@ struct CreateMenu: View {
   let verticals: VerticalPreferences
   let onRefresh: () async -> Void
   let onSaved: (LibraryItem) -> Void
+  let onAddNote: () -> Void
 
   @State private var target: CreateTarget?
-  @State private var isPickingNote = false
 
   var body: some View {
     Menu {
@@ -23,7 +23,7 @@ struct CreateMenu: View {
           .accessibilityIdentifier("create.book")
       }
       if verticals.hasEnabledVertical {
-        Button("Progress note", systemImage: "square.and.pencil") { isPickingNote = true }
+        Button("Progress note", systemImage: "square.and.pencil", action: onAddNote)
           .accessibilityIdentifier("create.note")
       }
     } label: {
@@ -34,9 +34,6 @@ struct CreateMenu: View {
     .sheet(item: $target) { target in
       CreateEditor(
         target: target, library: library, onRefresh: onRefresh, onSaved: onSaved)
-    }
-    .inspector(isPresented: $isPickingNote) {
-      NoteTargetPicker(library: library, verticals: verticals, onSaved: onRefresh)
     }
   }
 }
