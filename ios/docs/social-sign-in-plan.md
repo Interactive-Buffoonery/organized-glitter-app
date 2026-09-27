@@ -1,7 +1,9 @@
 # Social sign-in parity for iOS
 
-Updated: 2026-09-27. Status: Google/Discord enabled in Debug and Release for prelaunch testing; Apple and public-launch checks pending.
-Planning branch: `feat/social-sign-in`, created from `origin/main`.
+Updated: 2026-09-27. Status: Google/Discord enabled in Debug and Release for
+prelaunch testing; native Apple remains Debug-only. Backend deployment, native
+Apple configuration, device flows, and public-launch checks remain open.
+Implementation stack: `feat/social-oauth` -> `feat/social-apple`.
 Simulator evidence and remaining checks: [social-oauth-validation.md](social-oauth-validation.md).
 
 ## Goal and boundaries
@@ -34,8 +36,8 @@ Google / Discord
 
 Apple
   iOS native sheet -> Apple authorization code + attempt nonce
-      -> native Apple backend route -> Apple token endpoint
-      -> validate claims -> resolve/create PocketBase identity + store grant
+      -> native Apple backend route -> signed Apple provider exchange
+      -> validate signed claims and nonce -> resolve/create PocketBase identity + store grant
       -> PocketBase auth response -> session publication
 
 All methods
@@ -57,9 +59,9 @@ The review inspected native source, the backend auth hook and ADR-0007, Context7
 documentation, and PocketBase 0.40.4 source. Production provider configuration,
 Apple console settings, and device flows were not verified.
 
-- PocketBase's Apple provider validates the configured client ID. A provider
-  configured for the web Services ID is not interchangeable with native
-  authorization for the bundle ID.
+- PocketBase's Apple provider validates the configured client ID. A fresh
+  provider instance for the native bundle ID preserves the configured web
+  Services ID and its existing sign-ins.
 - PocketBase supports realtime OAuth and manual code exchange. The realtime
   connection must stay active while authorization completes.
 - Standard OAuth account creation includes an internal record-create request,
@@ -74,6 +76,9 @@ Apple console settings, and device flows were not verified.
   requires single-use step-up proofs for provider linking/unlinking.
 - ADR-0007's statement that Apple was disabled on 2026-09-20 is historical,
   not current production evidence.
+- The native Apple client uses `GET /api/auth/apple/native/readiness` returning
+  `{ "available": Bool }` and guest-only `POST /api/auth/apple/native`. Its
+  button remains Debug-only until the backend is deployed and verified.
 - The original plan identifies PR #5, native password reset, as the owner of
   session-publication ordering. Recheck its status and implementation before
   coding. This planning branch is not yet stacked on that PR.
@@ -94,6 +99,10 @@ Apple console settings, and device flows were not verified.
    reproduces an internal record-create request.
 
 ### Provider configuration
+
+Web Apple sign-in is configured; native Apple is not. Complete the App ID
+capability, native/web Services ID association, relay delivery, and backend
+secret checks below without changing the working web Apple provider.
 
 1. Inspect Apple configuration before enabling or changing it. Use test accounts
    for setup; avoid admitting production Apple users before grant capture exists.
@@ -137,30 +146,26 @@ email, user ID, or verification flag as identity authority.
 
 Define one native-Apple availability condition: users OAuth is enabled, Apple
 is configured/enabled, and native configuration is valid. Enforce it on every
-authentication request. Expose only the readiness boolean through a small
-documented public response so the UI can use the same decision; settle the
-response location during implementation. Do not create a generic capabilities
-framework. Disabling Apple must stop this route as well as the web path.
+authentication request. Expose only the readiness boolean through
+`GET /api/auth/apple/native/readiness` returning `{ "available": Bool }` so
+the UI uses the same decision. Do not create a generic capabilities framework.
+Disabling Apple must stop this route as well as the web path.
 
 ### Token exchange and trust boundary
 
-1. Mint a short-lived client secret, targeting five minutes, using the supported
-   `AppleClientSecretCreateForm` API; verify its exact JSVM usage in the pinned
-   runtime.
-2. POST to the fixed `https://appleid.apple.com/auth/token` endpoint with the
-   native client ID, client secret, code, and authorization-code grant type.
-   Do not include a web redirect URI for native authorization codes. Bound the
-   request timeout and response size.
-3. Validate the successful response and required ID-token claim types, issuer,
-   native audience, future expiry, nonempty subject, and nonce digest match.
-   Reject missing, empty, malformed, or mismatched claims.
-4. OIDC permits TLS server validation instead of signature verification for an
-   ID token received directly from the token endpoint. This exception requires
-   normal certificate validation and a trusted fixed endpoint; it never applies
-   to a token supplied by the client. Prevent redirects to an untrusted endpoint.
-5. Any mock token endpoint belongs exclusively to the test harness. An ordinary
-   production environment override must not be able to redirect this trust
-   boundary to an arbitrary server.
+1. Create a fresh PocketBase Apple provider for the native bundle ID and mint
+   its short-lived client secret with `AppleClientSecretCreateForm`. Preserve
+   the existing web provider configuration and web Apple sign-ins.
+2. Exchange the native authorization code through the provider's
+   `FetchAuthUser` path. In the reviewed PocketBase source, this path verifies
+   the token's issuer, audience, expiry, and JWKS signature. Do not use an
+   unverified JWT parser or rely on TLS alone for identity claims.
+3. Require a nonempty validated subject and match the signed token's nonce to
+   the SHA-256 digest of the raw per-attempt nonce sent by iOS. Reject missing,
+   empty, malformed, or mismatched claims.
+4. Keep token-endpoint selection fixed in production. Any mock exchange belongs
+   exclusively to the test harness; ordinary environment configuration must
+   not redirect the identity trust boundary to an arbitrary server.
 
 ### Identity and verification policy
 
@@ -290,7 +295,7 @@ session persistence failure; and provider-button UI using stubbed responses.
 
 ## Phase 3: native Apple on iOS
 
-After the backend contract is verified:
+The native client implementation is present behind `#if DEBUG`. Before Release:
 
 - Add the Sign in with Apple entitlement and verify signing configuration.
 - Use `SignInWithAppleButton`, requesting full name and email. Generate a fresh
