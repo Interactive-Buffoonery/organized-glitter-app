@@ -20,7 +20,8 @@ screen backgrounds. The Shelf redesign (Option B in
   it hides chips and sort and shows one "Add your first kit" (or book) prompt
   that opens the editor.
 - **Home.** A Continue carousel of in-progress covers, most recently logged
-  first (`/api/notes/latest`, falling back to `updated`), each diamond cover
+  first within the fetched records (`/api/notes/latest`, falling back to
+  `updated`), each diamond cover
   carrying a glass Log button. "Up next from your stash" shows Kitted up then
   In stash covers. A single "N finished this month" row opens Completed.
   Section titles open the matching Library filter; a menu picks the craft when
@@ -58,15 +59,15 @@ background nor the standalone's flat ordinary screens supersedes ADR 0001.
 Prototype saving, Notes, sharing, and other simulated actions are not native
 implementation contracts.
 
-## Native refinement
+## Historical native refinement
 
-Current verification is recorded in
+Verification of the earlier Overview and Library layout is recorded in
 [Native refinement validation](native-refinement-validation.md).
-Overview uses a single system heading, compact craft selection, artwork rows,
-See all in progress, Wishlist, and Completed shortcuts, then its count summary. Library keeps peer
-craft segments on iPhone and the craft sidebar on iPad. Search, status, and sort
-operate on the server; the grid shows title and written status, with page counts
-for books. Company and artist credits remain available in detail.
+That Overview used a single system heading, compact craft selection, artwork rows,
+See all in progress, Wishlist, and Completed shortcuts, then its count summary.
+Library kept peer craft segments on iPhone and the craft sidebar on iPad. Search,
+status, and sort operated on the server; the grid showed title and written status,
+with page counts for books. Company and artist credits remained available in detail.
 
 Overview and Library share the same interactive detail destination. Diamond
 photos are dated progress-note images. Coloring-page photos append to the
