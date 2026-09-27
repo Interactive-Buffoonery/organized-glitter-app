@@ -183,6 +183,7 @@ final class LibraryItemDetailModel {
     } catch {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to delete this item.",
+        offline: APIError.deleteNeedsConnectionMessage,
         fallback: "The item could not be deleted. Try again."
       )
       return false
@@ -277,6 +278,7 @@ final class LibraryItemDetailModel {
     } catch {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to add a progress note.",
+        offline: APIError.needsConnection("Adding a progress note"),
         fallback: "The progress note could not be added. Try again."
       )
       return false
@@ -321,6 +323,7 @@ final class LibraryItemDetailModel {
     } catch {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to add a photo.",
+        offline: APIError.needsConnection("Adding a photo"),
         fallback: "The photo could not be added. Try again."
       )
       return false
@@ -346,10 +349,12 @@ final class LibraryItemDetailModel {
 
   private func reconcileUnresolvedWrite() async -> Bool {
     let didRefresh: Bool
+    var refreshError: Error?
     do {
       try await library.refreshFromServer()
       didRefresh = await load()
     } catch {
+      refreshError = error
       didRefresh = false
     }
     if didRefresh {
@@ -375,18 +380,25 @@ final class LibraryItemDetailModel {
     }
 
     unresolvedWriteState = .needsRefresh
+    let needsConnection = refreshError as? APIError == .offline
     if unresolvedStatusWrite {
       mutationErrorMessage =
-        "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
+        needsConnection
+        ? "Changing the status needs a connection. Reconnect and refresh status before changing it again."
+        : "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
       return false
     }
     switch item {
     case .diamond:
       mutationErrorMessage =
-        "Progress note status is unknown because the project could not be refreshed. Refresh status before adding another note."
+        needsConnection
+        ? "Adding a progress note needs a connection. Reconnect and refresh status before adding another note."
+        : "Progress note status is unknown because the project could not be refreshed. Refresh status before adding another note."
     case .page:
       mutationErrorMessage =
-        "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
+        needsConnection
+        ? "Adding a photo needs a connection. Reconnect and refresh status before starting another upload."
+        : "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
     case .book:
       mutationErrorMessage = "Save status is unknown. Refresh the item before trying again."
     }

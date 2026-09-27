@@ -24,6 +24,7 @@ struct AppShellView: View {
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
   @State private var protectedFiles: ProtectedFileAccess
+  @State private var connectivity = Connectivity()
   @State private var lastAnnouncedSyncMessage: String?
 
   init(model: AppModel, client: PocketBaseClient, user: UserRecord, library: LibrarySession) {
@@ -124,10 +125,12 @@ struct AppShellView: View {
     .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
+    .environment(\.connectionAvailable, connectivity.connectionAvailable)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
     .task { try? await library.refresh() }
     .task { await library.monitorConnectivity() }
+    .task { await connectivity.monitor() }
     .sheet(isPresented: $isShowingAccount) {
       NavigationStack {
         AccountView(appModel: model, client: client, preferences: accountPreferences)

@@ -135,6 +135,10 @@ struct ColoringBookEditor: View {
             )
           }
 
+          if book == nil || draft.totalPages != baseline.totalPages {
+            Section { NeedsConnectionHint() }
+          }
+
           if book != nil {
             Section {
               Text(
@@ -209,6 +213,8 @@ struct ColoringBookEditor: View {
     } catch {
       errorMessage = error.userMessage(
         permission: "Your account does not have permission to save this book.",
+        offline: APIError.needsConnection(
+          book == nil ? "Creating a book" : "Changing the page count"),
         fallback: "The book could not be saved. Try again."
       )
     }
