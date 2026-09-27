@@ -6,7 +6,6 @@ import SwiftUI
 @Observable
 final class OverviewModel {
   let library: LibrarySession
-  var client: PocketBaseClient { library.client }
   var userID: String { library.userID }
 
   var completedThisMonthCount = 0
@@ -87,8 +86,6 @@ final class OverviewModel {
     await load()
   }
 
-  func cancelNoteDates() {}
-
   /// Most recently logged first; records without a note fall back to `updated`.
   /// Note dates are date-only, so a note logged today outranks today's edits.
   static func continueOrder(_ items: [LibraryItem], latestNoteDates: [String: String])
@@ -122,10 +119,6 @@ final class OverviewModel {
     case 2..<7: return "Logged \(days) days ago"
     default: return DetailDateOnly.formatted(noteDate, timeZone: timeZone).map { "Logged \($0)" }
     }
-  }
-
-  func artworkURL(for item: LibraryItem, token: String?) -> URL? {
-    item.artworkURL(using: client, thumb: ArtworkThumb.gallery, token: token)
   }
 
   // Month bounds are PocketBase date-only strings (YYYY-MM-DD) in the user's
@@ -241,7 +234,6 @@ struct OverviewView: View {
       )
     }
     .task(id: model.library.generation) { await model.load() }
-    .onDisappear { model.cancelNoteDates() }
   }
 
   /// Reorders Continue after the sheet closes, so the confirmed card visibly moves to the front.

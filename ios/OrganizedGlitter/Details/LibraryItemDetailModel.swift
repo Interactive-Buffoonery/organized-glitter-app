@@ -89,12 +89,7 @@ final class LibraryItemDetailModel {
       }
       switch item {
       case .diamond(let project):
-        let matching = library.progressNotes.filter { $0.project == project.id }
-          .sorted { Self.progressNote($0, precedes: $1) }
-        progressNotesPage = 1
-        progressNotesTotalPages = (matching.count + 19) / 20
-        progressNotes = Array(matching.prefix(20))
-        canLoadMoreProgressNotes = progressNotesPage < progressNotesTotalPages
+        projectProgressNotes(projectID: project.id, pagesToShow: 1)
       case .book(let book):
         let pagesToShow = preservingLoadedBookPages ? max(bookPagesPage, 1) : 1
         projectBookPages(bookID: book.id, pagesToShow: pagesToShow)
@@ -133,11 +128,15 @@ final class LibraryItemDetailModel {
 
   func loadMoreProgressNotes() async {
     guard case .diamond(let project) = item, canLoadMoreProgressNotes else { return }
-    let matching = library.progressNotes.filter { $0.project == project.id }
+    projectProgressNotes(projectID: project.id, pagesToShow: progressNotesPage + 1)
+  }
+
+  private func projectProgressNotes(projectID: String, pagesToShow: Int) {
+    let matching = library.progressNotes.filter { $0.project == projectID }
       .sorted { Self.progressNote($0, precedes: $1) }
-    progressNotesPage += 1
-    progressNotes = Array(matching.prefix(progressNotesPage * 20))
+    progressNotesPage = pagesToShow
     progressNotesTotalPages = (matching.count + 19) / 20
+    progressNotes = Array(matching.prefix(progressNotesPage * 20))
     canLoadMoreProgressNotes = progressNotesPage < progressNotesTotalPages
   }
 
