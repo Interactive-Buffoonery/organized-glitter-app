@@ -58,6 +58,33 @@ struct LocalLibraryStoreTests {
   }
 
   @Test
+  func replayWithNewerServerEditDoesNotRebaseLaterLocalEdit() async throws {
+    let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
+    let store = try LocalLibraryStore.inMemory()
+    let original = try project(id: "project-1", user: "user-1", title: "A")
+    try await store.ingestSnapshot(snapshot(projects: [original]), scope: scope)
+    _ = try await store.queueEdit(
+      scope: scope, key: original.localRecordKey, patch: ["title": .string("B")])
+    let first = try #require(await store.pendingOperations(scope: scope).first)
+    _ = try await store.queueEdit(
+      scope: scope, key: original.localRecordKey, patch: ["title": .string("C")])
+
+    // A replay can return D: the server accepted B, its response was lost,
+    // then another client changed the title before this client retried.
+    let replayed = try project(id: "project-1", user: "user-1", title: "D")
+    _ = try await store.acknowledge(
+      scope: scope, operationID: first.id, record: replayed)
+
+    let entry = try #require(await store.entry(scope: scope, key: original.localRecordKey))
+    #expect(entry.item.title == "C")
+    #expect(entry.conflict == .changedOnServer)
+    #expect(try await store.pendingOperations(scope: scope).isEmpty)
+    let changes = try await store.conflictChanges(scope: scope, key: original.localRecordKey)
+    #expect(changes.first?.local == .string("C"))
+    #expect(changes.first?.server == .string("D"))
+  }
+
+  @Test
   func conflictShowsBothValuesAndCanRetainLocalEdit() async throws {
     let scope = LocalAccountScope(backendURL: backendURL, userID: "user-1")
     let store = try LocalLibraryStore.inMemory()
