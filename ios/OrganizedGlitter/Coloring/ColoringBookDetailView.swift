@@ -18,15 +18,17 @@ struct ColoringBookDetailView: View {
 
         DetailStatusMenu<BookStatus>(current: book.status) { status in
           Task {
-            if await model.setStatus(status) {
+            let changed = await model.setStatus(status)
+            if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
               await onCollectionChanged()
             }
           }
         }
         .controlSize(.large)
-        .disabled(model.isMutating)
+        .disabled(model.isMutating || model.unresolvedWriteState != nil)
         .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 360)
         .frame(maxWidth: .infinity)
+        DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
         pagesHeader
 
@@ -116,7 +118,9 @@ struct ColoringBookDetailView: View {
           }
         }
 
-        if let mutationErrorMessage = model.mutationErrorMessage {
+        if let mutationErrorMessage = model.mutationErrorMessage,
+          !model.unresolvedStatusWrite
+        {
           AccessibleErrorLabel(message: mutationErrorMessage)
         }
       }

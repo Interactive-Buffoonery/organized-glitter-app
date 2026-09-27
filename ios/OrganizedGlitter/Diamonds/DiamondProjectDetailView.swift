@@ -19,6 +19,7 @@ struct DiamondProjectDetailView: View {
       VStack(alignment: .leading, spacing: 20) {
         header
         actions
+        DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
         if !specs.isEmpty {
           DetailSpecStrip(specs: specs)
@@ -37,7 +38,22 @@ struct DiamondProjectDetailView: View {
             DetailPhotoContactSheet(photos: progressPhotos)
           }
 
-          if !isAddingNote {
+          if model.canLoadMoreProgressNotes {
+            Button {
+              Task { await model.loadMoreProgressNotes() }
+            } label: {
+              HStack {
+                if model.isLoadingMore { ProgressView() }
+                Text(model.isLoadingMore ? "Loading more progress" : "Load more progress")
+              }
+              .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.isLoadingMore)
+            .accessibilityIdentifier("detail.diamond.loadMoreProgress")
+          }
+
+          if !isAddingNote, !model.unresolvedStatusWrite {
             unresolvedWriteRecovery
           }
         }
@@ -90,14 +106,6 @@ struct DiamondProjectDetailView: View {
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(14)
               .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
-            }
-
-            if model.canLoadMoreProgressNotes {
-              Button("Load more notes") {
-                Task { await model.loadMoreProgressNotes() }
-              }
-              .disabled(model.isLoadingMore)
-              .frame(maxWidth: .infinity)
             }
           }
         }
@@ -215,7 +223,8 @@ struct DiamondProjectDetailView: View {
     return layout {
       DetailStatusMenu<DiamondStatus>(current: project.status) { status in
         Task {
-          if await model.setStatus(status) {
+          let changed = await model.setStatus(status)
+          if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
             await onCollectionChanged()
           }
         }
