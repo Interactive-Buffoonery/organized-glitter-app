@@ -6,8 +6,7 @@ struct PasswordResetConfirmationView: View {
 
   let client: PocketBaseClient?
   let link: PasswordResetLink
-  let onConfirmed: @MainActor () async -> Void
-  let onOutcomeUnknown: @MainActor () async -> Void
+  let clearSession: @MainActor () async -> Void
 
   @State private var password = ""
   @State private var passwordConfirmation = ""
@@ -22,13 +21,11 @@ struct PasswordResetConfirmationView: View {
   init(
     client: PocketBaseClient?,
     link: PasswordResetLink,
-    onConfirmed: @escaping @MainActor () async -> Void,
-    onOutcomeUnknown: @escaping @MainActor () async -> Void
+    clearSession: @escaping @MainActor () async -> Void
   ) {
     self.client = client
     self.link = link
-    self.onConfirmed = onConfirmed
-    self.onOutcomeUnknown = onOutcomeUnknown
+    self.clearSession = clearSession
     _presentation = State(initialValue: link == .invalid ? .invalidLink : .form)
   }
 
@@ -267,7 +264,7 @@ struct PasswordResetConfirmationView: View {
       guard generation == submitGeneration else { return }
       password = ""
       passwordConfirmation = ""
-      await onConfirmed()
+      await clearSession()
       guard generation == submitGeneration else { return }
       presentation = .complete
       isOutcomeFocused = true
@@ -298,7 +295,7 @@ struct PasswordResetConfirmationView: View {
   private func showUncertainOutcome(generation: Int) async {
     password = ""
     passwordConfirmation = ""
-    await onOutcomeUnknown()
+    await clearSession()
     guard generation == submitGeneration else { return }
     presentation = .outcomeUnknown
     isOutcomeFocused = true
