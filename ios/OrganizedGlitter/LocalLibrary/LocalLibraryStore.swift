@@ -10,6 +10,7 @@ final class LocalStoredRecord {
   var serverData: Data
   var activeData: Data?
   var nextData: Data?
+  var nextBaseData: Data?
   var conflictValue: String?
 
   init(key: String, scope: String, kind: String, recordID: String, serverData: Data) {
@@ -306,8 +307,17 @@ actor LocalLibraryStore {
       var next = try stored.nextData.map {
         try decoder.decode([String: LocalJSONValue].self, from: $0)
       } ?? [:]
+      var nextBase = try stored.nextBaseData.map {
+        try decoder.decode([String: LocalJSONValue].self, from: $0)
+      } ?? [:]
+      let fields = baselineFields(for: key.kind, patch: patch)
+      let newlyObserved = try values(for: fields, in: visible)
+      for field in fields where nextBase[field] == nil {
+        nextBase[field] = newlyObserved[field]
+      }
       next.merge(patch) { _, newest in newest }
       stored.nextData = try encoder.encode(next)
+      stored.nextBaseData = try encoder.encode(nextBase)
     }
     try commit()
     return try entry(stored)
@@ -362,18 +372,28 @@ actor LocalLibraryStore {
     let next = try stored.nextData.map {
       try decoder.decode([String: LocalJSONValue].self, from: $0)
     } ?? [:]
+    let nextBase = try stored.nextBaseData.map {
+      try decoder.decode([String: LocalJSONValue].self, from: $0)
+    }
     let server = try jsonObject(serverData)
-    let serverValues = try values(for: Array(next.keys), in: server)
+    let serverValues = try values(
+      for: nextBase.map { Array($0.keys) } ?? Array(next.keys), in: server)
     let remaining = next.filter { serverValues[$0.key] != $0.value }
+    let changedSinceQueued = nextBase.map { base in
+      base.contains { serverValues[$0.key] != $0.value }
+    } ?? !remaining.isEmpty
     stored.serverData = serverData
     stored.nextData = nil
-    stored.conflictValue = nil
+    stored.nextBaseData = nil
+    stored.conflictValue = remaining.isEmpty || !changedSinceQueued
+      ? nil : LocalConflict.changedOnServer.rawValue
     if remaining.isEmpty {
       stored.activeData = nil
     } else {
       stored.activeData = try encoder.encode(LocalPendingOperation(
         id: UUID(), key: active.key,
-        base: try values(for: baselineFields(for: active.key.kind, patch: remaining), in: server),
+        base: try nextBase ?? values(
+          for: baselineFields(for: active.key.kind, patch: remaining), in: server),
         patch: remaining))
     }
     try commit()
@@ -442,6 +462,7 @@ actor LocalLibraryStore {
       stored.activeData = nil
     }
     stored.nextData = nil
+    stored.nextBaseData = nil
     stored.conflictValue = nil
     try commit()
     return try entry(stored)
