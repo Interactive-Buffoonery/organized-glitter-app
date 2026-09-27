@@ -24,10 +24,16 @@ final class AppModel {
   private let themeStore: ThemeStore?
   @ObservationIgnored private var sessionGeneration = 0
 
-  var phase: Phase
+  var phase: Phase {
+    didSet {
+      routePendingPasswordReset()
+    }
+  }
   var signInError: String?
   var isSubmitting = false
   var passwordResetDestination: PasswordResetDestination?
+  var showsSignedInPasswordResetNotice = false
+  private var pendingPasswordResetLink: PasswordResetLink?
 
   init(client: PocketBaseClient, sessionStore: KeychainSessionStore, themeStore: ThemeStore) {
     self.client = client
@@ -41,6 +47,9 @@ final class AppModel {
       }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-signed-out") {
         phase = .signedOut
+        if ProcessInfo.processInfo.arguments.contains("-ui-testing-password-reset") {
+          open(URL(string: "https://organizedglitter.app/auth/confirm-password-reset/fixture-token")!)
+        }
         return
       }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated")
@@ -194,6 +203,21 @@ final class AppModel {
     guard let link = PasswordResetLink.parse(url) else {
       return
     }
+    pendingPasswordResetLink = link
+    routePendingPasswordReset()
+  }
+
+  private func routePendingPasswordReset() {
+    guard phase != .restoring else { return }
+    if case .signedIn = phase {
+      guard pendingPasswordResetLink != nil || passwordResetDestination != nil else { return }
+      pendingPasswordResetLink = nil
+      passwordResetDestination = nil
+      showsSignedInPasswordResetNotice = true
+      return
+    }
+    guard let link = pendingPasswordResetLink else { return }
+    pendingPasswordResetLink = nil
     passwordResetDestination = PasswordResetDestination(link: link)
   }
 

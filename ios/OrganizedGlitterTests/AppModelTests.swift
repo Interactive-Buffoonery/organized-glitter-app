@@ -115,6 +115,48 @@ struct AppModelTests {
   }
 
   @Test
+  func blocksPasswordResetWhileSignedIn() throws {
+    let model = AppModel(configurationError: URLError(.badURL), themeStore: ThemeStore())
+    model.phase = .signedIn(.preview)
+
+    model.open(try #require(URL(string: "https://organizedglitter.app/auth/confirm-password-reset/token")))
+
+    #expect(model.passwordResetDestination == nil)
+    #expect(model.showsSignedInPasswordResetNotice)
+    #expect(model.phase == .signedIn(.preview))
+    model.showsSignedInPasswordResetNotice = false
+    model.phase = .signedOut
+    #expect(model.passwordResetDestination == nil)
+  }
+
+  @Test(arguments: [true, false])
+  func defersResetLinkUntilSessionRestorationFinishes(signedIn: Bool) throws {
+    let model = AppModel(configurationError: URLError(.badURL), themeStore: ThemeStore())
+    model.phase = .restoring
+    model.open(try #require(URL(string: "https://organizedglitter.app/auth/confirm-password-reset/token")))
+    #expect(model.passwordResetDestination == nil)
+    #expect(!model.showsSignedInPasswordResetNotice)
+
+    model.phase = signedIn ? .signedIn(.preview) : .signedOut
+
+    #expect(model.showsSignedInPasswordResetNotice == signedIn)
+    #expect(model.passwordResetDestination?.link == (signedIn ? nil : .confirmation(token: "token")))
+  }
+
+  @Test
+  func dismissesResetFormWhenSignInFinishes() throws {
+    let model = AppModel(configurationError: URLError(.badURL), themeStore: ThemeStore())
+    model.phase = .signedOut
+    model.open(try #require(URL(string: "https://organizedglitter.app/auth/confirm-password-reset/token")))
+    #expect(model.passwordResetDestination != nil)
+
+    model.phase = .signedIn(.preview)
+
+    #expect(model.passwordResetDestination == nil)
+    #expect(model.showsSignedInPasswordResetNotice)
+  }
+
+  @Test
   func passwordResetSupersedesAnInFlightSignIn() async throws {
     DelayedAuthenticationURLProtocol.reset()
     defer { DelayedAuthenticationURLProtocol.reset() }

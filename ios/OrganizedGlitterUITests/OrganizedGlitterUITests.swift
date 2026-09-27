@@ -6,7 +6,7 @@ final class OrganizedGlitterUITests: XCTestCase {
     for scenario in ["reset-lost-connection", "reset-server-failure"] {
       let app = XCUIApplication()
       app.launchArguments += [
-        "-ui-testing-authenticated", "-ui-testing-password-reset",
+        "-ui-testing-signed-out", "-ui-testing-password-reset",
         "-overview-fixture", scenario,
       ]
       app.launch()
@@ -36,6 +36,49 @@ final class OrganizedGlitterUITests: XCTestCase {
       XCTAssertTrue(relaunched.buttons["welcomeSignIn"].waitForExistence(timeout: 5))
       relaunched.terminate()
     }
+  }
+
+  func testRejectedResetLinkOffersNewEmail() {
+    let app = XCUIApplication()
+    app.launchArguments += [
+      "-ui-testing-signed-out", "-ui-testing-password-reset",
+      "-overview-fixture", "reset-invalid-link",
+    ]
+    app.launch()
+    let password = app.secureTextFields["passwordResetNewPassword"]
+    XCTAssertTrue(password.waitForExistence(timeout: 5))
+    password.tap()
+    password.typeText("FixturePass1")
+    let confirmation = app.secureTextFields["passwordResetNewPasswordConfirmation"]
+    confirmation.tap()
+    confirmation.typeText("FixturePass1")
+    app.buttons["passwordResetConfirm"].tap()
+
+    XCTAssertTrue(app.staticTexts["passwordResetInvalidLink"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.secureTextFields["passwordResetNewPassword"].exists)
+    let request = app.buttons["passwordResetRequestNewLink"]
+    XCTAssertEqual(request.label, "Send a new reset link")
+    request.tap()
+    let email = app.textFields["passwordResetEmail"]
+    XCTAssertTrue(email.waitForExistence(timeout: 5))
+    email.tap()
+    email.typeText("fixture@example.test")
+    app.buttons["passwordResetSend"].tap()
+    XCTAssertTrue(app.staticTexts["passwordResetConfirmation"].waitForExistence(timeout: 5))
+  }
+
+  func testSignedInResetLinkShowsNoticeInsteadOfPasswordForm() {
+    let app = XCUIApplication()
+    app.launchArguments += [
+      "-ui-testing-authenticated", "-ui-testing-password-reset",
+      "-overview-fixture", "populated",
+    ]
+    app.launch()
+    let notice = app.alerts["You’re already signed in"]
+    XCTAssertTrue(notice.waitForExistence(timeout: 5))
+    XCTAssertFalse(app.secureTextFields["passwordResetNewPassword"].exists)
+    notice.buttons["OK"].tap()
+    XCTAssertFalse(app.buttons["welcomeSignIn"].exists)
   }
 
   func testRestoringExposesStatusAndHidesAccountActions() {
