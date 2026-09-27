@@ -81,8 +81,13 @@ their URL and test credentials from environment variables.
 - `ios/docs/architecture.md` documents data handling and release gates.
 - `ios/docs/design.md` documents the Berry Cream design system.
 
-The app keeps server records in memory. It doesn’t persist a record cache,
-queue offline writes, or treat the client as the source of truth.
+The approved offline-library design uses private, account- and backend-scoped
+SwiftData storage for downloaded records and pending existing-record metadata
+and status edits. PocketBase remains authoritative. This layer provides the
+storage and sync foundation; the follow-up integration enables it in the app.
+Until then, feature views continue to read and write online. Creates, deletes,
+notes, uploads, taxonomy, account settings, and book page-count changes remain
+online-only in the integrated design too.
 
 ## Security and privacy
 
