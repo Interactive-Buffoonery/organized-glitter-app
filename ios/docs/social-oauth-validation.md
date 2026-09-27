@@ -1,9 +1,20 @@
 # Google and Discord OAuth validation
 
 Updated: 2026-09-27. Branch: `feat/social-oauth`, rebased onto `main` after PR #5 merged.
-This is a Debug-only integration layer. `AccountMethodView` hides provider controls
-from Release builds until native Apple and the release gates in
-`social-sign-in-plan.md` are complete.
+Google and Discord controls are enabled in both Debug and Release builds for
+prelaunch testing, including TestFlight. The backend must advertise a provider
+before its button appears. Automated-test fixtures remain Debug-only.
+Native Apple and the public-launch checks in `social-sign-in-plan.md` remain
+separate work; enabling Release controls does not establish those checks passed.
+
+## Release controls
+
+At Sarah's request, provider buttons, errors, provider loading, and cancellation
+on navigation are available in Release as well as Debug. The focused Debug
+provider-button UI test passed after this change. A signed Release simulator
+build also passed and displayed Discord and Google using the live backend's
+auth-methods response, without test launch arguments. The simulator is ready
+for owner sign-in testing; successful provider authentication is still unverified.
 
 ## Rebase and cancellation review
 
