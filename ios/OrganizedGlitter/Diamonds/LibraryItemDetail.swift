@@ -63,9 +63,7 @@ struct LibraryItemDetailDestination: View {
 
         if model.item.canDeleteFromDetail {
           Menu {
-            if !connectionAvailable {
-              Text("Deleting needs a connection")
-            }
+            NeedsConnectionHint()
             Button(model.item.deleteLabel, role: .destructive) {
               isConfirmingDelete = true
             }
@@ -119,7 +117,7 @@ struct LibraryItemDetailDestination: View {
       Button("Cancel", role: .cancel) {}
     } message: {
       Text(model.item.deleteMessage
-        + (connectionAvailable ? "" : " Deleting needs a connection."))
+        + (connectionAvailable ? "" : " " + APIError.deleteNeedsConnectionMessage))
     }
     .alert(
       "Couldn’t delete item",
