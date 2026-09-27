@@ -125,6 +125,40 @@ struct LibraryItemDetailModelTests {
     #expect(model.progressNotes.map(\.id) == ["created-note"])
   }
 
+  @Test func progressNotesKeepLoadedPagesAfterReloadsAndSaves() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    for index in 0..<45 {
+      let note = DiamondProgressNoteRecord(
+        id: "note-\(index)", project: project.id, content: "Progress",
+        date: "2026-09-01", image: nil, created: "2026-09-01",
+        updated: "2026-09-01", expand: nil)
+      try await library.store.ingestNote(note, scope: library.scope)
+    }
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(await model.load())
+    #expect(model.progressNotes.count == 20)
+    await model.loadMoreProgressNotes()
+    let loadedIDs = model.progressNotes.map(\.id)
+    #expect(loadedIDs.count == 40)
+    #expect(await model.load())
+    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    #expect(await model.setStatus("progress"))
+    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    let edited: DiamondProjectRecord = try await library.update(
+      collection: "projects", id: project.id, body: ["title": "Moon Garden updated"])
+    await model.acceptSaved(.diamond(edited))
+    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    #expect(model.canLoadMoreProgressNotes)
+    await model.loadMoreProgressNotes()
+    #expect(model.progressNotes.count == 45)
+    #expect(!model.canLoadMoreProgressNotes)
+    #expect(await model.load())
+    #expect(model.progressNotes.count == 45)
+    try await library.close(removingData: false)
+  }
+
   @Test func bookPagesFilterAndPaginateFromLocalLibrary() async throws {
     let library = try localFeatureLibrary()
     let book = featureBook("book", title: "Quiet Pages")

@@ -90,7 +90,7 @@ final class LibraryItemDetailModel {
       }
       switch item {
       case .diamond(let project):
-        projectProgressNotes(projectID: project.id, pagesToShow: 1)
+        projectProgressNotes(projectID: project.id, pagesToShow: max(progressNotesPage, 1))
       case .book(let book):
         let pagesToShow = preservingLoadedBookPages ? max(bookPagesPage, 1) : 1
         projectBookPages(bookID: book.id, pagesToShow: pagesToShow)
