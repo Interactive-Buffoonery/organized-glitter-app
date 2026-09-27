@@ -28,11 +28,12 @@ before real native login can be validated. BackendContract.json remains unchange
 A successful build or mocked exchange does not establish provider login success.
 
 Validation for this revision:
-- All 169 unit tests in 27 suites passed on the connected physical iPad, including
+- After rebasing onto main `45f1bed` (PR #19), all 184 unit tests in 29 suites
+  passed on the connected physical iPad, including
   parameterized callback validation and cancellation tests. Log:
-  `/tmp/og-pr16-direct-tests.log`.
+  `/tmp/og-pr16-direct-rebased-tests.log`.
 - Signed Release device build passed. Log:
-  `/tmp/og-pr16-direct-release.log`.
+  `/tmp/og-pr16-direct-rebased-release.log`.
 - Production association deployment and real Discord authorization remain pending.
 
 
