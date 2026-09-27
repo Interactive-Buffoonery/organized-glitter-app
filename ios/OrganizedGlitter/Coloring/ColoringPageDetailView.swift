@@ -236,14 +236,17 @@ struct ColoringPageDetailView: View {
         Spacer()
       }
       if pendingPhoto == nil {
-        PhotosPicker(selection: $selectedItem, matching: .images) {
-          Label("Add photo", systemImage: "plus")
-            .frame(minHeight: 44)
-            .contentShape(.rect)
+        VStack(alignment: .trailing, spacing: 2) {
+          PhotosPicker(selection: $selectedItem, matching: .images) {
+            Label("Add photo", systemImage: "plus")
+              .frame(minHeight: 44)
+              .contentShape(.rect)
+          }
+          .buttonStyle(.bordered)
+          .disabled(isPreparingPhoto || model.isMutating)
+          .accessibilityIdentifier("detail.page.addPhoto")
+          NeedsConnectionHint()
         }
-        .buttonStyle(.bordered)
-        .disabled(isPreparingPhoto || model.isMutating)
-        .accessibilityIdentifier("detail.page.addPhoto")
       }
     }
   }

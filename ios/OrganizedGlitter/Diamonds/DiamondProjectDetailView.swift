@@ -265,19 +265,22 @@ struct DiamondProjectDetailView: View {
       sectionTitle("Progress")
       if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
 
-      Button {
-        isAddingNote = true
-      } label: {
-        Label("Log progress", systemImage: "plus.circle")
-          .labelStyle(.titleAndIcon)
-          .font(.subheadline)
-          .frame(minHeight: 44)
-          .contentShape(.rect)
+      VStack(alignment: .trailing, spacing: 2) {
+        Button {
+          isAddingNote = true
+        } label: {
+          Label("Log progress", systemImage: "plus.circle")
+            .labelStyle(.titleAndIcon)
+            .font(.subheadline)
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(theme.pageAction)
+        .disabled(model.isMutating || model.unresolvedWriteState != nil)
+        .accessibilityIdentifier("detail.diamond.addNote")
+        NeedsConnectionHint()
       }
-      .buttonStyle(.plain)
-      .foregroundStyle(theme.pageAction)
-      .disabled(model.isMutating || model.unresolvedWriteState != nil)
-      .accessibilityIdentifier("detail.diamond.addNote")
     }
   }
 

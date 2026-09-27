@@ -93,3 +93,15 @@ sign-out confirmation, and cache-only artwork requests. Backend tests run
 against a disposable PocketBase instance with the production hooks loaded,
 including unauthorized access, relation ownership, conflicts, replay, and
 schema migration behavior. iOS 18 remains the deployment minimum.
+
+### Debug offline UI fixture
+
+Launch a Debug simulator build with
+`-ui-testing-authenticated -overview-fixture design -fixture-offline-after-seed`.
+The fixture signs in a fictional account, serves its first library snapshot and
+account settings, then fails later API requests as disconnected. It also shows
+the unavailable-connection hint without disconnecting the host. Bundled
+fictional artwork stays available so the screens can be inspected. The switch
+is confined to the Debug fixture; omit `-fixture-offline-after-seed` to restore
+ordinary fixture responses. These flags do not exercise a real account or a
+production network failure.

@@ -56,6 +56,7 @@ private struct TaxonomyOptionList: View {
   @State private var isCreating = false
   @State private var isPresentingCreate = false
   @State private var newName = ""
+  @State private var usingDownloadedOptions = false
 
   var body: some View {
     List {
@@ -69,8 +70,15 @@ private struct TaxonomyOptionList: View {
           }
 
           Section {
+            if usingDownloadedOptions {
+              Text("Showing \(label.lowercased()) options used by downloaded books. Try again when the service is available for the full list.")
+                .font(.footnote)
+            }
             if let errorMessage {
               AccessibleErrorLabel(message: errorMessage)
+              Button("Try Again") {
+                Task { await load() }
+              }
             }
             Button {
               isPresentingCreate = true
@@ -79,6 +87,7 @@ private struct TaxonomyOptionList: View {
                 .foregroundStyle(theme.primary)
             }
             .disabled(isCreating)
+            NeedsConnectionHint()
           }
         } else if let errorMessage {
           Section {
@@ -100,9 +109,6 @@ private struct TaxonomyOptionList: View {
     .navigationTitle(label)
     .navigationBarTitleDisplayMode(.inline)
     .task {
-      guard options == nil else {
-        return
-      }
       await load()
     }
     .alert("New \(label)", isPresented: $isPresentingCreate) {
@@ -138,6 +144,10 @@ private struct TaxonomyOptionList: View {
 
   private func load() async {
     errorMessage = nil
+    if options == nil {
+      options = TaxonomyOptions.fromDownloadedBooks(
+        library.items, collection: collection, userID: userID)
+    }
     do {
       let records: [NamedRelationRecord] = try await library.client.allRecords(
         collection: collection,
@@ -145,12 +155,18 @@ private struct TaxonomyOptionList: View {
         sort: "+name"
       )
       options = records
+      usingDownloadedOptions = false
     } catch APIError.cancelled {
       return
+    } catch APIError.offline {
+      usingDownloadedOptions = true
+      errorMessage = "Reconnect to see all \(label.lowercased()) options."
     } catch {
+      usingDownloadedOptions = true
       errorMessage = message(
         error,
         permission: "Your account does not have permission to view \(label.lowercased()) options.",
+        offline: APIError.offlineMessage,
         fallback: "\(label) options are unavailable right now. Try again."
       )
     }
@@ -187,15 +203,37 @@ private struct TaxonomyOptionList: View {
       errorMessage = message(
         error,
         permission: "Your account does not have permission to add a \(label.lowercased()).",
+        offline: APIError.needsConnection("Adding a \(label.lowercased())"),
         fallback: "The \(label.lowercased()) could not be created. Try again."
       )
     }
   }
 
-  private func message(_ error: Error, permission: String, fallback: String) -> String {
-    error as? APIError == .offline
-      ? APIError.offlineMessage
-      : error.userMessage(permission: permission, fallback: fallback)
+  private func message(
+    _ error: Error, permission: String, offline: String, fallback: String
+  ) -> String {
+    error.userMessage(permission: permission, offline: offline, fallback: fallback)
+  }
+}
+
+enum TaxonomyOptions {
+  static func fromDownloadedBooks(
+    _ items: [LibraryItem], collection: String, userID: String
+  ) -> [NamedRelationRecord] {
+    var recordsByID: [String: NamedRelationRecord] = [:]
+    for item in items {
+      guard case .book(let book) = item, book.user == userID else { continue }
+      let record: NamedRelationRecord?
+      switch collection {
+      case "book_publishers": record = book.expand?.publisher
+      case "book_illustrators": record = book.expand?.illustrator
+      default: record = nil
+      }
+      if let record { recordsByID[record.id] = record }
+    }
+    return recordsByID.values.sorted {
+      $0.name.localizedStandardCompare($1.name) == .orderedAscending
+    }
   }
 }
 

@@ -12,6 +12,7 @@ struct CreateMenu: View {
 
   var body: some View {
     Menu {
+      NeedsConnectionHint()
       if verticals.diamondPainting {
         Button("Diamond painting project", systemImage: LibrarySection.diamonds.systemImage) { target = .diamond }
           .accessibilityIdentifier("create.diamond")
