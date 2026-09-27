@@ -40,14 +40,14 @@ enum DiamondStatus: String, RecordStatus {
   var systemImage: String {
     switch self {
     case .wishlist: "heart"
-    case .purchased: "bag"
+    case .purchased: "shippingbox"
     case .stash: "tray.full"
-    case .kitted: "shippingbox"
+    case .kitted: "checklist.checked"
     case .progress: "play.circle"
     case .onhold: "pause.circle"
     case .completed: "checkmark.circle"
     case .archived: "archivebox"
-    case .destashed: "arrow.up.bin"
+    case .destashed: "shippingbox.and.arrow.backward"
     }
   }
 }
@@ -73,12 +73,12 @@ enum BookStatus: String, RecordStatus {
   var systemImage: String {
     switch self {
     case .wishlist: "heart"
-    case .purchased: "bag"
+    case .purchased: "shippingbox"
     case .inStash: "tray.full"
     case .inProgress: "play.circle"
     case .completed: "checkmark.circle"
     case .archived: "archivebox"
-    case .destashed: "arrow.up.bin"
+    case .destashed: "shippingbox.and.arrow.backward"
     }
   }
 }
@@ -103,7 +103,7 @@ enum PageStatus: String, RecordStatus {
   var systemImage: String {
     switch self {
     case .notStarted: "circle.dashed"
-    case .paletteChosen: "paintpalette"
+    case .paletteChosen: "swatchpalette"
     case .inProgress: "play.circle"
     case .onHold: "pause.circle"
     case .completed: "checkmark.circle"

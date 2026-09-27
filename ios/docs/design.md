@@ -244,17 +244,23 @@ read as siblings. Established mappings:
 | Concept | Web (Lucide) | iOS (SF Symbol) |
 | --- | --- | --- |
 | Overview / home | `Home` | `house` |
-| Library / dashboard | `LayoutDashboard` | `square.grid.2x2` |
+| Library / dashboard | `LayoutDashboard` | `rectangle.grid.2x2` |
 | Create | `Plus` | `plus` |
 | Randomizer | `Shuffle` | `shuffle` |
 | Account | — | `person.crop.circle` |
-| Diamond project | `Gem` | `diamond` |
-| Coloring | `Palette` | `paintpalette` |
-| Wishlist | `Heart` | `heart.circle.fill` |
-| Completed | `CheckCircle` | `checkmark.circle.fill` |
-| Archived / destashed | `Archive` | `archivebox.circle.fill` |
-| In progress | — | `play.circle.fill` |
-| On hold | — | `pause.circle.fill` |
+| Diamond project | `Gem` | `sparkles.rectangle.stack` |
+| Coloring book | `Palette` | `books.vertical` |
+| Coloring page | — | `pencil.and.scribble` |
+| Wishlist | `Heart` | `heart` |
+| Purchased | — | `shippingbox` |
+| In stash | — | `tray.full` |
+| Kitted up | — | `checklist.checked` |
+| Completed | `CheckCircle` | `checkmark.circle` |
+| Archived | `Archive` | `archivebox` |
+| Destashed | — | `shippingbox.and.arrow.backward` |
+| In progress | — | `play.circle` |
+| On hold | — | `pause.circle` |
+| Palette chosen | — | `swatchpalette` |
 
 If a pixel-exact match with web ever becomes a requirement, Lucide ships SVGs
 that can be imported into the asset catalog as template symbol images — not

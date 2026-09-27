@@ -266,18 +266,21 @@ struct ProgressNotesSection: View {
         .foregroundStyle(theme.foreground)
         .accessibilityAddTraits(.isHeader)
       if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
-      Button {
-        isAddingNote = true
-        logEditor = model
-      } label: {
-        Label("Log progress", systemImage: "plus.circle")
-          .font(.subheadline)
-          .frame(minHeight: 44)
+      VStack(alignment: .trailing, spacing: 2) {
+        Button {
+          isAddingNote = true
+          logEditor = model
+        } label: {
+          Label("Log progress", systemImage: "plus.circle")
+            .font(.subheadline)
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(theme.pageAction)
+        .disabled(model.isMutating || model.unresolvedWriteState != nil)
+        .accessibilityIdentifier("detail.progress.addNote")
+        NeedsConnectionHint()
       }
-      .buttonStyle(.plain)
-      .foregroundStyle(theme.pageAction)
-      .disabled(model.isMutating || model.unresolvedWriteState != nil)
-      .accessibilityIdentifier("detail.progress.addNote")
     }
   }
 
