@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct ProgressNoteEntry: View {
+  @Environment(\.photoViewer) private var viewer
   @Environment(\.theme) private var theme
 
   let note: ProgressNoteItem
@@ -52,6 +53,11 @@ struct ProgressNoteEntry: View {
         if let onOpenPhoto {
           Button(action: onOpenPhoto) { photo }
             .buttonStyle(.plain)
+            .accessibilityLabel("Open progress photo from \(formattedDate)")
+        } else if let viewer {
+          Button { viewer.open(note.recordID) } label: { photo }
+            .buttonStyle(.plain)
+            .matchedTransitionSource(id: note.recordID, in: viewer.namespace)
             .accessibilityLabel("Open progress photo from \(formattedDate)")
         } else {
           photo
@@ -239,6 +245,7 @@ struct ProgressNotesSection: View {
         do { try await Task.sleep(for: .seconds(1.6)) } catch { return }
         withAnimation(Theme.motion) { highlightedNoteID = nil }
       }
+      .photoViewer(progressPhotos)
     }
   }
 
@@ -292,6 +299,18 @@ struct ProgressNotesSection: View {
 
   private var pendingNoteID: String? {
     model.lastAddedProgressNoteID == revealedNoteID ? nil : model.lastAddedProgressNoteID
+  }
+
+  private var progressPhotos: [DetailPhoto] {
+    model.progressNotes.compactMap { note in
+      guard let thumbnail = protectedFiles?.photoURL(for: note, thumb: ArtworkThumb.gallery),
+        let fullSize = protectedFiles?.photoURL(for: note)
+      else { return nil }
+      return DetailPhoto(
+        id: note.recordID, url: thumbnail, fullSizeURL: fullSize,
+        accessibilityLabel: "Progress photo from \(DetailDateOnly.formatted(note.date) ?? note.date)",
+        date: DetailDateOnly.formatted(note.date), caption: note.content.nonEmpty)
+    }
   }
 
   private func revealSavedNote(_ proxy: ScrollViewProxy) {
