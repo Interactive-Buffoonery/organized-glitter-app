@@ -130,6 +130,8 @@ private struct LibraryConflictFields: View {
   var body: some View {
     Group {
       if let changes {
+        let display = ConflictValueDisplay(
+          item: entry.item, accountItems: library.items, userID: library.userID)
         if let errorMessage { AccessibleErrorLabel(message: errorMessage) }
         if changes.isEmpty {
           Text("The compared fields currently match.")
@@ -138,8 +140,8 @@ private struct LibraryConflictFields: View {
           VStack(alignment: .leading, spacing: 4) {
             Text(ConflictFieldName.label(for: change.field))
               .font(.headline)
-            Text("\(change.isComparisonOnly ? "When you saved" : "On this device"): \(display(change.local, field: change.field))")
-            Text("In your account: \(display(change.server, field: change.field))")
+            Text("\(change.isComparisonOnly ? "When you saved" : "On this device"): \(display.text(change.local, field: change.field))")
+            Text("In your account: \(display.text(change.server, field: change.field))")
             if change.isComparisonOnly {
               Text("This field was included in the conflict check.")
                 .font(.footnote)
@@ -196,13 +198,47 @@ private struct LibraryConflictFields: View {
       catch { errorMessage = "The changes could not be resolved. Please try again." }
     }
   }
+}
 
-  private func display(_ value: LocalJSONValue, field: String) -> String {
+struct ConflictValueDisplay {
+  let item: LibraryItem
+  private let relationNames: [String: [String: String]]
+
+  init(item: LibraryItem, accountItems: [LibraryItem], userID: String) {
+    self.item = item
+    var names: [String: [String: String]] = [:]
+    for candidate in [item] + accountItems {
+      switch candidate {
+      case .diamond(let project) where project.user == userID:
+        if let record = project.expand?.company, let name = record.name.nonEmpty {
+          names["company", default: [:]][record.id] = name
+        }
+        if let record = project.expand?.artist, let name = record.name.nonEmpty {
+          names["artist", default: [:]][record.id] = name
+        }
+      case .book(let book) where book.user == userID:
+        if let record = book.expand?.publisher, let name = record.name.nonEmpty {
+          names["publisher", default: [:]][record.id] = name
+        }
+        if let record = book.expand?.illustrator, let name = record.name.nonEmpty {
+          names["illustrator", default: [:]][record.id] = name
+        }
+      default:
+        break
+      }
+    }
+    relationNames = names
+  }
+
+  func text(_ value: LocalJSONValue, field: String) -> String {
     switch value {
     case .string(let value):
       if value.isEmpty { return "Not set" }
+      if ["company", "artist", "publisher", "illustrator"].contains(field) {
+        return relationNames[field]?[value] ?? "\(ConflictFieldName.label(for: field)) unavailable"
+      }
       if field == "status" {
-        switch entry.item {
+        switch item {
         case .diamond: return DiamondStatus(rawValue: value)?.label ?? value
         case .book: return BookStatus(rawValue: value)?.label ?? value
         case .page: return PageStatus(rawValue: value)?.label ?? value
