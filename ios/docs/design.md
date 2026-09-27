@@ -250,3 +250,9 @@ worth the Dynamic Type / weight-matching loss today.
 - Rows and cards combine into single accessibility elements where the parts
   read as one thing.
 - Motion uses `Theme.motion` (ease-out-quart, 0.24 s) — no bounce, no elastic.
+
+## App icon artwork
+
+The approved Sorted icon uses berry and lilac pieces on deep navy (`#05051A`),
+with no outer border in either appearance. See [App icon](app-icon.md) for
+source, export, and alignment rules. The Caveat wordmark remains separate.
