@@ -1,7 +1,9 @@
 # Native SDK privacy contract (INT-1155)
 
 Status: draft implementation contract for INT-1157 and INT-1158. The live
-vendor settings and network checks below remain release gates. This document
+vendor settings and network checks below remain release gates. RevenueCat
+project creation and Apple connection belong to INT-1154; no RevenueCat
+project existed when this draft was written. This document
 covers PostHog product analytics and RevenueCat purchase processing. It does
 not install either SDK. It extends the web
 [`docs/analytics/posthog.md`](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/analytics/posthog.md)
@@ -176,8 +178,7 @@ deleting a PocketBase account alone deletes vendor data.
 Before INT-1157 and INT-1158 are privacy-complete:
 
 1. Pin the actual SDK versions and compare their source, manifests, and defaults
-   with this table. Inspect live PostHog retention, RevenueCat restore behavior,
-   attribution destinations, and vendor deletion settings.
+   with this table. Inspect live PostHog retention and project settings.
 2. In an isolated iOS 26 simulator harness, inspect actual requests on fresh
    install, default-on use, opt-out, relaunch, opt back in, offline/reconnect,
    logout, second-account login, and purchase/restore. Assert event names and
@@ -189,6 +190,12 @@ Before INT-1157 and INT-1158 are privacy-complete:
 4. INT-1160 reviews the assembled privacy report and App Store labels against
    the shipped binary and live network behavior. Keep screenshots and packet
    evidence free of user content and credentials.
+
+The RevenueCat part has its own setup gate under INT-1154 and INT-1156. After
+creating the project and connecting the App Store app, inspect its restore
+behavior, attribution destinations, and deletion settings. Verify purchase
+payloads in Apple's sandbox before shipping tips. This setup does not block
+PostHog event implementation.
 
 ## Handoff
 
