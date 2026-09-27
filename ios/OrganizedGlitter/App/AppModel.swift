@@ -34,6 +34,9 @@ final class AppModel {
     phase = .restoring
 
     #if DEBUG
+      if ProcessInfo.processInfo.arguments.contains("-ui-testing-restoring") {
+        return
+      }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-signed-out") {
         phase = .signedOut
         return
