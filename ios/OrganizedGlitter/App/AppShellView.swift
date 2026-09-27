@@ -84,7 +84,7 @@ struct AppShellView: View {
       }
 
       if LibraryPresentation.hasSearchTab {
-        Tab(value: .search, role: .search) {
+        Tab("Search", systemImage: "magnifyingglass", value: .search) {
           library(.search)
         }
       }
