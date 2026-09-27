@@ -1,24 +1,33 @@
 import Foundation
 
 actor PocketBaseClient {
+  struct ExternalAuthAttempt: Sendable {
+    fileprivate let sessionGeneration: Int
+    fileprivate let authGeneration: Int
+  }
+
   nonisolated let baseURL: URL
   private let sessionStore: KeychainSessionStore
   private let urlSession: URLSession
   private let artworkStore = PrivateArtworkStore()
+  private let oauthEvents: @Sendable (URL, URLSession) -> AsyncThrowingStream<OAuthRealtimeEvent, Error>
 
   private var authentication: AuthenticatedSession?
   private var refreshTask: Task<AuthenticatedSession, Error>?
   private var refreshGeneration: Int?
   private var sessionGeneration = 0
+  private var oauthGeneration = 0
 
   init(
     baseURL: URL,
     sessionStore: KeychainSessionStore,
-    urlSession: URLSession? = nil
+    urlSession: URLSession? = nil,
+    oauthEvents: @escaping @Sendable (URL, URLSession) -> AsyncThrowingStream<OAuthRealtimeEvent, Error> = OAuthRealtime.events
   ) {
     self.baseURL = baseURL
     self.sessionStore = sessionStore
     self.urlSession = urlSession ?? Self.makeEphemeralURLSession()
+    self.oauthEvents = oauthEvents
   }
 
   func signIn(identity: String, password: String) async throws -> AuthenticatedSession {
@@ -41,6 +50,125 @@ actor PocketBaseClient {
       throw APIError.emailUnverified
     }
     return try persist(response.session)
+  }
+
+  func oauthProviders() async throws -> [OAuthProvider] {
+    struct Methods: Decodable {
+      struct OAuth2: Decodable {
+        let enabled: Bool
+        let providers: [OAuthProvider]
+      }
+      let oauth2: OAuth2
+    }
+
+    let methods: Methods = try await request(
+      path: "/api/collections/users/auth-methods",
+      includesAuthentication: false
+    )
+    return methods.oauth2.enabled
+      ? methods.oauth2.providers.filter { $0.name == "google" || $0.name == "discord" }
+      : []
+  }
+
+  func signInWithOAuth(
+    providerName: String,
+    present: @MainActor @Sendable (URL) throws -> Void,
+    dismissAccepted: @MainActor @Sendable () -> Void
+  ) async throws -> AuthenticatedSession {
+    let attempt = beginExternalAuthAttempt()
+    guard let provider = try await oauthProviders().first(where: { $0.name == providerName }) else {
+      throw OAuthError.unavailable
+    }
+
+    let stream = oauthEvents(baseURL.appending(path: "/api/realtime"), urlSession)
+    var events = stream.makeAsyncIterator()
+    guard case .connected(let clientID) = try await events.next() else {
+      throw OAuthError.disconnected
+    }
+    try checkExternalAuthAttempt(attempt)
+
+    struct Subscription: Encodable {
+      let clientId: String
+      let subscriptions = ["@oauth2"]
+    }
+    _ = try await send(
+      path: "/api/realtime",
+      method: "POST",
+      body: Subscription(clientId: clientID),
+      includesAuthentication: false
+    )
+    try checkExternalAuthAttempt(attempt)
+
+    let redirectURL = baseURL.appending(path: "/api/oauth2-redirect")
+    let authorizationURL = try provider.authorizationURL(
+      redirectURL: redirectURL,
+      clientID: clientID
+    )
+    try await present(authorizationURL)
+
+    while let event = try await events.next() {
+      try checkExternalAuthAttempt(attempt)
+      switch event {
+      case .connected:
+        throw OAuthError.disconnected
+      case .callback(let callback):
+        guard callback.state == clientID else { throw OAuthError.invalidResponse }
+        guard callback.error == nil else { throw OAuthError.denied }
+        guard let code = callback.code, !code.isEmpty else {
+          throw OAuthError.invalidResponse
+        }
+        await dismissAccepted()
+        struct Exchange: Encodable {
+          let provider: String
+          let code: String
+          let codeVerifier: String
+          let redirectUrl: String
+        }
+        let response: AuthResponse = try await request(
+          path: "/api/collections/users/auth-with-oauth2",
+          method: "POST",
+          body: Exchange(
+            provider: provider.name,
+            code: code,
+            codeVerifier: provider.codeVerifier,
+            redirectUrl: redirectURL.absoluteString
+          ),
+          includesAuthentication: false
+        )
+        return try acceptExternalAuthResponse(response, attempt: attempt)
+      }
+    }
+    throw OAuthError.disconnected
+  }
+
+  func beginExternalAuthAttempt() -> ExternalAuthAttempt {
+    oauthGeneration &+= 1
+    return ExternalAuthAttempt(
+      sessionGeneration: sessionGeneration,
+      authGeneration: oauthGeneration
+    )
+  }
+
+  func cancelExternalAuthAttempt() {
+    oauthGeneration &+= 1
+  }
+
+  func acceptExternalAuthResponse(
+    _ response: AuthResponse,
+    attempt: ExternalAuthAttempt
+  ) throws -> AuthenticatedSession {
+    guard response.record.verified == true else { throw APIError.emailUnverified }
+    try checkExternalAuthAttempt(attempt)
+    return try persist(response.session)
+  }
+
+  private func checkExternalAuthAttempt(_ attempt: ExternalAuthAttempt) throws {
+    try Task.checkCancellation()
+    guard attempt.authGeneration == oauthGeneration,
+      attempt.sessionGeneration == sessionGeneration
+    else {
+      throw APIError.cancelled
+    }
   }
 
   func register(email: String, username: String, password: String) async throws {
@@ -221,6 +349,7 @@ actor PocketBaseClient {
 
   func signOut() {
     sessionGeneration &+= 1
+    oauthGeneration &+= 1
     authentication = nil
     refreshTask?.cancel()
     refreshTask = nil

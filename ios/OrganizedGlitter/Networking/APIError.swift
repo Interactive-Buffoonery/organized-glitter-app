@@ -4,6 +4,7 @@ enum APIError: Error, Equatable {
   case unauthenticated
   case emailUnverified
   case forbidden
+  case conflict
   case validation(String)
   case notFound
   case offline
@@ -29,6 +30,8 @@ enum APIError: Error, Equatable {
         return .emailUnverified
       }
       return .forbidden
+    case 409:
+      return .conflict
     case 404:
       return .notFound
     default:

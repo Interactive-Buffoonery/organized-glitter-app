@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices
 import OSLog
 import Observation
 
@@ -32,6 +33,9 @@ final class AppModel {
   private(set) var isSigningOut = false
   private var userSaveTask: Task<Void, Never>?
   private var cleanupBlocked = false
+  @ObservationIgnored private var oauthTask: Task<Void, Never>?
+  @ObservationIgnored private var oauthTimeoutTask: Task<Void, Never>?
+  @ObservationIgnored private var oauthBrowser: OAuthWebSession?
 
   var phase: Phase {
     didSet {
@@ -39,6 +43,8 @@ final class AppModel {
     }
   }
   var signInError: String?
+  var oauthError: String?
+  var socialProviders: [String] = []
   var isSubmitting = false
   var passwordResetDestination: PasswordResetDestination?
   var showsSignedInPasswordResetNotice = false
@@ -229,6 +235,92 @@ final class AppModel {
     }
   }
 
+  func loadSocialProviders() async {
+    guard let client else { return }
+    do {
+      let providers = try await client.oauthProviders()
+      guard case .signedOut = phase else { return }
+      socialProviders = providers.map(\.name)
+    } catch {
+      socialProviders = []
+    }
+  }
+
+  func signInWithOAuth(provider: String, anchor: ASPresentationAnchor) {
+    guard let client, socialProviders.contains(provider) else { return }
+    let generation = beginSessionTransition()
+    isSubmitting = true
+    oauthError = nil
+    let browser = OAuthWebSession(anchor: anchor) { [weak self] in
+      self?.cancelOAuth()
+    }
+    oauthBrowser = browser
+    oauthTask = Task {
+      defer {
+        if generation == sessionGeneration {
+          isSubmitting = false
+          oauthBrowser?.cancel()
+          oauthBrowser = nil
+          oauthTimeoutTask?.cancel()
+          oauthTimeoutTask = nil
+          oauthTask = nil
+        }
+      }
+      do {
+        let session = try await client.signInWithOAuth(
+          providerName: provider,
+          present: { try browser.start($0) },
+          dismissAccepted: { browser.dismissAccepted() }
+        )
+        guard generation == sessionGeneration else { return }
+        phase = .signedIn(session.user)
+        applyThemePreference(from: session.user)
+      } catch is CancellationError {
+        return
+      } catch APIError.cancelled {
+        return
+      } catch {
+        guard generation == sessionGeneration else { return }
+        oauthError = Self.oauthMessage(for: error)
+      }
+    }
+    oauthTimeoutTask = Task {
+      try? await Task.sleep(for: .seconds(120))
+      guard !Task.isCancelled, generation == sessionGeneration else { return }
+      cancelOAuth()
+      oauthError = "Sign-in timed out. Try again."
+    }
+  }
+
+  func cancelOAuth() {
+    guard oauthTask != nil else { return }
+    _ = beginSessionTransition()
+    isSubmitting = false
+  }
+
+  private static func oauthMessage(for error: Error) -> String {
+    switch error {
+    case OAuthError.unavailable:
+      return "This sign-in provider is unavailable right now."
+    case OAuthError.denied:
+      return "The provider did not approve sign-in. Try again."
+    case OAuthError.disconnected, OAuthError.timedOut:
+      return "The sign-in connection was interrupted. Try again."
+    case OAuthError.invalidResponse:
+      return "The provider did not complete sign-in. Try again."
+    case OAuthError.presentationFailed:
+      return "The sign-in window could not open. Try again."
+    case APIError.conflict:
+      return "This provider is already connected to another account. Sign in with your existing method and manage connections on the web."
+    case APIError.emailUnverified:
+      return "Verify your account before signing in. You can request a new verification email with the email method."
+    case APIError.offline:
+      return APIError.offlineMessage
+    default:
+      return "Organized Glitter could not sign you in. Try again."
+    }
+  }
+
   func expireSession() async {
     guard !isSigningOut else { return }
     isSigningOut = true
@@ -377,6 +469,12 @@ final class AppModel {
   }
 
   private func beginSessionTransition() -> Int {
+    oauthTask?.cancel()
+    oauthTimeoutTask?.cancel()
+    oauthBrowser?.cancel()
+    oauthTask = nil
+    oauthTimeoutTask = nil
+    oauthBrowser = nil
     sessionGeneration &+= 1
     return sessionGeneration
   }
@@ -396,6 +494,8 @@ extension Error {
         "Verify your email address before signing in. You can request a new verification email below."
     case .forbidden:
       return "This account does not have permission to sign in."
+    case .conflict:
+      return "This account conflicts with an existing sign-in method."
     case .validation(let message):
       return message
     case .offline:
