@@ -35,7 +35,17 @@ struct WelcomeView: View {
               sparkles: isRestoring ? .twinkling : .still,
               accessibilityIdentifier: "welcomeWordmark"
             )
-            .accessibilityValue(isRestoring ? "Opening your library" : "")
+            .accessibilityRepresentation {
+              VStack {
+                Text("Organized Glitter")
+                  .accessibilityAddTraits(.isHeader)
+                  .accessibilityIdentifier("welcomeWordmark")
+                if isRestoring {
+                  Text("Opening your library")
+                    .accessibilityIdentifier("launchProgress")
+                }
+              }
+            }
             .frame(maxWidth: .infinity)
             Spacer(minLength: 0)
           }
