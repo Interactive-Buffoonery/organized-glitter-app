@@ -274,7 +274,6 @@ final class LibraryModel {
       guard requestGeneration == generation, section == requestedSection else { return }
       if !library.hasSnapshot && library.items.isEmpty {
         displayedItems = []
-        errorMessage = "Connect to download your library."
         return
       }
       let matching = library.items.filter { matchesCurrentListing($0) }

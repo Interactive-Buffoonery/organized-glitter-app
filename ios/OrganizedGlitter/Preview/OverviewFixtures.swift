@@ -246,6 +246,7 @@
         self.scenario = scenario
         sequence = 0
         let hasContent = scenario != "empty"
+        let usesDesignData = scenario == "design" || scenario == "many-pages"
         collections = [
           "users": [
             [
@@ -262,20 +263,40 @@
             ]
           ],
           "projects": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designDiamonds : OverviewFixtureProtocol.diamondItems) : [],
           "coloring_books": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designBooks : OverviewFixtureProtocol.bookItems) : [],
           "coloring_pages": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designPages : OverviewFixtureProtocol.pageItems) : [],
           "progress_notes": hasContent
-            ? (scenario == "design"
+            ? (usesDesignData
               ? OverviewFixtureProtocol.designProgressNotes
               : OverviewFixtureProtocol.progressNoteItems) : [],
           "coloring_page_progress_notes": [],
         ]
+        if scenario == "many-pages", var books = collections["coloring_books"],
+          var firstBook = books.first
+        {
+          firstBook["total_pages"] = 30
+          books[0] = firstBook
+          collections["coloring_books"] = books
+          var pages = collections["coloring_pages"] ?? []
+          for index in pages.indices {
+            pages[index]["expand"] = ["book": firstBook]
+          }
+          for index in 8..<30 {
+            pages.append([
+              "id": "design-page-\(index)", "book": "design-book-0",
+              "page_number": index + 1, "status": "not_started", "photos": [],
+              "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
+              "expand": ["book": firstBook],
+            ])
+          }
+          collections["coloring_pages"] = pages
+        }
       }
 
       private func apply(request: URLRequest) -> FixtureResponse {

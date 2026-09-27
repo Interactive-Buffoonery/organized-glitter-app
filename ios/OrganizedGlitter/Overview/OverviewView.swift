@@ -302,14 +302,16 @@ struct OverviewView: View {
 
   @ViewBuilder
   private var continueContent: some View {
-    if model.isLoading, !model.hasLoaded {
+    if !model.library.hasSnapshot, model.library.syncMessage == nil,
+      model.errorMessage == nil
+    {
       ProgressView("Loading your overview")
         .frame(maxWidth: .infinity, minHeight: 220)
-    } else if let errorMessage = model.errorMessage, model.items.isEmpty {
+    } else if !model.library.hasSnapshot || (model.errorMessage != nil && model.items.isEmpty) {
       ContentUnavailableView {
         Label("Couldn’t load your overview", systemImage: "exclamationmark.triangle")
       } description: {
-        Text(errorMessage)
+        Text(model.errorMessage ?? model.library.syncMessage ?? "Connect to download your library.")
       } actions: {
         retryButton
       }
@@ -420,10 +422,10 @@ struct OverviewView: View {
 
   private var retryButton: some View {
     Button("Try Again") {
-      Task { await model.load() }
+      Task { await model.refresh() }
     }
     .buttonStyle(QuietActionStyle())
-    .disabled(model.isLoading)
+    .disabled(model.isLoading || model.library.isSyncing)
   }
 }
 
