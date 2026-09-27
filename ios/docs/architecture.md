@@ -15,6 +15,18 @@ The application does not own backend schema or server behavior. Those remain in
 
 ## Data policy
 
+The approved offline-library design intentionally supersedes the earlier
+in-memory-only policy. This layer adds account- and backend-scoped SwiftData
+storage for downloaded records and pending existing-record metadata/status
+edits. PocketBase remains authoritative for shared data and authorization.
+The follow-up integration connects feature views, offline session restoration,
+and bounded private artwork caching. It must preserve pending work across
+authentication/download failures and confirm discarding it during sign-out.
+Creates, deletes, notes, uploads, taxonomy, account settings, and book page-count
+changes remain online-only.
+
+Until that integration lands, the active feature behavior remains:
+
 - PocketBase is the only identity system and backend.
 - Credentials are stored in Keychain.
 - Records remain in memory for the process lifetime.
