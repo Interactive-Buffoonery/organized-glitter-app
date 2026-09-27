@@ -10,6 +10,7 @@ struct ColoringPageDetailView: View {
 
   let page: ColoringPageRecord
   let model: LibraryItemDetailModel
+  @Binding var logEditor: LibraryItemDetailModel?
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   @State private var selectedItem: PhotosPickerItem?
@@ -152,6 +153,7 @@ struct ColoringPageDetailView: View {
 
           ProgressNotesSection(
             model: model, onCollectionChanged: onCollectionChanged,
+            logEditor: $logEditor,
             onReveal: { proxy.scrollTo($0, anchor: .center) })
 
           if startedDate != nil || completedDate != nil {

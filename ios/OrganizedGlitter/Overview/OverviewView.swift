@@ -218,6 +218,7 @@ struct OverviewView: View {
       LibraryItemDetailDestination(
         item: item,
         library: model.library,
+        logEditor: $logEditor,
         onCollectionChanged: { await model.load() }
       )
     }
@@ -241,6 +242,7 @@ struct OverviewView: View {
             }
           }
         )
+        .inspectorColumnWidth(min: 300, ideal: 380, max: 440)
       }
     }
     .task(id: model.library.generation) { await model.load() }
