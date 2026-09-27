@@ -27,17 +27,12 @@ actor PocketBaseClient {
     }
 
     let generation = sessionGeneration
-    let response: AuthResponse
-    do {
-      response = try await request(
-        path: "/api/collections/users/auth-with-password",
-        method: "POST",
-        body: Body(identity: identity, password: password),
-        includesAuthentication: false
-      )
-    } catch APIError.forbidden {
-      throw APIError.emailUnverified
-    }
+    let response: AuthResponse = try await request(
+      path: "/api/collections/users/auth-with-password",
+      method: "POST",
+      body: Body(identity: identity, password: password),
+      includesAuthentication: false
+    )
 
     guard response.record.verified == true else {
       throw APIError.emailUnverified
@@ -557,7 +552,13 @@ actor PocketBaseClient {
     }
 
     guard 200..<300 ~= httpResponse.statusCode else {
-      throw APIError.from(statusCode: httpResponse.statusCode, body: data)
+      throw APIError.from(
+        statusCode: httpResponse.statusCode,
+        body: data,
+        isPasswordAuthentication: method == "POST"
+          && path == "/api/collections/users/auth-with-password"
+          && !includesAuthentication
+      )
     }
     return data
   }

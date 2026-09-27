@@ -37,6 +37,20 @@ use that full identifier and match `/auth/confirm-password-reset/*`.
 The legacy `/reset-password?token=...` web route is not a native route. It
 remains a web compatibility shim and redirects to the canonical path.
 
+## Sign-in recovery contract
+
+The backend's `users.authRule` is `verified = true`. Password authentication
+rejected by that rule returns HTTP 403 with the exact message
+`The request doesn't satisfy the collection requirements to authenticate.`
+Only that response from `POST /api/collections/users/auth-with-password` maps
+to email-verification recovery. Other 403 responses remain permission denials,
+including missing or malformed response bodies. If the backend adds another
+authentication-rule condition, it must provide a distinct verification signal
+before clients can continue treating the generic rule rejection this way.
+
+The backend migration `1789940324_enforce_verified_auth.js` and its disposable
+`scripts/test-auth-verification.mjs` checks establish this source contract.
+
 ## Deployment gate
 
 The app carries `applinks:organizedglitter.app`. On September 26, 2026, a direct
@@ -55,3 +69,15 @@ support:
 
 `BackendContract.json` remains unchanged because the deployed backend revision
 has not been verified.
+
+On September 27, 2026, browser GET and HEAD checks again returned 200 without
+redirects, with `application/json` and the expected app identifier and path.
+The canonical reset route also rendered the web reset form using a synthetic
+invalid token. These checks do not establish real-email delivery or successful
+reset completion.
+
+During the same validation, the release owner inspected the deployed PocketBase
+dashboard and confirmed `users.authRule = verified = true` and a reset-email
+template using `{APP_URL}/auth/confirm-password-reset/{TOKEN}`. Neither setting
+needed a change. These targeted checks do not establish the full deployed
+backend revision.
