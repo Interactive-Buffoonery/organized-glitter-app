@@ -114,6 +114,7 @@ Discord sign-in succeeded on the physical iPad using development association.
 Normal CDN association, Google login, web/iOS record continuity, Keychain write
 failure recovery, broader iPad presentation behavior,
 and physical-device app switching and network-loss behavior remain unverified. Those checks remain
-open, along with native Apple support, backend grant/deletion work, deployed
+open, along with native Apple Release support and device integration (the Debug
+client exists), backend grant/deletion work, deployed
 revision verification, and the wider release gates in the plan. The simulator
 provider exercise covered presentation, cancellation, and retry only.
