@@ -39,6 +39,8 @@ final class LibraryItemDetailModel {
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
   /// The note the server most recently confirmed from this model, for the saved-entry reveal.
   private(set) var lastAddedProgressNoteID: String?
+  /// The status this model most recently committed, for change feedback.
+  private(set) var lastConfirmedStatus: String?
   private(set) var bookPages: [ColoringPageRecord] = []
   var needsBookPageRefresh = false
   private(set) var canLoadMoreBookPages = false
@@ -208,6 +210,7 @@ final class LibraryItemDetailModel {
         return false
       }
       item = saved.retainingListingContext(from: item)
+      lastConfirmedStatus = status
       await load()
       return true
     } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {

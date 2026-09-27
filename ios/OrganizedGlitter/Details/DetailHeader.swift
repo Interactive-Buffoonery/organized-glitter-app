@@ -3,6 +3,7 @@ import SwiftUI
 /// Status as a menu button: the current value is the label, the choices check-mark it.
 struct DetailStatusMenu<Status: RecordStatus>: View {
   @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   let current: String
   let model: LibraryItemDetailModel
@@ -22,8 +23,17 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
       }
     } label: {
       HStack(spacing: 6) {
-        Label(Status.label(for: current), systemImage: Status.systemImage(for: current))
-          .labelStyle(.titleAndIcon)
+        Label {
+          Text(Status.label(for: current))
+        } icon: {
+          if reduceMotion {
+            Image(systemName: Status.systemImage(for: current))
+          } else {
+            Image(systemName: Status.systemImage(for: current))
+              .symbolEffect(.bounce, options: .nonRepeating, value: model.lastConfirmedStatus)
+          }
+        }
+        .labelStyle(.titleAndIcon)
         Image(systemName: "chevron.down")
           .font(.caption.weight(.semibold))
           .accessibilityHidden(true)
@@ -37,6 +47,7 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
       .frame(minHeight: 44)
       .contentShape(.rect)
     }
+    .sensoryFeedback(.success, trigger: model.lastConfirmedStatus) { _, saved in saved != nil }
     .disabled(model.isMutating || model.unresolvedWriteState != nil)
     .accessibilityLabel("Status")
     .accessibilityValue(Status.label(for: current))
