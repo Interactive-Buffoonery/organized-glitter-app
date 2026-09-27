@@ -86,7 +86,9 @@ extension String {
       of: #"<\s*(br|/p|/li|/h[1-6]|/div)\b[^>]*>"#, with: "\n",
       options: [.regularExpression, .caseInsensitive])
     text = text.replacingOccurrences(of: #"<li\b[^>]*>"#, with: "• ", options: [.regularExpression, .caseInsensitive])
-    text = text.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression)
+    text = text.replacingOccurrences(
+      of: #"<\s*/?\s*(?:p|div|span|br|strong|b|em|i|u|ul|ol|li|h[1-6]|a|blockquote)\b(?:\s+[\w:-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))*\s*/?>"#,
+      with: "", options: [.regularExpression, .caseInsensitive])
     for (entity, character) in [
       ("&nbsp;", " "), ("&lt;", "<"), ("&gt;", ">"), ("&quot;", "\""), ("&#39;", "'"),
       ("&apos;", "'"), ("&amp;", "&"),
