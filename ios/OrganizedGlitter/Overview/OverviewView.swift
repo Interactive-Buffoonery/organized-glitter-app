@@ -15,6 +15,7 @@ final class OverviewModel {
   var upNext: [LibraryItem] = []
   /// Latest progress-note date by record id.
   var latestNoteDates: [String: String] = [:]
+  var latestNotes: [NotesFeedEntry] = []
   var isLoading = false
   var hasLoaded = false
   var errorMessage: String?
@@ -29,6 +30,10 @@ final class OverviewModel {
     defer { isLoading = false }
     do {
       try await library.loadLocal()
+      latestNotes = NotesFeed.entries(
+        items: library.items,
+        diamondNotes: library.progressNotes,
+        coloringNotes: library.coloringPageProgressNotes)
       let now = Date()
       let monthStart = Self.startOfMonth(containing: now)
       let monthEnd = Self.startOfNextMonth(containing: now)
@@ -195,6 +200,8 @@ struct OverviewView: View {
           continueContent
         }
 
+        notesShortcut
+
         if model.hasLoaded, !upNext.isEmpty {
           VStack(alignment: .leading, spacing: 12) {
             shortcutHeader(
@@ -278,6 +285,44 @@ struct OverviewView: View {
       requests.append(("Completed coloring pages", LibraryRequest(section: .pages, status: "completed")))
     }
     return requests
+  }
+
+  private var notesShortcut: some View {
+    let latest = NotesFeed.filter(
+      model.latestNotes, craft: .all.visible(for: verticals), year: nil).first
+
+    return NavigationLink {
+      NotesFeedView(library: model.library, verticals: verticals)
+    } label: {
+      HStack(alignment: .center, spacing: 12) {
+        Image(systemName: "book.pages")
+          .font(.title3)
+          .foregroundStyle(theme.primary)
+          .frame(width: 44, height: 44)
+          .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+          .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 3) {
+          Text("Notes")
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(theme.foreground)
+          Text(latest.map { "Latest: \($0.contextTitle)" } ?? "Every progress note, in one place")
+            .font(.subheadline)
+            .foregroundStyle(theme.pageSecondaryForeground)
+            .lineLimit(2)
+        }
+        Spacer(minLength: 0)
+        Image(systemName: "chevron.right")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(theme.primary)
+          .accessibilityHidden(true)
+      }
+      .padding(.horizontal, 20)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(latest.map { "Notes. Latest: \($0.contextTitle)" } ?? "Notes")
+    .accessibilityHint("Shows progress notes from every craft")
+    .accessibilityIdentifier("overview.notes")
   }
 
   /// A section title that opens Library, or a menu when several crafts apply.

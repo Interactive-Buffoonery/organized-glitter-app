@@ -9,6 +9,7 @@ struct CreateMenu: View {
   let onSaved: (LibraryItem) -> Void
 
   @State private var target: CreateTarget?
+  @State private var isPickingNote = false
 
   var body: some View {
     Menu {
@@ -21,6 +22,10 @@ struct CreateMenu: View {
         Button("Coloring book", systemImage: LibrarySection.books.systemImage) { target = .book }
           .accessibilityIdentifier("create.book")
       }
+      if verticals.hasEnabledVertical {
+        Button("Progress note", systemImage: "square.and.pencil") { isPickingNote = true }
+          .accessibilityIdentifier("create.note")
+      }
     } label: {
       Label("Create", systemImage: "plus")
     }
@@ -29,6 +34,9 @@ struct CreateMenu: View {
     .sheet(item: $target) { target in
       CreateEditor(
         target: target, library: library, onRefresh: onRefresh, onSaved: onSaved)
+    }
+    .inspector(isPresented: $isPickingNote) {
+      NoteTargetPicker(library: library, verticals: verticals, onSaved: onRefresh)
     }
   }
 }
