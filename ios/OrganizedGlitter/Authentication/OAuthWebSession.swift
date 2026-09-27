@@ -4,41 +4,59 @@ import SwiftUI
 @MainActor
 final class OAuthWebSession: NSObject, ASWebAuthenticationPresentationContextProviding {
   private let anchor: ASPresentationAnchor
-  private let onCancel: @MainActor () -> Void
   private var session: ASWebAuthenticationSession?
-  private var accepted = false
+  private var continuation: CheckedContinuation<URL, Error>?
+  private var started = false
 
-  init(anchor: ASPresentationAnchor, onCancel: @escaping @MainActor () -> Void) {
+  init(anchor: ASPresentationAnchor) {
     self.anchor = anchor
-    self.onCancel = onCancel
   }
 
-  func start(_ url: URL) throws {
-    let session = ASWebAuthenticationSession(url: url, callbackURLScheme: nil) { [weak self] _, _ in
-      Task { @MainActor in
-        guard let self, !self.accepted else { return }
-        self.session = nil
-        self.onCancel()
-      }
-    }
-    session.presentationContextProvider = self
-    self.session = session
-    guard session.start() else {
-      self.session = nil
+  func start(_ url: URL, redirectURL: URL) async throws -> URL {
+    guard !started, redirectURL.scheme == "https", let host = redirectURL.host else {
       throw OAuthError.presentationFailed
     }
-  }
-
-  func dismissAccepted() {
-    accepted = true
-    session?.cancel()
-    session = nil
+    started = true
+    return try await withTaskCancellationHandler {
+      try Task.checkCancellation()
+      return try await withCheckedThrowingContinuation { continuation in
+        self.continuation = continuation
+        let session = ASWebAuthenticationSession(
+          url: url,
+          callback: .https(host: host, path: redirectURL.path)
+        ) { [weak self] callback, error in
+          Task { @MainActor in
+            if let error = error as? ASWebAuthenticationSessionError,
+              error.code == .canceledLogin {
+              self?.finish(.failure(CancellationError()))
+            } else if error != nil {
+              self?.finish(.failure(OAuthError.presentationFailed))
+            } else if let callback {
+              self?.finish(.success(callback))
+            } else {
+              self?.finish(.failure(OAuthError.invalidResponse))
+            }
+          }
+        }
+        session.presentationContextProvider = self
+        self.session = session
+        if !session.start() { finish(.failure(OAuthError.presentationFailed)) }
+      }
+    } onCancel: {
+      Task { @MainActor [weak self] in self?.cancel() }
+    }
   }
 
   func cancel() {
-    accepted = true
     session?.cancel()
+    finish(.failure(CancellationError()))
+  }
+
+  private func finish(_ result: Result<URL, Error>) {
+    let continuation = continuation
+    self.continuation = nil
     session = nil
+    continuation?.resume(with: result)
   }
 
   func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {

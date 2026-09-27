@@ -10,7 +10,6 @@ actor PocketBaseClient {
   private let sessionStore: KeychainSessionStore
   private let urlSession: URLSession
   private let artworkStore = PrivateArtworkStore()
-  private let oauthEvents: @Sendable (URL, URLSession) -> OAuthRealtime.Connection
 
   private var authentication: AuthenticatedSession?
   private var refreshTask: Task<AuthenticatedSession, Error>?
@@ -22,13 +21,11 @@ actor PocketBaseClient {
   init(
     baseURL: URL,
     sessionStore: KeychainSessionStore,
-    urlSession: URLSession? = nil,
-    oauthEvents: @escaping @Sendable (URL, URLSession) -> OAuthRealtime.Connection = OAuthRealtime.open
+    urlSession: URLSession? = nil
   ) {
     self.baseURL = baseURL
     self.sessionStore = sessionStore
     self.urlSession = urlSession ?? Self.makeEphemeralURLSession()
-    self.oauthEvents = oauthEvents
   }
 
   func signIn(identity: String, password: String) async throws -> AuthenticatedSession {
@@ -74,75 +71,38 @@ actor PocketBaseClient {
   func signInWithOAuth(
     providerName: String,
     attemptID: UUID = UUID(),
-    present: @MainActor @Sendable (URL) throws -> Void,
-    dismissAccepted: @MainActor @Sendable () -> Void
+    present: @MainActor @Sendable (URL, URL) async throws -> URL
   ) async throws -> AuthenticatedSession {
     try Task.checkCancellation()
     let attempt = beginExternalAuthAttempt(id: attemptID)
     guard let provider = try await oauthProviders().first(where: { $0.name == providerName }) else {
       throw OAuthError.unavailable
     }
-
-    let connection = oauthEvents(baseURL.appending(path: "/api/realtime"), urlSession)
-    defer { connection.cancel() }
-    var events = connection.events.makeAsyncIterator()
-    guard case .connected(let clientID) = try await events.next() else {
-      throw OAuthError.disconnected
-    }
     try checkExternalAuthAttempt(attempt)
+    let redirectURL = baseURL.appending(path: "/api/oauth2-redirect")
+    let authorizationURL = try provider.authorizationURL(redirectURL: redirectURL)
+    let callback = try await present(authorizationURL, redirectURL)
+    try checkExternalAuthAttempt(attempt)
+    let code = try provider.authorizationCode(from: callback, redirectURL: redirectURL)
 
-    struct Subscription: Encodable {
-      let clientId: String
-      let subscriptions = ["@oauth2"]
+    struct Exchange: Encodable {
+      let provider: String
+      let code: String
+      let codeVerifier: String
+      let redirectURL: String
     }
-    _ = try await send(
-      path: "/api/realtime",
+    let response: AuthResponse = try await request(
+      path: "/api/collections/users/auth-with-oauth2",
       method: "POST",
-      body: Subscription(clientId: clientID),
+      body: Exchange(
+        provider: provider.name,
+        code: code,
+        codeVerifier: provider.codeVerifier,
+        redirectURL: redirectURL.absoluteString
+      ),
       includesAuthentication: false
     )
-    try checkExternalAuthAttempt(attempt)
-
-    let redirectURL = baseURL.appending(path: "/api/oauth2-redirect")
-    let authorizationURL = try provider.authorizationURL(
-      redirectURL: redirectURL,
-      clientID: clientID
-    )
-    try await present(authorizationURL)
-
-    while let event = try await events.next() {
-      try checkExternalAuthAttempt(attempt)
-      switch event {
-      case .connected:
-        throw OAuthError.disconnected
-      case .callback(let callback):
-        guard callback.state == clientID else { throw OAuthError.invalidResponse }
-        guard callback.error == nil else { throw OAuthError.denied }
-        guard let code = callback.code, !code.isEmpty else {
-          throw OAuthError.invalidResponse
-        }
-        await dismissAccepted()
-        struct Exchange: Encodable {
-          let provider: String
-          let code: String
-          let codeVerifier: String
-          let redirectURL: String
-        }
-        let response: AuthResponse = try await request(
-          path: "/api/collections/users/auth-with-oauth2",
-          method: "POST",
-          body: Exchange(
-            provider: provider.name,
-            code: code,
-            codeVerifier: provider.codeVerifier,
-            redirectURL: redirectURL.absoluteString
-          ),
-          includesAuthentication: false
-        )
-        return try acceptExternalAuthResponse(response, attempt: attempt)
-      }
-    }
-    throw OAuthError.disconnected
+    return try acceptExternalAuthResponse(response, attempt: attempt)
   }
 
   func beginExternalAuthAttempt(id: UUID = UUID()) -> ExternalAuthAttempt {

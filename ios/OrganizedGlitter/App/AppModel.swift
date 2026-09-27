@@ -256,21 +256,17 @@ final class AppModel {
 
   func signInWithOAuth(provider: SocialProvider, anchor: ASPresentationAnchor) {
     guard client != nil, socialProviders.contains(provider) else { return }
-    let browser = OAuthWebSession(anchor: anchor) { [weak self] in
-      self?.cancelOAuth()
-    }
+    let browser = OAuthWebSession(anchor: anchor)
     signInWithOAuth(
       provider: provider,
-      present: { try browser.start($0) },
-      dismissAccepted: { browser.dismissAccepted() }
+      present: { try await browser.start($0, redirectURL: $1) }
     )
     if oauthTask != nil { oauthBrowser = browser }
   }
 
   func signInWithOAuth(
     provider: SocialProvider,
-    present: @escaping @MainActor @Sendable (URL) throws -> Void,
-    dismissAccepted: @escaping @MainActor @Sendable () -> Void,
+    present: @escaping @MainActor @Sendable (URL, URL) async throws -> URL,
     timeout: Duration = .seconds(120)
   ) {
     guard let client, socialProviders.contains(provider) else { return }
@@ -295,8 +291,7 @@ final class AppModel {
         let session = try await client.signInWithOAuth(
           providerName: provider.rawValue,
           attemptID: attemptID,
-          present: present,
-          dismissAccepted: dismissAccepted
+          present: present
         )
         guard generation == sessionGeneration else { return }
         phase = .signedIn(session.user)
@@ -330,8 +325,6 @@ final class AppModel {
       return "This sign-in provider is unavailable right now."
     case OAuthError.denied:
       return "The provider did not approve sign-in. Try again."
-    case OAuthError.disconnected:
-      return "The sign-in connection was interrupted. Try again."
     case OAuthError.invalidResponse:
       return "The provider did not complete sign-in. Try again."
     case OAuthError.presentationFailed:

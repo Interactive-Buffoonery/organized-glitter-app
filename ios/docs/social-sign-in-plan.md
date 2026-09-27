@@ -24,13 +24,13 @@ Never merge accounts or attach identities based only on matching email.
 
 Apple uses the native Sign in with Apple sheet and a backend code-exchange route.
 Google and Discord use PocketBase OAuth2 through `ASWebAuthenticationSession`,
-with the existing backend callback delivering the code over realtime.
+with a direct HTTPS callback matching the existing backend redirect URI.
+The data-domain webcredentials association must be deployed before this ships.
 
 ```text
 Google / Discord
-  iOS -> PocketBase auth methods -> subscribe to @oauth2
-      -> system auth browser -> provider -> PocketBase OAuth redirect
-      -> realtime callback -> PocketBase code exchange -> session publication
+  iOS -> PocketBase auth methods -> system auth browser -> provider
+      -> iOS HTTPS callback -> PocketBase code exchange -> session publication
 
 Apple
   iOS native sheet -> Apple authorization code + attempt nonce
@@ -251,31 +251,30 @@ Add focused transport methods to `PocketBaseClient`:
 
 - Decode configured OAuth providers from auth methods, including name, state,
   auth URL, and code verifier. Keep per-attempt values in memory only.
-- Open `/api/realtime`, parse `PB_CONNECT`, and subscribe to `@oauth2` using its
-  client ID. Confirm subscription success before presenting the browser.
+- Receive the redirect through `ASWebAuthenticationSession.Callback.https`,
+  with the exact backend host/path and its deployed webcredentials association.
 - Build the authorization URL using URL components, the exact encoded backend
-  redirect URI, and the realtime client ID as state; retain PKCE parameters.
+  redirect URI, and the provider state from auth methods; retain PKCE parameters.
 - Exchange the accepted code with the same provider, verifier, and redirect URI.
   Send guest auth requests without an existing account's authorization header.
 
 Use one bounded attempt with these transitions:
 
 ```text
-idle -> connecting -> subscribed -> authorizing
+idle -> loading provider -> authorizing
   -> callback accepted -> exchanging -> persisting -> signed in
-  -> user cancelled / provider denied / disconnected / timed out -> signed out
+  -> user cancelled / provider denied / failed / timed out -> signed out
 ```
 
 The browser callback may report user cancellation or presentation failure.
-Receiving a valid realtime callback must mark it accepted before programmatic
-browser dismissal, so expected dismissal cannot cancel the code exchange.
+Validate the callback origin, path, state, and code before exchanging anything.
 Only one terminal outcome may win. Explicit user cancellation/navigation away
 must invalidate the attempt; ignore late callbacks and results after sign-out
-or a newer attempt. All terminal paths close the stream and release the browser.
+or a newer attempt. All terminal paths release the browser.
 
-Handle provider error events, empty codes, wrong state, malformed SSE, EOF,
-subscription failure, and a bounded overall timeout. After connection loss,
-start a new attempt with new state; do not assume a missed callback is replayable.
+Handle provider errors, empty codes, wrong or duplicated state/code parameters,
+unexpected callback URLs, and a bounded overall timeout. Retry with fresh
+provider parameters after failure. Do not fall back to an unassociated URL.
 
 Persist and publish through the same ordering mechanism used by password auth
 and PR #5. Cover cancellation during exchange and Keychain failure, not only
@@ -285,8 +284,8 @@ Show Google/Discord only when configured. Map conflict, cancellation, disabled
 provider, offline, temporary failure, and verification recovery intentionally;
 do not show password-specific error copy for provider failures.
 
-Tests: auth-method decoding; URL/PKCE preservation; subscription ordering; SSE
-parsing; error/timeout cleanup; cancellation/success races; stale results;
+Tests: auth-method decoding; URL/PKCE preservation; callback validation;
+error/timeout cleanup; cancellation/success races; stale results;
 session persistence failure; and provider-button UI using stubbed responses.
 
 ## Phase 3: native Apple on iOS
