@@ -183,6 +183,7 @@ final class LibraryItemDetailModel {
     } catch {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to delete this item.",
+        offline: APIError.needsConnection("Deleting an item"),
         fallback: "The item could not be deleted. Try again."
       )
       return false
@@ -277,6 +278,7 @@ final class LibraryItemDetailModel {
     } catch {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to add a progress note.",
+        offline: APIError.needsConnection("Adding a progress note"),
         fallback: "The progress note could not be added. Try again."
       )
       return false
@@ -321,6 +323,7 @@ final class LibraryItemDetailModel {
     } catch {
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to add a photo.",
+        offline: APIError.needsConnection("Adding a photo"),
         fallback: "The photo could not be added. Try again."
       )
       return false

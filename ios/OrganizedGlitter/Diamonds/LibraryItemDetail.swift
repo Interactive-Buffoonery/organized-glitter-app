@@ -3,6 +3,7 @@ import SwiftUI
 struct LibraryItemDetailDestination: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
+  @Environment(\.connectionAvailable) private var connectionAvailable
   @State private var model: LibraryItemDetailModel
   @State private var editor: DetailEditor?
   @State private var isConfirmingDelete = false
@@ -62,6 +63,9 @@ struct LibraryItemDetailDestination: View {
 
         if model.item.canDeleteFromDetail {
           Menu {
+            if !connectionAvailable {
+              Text("Deleting needs a connection")
+            }
             Button(model.item.deleteLabel, role: .destructive) {
               isConfirmingDelete = true
             }
@@ -114,7 +118,8 @@ struct LibraryItemDetailDestination: View {
       }
       Button("Cancel", role: .cancel) {}
     } message: {
-      Text(model.item.deleteMessage)
+      Text(model.item.deleteMessage
+        + (connectionAvailable ? "" : " Deleting needs a connection."))
     }
     .alert(
       "Couldn’t delete item",
