@@ -163,6 +163,17 @@ final class OrganizedGlitterUITests: XCTestCase {
     )
   }
 
+  func testConfiguredSocialProvidersAppearInDebugAccountMethods() {
+    let app = XCUIApplication()
+    app.launchArguments += ["-ui-testing-signed-out", "-ui-testing-social-providers"]
+    app.launch()
+
+    app.buttons["welcomeSignIn"].tap()
+    XCTAssertTrue(app.buttons["continueWithEmail"].waitForExistence(timeout: 3))
+    XCTAssertTrue(app.buttons["continueWithGoogle"].waitForExistence(timeout: 3))
+    XCTAssertTrue(app.buttons["continueWithDiscord"].waitForExistence(timeout: 3))
+  }
+
   func testAuthenticatedShellShowsDestinationsAndToolbarActions() {
     let app = XCUIApplication()
     app.launchArguments.append("-ui-testing-authenticated")
