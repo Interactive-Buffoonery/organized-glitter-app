@@ -20,6 +20,8 @@ final class OverviewModel {
   var errorMessage: String?
   var onSessionExpired: (@MainActor @Sendable () async -> Void)?
   private var pendingReload = false
+  private var loadGeneration = 0
+  private(set) var noteDatesTask: Task<Void, Never>?
 
   init(client: PocketBaseClient, userID: String) {
     self.client = client
@@ -28,6 +30,8 @@ final class OverviewModel {
 
   func load() async {
     pendingReload = true
+    loadGeneration &+= 1
+    noteDatesTask?.cancel()
     guard !isLoading else {
       return
     }
@@ -41,11 +45,11 @@ final class OverviewModel {
     while pendingReload {
       pendingReload = false
       errorMessage = nil
-      await performLoad()
+      await performLoad(generation: loadGeneration)
     }
   }
 
-  private func performLoad() async {
+  private func performLoad(generation: Int) async {
     let projectOwner = PocketBaseFilter.equals(.user, userID)
     let pageOwner = PocketBaseFilter.equals(.bookUser, userID)
     let now = Date()
@@ -103,20 +107,28 @@ final class OverviewModel {
           completedPages
         )
 
-      // ponytail: Continue ordering is cosmetic, so a failed lookup falls
-      // back to `updated` instead of failing Home.
-      async let diamondDates = try? client.latestNoteDates(
-        craft: "diamond", userID: userID, targetIDs: projects.items.map(\.id))
-      async let pageDates = try? client.latestNoteDates(
-        craft: "coloring", userID: userID, targetIDs: pages.items.map(\.id))
-      let dates = (await diamondDates ?? [:]).merging(await pageDates ?? [:]) { $1 }
-
+      guard !Task.isCancelled, generation == loadGeneration else { return }
       completedThisMonthCount = projectCompletions.totalItems + pageCompletions.totalItems
-      latestNoteDates = dates
+      latestNoteDates = [:]
       items = Self.continueOrder(
         projects.items.map(LibraryItem.diamond) + pages.items.map(LibraryItem.page),
-        latestNoteDates: dates)
+        latestNoteDates: [:])
       upNext = (kitted.items + stash.items).map(LibraryItem.diamond)
+      hasLoaded = true
+
+      let projectIDs = projects.items.map(\.id)
+      let pageIDs = pages.items.map(\.id)
+      noteDatesTask = Task { [weak self] in
+        guard let self else { return }
+        async let diamondDates = try? self.client.latestNoteDates(
+          craft: "diamond", userID: self.userID, targetIDs: projectIDs)
+        async let pageDates = try? self.client.latestNoteDates(
+          craft: "coloring", userID: self.userID, targetIDs: pageIDs)
+        let dates = (await diamondDates ?? [:]).merging(await pageDates ?? [:]) { $1 }
+        guard !Task.isCancelled, generation == self.loadGeneration else { return }
+        self.latestNoteDates = dates
+        self.items = Self.continueOrder(self.items, latestNoteDates: dates)
+      }
     } catch APIError.cancelled {
       return
     } catch APIError.unauthenticated {

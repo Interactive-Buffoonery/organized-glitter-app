@@ -130,3 +130,162 @@ struct OverviewPresentationTests {
     #expect(model.artworkURL(for: project(image: "garden image.png"), token: nil) == nil)
   }
 }
+
+@MainActor
+@Suite("Overview loading", .serialized)
+struct OverviewLoadingTests {
+  private func model() async throws -> OverviewModel {
+    OverviewURLProtocol.reset()
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [OverviewURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://overview.example.invalid")!,
+      sessionStore: KeychainSessionStore(service: "OverviewLoadingTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+    _ = try await client.signIn(identity: "fictional-user", password: "example-password")
+    return OverviewModel(client: client, userID: "fictional-user")
+  }
+
+  private func waitForFirstNoteRequest() async -> Bool {
+    await Task.detached {
+      OverviewURLProtocol.firstNoteStarted.wait(timeout: .now() + 2) == .success
+    }.value
+  }
+
+  @Test func shelvesAppearBeforeOptionalNoteDatesReturn() async throws {
+    let model = try await model()
+
+    await model.load()
+
+    #expect(model.hasLoaded)
+    #expect(!model.isLoading)
+    #expect(model.items.map(\.recordID) == ["project-1"])
+    #expect(model.completedThisMonthCount == 5)
+    #expect(model.latestNoteDates.isEmpty)
+    #expect(await waitForFirstNoteRequest())
+
+    OverviewURLProtocol.firstNoteGate.signal()
+    await model.noteDatesTask?.value
+    #expect(model.latestNoteDates == ["project-1": "2026-09-20"])
+  }
+
+  @Test func supersededNoteDatesCannotReplaceReloadedShelves() async throws {
+    let model = try await model()
+    await model.load()
+    #expect(await waitForFirstNoteRequest())
+    let oldDatesTask = model.noteDatesTask
+
+    await model.load()
+    await model.noteDatesTask?.value
+    OverviewURLProtocol.firstNoteGate.signal()
+    await oldDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-2"])
+    #expect(model.latestNoteDates == ["project-2": "2026-09-21"])
+  }
+
+  @Test func cancelledNoteDatesDoNotEnrichTheShelf() async throws {
+    let model = try await model()
+    await model.load()
+    #expect(await waitForFirstNoteRequest())
+
+    model.noteDatesTask?.cancel()
+    OverviewURLProtocol.firstNoteGate.signal()
+    await model.noteDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-1"])
+    #expect(model.latestNoteDates.isEmpty)
+  }
+}
+
+private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
+  nonisolated(unsafe) static var firstNoteGate = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var firstNoteStarted = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var activeListCount = 0
+  private static let stateLock = NSLock()
+
+  private let requestLock = NSLock()
+  private var cancelled = false
+
+  static func reset() {
+    stateLock.lock()
+    activeListCount = 0
+    firstNoteGate = DispatchSemaphore(value: 0)
+    firstNoteStarted = DispatchSemaphore(value: 0)
+    stateLock.unlock()
+  }
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+  override func startLoading() {
+    let path = request.url?.path ?? ""
+    if path == "/api/notes/latest" {
+      Self.stateLock.lock()
+      let isFirstLoad = Self.activeListCount == 1
+      Self.stateLock.unlock()
+      if isFirstLoad {
+        Self.firstNoteStarted.signal()
+        DispatchQueue.global().async {
+          Self.firstNoteGate.wait()
+          self.respond(#"{"items":[{"targetId":"project-1","date":"2026-09-20"}]}"#)
+        }
+      } else {
+        respond(#"{"items":[{"targetId":"project-2","date":"2026-09-21"}]}"#)
+      }
+      return
+    }
+
+    if path == "/api/collections/users/auth-with-password" {
+      respond(#"{"token":"example-token","record":{"id":"fictional-user","verified":true}}"#)
+      return
+    }
+
+    let filter = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?
+      .queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
+    if path.contains("/projects/") && filter.contains(#"status = "progress""#) {
+      Self.stateLock.lock()
+      Self.activeListCount += 1
+      let number = Self.activeListCount
+      Self.stateLock.unlock()
+      respond(list(
+        items: """
+          {"id":"project-\(number)","title":"Example \(number)","user":"fictional-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-0\(number)"}
+          """, total: 1))
+    } else if path.contains("/projects/") && filter.contains(#"status = "completed""#) {
+      respond(list(items: "", total: 2))
+    } else if path.contains("/coloring_pages/") && filter.contains(#"status = "completed""#) {
+      respond(list(items: "", total: 3))
+    } else {
+      respond(list(items: "", total: 0))
+    }
+  }
+
+  override func stopLoading() {
+    requestLock.lock()
+    cancelled = true
+    requestLock.unlock()
+    Self.firstNoteGate.signal()
+  }
+
+  private func list(items: String, total: Int) -> String {
+    """
+    {"page":1,"perPage":10,"totalItems":\(total),"totalPages":1,"items":[\(items)]}
+    """
+  }
+
+  private func respond(_ body: String) {
+    requestLock.lock()
+    let shouldRespond = !cancelled
+    requestLock.unlock()
+    guard shouldRespond, let url = request.url else { return }
+    let response = HTTPURLResponse(
+      url: url, statusCode: 200, httpVersion: nil,
+      headerFields: ["Content-Type": "application/json"]
+    )!
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data(body.utf8))
+    client?.urlProtocolDidFinishLoading(self)
+  }
+}
