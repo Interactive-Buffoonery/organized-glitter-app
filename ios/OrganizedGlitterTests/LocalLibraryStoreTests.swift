@@ -279,6 +279,9 @@ struct LocalLibraryStoreTests {
         return nil
       }, coloringBooks: books, coloringPages: pages,
       progressNotes: diamondNotes, coloringPageProgressNotes: coloringNotes), scope: scope)
+    let projection = try await store.projection(scope: scope)
+    #expect(Set(projection.progressNotes.map(\.project)) == ["project-1", "project-2"])
+    #expect(Set(projection.coloringPageProgressNotes.map(\.page)) == ["page-1", "page-2"])
 
     try await store.removeConfirmed(
       scope: scope, key: LocalRecordKey(kind: .project, id: "project-1"))
