@@ -36,7 +36,7 @@ final class LibraryItemDetailModel {
   var userID: String { library.userID }
 
   private(set) var item: LibraryItem
-  private(set) var progressNotes: [DiamondProgressNoteRecord] = []
+  private(set) var progressNotes: [ProgressNoteItem] = []
   /// The note the server most recently confirmed from this model, for the saved-entry reveal.
   private(set) var lastAddedProgressNoteID: String?
   private(set) var statusSaveRevision = 0
@@ -61,7 +61,9 @@ final class LibraryItemDetailModel {
   private var progressNotesPage = 0
   private var progressNotesTotalPages = 0
   private var generation = 0
-  private var unresolvedDiamondWriteIncludesPhoto = false
+  private var unresolvedNoteWriteIncludesPhoto = false
+  private var unresolvedNoteCreate = false
+  private var unresolvedNoteAction: String?
   private static let bookPagesPerPage = 24
   static let projectExpand = "company,artist,project_tags_via_project.tag"
 
@@ -94,8 +96,8 @@ final class LibraryItemDetailModel {
       case .book(let book):
         let pagesToShow = preservingLoadedBookPages ? max(bookPagesPage, 1) : 1
         projectBookPages(bookID: book.id, pagesToShow: pagesToShow)
-      case .page:
-        break
+      case .page(let page):
+        pageProgressNotes(pageID: page.id, pagesToShow: max(progressNotesPage, 1))
       }
       return true
     } catch APIError.cancelled {
@@ -128,13 +130,32 @@ final class LibraryItemDetailModel {
   }
 
   func loadMoreProgressNotes() async {
-    guard case .diamond(let project) = item, canLoadMoreProgressNotes else { return }
-    projectProgressNotes(projectID: project.id, pagesToShow: progressNotesPage + 1)
+    guard canLoadMoreProgressNotes else { return }
+    switch item {
+    case .diamond(let project):
+      projectProgressNotes(projectID: project.id, pagesToShow: progressNotesPage + 1)
+    case .page(let page):
+      pageProgressNotes(pageID: page.id, pagesToShow: progressNotesPage + 1)
+    case .book:
+      break
+    }
   }
 
   private func projectProgressNotes(projectID: String, pagesToShow: Int) {
     let matching = library.progressNotes.filter { $0.project == projectID }
+      .map(ProgressNoteItem.diamond)
       .sorted { Self.progressNote($0, precedes: $1) }
+    showProgressNotes(matching, pagesToShow: pagesToShow)
+  }
+
+  private func pageProgressNotes(pageID: String, pagesToShow: Int) {
+    let matching = library.coloringPageProgressNotes.filter { $0.page == pageID }
+      .map(ProgressNoteItem.coloring)
+      .sorted { Self.progressNote($0, precedes: $1) }
+    showProgressNotes(matching, pagesToShow: pagesToShow)
+  }
+
+  private func showProgressNotes(_ matching: [ProgressNoteItem], pagesToShow: Int) {
     progressNotesPage = pagesToShow
     progressNotesTotalPages = (matching.count + 19) / 20
     progressNotes = Array(matching.prefix(progressNotesPage * 20))
@@ -226,13 +247,12 @@ final class LibraryItemDetailModel {
     }
   }
 
-  func addDiamondProgressNote(
+  func addProgressNote(
     content: String,
     date: Date,
     photo: ProcessedDetailPhoto?
   ) async -> Bool {
-    guard case .diamond(let project) = item,
-      !isMutating,
+    guard !isMutating,
       unresolvedWriteState == nil
     else {
       return false
@@ -240,6 +260,7 @@ final class LibraryItemDetailModel {
     isMutating = true
     mutationErrorMessage = nil
     statusErrorMessage = nil
+    unresolvedNoteCreate = true
     defer { isMutating = false }
 
     var files: [PocketBaseMultipartFile] = []
@@ -252,34 +273,112 @@ final class LibraryItemDetailModel {
           data: photo.data
         ))
     }
+    let collection: String
+    let parent: (String, String)
+    switch item {
+    case .diamond(let project):
+      collection = "progress_notes"
+      parent = ("project", project.id)
+    case .page(let page):
+      collection = "coloring_page_progress_notes"
+      parent = ("page", page.id)
+    case .book:
+      return false
+    }
     let form = PocketBaseMultipartForm(
       fields: [
-        "project": project.id,
+        parent.0: parent.1,
         "content": content.trimmingCharacters(in: .whitespacesAndNewlines),
         "date": Self.dateOnlyString(from: date),
-      ],
-      files: files
-    )
+      ], files: files)
 
     do {
-      let saved: DiamondProgressNoteRecord = try await library.create(
-        collection: "progress_notes",
-        multipart: form
-      )
+      let saved: ProgressNoteItem
+      if collection == "progress_notes" {
+        let note: DiamondProgressNoteRecord = try await library.create(
+          collection: collection, multipart: form)
+        saved = .diamond(note)
+      } else {
+        let note: ColoringProgressNoteRecord = try await library.create(
+          collection: collection, multipart: form)
+        saved = .coloring(note)
+      }
       mergeProgressNote(saved)
-      lastAddedProgressNoteID = saved.id
+      lastAddedProgressNoteID = saved.recordID
+      unresolvedNoteCreate = false
       return true
     } catch APIError.offline, APIError.server, APIError.cancelled {
-      unresolvedDiamondWriteIncludesPhoto = photo != nil
+      unresolvedNoteWriteIncludesPhoto = photo != nil
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
       return false
     } catch {
+      unresolvedNoteCreate = false
       mutationErrorMessage = error.userMessage(
         permission: "Your account does not have permission to add a progress note.",
         fallback: "The progress note could not be added. Try again."
       )
       return false
+    }
+  }
+
+  func updateProgressNote(_ note: ProgressNoteItem, content: String, date: Date) async -> String? {
+    guard !isMutating, unresolvedWriteState == nil,
+      progressNotes.contains(where: { $0.id == note.id })
+    else { return "This note is unavailable. Refresh and try again." }
+    isMutating = true
+    defer { isMutating = false }
+    let fields = [
+      "content": content.trimmingCharacters(in: .whitespacesAndNewlines),
+      "date": Self.dateOnlyString(from: date),
+    ]
+    do {
+      let saved: ProgressNoteItem
+      switch note {
+      case .diamond:
+        let updated: DiamondProgressNoteRecord = try await library.updateOnline(
+          collection: note.collection, id: note.recordID, body: fields)
+        saved = .diamond(updated)
+      case .coloring:
+        let updated: ColoringProgressNoteRecord = try await library.updateOnline(
+          collection: note.collection, id: note.recordID, body: fields)
+        saved = .coloring(updated)
+      }
+      mergeProgressNote(saved)
+      mutationErrorMessage = nil
+      return nil
+    } catch APIError.offline, APIError.server, APIError.cancelled {
+      unresolvedNoteAction = "edit"
+      unresolvedWriteState = .needsRefresh
+      _ = await reconcileUnresolvedWrite()
+      return mutationErrorMessage
+    } catch {
+      return error.userMessage(
+        permission: "Your account does not have permission to edit this note.",
+        fallback: "The note could not be saved. Try again.")
+    }
+  }
+
+  func deleteProgressNote(_ note: ProgressNoteItem) async -> String? {
+    guard !isMutating, unresolvedWriteState == nil,
+      progressNotes.contains(where: { $0.id == note.id })
+    else { return "This note is unavailable. Refresh and try again." }
+    isMutating = true
+    defer { isMutating = false }
+    do {
+      try await library.delete(collection: note.collection, id: note.recordID)
+      progressNotes.removeAll { $0.id == note.id }
+      mutationErrorMessage = nil
+      return nil
+    } catch APIError.offline, APIError.server, APIError.cancelled {
+      unresolvedNoteAction = "delete"
+      unresolvedWriteState = .needsRefresh
+      _ = await reconcileUnresolvedWrite()
+      return mutationErrorMessage
+    } catch {
+      return error.userMessage(
+        permission: "Your account does not have permission to delete this note.",
+        fallback: "The note could not be deleted. Try again.")
     }
   }
 
@@ -339,7 +438,9 @@ final class LibraryItemDetailModel {
   func clearUnresolvedWriteRecovery() {
     guard unresolvedWriteState == .refreshed else { return }
     unresolvedWriteState = nil
-    unresolvedDiamondWriteIncludesPhoto = false
+    unresolvedNoteWriteIncludesPhoto = false
+    unresolvedNoteCreate = false
+    unresolvedNoteAction = nil
     unresolvedStatusWrite = false
     mutationErrorMessage = nil
   }
@@ -354,6 +455,11 @@ final class LibraryItemDetailModel {
     }
     if didRefresh {
       unresolvedWriteState = .refreshed
+      if let unresolvedNoteAction {
+        mutationErrorMessage =
+          "The \(unresolvedNoteAction) response was lost. Review the refreshed notes before changing them again."
+        return true
+      }
       if unresolvedStatusWrite {
         mutationErrorMessage =
           "The status response was lost. Review the refreshed status before changing it again."
@@ -362,12 +468,13 @@ final class LibraryItemDetailModel {
       switch item {
       case .diamond:
         mutationErrorMessage =
-          unresolvedDiamondWriteIncludesPhoto
+          unresolvedNoteWriteIncludesPhoto
           ? "The save response was lost. Review the refreshed progress notes and photos before adding another note."
           : "The save response was lost. Review the refreshed progress notes before adding another note."
       case .page:
-        mutationErrorMessage =
-          "The upload response was lost. Review the refreshed photos before starting a new upload."
+        mutationErrorMessage = unresolvedNoteCreate
+          ? "The save response was lost. Review the refreshed progress notes before adding another note."
+          : "The upload response was lost. Review the refreshed photos before starting a new upload."
       case .book:
         mutationErrorMessage = "The save response was lost. Review the refreshed item."
       }
@@ -375,6 +482,11 @@ final class LibraryItemDetailModel {
     }
 
     unresolvedWriteState = .needsRefresh
+    if let unresolvedNoteAction {
+      mutationErrorMessage =
+        "The \(unresolvedNoteAction) result is unknown. Connect and refresh notes before changing them again."
+      return false
+    }
     if unresolvedStatusWrite {
       mutationErrorMessage =
         "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
@@ -385,15 +497,16 @@ final class LibraryItemDetailModel {
       mutationErrorMessage =
         "Progress note status is unknown because the project could not be refreshed. Refresh status before adding another note."
     case .page:
-      mutationErrorMessage =
-        "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
+      mutationErrorMessage = unresolvedNoteCreate
+        ? "Progress note status is unknown. Connect and refresh before adding another note."
+        : "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
     case .book:
       mutationErrorMessage = "Save status is unknown. Refresh the item before trying again."
     }
     return false
   }
 
-  private func mergeProgressNote(_ saved: DiamondProgressNoteRecord) {
+  private func mergeProgressNote(_ saved: ProgressNoteItem) {
     progressNotes.removeAll { $0.id == saved.id }
     let insertionIndex =
       progressNotes.firstIndex {
@@ -403,8 +516,8 @@ final class LibraryItemDetailModel {
   }
 
   private static func progressNote(
-    _ lhs: DiamondProgressNoteRecord,
-    precedes rhs: DiamondProgressNoteRecord
+    _ lhs: ProgressNoteItem,
+    precedes rhs: ProgressNoteItem
   ) -> Bool {
     if lhs.date != rhs.date {
       return lhs.date > rhs.date

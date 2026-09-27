@@ -57,6 +57,13 @@ final class ProtectedFileAccess {
     item.artworkURL(using: client, thumb: thumb, token: token ?? "")
   }
 
+  func photoURL(for note: ProgressNoteItem, thumb: String? = nil) -> URL? {
+    guard let image = note.image?.nonEmpty else { return nil }
+    return url(
+      collection: note.collection, recordID: note.recordID,
+      filename: image, thumb: thumb)
+  }
+
   func url(
     collection: String,
     recordID: String,

@@ -110,6 +110,7 @@
 		F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */; };
 		F2EB4D73479C7792156305A5 /* AccountEntryRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66315A4B533EEEAF9FEFE7D /* AccountEntryRoute.swift */; };
 		F318A1BFDA2F6C1781E7799B /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728912BD866D6E64A64A1156 /* WelcomeView.swift */; };
+		F5850FD6A7A6108CC90776F7 /* ProgressNoteEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A44F8DED9DD837DCCC00FAF /* ProgressNoteEntry.swift */; };
 		F604ED93EC6E10B6696CC90B /* OAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF7448BB4586E06FB910036 /* OAuthTests.swift */; };
 		FD47E1CEADB3F3BA9B3A74C1 /* RemoteArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02EA4614FC4C10D918E0879 /* RemoteArtwork.swift */; };
 		FD4D6BABAD2181AC7A09236A /* LocalLibraryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7567298DEDD48B2D921E5BC /* LocalLibraryStoreTests.swift */; };
@@ -199,6 +200,7 @@
 		851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetailModel.swift; sourceTree = "<group>"; };
 		87432C7595D56F6A212DA34D /* OrganizedGlitterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizedGlitterApp.swift; sourceTree = "<group>"; };
 		88ABD6C004A9023D728D6A28 /* TaxonomyPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaxonomyPicker.swift; sourceTree = "<group>"; };
+		8A44F8DED9DD837DCCC00FAF /* ProgressNoteEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressNoteEntry.swift; sourceTree = "<group>"; };
 		8A9F90C2F0DE0D5DA98324C8 /* ScreenshotCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotCaptureTests.swift; sourceTree = "<group>"; };
 		8B1313198DCA44E2E027F7EB /* LibraryGalleryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryGalleryCard.swift; sourceTree = "<group>"; };
 		911823E33E157F4AA5946C5D /* PocketBaseFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseFilter.swift; sourceTree = "<group>"; };
@@ -506,6 +508,7 @@
 				CF6D23DFA92798FB254E1CF8 /* DetailPhoto.swift */,
 				851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */,
 				DE908FC7F918916A465558B7 /* PhotoViewer.swift */,
+				8A44F8DED9DD837DCCC00FAF /* ProgressNoteEntry.swift */,
 			);
 			path = Details;
 			sourceTree = "<group>";
@@ -728,6 +731,7 @@
 				7452D060DBE34C698FA59CC7 /* PocketBaseOAuth.swift in Sources */,
 				02B1B1F48B151EA280F5E87F /* PocketBaseRecords.swift in Sources */,
 				CCD03CD3345C5BDCCCEAEA0F /* PrivateArtworkStore.swift in Sources */,
+				F5850FD6A7A6108CC90776F7 /* ProgressNoteEntry.swift in Sources */,
 				7597BB520C596F016BB189A1 /* ProtectedFileAccess.swift in Sources */,
 				F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */,
 				D70EF76F6D36839D40C69B70 /* RecordStatus.swift in Sources */,

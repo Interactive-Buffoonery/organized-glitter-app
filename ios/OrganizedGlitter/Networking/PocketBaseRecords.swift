@@ -259,6 +259,27 @@ enum ProgressNoteItem: Hashable, Identifiable, Sendable {
     }
   }
 
+  var image: String? {
+    switch self {
+    case .diamond(let note): note.image
+    case .coloring(let note): note.image
+    }
+  }
+
+  var created: String {
+    switch self {
+    case .diamond(let note): note.created
+    case .coloring(let note): note.created
+    }
+  }
+
+  var collection: String {
+    switch self {
+    case .diamond: "progress_notes"
+    case .coloring: "coloring_page_progress_notes"
+    }
+  }
+
   var title: String {
     switch self {
     case .diamond(let note):

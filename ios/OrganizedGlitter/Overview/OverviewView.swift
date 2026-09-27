@@ -221,17 +221,27 @@ struct OverviewView: View {
         onCollectionChanged: { await model.load() }
       )
     }
-    .sheet(item: $logEditor, onDismiss: showLoggedItem) { editor in
-      DiamondProgressNoteEditor(
-        model: editor,
-        onCollectionChanged: {
-          if editor.lastAddedProgressNoteID != nil {
-            loggedItemID = editor.item.id
-          } else {
-            await model.load()
-          }
+    .inspector(isPresented: Binding(
+      get: { logEditor != nil },
+      set: { isPresented in
+        if !isPresented {
+          logEditor = nil
+          showLoggedItem()
         }
-      )
+      }
+    )) {
+      if let editor = logEditor {
+        ProgressNoteEditor(
+          model: editor,
+          onCollectionChanged: {
+            if editor.lastAddedProgressNoteID != nil {
+              loggedItemID = editor.item.id
+            } else {
+              await model.load()
+            }
+          }
+        )
+      }
     }
     .task(id: model.library.generation) { await model.load() }
   }
@@ -372,10 +382,13 @@ struct OverviewView: View {
     }
   }
 
-  // ponytail: pages have no Log sheet yet, so their cover opens the detail.
   private func logAction(for item: LibraryItem) -> (() -> Void)? {
-    guard case .diamond(let project) = item else { return nil }
-    return { logEditor = LibraryItemDetailModel(item: .diamond(project), library: model.library) }
+    switch item {
+    case .diamond, .page:
+      return { logEditor = LibraryItemDetailModel(item: item, library: model.library) }
+    case .book:
+      return nil
+    }
   }
 
   private var upNextShelf: some View {

@@ -82,13 +82,13 @@ struct LibraryItemDetailModelTests {
     let model = LibraryItemDetailModel(item: .diamond(project), library: library)
     #expect(await model.load())
 
-    let saved = await model.addDiamondProgressNote(
+    let saved = await model.addProgressNote(
       content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil)
     #expect(!saved)
     #expect(model.unresolvedWriteState == .needsRefresh)
     #expect(model.progressNotes.isEmpty)
     #expect(LostNoteURLProtocol.createRequests == 1)
-    let duplicate = await model.addDiamondProgressNote(
+    let duplicate = await model.addProgressNote(
       content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil)
     #expect(!duplicate)
     #expect(LostNoteURLProtocol.createRequests == 1)
@@ -96,7 +96,7 @@ struct LibraryItemDetailModelTests {
     LostNoteURLProtocol.snapshotAvailable = true
     #expect(await model.refreshUnresolvedWriteStatus())
     #expect(model.unresolvedWriteState == .refreshed)
-    #expect(model.progressNotes.map(\.id) == ["saved-note"])
+    #expect(model.progressNotes.map(\.recordID) == ["saved-note"])
     #expect(model.lastAddedProgressNoteID == nil)
   }
 
@@ -119,10 +119,10 @@ struct LibraryItemDetailModelTests {
     #expect(model.lastAddedProgressNoteID == nil)
 
     #expect(
-      await model.addDiamondProgressNote(
+      await model.addProgressNote(
         content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil))
     #expect(model.lastAddedProgressNoteID == "created-note")
-    #expect(model.progressNotes.map(\.id) == ["created-note"])
+    #expect(model.progressNotes.map(\.recordID) == ["created-note"])
   }
 
   @Test func progressNotesKeepLoadedPagesAfterReloadsAndSaves() async throws {
@@ -140,16 +140,16 @@ struct LibraryItemDetailModelTests {
     #expect(await model.load())
     #expect(model.progressNotes.count == 20)
     await model.loadMoreProgressNotes()
-    let loadedIDs = model.progressNotes.map(\.id)
+    let loadedIDs = model.progressNotes.map(\.recordID)
     #expect(loadedIDs.count == 40)
     #expect(await model.load())
-    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    #expect(model.progressNotes.map(\.recordID) == loadedIDs)
     #expect(await model.setStatus("progress"))
-    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    #expect(model.progressNotes.map(\.recordID) == loadedIDs)
     let edited: DiamondProjectRecord = try await library.update(
       collection: "projects", id: project.id, body: ["title": "Moon Garden updated"])
     await model.acceptSaved(.diamond(edited))
-    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    #expect(model.progressNotes.map(\.recordID) == loadedIDs)
     #expect(model.canLoadMoreProgressNotes)
     await model.loadMoreProgressNotes()
     #expect(model.progressNotes.count == 45)
@@ -212,7 +212,31 @@ struct LibraryItemDetailModelTests {
       item: .diamond(featureProject("project", title: "Moon Garden", status: "progress")),
       library: library)
     #expect(await model.load())
-    #expect(model.progressNotes.map(\.id) == ["newer", "older"])
+    #expect(model.progressNotes.map(\.recordID) == ["newer", "older"])
+  }
+
+  @Test func pageNotesShareNewestFirstTimelineAndDeleteLocally() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    let page = featurePage("page", book: book.id, number: 3)
+    try await library.store.ingest(.book(book), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    for (id, date) in [("older", "2026-09-02"), ("newer", "2026-09-03")] {
+      try await library.store.ingestNote(
+        ColoringProgressNoteRecord(
+          id: id, user: library.userID, page: page.id, content: "**Progress**",
+          date: date, image: nil, created: date, updated: date, expand: nil),
+        scope: library.scope)
+    }
+    let model = LibraryItemDetailModel(item: .page(page), library: library)
+    #expect(await model.load())
+    #expect(model.progressNotes.map(\.recordID) == ["newer", "older"])
+    #expect(model.progressNotes.allSatisfy { $0.collection == "coloring_page_progress_notes" })
+
+    try await library.store.removeNote(
+      collection: "coloring_page_progress_notes", id: "newer", scope: library.scope)
+    #expect(await model.load())
+    #expect(model.progressNotes.map(\.recordID) == ["older"])
   }
 }
 
