@@ -26,8 +26,8 @@ struct ColoringPageDetailView: View {
       LazyVStack(alignment: .leading, spacing: 18) {
         CoverArtwork(
           item: .page(page),
-          url: protectedFiles?.artworkURL(for: .page(page)),
-          maxPixelDimension: 1_600,
+          url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery),
+          maxPixelDimension: 1_200,
           loadedAccessibilityLabel: "Page artwork"
         )
         .frame(maxWidth: .infinity, maxHeight: heroHeight)
