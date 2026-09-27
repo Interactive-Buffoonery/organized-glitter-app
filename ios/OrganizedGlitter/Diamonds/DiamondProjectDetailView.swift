@@ -596,11 +596,11 @@ struct DiamondProgressNoteEditor: View {
   }
 }
 
-/// A date-only field edited in place, with a picker for an unset date.
+/// A date-only field edited in place, committed only after the picker closes.
 private struct DetailDateRow: View {
   @Environment(\.theme) private var theme
-  @State private var isAddingDate = false
-  @State private var newDate = Date.now
+  @State private var isEditingDate = false
+  @State private var draftDate = Date.now
 
   let label: String
   let value: String?
@@ -608,22 +608,29 @@ private struct DetailDateRow: View {
   let onChange: (Date?) -> Void
 
   var body: some View {
+    let storedDate = value.flatMap { DetailDateOnly.date($0) }
     DetailMetadataRow(label: label, combinesChildren: false) {
-      if let date = value.flatMap({ DetailDateOnly.date($0) }) {
-        HStack(spacing: 0) {
-          DatePicker(
-            label,
-            selection: Binding(
-              get: { date },
-              set: { newDate in
-                if DetailDateOnly.string(from: newDate) != DetailDateOnly.string(from: date) {
-                  onChange(newDate)
-                }
-              }),
-            displayedComponents: .date
-          )
-          .labelsHidden()
-          .accessibilityLabel("\(label) date")
+      HStack(spacing: 0) {
+        Button {
+          draftDate = storedDate ?? .now
+          isEditingDate = true
+        } label: {
+          if let value, let formatted = DetailDateOnly.formatted(value) {
+            Text(formatted)
+              .frame(minHeight: 44)
+              .contentShape(.rect)
+          } else {
+            Label("Add date", systemImage: "plus")
+              .frame(minHeight: 44)
+              .contentShape(.rect)
+          }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(theme.pageAction)
+        .accessibilityLabel(storedDate == nil
+          ? "Add \(label.lowercased()) date" : "Change \(label.lowercased()) date")
+        .accessibilityValue(value.flatMap { DetailDateOnly.formatted($0) } ?? "No date")
+        if storedDate != nil {
           Button {
             onChange(nil)
           } label: {
@@ -635,47 +642,38 @@ private struct DetailDateRow: View {
           .buttonStyle(.plain)
           .accessibilityLabel("Clear \(label.lowercased()) date")
         }
-      } else {
-        Button {
-          newDate = .now
-          isAddingDate = true
-        } label: {
-          Label("Add date", systemImage: "plus")
-            .labelStyle(.titleAndIcon)
-            .frame(minHeight: 44)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(theme.pageAction)
-        .accessibilityLabel("Add \(label.lowercased()) date")
-        .popover(isPresented: $isAddingDate) {
-          VStack(alignment: .leading, spacing: 16) {
-            Text("Add \(label.lowercased()) date")
-              .font(.headline)
-              .foregroundStyle(theme.foreground)
-            DatePicker(label, selection: $newDate, displayedComponents: .date)
-              .datePickerStyle(.graphical)
-            HStack {
-              Button("Cancel") { isAddingDate = false }
-              Spacer()
-              Button("Save") {
-                isAddingDate = false
-                onChange(newDate)
-              }
-              .buttonStyle(.borderedProminent)
-            }
-          }
-          .padding()
-          .frame(maxWidth: 380)
-          .background(theme.card)
-          .presentationCompactAdaptation(.sheet)
-          .presentationDetents([.medium, .large])
-          .presentationDragIndicator(.visible)
-        }
       }
     }
     .disabled(isDisabled)
     .accessibilityIdentifier("detail.date.\(label.lowercased())")
+    .popover(isPresented: $isEditingDate) {
+      VStack(alignment: .leading, spacing: 16) {
+        Text("\(storedDate == nil ? "Add" : "Change") \(label.lowercased()) date")
+          .font(.headline)
+          .foregroundStyle(theme.foreground)
+        DatePicker(label, selection: $draftDate, displayedComponents: .date)
+          .datePickerStyle(.graphical)
+        HStack {
+          Button("Cancel") { isEditingDate = false }
+          Spacer()
+          Button("Save") {
+            isEditingDate = false
+            if storedDate.map({ DetailDateOnly.string(from: $0) })
+              != DetailDateOnly.string(from: draftDate)
+            {
+              onChange(draftDate)
+            }
+          }
+          .buttonStyle(.borderedProminent)
+        }
+      }
+      .padding()
+      .frame(maxWidth: 380)
+      .background(theme.card)
+      .presentationCompactAdaptation(.sheet)
+      .presentationDetents([.medium, .large])
+      .presentationDragIndicator(.visible)
+    }
   }
 }
 

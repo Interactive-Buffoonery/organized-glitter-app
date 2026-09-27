@@ -5,20 +5,22 @@ struct LibraryItemDetailDestination: View {
   @Environment(\.theme) private var theme
   @State private var model: LibraryItemDetailModel
   @State private var editor: DetailEditor?
-  @State private var isEditingPageCount = false
   @State private var isConfirmingDelete = false
   @State private var deleteErrorMessage: String?
 
   let onCollectionChanged: @MainActor @Sendable () async -> Void
+  let onEditPageCount: ((ColoringBookRecord) -> Void)?
 
   init(
     item: LibraryItem,
     library: LibrarySession,
-    onCollectionChanged: @escaping @MainActor @Sendable () async -> Void
+    onCollectionChanged: @escaping @MainActor @Sendable () async -> Void,
+    onEditPageCount: ((ColoringBookRecord) -> Void)? = nil
   ) {
     _model = State(
       initialValue: LibraryItemDetailModel(item: item, library: library))
     self.onCollectionChanged = onCollectionChanged
+    self.onEditPageCount = onEditPageCount
   }
 
   var body: some View {
@@ -35,7 +37,7 @@ struct LibraryItemDetailDestination: View {
         ColoringBookDetailView(
           book: book,
           model: model,
-          onEditPageCount: { isEditingPageCount = true },
+          onEditPageCount: { onEditPageCount?(book) },
           onCollectionChanged: onCollectionChanged
         )
         .accessibilityIdentifier("detail.book")
@@ -97,21 +99,6 @@ struct LibraryItemDetailDestination: View {
     .sheet(item: $editor) { editor in
       editorView(for: editor)
         .drawer(editor.detents)
-    }
-    .inspector(isPresented: $isEditingPageCount) {
-      if case .book(let book) = model.item {
-        ColoringBookPageCountEditor(
-          library: model.library,
-          book: book,
-          onSaved: { saved in
-            isEditingPageCount = false
-            Task { await acceptSaved(.book(saved)) }
-          }
-        )
-        .inspectorColumnWidth(min: 280, ideal: 340, max: 400)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-      }
     }
     .confirmationDialog(
       "Delete \(model.item.title)?",

@@ -308,6 +308,39 @@ struct ColoringBookPageCountEditor: View {
   }
 }
 
+private struct BookPageCountInspector: ViewModifier {
+  @Binding var book: ColoringBookRecord?
+  let library: LibrarySession
+  let onSaved: (ColoringBookRecord) -> Void
+
+  func body(content: Content) -> some View {
+    content.inspector(isPresented: Binding(
+      get: { book != nil },
+      set: { if !$0 { book = nil } }
+    )) {
+      if let book {
+        ColoringBookPageCountEditor(library: library, book: book) { saved in
+          self.book = nil
+          onSaved(saved)
+        }
+        .inspectorColumnWidth(min: 280, ideal: 340, max: 400)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+      }
+    }
+  }
+}
+
+extension View {
+  func bookPageCountInspector(
+    book: Binding<ColoringBookRecord?>,
+    library: LibrarySession,
+    onSaved: @escaping (ColoringBookRecord) -> Void
+  ) -> some View {
+    modifier(BookPageCountInspector(book: book, library: library, onSaved: onSaved))
+  }
+}
+
 // `user` is sent only on create; it is omitted on update so a save can never
 // reassign ownership. Every other field is omitted on update when unchanged
 // because the synthesized encoder drops nil keys, and a PATCH without a key
