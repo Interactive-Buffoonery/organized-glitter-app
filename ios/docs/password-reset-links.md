@@ -1,7 +1,8 @@
 # Password reset links
 
-Status: native implementation prepared. The canonical AASA response is verified;
-physical-device link handling and live-email flow remain unverified.
+Status: the release owner verified native iPad email-link reset, rejection of a
+reused link, and desktop web fallback on September 27, 2026. The signed-in guard
+and clarified recovery copy added afterward still require a device recheck.
 
 ## Contract
 
@@ -23,11 +24,15 @@ use that full identifier and match `/auth/confirm-password-reset/*`.
 
 ## App transitions
 
-1. Opening a matching link presents password confirmation above the current app
-   state, including while the user is signed in.
+1. Opening a matching link while signed out presents password confirmation.
+   While signed in, it shows a notice to sign out and reopen the email link;
+   it does not present the form or sign the user out automatically. Links
+   received during restoration wait for its result before being routed.
 2. A missing or malformed token shows the same recovery screen as an invalid,
    expired, or reused token. The screen never displays the token.
-3. The recovery screen can request a new reset email.
+3. The recovery screen explicitly asks for a new link. “Send a new reset link”
+   opens the email-entry form and sends through the existing PocketBase endpoint.
+   A well-formed used token is rejected on submission, not merely on opening.
 4. A successful reset clears any local signed-in session and offers a direct
    return to sign in.
 5. When a confirmation response is lost or the server fails, the result may be

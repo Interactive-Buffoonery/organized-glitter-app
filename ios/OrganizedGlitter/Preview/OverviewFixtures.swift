@@ -59,7 +59,13 @@
           client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
         } else if scenario == "reset-server-failure" {
           respond(object: ["message": "Fictional service failure"], status: 503)
+        } else {
+          respond(object: ["message": "Invalid or expired token"], status: 400)
         }
+        return
+      }
+      if url.path == "/api/collections/users/request-password-reset" {
+        respond(object: [:], status: 204)
         return
       }
       let collection = Self.collectionAndID(from: url)?.collection

@@ -34,6 +34,11 @@ struct RootView: View {
     }
     .background(theme.themedBackground.ignoresSafeArea())
     .animation(Theme.motion, value: model.phase)
+    .alert("You’re already signed in", isPresented: $model.showsSignedInPasswordResetNotice) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text("To use a password-reset link, sign out first, then open the link from your email again.")
+    }
     .sheet(item: $model.passwordResetDestination) { destination in
       PasswordResetConfirmationView(
         client: model.client,

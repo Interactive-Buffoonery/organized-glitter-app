@@ -91,7 +91,7 @@ struct PasswordResetConfirmationView: View {
     case .form:
       "Create a new password"
     case .invalidLink:
-      "This reset link can’t be used"
+      "Request a new reset link"
     case .requestNewLink:
       "Reset password"
     case .complete:
@@ -163,13 +163,13 @@ struct PasswordResetConfirmationView: View {
 
   @ViewBuilder
   private var recovery: some View {
-    Text("The link may have expired or already been used. Request a new link and try again.")
+    Text("This link has expired, has already been used, or is invalid. Request a new reset email to choose a password.")
       .font(.body)
       .foregroundStyle(theme.foreground)
       .accessibilityFocused($isOutcomeFocused)
       .accessibilityIdentifier("passwordResetInvalidLink")
 
-    Button("Request a new reset link") {
+    Button("Send a new reset link") {
       presentation = .requestNewLink
     }
     .buttonStyle(AuthPrimaryButtonStyle())
@@ -209,7 +209,7 @@ struct PasswordResetConfirmationView: View {
     .buttonStyle(AuthPrimaryButtonStyle())
     .accessibilityIdentifier("passwordResetTrySignIn")
 
-    Button("Request a new reset link") {
+    Button("Send a new reset link") {
       presentation = .requestNewLink
     }
     .buttonStyle(AuthLinkButtonStyle())
@@ -307,7 +307,7 @@ struct PasswordResetConfirmationView: View {
   private func announceInvalidLink() {
     isOutcomeFocused = true
     AccessibilityNotification.Announcement(
-      "This reset link can’t be used. It may have expired or already been used."
+      "This reset link can’t be used. Request a new reset email using the Send a new reset link button."
     ).post()
   }
 }
