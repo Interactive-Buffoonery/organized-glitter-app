@@ -47,7 +47,8 @@ enum DetailDateOnly {
     return formatter.string(from: date)
   }
 
-  /// "5 days", "6 weeks", "4 months": one unit, rounded down.
+  /// One whole unit: days below 14 days, weeks below 63 days, then completed
+  /// calendar months rather than fixed 30-day periods.
   static func elapsed(
     from start: Date,
     to end: Date,
