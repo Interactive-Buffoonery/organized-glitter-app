@@ -47,10 +47,16 @@ screen backgrounds. The Shelf redesign (Option B in
 
 ## Current design reference
 
-The current six-screen references are in
-[native refinement](design-previews/native-refinement/README.md). Generated
-boards guide hierarchy and composition; real model values and native platform
-behavior take precedence over their illustrative labels and tab bars.
+Detail and navigation follow the approved artwork-first Option 2 B described
+above: soft status chips, compact section actions, and Home, Library, and Search
+in one native tab group. Simulator screenshots in the implementation PRs record
+the native result.
+
+The earlier six-screen boards in
+[native refinement](design-previews/native-refinement/README.md) remain references
+for unaffected screens. Their detail layouts and tab bars are superseded by
+Option 2 B. Real record content and native platform behavior take precedence
+over illustrative labels and artwork in design mockups.
 
 ## Historical D reference
 
