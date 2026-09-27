@@ -143,6 +143,7 @@ struct DiamondProjectDetailView: View {
         theme.themedBackground.ignoresSafeArea()
       }
       .refreshable { await model.refresh() }
+      .photoViewer(progressPhotos)
       .sheet(isPresented: $isAddingNote, onDismiss: { revealSavedNote(proxy) }) {
         DiamondProgressNoteEditor(
           model: model,
@@ -179,12 +180,17 @@ struct DiamondProjectDetailView: View {
       guard let image = note.image?.nonEmpty,
         let url = protectedFiles?.url(
           collection: "progress_notes", recordID: note.id, filename: image,
-          thumb: ArtworkThumb.gallery)
+          thumb: ArtworkThumb.gallery),
+        let fullSizeURL = protectedFiles?.url(
+          collection: "progress_notes", recordID: note.id, filename: image)
       else { return nil }
       return DetailPhoto(
         id: note.id,
         url: url,
-        accessibilityLabel: progressPhotoLabel(for: note)
+        fullSizeURL: fullSizeURL,
+        accessibilityLabel: progressPhotoLabel(for: note),
+        date: noteDate(note.date),
+        caption: note.content.nonEmpty
       )
     }
   }
@@ -231,6 +237,7 @@ struct DiamondProjectDetailView: View {
       .frame(width: horizontalSizeClass == .regular ? 300 : 204)
       .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
       .padding(.bottom, 8)
+      .photoViewer(opening: coverPhoto)
       .accessibilityIdentifier("detail.hero")
 
       Text(project.title)
@@ -338,6 +345,14 @@ struct DiamondProjectDetailView: View {
 
   private func noteDate(_ value: String) -> String {
     DetailDateOnly.formatted(value) ?? value
+  }
+
+  private var coverPhoto: DetailPhoto? {
+    guard let url = protectedFiles?.artworkURL(for: .diamond(project)) else { return nil }
+    return DetailPhoto(
+      id: "project-cover", url: url, fullSizeURL: url,
+      accessibilityLabel: "Project artwork"
+    )
   }
 
   private func progressPhotoLabel(for note: DiamondProgressNoteRecord) -> String {
