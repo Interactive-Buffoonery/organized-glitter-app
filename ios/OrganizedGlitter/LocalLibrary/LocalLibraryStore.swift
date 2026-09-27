@@ -637,16 +637,12 @@ actor LocalLibraryStore: ModelActor {
     guard recordsToDelete.allSatisfy({ $0.activeData == nil }) else {
       throw LocalLibraryError.conflict
     }
-    let pageIDs = Set(children.map(\.recordID))
     let noteKind = key.kind == .project ? "diamond" : "coloring"
-    let affectedIDs = key.kind == .book ? pageIDs : Set([key.id])
-    var matchingNotes: [LocalStoredNote] = []
-    for parentID in affectedIDs {
-      matchingNotes += try context.fetch(FetchDescriptor<LocalStoredNote>(
-        predicate: #Predicate {
-          $0.scope == scopeKey && $0.kind == noteKind && $0.parentID == parentID
-        }))
-    }
+    let affectedIDs = key.kind == .book ? children.map(\.recordID) : [key.id]
+    let matchingNotes = try context.fetch(FetchDescriptor<LocalStoredNote>(
+      predicate: #Predicate {
+        $0.scope == scopeKey && $0.kind == noteKind && affectedIDs.contains($0.parentID)
+      }))
     do {
       try context.transaction {
         for record in recordsToDelete { context.delete(record) }
