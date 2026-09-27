@@ -552,19 +552,6 @@ private struct UpNextCover: View {
   }
 }
 
-extension View {
-  /// Liquid Glass on iOS 26, a material capsule before it.
-  @ViewBuilder
-  func glassButton() -> some View {
-    if #available(iOS 26, *) {
-      buttonStyle(.glass)
-    } else {
-      buttonStyle(.bordered)
-        .background(.ultraThinMaterial, in: .capsule)
-    }
-  }
-}
-
 extension Error {
   fileprivate var overviewMessage: String {
     switch self as? APIError {
