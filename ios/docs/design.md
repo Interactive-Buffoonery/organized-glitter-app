@@ -113,10 +113,14 @@ summary uses server totals.
 
 Account entry was migrated against the same studio revision while keeping
 ADR 0001 backgrounds. The system launch screen uses a solid brand
-`LaunchBackground` with a centered Caveat `LaunchWordmark` asset. The in-app
-restoration splash shows a live Caveat wordmark with quiet progress only while
-session restore runs. Signed-out users land on Welcome (centered wordmark above
-Create account and Sign in) with no authenticated tabs. `WelcomeView` owns the
+`LaunchBackground` with a `LaunchWordmark` asset drawn where Welcome places its
+wordmark. While session restore runs, Welcome's layout stands in as the splash:
+its three sparkles twinkle in place of a spinner, the actions stay hidden, and
+the themed background fades in over the flat launch color. Nothing moves on the
+way to Welcome. `script/render-launch-wordmark.swift` redraws the launch asset
+from the shared `BrandWordmarkArt`. Signed-out users land on Welcome (wordmark
+with still sparkles above Create account and Sign in) with no authenticated
+tabs. `WelcomeView` owns the
 signed-out `NavigationStack`. Method selection offers Continue with email only;
 Apple, Google, and Discord stay out until a native OAuth path and provider
 continuity land. Email sign-in, registration, password-reset
