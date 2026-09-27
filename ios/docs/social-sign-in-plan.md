@@ -16,7 +16,7 @@ Never merge accounts or attach identities based only on matching email.
 - Keep `PocketBaseClient` concrete and use one session-publication path.
 - Use Apple APIs before dependencies. Support iOS 18; use iOS/iPadOS 26 for
   routine simulator verification and physical devices for provider flows.
-- Keep server records in memory. Do not introduce offline writes or record caches.
+- Follow the current local-library session lifecycle when accepting a social sign-in.
 - Backend routes, hooks, migrations, and token storage belong in
   `Interactive-Buffoonery/organized-glitter`, targeting `dev`.
 - Update `ios/BackendContract.json` only after verifying the referenced backend
@@ -294,9 +294,9 @@ session persistence failure; and provider-button UI using stubbed responses.
 
 ## Phase 3: native Apple on iOS
 
-The native client implementation is present behind `#if DEBUG`. Before Release:
+The native Apple client implementation is present behind `#if DEBUG`. Before Release:
 
-- Add the Sign in with Apple entitlement and verify signing configuration.
+- Verify the existing Sign in with Apple entitlement in signed device builds.
 - Use `SignInWithAppleButton`, requesting full name and email. Generate a fresh
   nonce with `SecRandomCopyBytes`, fail if generation fails, and send its
   SHA-256 hex digest through the request using CryptoKit.

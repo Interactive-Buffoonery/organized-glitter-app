@@ -299,7 +299,7 @@ final class AppModel {
 
   func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest, sourceID: UUID) {
     guard appleReadiness == .available, case .signedOut = phase,
-      !isSubmitting, appleAttempt == nil, appleTask == nil
+      !isSigningOut, !cleanupBlocked, !isSubmitting, appleAttempt == nil, appleTask == nil
     else { return }
     let generation = beginSessionTransition()
     appleError = nil
@@ -366,6 +366,8 @@ final class AppModel {
             nonce: attempt.nonce.raw,
             name: name
           )
+          guard attempt.generation == sessionGeneration else { return }
+          try await openLibrary(for: session.user, generation: attempt.generation)
           guard attempt.generation == sessionGeneration else { return }
           phase = .signedIn(session.user)
           applyThemePreference(from: session.user)
