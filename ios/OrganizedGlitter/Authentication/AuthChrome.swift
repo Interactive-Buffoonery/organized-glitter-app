@@ -1,16 +1,12 @@
 import SwiftUI
 
 /// Stacked Caveat wordmark used on splash, welcome, and account-entry screens.
-///
-/// Caveat’s ascenders sit outside SwiftUI’s default line box. Pad each line
-/// instead of drawing through UIViewRepresentable — that representable
-/// invalidated layout during the Continue with email push and crashed the
-/// signed-out stack.
 struct BrandWordmark: View {
   @Environment(\.theme) private var theme
 
   var size: CGFloat = 56
   var relativeTo: Font.TextStyle = .largeTitle
+  var sparkles: BrandWordmarkArt.Sparkles = .none
   var accessibilityIdentifier: String? = nil
 
   @ScaledMetric private var scaledSize: CGFloat
@@ -18,35 +14,30 @@ struct BrandWordmark: View {
   init(
     size: CGFloat = 56,
     relativeTo: Font.TextStyle = .largeTitle,
+    sparkles: BrandWordmarkArt.Sparkles = .none,
     accessibilityIdentifier: String? = nil
   ) {
     self.size = size
     self.relativeTo = relativeTo
+    self.sparkles = sparkles
     self.accessibilityIdentifier = accessibilityIdentifier
     _scaledSize = ScaledMetric(wrappedValue: size, relativeTo: relativeTo)
   }
 
   var body: some View {
-    VStack(spacing: scaledSize * 0.08) {
-      wordmarkLine("Organized")
-      wordmarkLine("Glitter")
-    }
+    BrandWordmarkArt(
+      size: scaledSize,
+      foreground: theme.foreground,
+      primary: theme.primary,
+      accent: theme.accent,
+      sparkles: sparkles
+    )
     .frame(maxWidth: .infinity)
     .fixedSize(horizontal: false, vertical: true)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Organized Glitter")
     .accessibilityAddTraits(.isHeader)
     .accessibilityIdentifier(accessibilityIdentifier ?? "brandWordmark")
-  }
-
-  private func wordmarkLine(_ text: String) -> some View {
-    Text(text + "\u{2002}")
-      .font(.custom("Caveat", fixedSize: scaledSize))
-      .foregroundStyle(theme.foreground)
-      .lineLimit(1)
-      .minimumScaleFactor(0.5)
-      .padding(.horizontal, scaledSize * 0.08)
-      .padding(.vertical, scaledSize * 0.22)
   }
 }
 
@@ -69,7 +60,7 @@ struct AuthPrimaryButtonStyle: ButtonStyle {
     configuration.label
       .font(.body.weight(.semibold))
       .foregroundStyle(theme.foreground)
-      .frame(maxWidth: .infinity, minHeight: 52)
+      .frame(maxWidth: .infinity, minHeight: AccountEntryLayout.primaryButtonHeight)
       .padding(.horizontal, 18)
       .background(fill, in: .rect(cornerRadius: 16))
       .overlay {
@@ -89,7 +80,7 @@ struct AuthSecondaryButtonStyle: ButtonStyle {
     configuration.label
       .font(.body.weight(.medium))
       .foregroundStyle(theme.foreground)
-      .frame(maxWidth: .infinity, minHeight: 48)
+      .frame(maxWidth: .infinity, minHeight: AccountEntryLayout.secondaryButtonHeight)
       .opacity(configuration.isPressed || !isEnabled ? 0.55 : 1)
   }
 }
@@ -139,6 +130,8 @@ struct AuthEntryContainer<Content: View>: View {
 
   var alignment: HorizontalAlignment = .center
   var fillsHeight: Bool = false
+  /// Paints the flat launch color over the themed background.
+  var coversBackground: Bool = false
   @ViewBuilder let content: Content
 
   var body: some View {
@@ -147,8 +140,8 @@ struct AuthEntryContainer<Content: View>: View {
         content
           .frame(maxWidth: 420, alignment: Alignment(horizontal: alignment, vertical: .center))
           .padding(.horizontal, 28)
-          .padding(.top, 24)
-          .padding(.bottom, 36)
+          .padding(.top, AccountEntryLayout.topPadding)
+          .padding(.bottom, AccountEntryLayout.bottomPadding)
           .frame(
             maxWidth: .infinity,
             minHeight: fillsHeight ? proxy.size.height : nil,
@@ -158,6 +151,10 @@ struct AuthEntryContainer<Content: View>: View {
       .scrollClipDisabled()
     }
     .scrollDismissesKeyboard(.interactively)
-    .background(theme.themedBackground.ignoresSafeArea())
+    .background {
+      theme.themedBackground
+        .overlay(theme.background.opacity(coversBackground ? 1 : 0))
+        .ignoresSafeArea()
+    }
   }
 }
