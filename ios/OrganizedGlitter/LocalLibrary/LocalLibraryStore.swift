@@ -80,6 +80,10 @@ struct LocalFullSnapshot: Decodable, Sendable {
 }
 
 actor LocalLibraryStore: ModelActor {
+  private static let schema = Schema([
+    LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self,
+    LocalPendingRemoval.self,
+  ])
   nonisolated let modelContainer: ModelContainer
   nonisolated let modelExecutor: any ModelExecutor
   private var context: ModelContext { modelContext }
@@ -93,25 +97,17 @@ actor LocalLibraryStore: ModelActor {
     try FileManager.default.setAttributes(
       [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
       ofItemAtPath: directory.path)
-    let schema = Schema([
-      LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self,
-      LocalPendingRemoval.self,
-    ])
     let configuration = ModelConfiguration(
-      "LocalLibrary", schema: schema, url: databaseURL, cloudKitDatabase: .none)
-    let container = try ModelContainer(for: schema, configurations: [configuration])
+      "LocalLibrary", schema: Self.schema, url: databaseURL, cloudKitDatabase: .none)
+    let container = try ModelContainer(for: Self.schema, configurations: [configuration])
     self.init(container: container)
   }
 
   static func inMemory() throws -> LocalLibraryStore {
-    let schema = Schema([
-      LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self,
-      LocalPendingRemoval.self,
-    ])
     let configuration = ModelConfiguration(
-      "LocalLibraryTests", schema: schema, isStoredInMemoryOnly: true,
+      "LocalLibraryTests", schema: Self.schema, isStoredInMemoryOnly: true,
       cloudKitDatabase: .none)
-    let container = try ModelContainer(for: schema, configurations: [configuration])
+    let container = try ModelContainer(for: Self.schema, configurations: [configuration])
     return LocalLibraryStore(container: container)
   }
 
@@ -274,20 +270,10 @@ actor LocalLibraryStore: ModelActor {
 
   func projection(scope: LocalAccountScope) throws -> LocalLibraryProjection {
     let records = try storedRecords(scope.storageKey)
-    let notes = try storedNotes(scope.storageKey)
-    var progressNotes: [DiamondProgressNoteRecord] = []
-    var coloringPageProgressNotes: [ColoringProgressNoteRecord] = []
-    for note in notes {
-      if note.kind == "diamond" {
-        progressNotes.append(try decoder.decode(DiamondProgressNoteRecord.self, from: note.recordData))
-      } else {
-        coloringPageProgressNotes.append(
-          try decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData))
-      }
-    }
+    let notes = try decodedNotes(storedNotes(scope.storageKey))
     return try LocalLibraryProjection(
-      entries: records.map(entry), progressNotes: progressNotes,
-      coloringPageProgressNotes: coloringPageProgressNotes,
+      entries: records.map(entry), progressNotes: notes.diamonds,
+      coloringPageProgressNotes: notes.coloring,
       hasSnapshot: account(scope.storageKey)?.hasSnapshot == true,
       pendingCount: records.reduce(0) { $0 + ($1.activeData == nil ? 0 : 1) })
   }
@@ -300,16 +286,7 @@ actor LocalLibraryStore: ModelActor {
   func notes(scope: LocalAccountScope) throws
     -> (diamonds: [DiamondProgressNoteRecord], coloring: [ColoringProgressNoteRecord])
   {
-    var diamonds: [DiamondProgressNoteRecord] = []
-    var coloring: [ColoringProgressNoteRecord] = []
-    for note in try storedNotes(scope.storageKey) {
-      if note.kind == "diamond" {
-        diamonds.append(try decoder.decode(DiamondProgressNoteRecord.self, from: note.recordData))
-      } else {
-        coloring.append(try decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData))
-      }
-    }
-    return (diamonds, coloring)
+    try decodedNotes(storedNotes(scope.storageKey))
   }
 
   func ingestNote(_ note: DiamondProgressNoteRecord, scope: LocalAccountScope) throws {
@@ -362,14 +339,7 @@ actor LocalLibraryStore: ModelActor {
       throw LocalLibraryError.missingRecord
     }
     guard stored.conflictValue == nil else { throw LocalLibraryError.conflict }
-    var visible = try jsonObject(stored.serverData)
-    if let activeData = stored.activeData {
-      let active = try decoder.decode(LocalPendingOperation.self, from: activeData)
-      visible = try overlay(visible, with: active.patch)
-    }
-    if let nextData = stored.nextData {
-      visible = try overlay(visible, with: decoder.decode([String: LocalJSONValue].self, from: nextData))
-    }
+    let visible = try visibleObject(stored)
     _ = try overlay(visible, with: patch).validated(as: key.kind, decoder: decoder)
 
     if stored.activeData == nil {
@@ -398,27 +368,26 @@ actor LocalLibraryStore: ModelActor {
   }
 
   func pendingOperations(scope: LocalAccountScope) throws -> [LocalPendingOperation] {
-    let scopeKey = scope.storageKey
-    let records = try context.fetch(FetchDescriptor<LocalStoredRecord>(
-      predicate: #Predicate {
-        $0.scope == scopeKey && $0.activeData != nil && $0.conflictValue == nil
-      }))
-    return try records.compactMap { stored in
-      guard let data = stored.activeData else { return nil }
-      return try decoder.decode(LocalPendingOperation.self, from: data)
-    }
+    try fetchPendingOperations(scope: scope.storageKey)
   }
 
   func nextPendingOperation(scope: LocalAccountScope) throws -> LocalPendingOperation? {
-    let scopeKey = scope.storageKey
+    try fetchPendingOperations(scope: scope.storageKey, limit: 1).first
+  }
+
+  private func fetchPendingOperations(
+    scope: String, limit: Int? = nil
+  ) throws -> [LocalPendingOperation] {
     var descriptor = FetchDescriptor<LocalStoredRecord>(
       predicate: #Predicate {
-        $0.scope == scopeKey && $0.activeData != nil && $0.conflictValue == nil
+        $0.scope == scope && $0.activeData != nil && $0.conflictValue == nil
       },
       sortBy: [SortDescriptor(\.key)])
-    descriptor.fetchLimit = 1
-    guard let data = try context.fetch(descriptor).first?.activeData else { return nil }
-    return try decoder.decode(LocalPendingOperation.self, from: data)
+    if let limit { descriptor.fetchLimit = limit }
+    return try context.fetch(descriptor).compactMap { stored in
+      guard let data = stored.activeData else { return nil }
+      return try decoder.decode(LocalPendingOperation.self, from: data)
+    }
   }
 
   func pendingCount(scope: LocalAccountScope) throws -> Int {
@@ -435,12 +404,7 @@ actor LocalLibraryStore: ModelActor {
       let activeData = stored.activeData
     else { return [] }
     let active = try decoder.decode(LocalPendingOperation.self, from: activeData)
-    var desired = active.patch
-    if let nextData = stored.nextData {
-      desired.merge(try decoder.decode([String: LocalJSONValue].self, from: nextData)) {
-        _, newest in newest
-      }
-    }
+    let desired = try pendingPatch(stored, active: active)
     let baseline = try stored.nextBaseData.map {
       try decoder.decode([String: LocalJSONValue].self, from: $0)
     } ?? [:]
@@ -546,12 +510,7 @@ actor LocalLibraryStore: ModelActor {
       let active = try stored.activeData.map {
         try decoder.decode(LocalPendingOperation.self, from: $0)
       }
-      var desired = active?.patch ?? [:]
-      if let nextData = stored.nextData {
-        desired.merge(try decoder.decode([String: LocalJSONValue].self, from: nextData)) {
-          _, newest in newest
-        }
-      }
+      var desired = try pendingPatch(stored, active: active)
       let server = try jsonObject(stored.serverData)
       let serverValues = try values(for: Array(desired.keys), in: server)
       desired = desired.filter { serverValues[$0.key] != $0.value }
@@ -684,6 +643,17 @@ actor LocalLibraryStore: ModelActor {
   }
 
   private func entry(_ stored: LocalStoredRecord) throws -> LocalLibraryEntry {
+    let object = try visibleObject(stored)
+    guard let kind = LocalRecordKind(rawValue: stored.kind) else {
+      throw LocalLibraryError.invalidValue
+    }
+    let item = try object.validated(as: kind, decoder: decoder)
+    return LocalLibraryEntry(
+      item: item, pending: stored.activeData != nil,
+      conflict: stored.conflictValue.flatMap(LocalConflict.init(rawValue:)))
+  }
+
+  private func visibleObject(_ stored: LocalStoredRecord) throws -> [String: Any] {
     var object = try jsonObject(stored.serverData)
     if let activeData = stored.activeData {
       object = try overlay(
@@ -693,13 +663,34 @@ actor LocalLibraryStore: ModelActor {
       object = try overlay(
         object, with: decoder.decode([String: LocalJSONValue].self, from: nextData))
     }
-    guard let kind = LocalRecordKind(rawValue: stored.kind) else {
-      throw LocalLibraryError.invalidValue
+    return object
+  }
+
+  private func pendingPatch(
+    _ stored: LocalStoredRecord, active: LocalPendingOperation?
+  ) throws -> [String: LocalJSONValue] {
+    var patch = active?.patch ?? [:]
+    if let nextData = stored.nextData {
+      patch.merge(try decoder.decode([String: LocalJSONValue].self, from: nextData)) {
+        _, newest in newest
+      }
     }
-    let item = try object.validated(as: kind, decoder: decoder)
-    return LocalLibraryEntry(
-      item: item, pending: stored.activeData != nil,
-      conflict: stored.conflictValue.flatMap(LocalConflict.init(rawValue:)))
+    return patch
+  }
+
+  private func decodedNotes(_ notes: [LocalStoredNote]) throws
+    -> (diamonds: [DiamondProgressNoteRecord], coloring: [ColoringProgressNoteRecord])
+  {
+    var diamonds: [DiamondProgressNoteRecord] = []
+    var coloring: [ColoringProgressNoteRecord] = []
+    for note in notes {
+      if note.kind == "diamond" {
+        diamonds.append(try decoder.decode(DiamondProgressNoteRecord.self, from: note.recordData))
+      } else {
+        coloring.append(try decoder.decode(ColoringProgressNoteRecord.self, from: note.recordData))
+      }
+    }
+    return (diamonds, coloring)
   }
 
   private func verify(_ item: LibraryItem, scope: LocalAccountScope) throws {
