@@ -22,9 +22,20 @@ the realtime parser and subscription. Provider `state` is now used for validatio
 so decoding it is no longer dead state. Attempt invalidation and session guards
 remain in place. Temporary callback probes and logging are removed from source.
 
-Backend prerequisite: `fix/native-oauth-callback` in the backend repository adds
-the data-domain webcredentials association. It must land, deploy, and be verified
-before real native login can be validated. BackendContract.json remains unchanged.
+Backend [PR #348](https://github.com/Interactive-Buffoonery/organized-glitter/pull/348)
+merged into dev as `8515b9bf`. Only `native_association.pb.js` was deployed from
+that revision. A staged upload and final download matched the source SHA-256;
+the live association endpoint returned HTTP 200 with the exact expected JSON,
+and PocketBase health remained HTTP 200. This verifies the new hook, not the
+revision of every other production backend file; BackendContract.json is unchanged.
+
+Apple's CDN still returned a cached earlier 404 after the origin was fixed. A
+local development-signed Release build was prepared with an external entitlement
+override using `webcredentials:data.organizedglitter.app?mode=developer`, following
+Apple's TN3155 testing guidance. The repository's normal entitlement is unchanged.
+The device must enable Associated Domains Development before this test build is
+installed. Normal CDN association and real provider login remain separate gates.
+
 A successful build or mocked exchange does not establish provider login success.
 
 Validation for this revision:
@@ -34,7 +45,8 @@ Validation for this revision:
   `/tmp/og-pr16-direct-rebased-tests.log`.
 - Signed Release device build passed. Log:
   `/tmp/og-pr16-direct-rebased-release.log`.
-- Production association deployment and real Discord authorization remain pending.
+- Origin association deployment passed; Apple CDN refresh and real Discord
+  authorization remain pending.
 
 
 ## Release controls
