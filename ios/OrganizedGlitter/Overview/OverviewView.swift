@@ -49,6 +49,10 @@ final class OverviewModel {
     }
   }
 
+  func cancelNoteDates() {
+    noteDatesTask?.cancel()
+  }
+
   private func performLoad(generation: Int) async {
     let projectOwner = PocketBaseFilter.equals(.user, userID)
     let pageOwner = PocketBaseFilter.equals(.bookUser, userID)
@@ -132,9 +136,11 @@ final class OverviewModel {
     } catch APIError.cancelled {
       return
     } catch APIError.unauthenticated {
+      guard !Task.isCancelled, generation == loadGeneration else { return }
       errorMessage = APIError.unauthenticated.overviewMessage
       await onSessionExpired?()
     } catch {
+      guard !Task.isCancelled, generation == loadGeneration else { return }
       errorMessage = error.overviewMessage
     }
   }
@@ -285,6 +291,7 @@ struct OverviewView: View {
       )
     }
     .task { await model.load() }
+    .onDisappear { model.cancelNoteDates() }
   }
 
   private var continueItems: [LibraryItem] {

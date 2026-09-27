@@ -153,6 +153,12 @@ struct OverviewLoadingTests {
     }.value
   }
 
+  private func waitForFirstActiveRequest() async -> Bool {
+    await Task.detached {
+      OverviewURLProtocol.firstActiveStarted.wait(timeout: .now() + 2) == .success
+    }.value
+  }
+
   @Test func shelvesAppearBeforeOptionalNoteDatesReturn() async throws {
     let model = try await model()
 
@@ -190,29 +196,78 @@ struct OverviewLoadingTests {
     await model.load()
     #expect(await waitForFirstNoteRequest())
 
-    model.noteDatesTask?.cancel()
+    model.cancelNoteDates()
     OverviewURLProtocol.firstNoteGate.signal()
     await model.noteDatesTask?.value
 
     #expect(model.items.map(\.recordID) == ["project-1"])
     #expect(model.latestNoteDates.isEmpty)
   }
+
+  @Test func supersededListErrorDoesNotReplaceReloadedShelf() async throws {
+    let model = try await model()
+    OverviewURLProtocol.delayFirstActiveFailure = true
+    let firstLoad = Task { await model.load() }
+    #expect(await waitForFirstActiveRequest())
+
+    await model.load()
+    OverviewURLProtocol.firstActiveGate.signal()
+    await firstLoad.value
+    await model.noteDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-2"])
+    #expect(model.errorMessage == nil)
+  }
+
+  @Test func supersededUnauthorizedListCannotExpireSession() async throws {
+    let model = try await model()
+    let expirations = OverviewExpirationCounter()
+    model.onSessionExpired = { expirations.count += 1 }
+    OverviewURLProtocol.delayFirstActiveFailure = true
+    OverviewURLProtocol.firstActiveFailureStatus = 401
+    let firstLoad = Task { await model.load() }
+    #expect(await waitForFirstActiveRequest())
+
+    await model.load()
+    OverviewURLProtocol.firstActiveGate.signal()
+    await firstLoad.value
+    await model.noteDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-3"])
+    #expect(model.errorMessage == nil)
+    #expect(expirations.count == 0)
+  }
+}
+
+@MainActor
+private final class OverviewExpirationCounter {
+  var count = 0
 }
 
 private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) static var firstNoteGate = DispatchSemaphore(value: 0)
   nonisolated(unsafe) static var firstNoteStarted = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var firstActiveGate = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var firstActiveStarted = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var delayFirstActiveFailure = false
+  nonisolated(unsafe) static var firstActiveFailureStatus = 500
   nonisolated(unsafe) static var activeListCount = 0
   private static let stateLock = NSLock()
 
   private let requestLock = NSLock()
   private var cancelled = false
+  private var waitingForNote = false
+  private var waitingForActive = false
 
   static func reset() {
     stateLock.lock()
     activeListCount = 0
     firstNoteGate = DispatchSemaphore(value: 0)
     firstNoteStarted = DispatchSemaphore(value: 0)
+    firstActiveGate = DispatchSemaphore(value: 0)
+    firstActiveStarted = DispatchSemaphore(value: 0)
+    delayFirstActiveFailure = false
+    firstActiveFailureStatus = 500
     stateLock.unlock()
   }
 
@@ -226,6 +281,9 @@ private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
       let isFirstLoad = Self.activeListCount == 1
       Self.stateLock.unlock()
       if isFirstLoad {
+        requestLock.lock()
+        waitingForNote = true
+        requestLock.unlock()
         Self.firstNoteStarted.signal()
         DispatchQueue.global().async {
           Self.firstNoteGate.wait()
@@ -241,6 +299,10 @@ private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
       respond(#"{"token":"example-token","record":{"id":"fictional-user","verified":true}}"#)
       return
     }
+    if path == "/api/collections/users/auth-refresh" {
+      respond(#"{"token":"refreshed-token","record":{"id":"fictional-user","verified":true}}"#)
+      return
+    }
 
     let filter = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?
       .queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
@@ -248,11 +310,28 @@ private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
       Self.stateLock.lock()
       Self.activeListCount += 1
       let number = Self.activeListCount
+      let delayedFailure = number == 1 && Self.delayFirstActiveFailure
+      let retryFailure = number == 2 && Self.delayFirstActiveFailure
+        && Self.firstActiveFailureStatus == 401
+      let failureStatus = Self.firstActiveFailureStatus
       Self.stateLock.unlock()
-      respond(list(
-        items: """
-          {"id":"project-\(number)","title":"Example \(number)","user":"fictional-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-0\(number)"}
-          """, total: 1))
+      if delayedFailure {
+        requestLock.lock()
+        waitingForActive = true
+        requestLock.unlock()
+        Self.firstActiveStarted.signal()
+        DispatchQueue.global().async {
+          Self.firstActiveGate.wait()
+          self.respond("{}", status: failureStatus)
+        }
+      } else if retryFailure {
+        respond("{}", status: 401)
+      } else {
+        respond(list(
+          items: """
+            {"id":"project-\(number)","title":"Example \(number)","user":"fictional-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-0\(number)"}
+            """, total: 1))
+      }
     } else if path.contains("/projects/") && filter.contains(#"status = "completed""#) {
       respond(list(items: "", total: 2))
     } else if path.contains("/coloring_pages/") && filter.contains(#"status = "completed""#) {
@@ -265,8 +344,11 @@ private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
   override func stopLoading() {
     requestLock.lock()
     cancelled = true
+    let unblockNote = waitingForNote
+    let unblockActive = waitingForActive
     requestLock.unlock()
-    Self.firstNoteGate.signal()
+    if unblockNote { Self.firstNoteGate.signal() }
+    if unblockActive { Self.firstActiveGate.signal() }
   }
 
   private func list(items: String, total: Int) -> String {
@@ -275,13 +357,13 @@ private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
     """
   }
 
-  private func respond(_ body: String) {
+  private func respond(_ body: String, status: Int = 200) {
     requestLock.lock()
     let shouldRespond = !cancelled
     requestLock.unlock()
     guard shouldRespond, let url = request.url else { return }
     let response = HTTPURLResponse(
-      url: url, statusCode: 200, httpVersion: nil,
+      url: url, statusCode: status, httpVersion: nil,
       headerFields: ["Content-Type": "application/json"]
     )!
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
