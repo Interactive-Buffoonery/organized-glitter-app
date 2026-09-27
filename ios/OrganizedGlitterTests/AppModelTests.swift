@@ -129,6 +129,29 @@ struct AppModelTests {
     #expect(model.passwordResetDestination == nil)
   }
 
+  @Test
+  func refreshingSignedInUserDoesNotRepeatResetNotice() throws {
+    let model = AppModel(configurationError: URLError(.badURL), themeStore: ThemeStore())
+    model.phase = .signedOut
+    model.open(try #require(URL(string: "https://organizedglitter.app/auth/confirm-password-reset/token")))
+    model.phase = .signedIn(.preview)
+    #expect(model.passwordResetDestination == nil)
+    #expect(model.showsSignedInPasswordResetNotice)
+
+    model.showsSignedInPasswordResetNotice = false
+    model.replaceSignedInUser(.preview)
+
+    #expect(!model.showsSignedInPasswordResetNotice)
+    #expect(model.passwordResetDestination == nil)
+    #expect(model.phase == .signedIn(.preview))
+
+    model.open(try #require(URL(string: "https://organizedglitter.app/auth/confirm-password-reset/token")))
+    #expect(model.showsSignedInPasswordResetNotice)
+    model.showsSignedInPasswordResetNotice = false
+    model.replaceSignedInUser(.preview)
+    #expect(!model.showsSignedInPasswordResetNotice)
+  }
+
   @Test(arguments: [true, false])
   func defersResetLinkUntilSessionRestorationFinishes(signedIn: Bool) throws {
     let model = AppModel(configurationError: URLError(.badURL), themeStore: ThemeStore())

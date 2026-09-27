@@ -2,7 +2,7 @@
 
 Status: the release owner verified native iPad email-link reset, rejection of a
 reused link, and desktop web fallback on September 27, 2026. The signed-in guard
-and clarified recovery copy added afterward still require a device recheck.
+and clarified recovery copy were then verified on the updated iPad build.
 
 ## Contract
 
