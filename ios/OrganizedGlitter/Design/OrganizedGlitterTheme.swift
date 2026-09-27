@@ -82,6 +82,13 @@ extension View {
   func themedScrollBackground() -> some View {
     modifier(ThemedScrollBackground())
   }
+
+  /// Bottom drawer on iPhone, a centered form-size card on iPad.
+  func drawer(_ detents: Set<PresentationDetent>) -> some View {
+    presentationDetents(detents)
+      .presentationDragIndicator(.visible)
+      .presentationSizing(.form)
+  }
 }
 
 /// Icon plus written label; hue is never the only signal (docs/design.md).

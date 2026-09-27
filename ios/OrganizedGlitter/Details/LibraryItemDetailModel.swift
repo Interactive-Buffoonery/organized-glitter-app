@@ -52,7 +52,7 @@ final class LibraryItemDetailModel {
   var isMutating = false
   var errorMessage: String?
   var mutationErrorMessage: String?
-  private(set) var statusErrorMessage: String?
+  private(set) var editErrorMessage: String?
   private(set) var unresolvedWriteState: DetailUnresolvedWriteState?
   private(set) var unresolvedStatusWrite = false
 
@@ -175,7 +175,7 @@ final class LibraryItemDetailModel {
 
     isMutating = true
     mutationErrorMessage = nil
-    statusErrorMessage = nil
+    editErrorMessage = nil
     defer { isMutating = false }
     do {
       try await library.delete(collection: collection, id: recordID)
@@ -189,26 +189,16 @@ final class LibraryItemDetailModel {
     }
   }
 
-  /// Plain status PATCH, matching the web. Dates stay as the user set them.
+  /// Plain status PATCH, matching the web. Project and book dates stay as the
+  /// user set them; the server fills page started/completed dates from status.
   func setStatus(_ status: String) async -> Bool {
     guard !isMutating, unresolvedWriteState == nil, item.status != status else { return false }
     isMutating = true
     mutationErrorMessage = nil
-    statusErrorMessage = nil
+    editErrorMessage = nil
     defer { isMutating = false }
-    let patch = ["status": status]
     do {
-      let saved: LibraryItem
-      switch item {
-      case .diamond(let project):
-        saved = .diamond(try await library.update(collection: "projects", id: project.id, body: patch))
-      case .book(let book):
-        saved = .book(
-          try await library.update(collection: "coloring_books", id: book.id, body: patch))
-      case .page:
-        return false
-      }
-      item = saved.retainingListingContext(from: item)
+      item = try await saveLocally(["status": status]).retainingListingContext(from: item)
       statusSaveRevision += 1
       await load()
       return true
@@ -218,11 +208,50 @@ final class LibraryItemDetailModel {
       _ = await reconcileUnresolvedWrite()
       return false
     } catch {
-      statusErrorMessage = error.userMessage(
+      editErrorMessage = error.userMessage(
         permission: "Your account does not have permission to change the status.",
         fallback: "The status could not be changed. Try again."
       )
       return false
+    }
+  }
+
+  /// In-place edits of offline-capable fields, queued locally like status.
+  @discardableResult
+  func updateFields(_ patch: [String: String]) async -> Bool {
+    guard !isMutating, unresolvedWriteState == nil, !patch.isEmpty else { return false }
+    isMutating = true
+    editErrorMessage = nil
+    defer { isMutating = false }
+    do {
+      item = try await saveLocally(patch).retainingListingContext(from: item)
+      await load()
+      return true
+    } catch APIError.cancelled {
+      return false
+    } catch {
+      editErrorMessage = error.userMessage(
+        permission: "Your account does not have permission to change this item.",
+        fallback: "The change could not be saved. Try again."
+      )
+      return false
+    }
+  }
+
+  /// `nil` clears the date. PocketBase stores these as `yyyy-MM-dd`.
+  @discardableResult
+  func setDate(_ field: String, to date: Date?) async -> Bool {
+    await updateFields([field: date.map { DetailDateOnly.string(from: $0) } ?? ""])
+  }
+
+  private func saveLocally(_ patch: [String: String]) async throws -> LibraryItem {
+    switch item {
+    case .diamond(let project):
+      .diamond(try await library.update(collection: "projects", id: project.id, body: patch))
+    case .book(let book):
+      .book(try await library.update(collection: "coloring_books", id: book.id, body: patch))
+    case .page(let page):
+      .page(try await library.update(collection: "coloring_pages", id: page.id, body: patch))
     }
   }
 
@@ -239,7 +268,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
-    statusErrorMessage = nil
+    editErrorMessage = nil
     defer { isMutating = false }
 
     var files: [PocketBaseMultipartFile] = []
@@ -256,7 +285,7 @@ final class LibraryItemDetailModel {
       fields: [
         "project": project.id,
         "content": content.trimmingCharacters(in: .whitespacesAndNewlines),
-        "date": Self.dateOnlyString(from: date),
+        "date": DetailDateOnly.string(from: date),
       ],
       files: files
     )
@@ -292,7 +321,7 @@ final class LibraryItemDetailModel {
     }
     isMutating = true
     mutationErrorMessage = nil
-    statusErrorMessage = nil
+    editErrorMessage = nil
     defer { isMutating = false }
 
     let form = PocketBaseMultipartForm(
@@ -410,18 +439,6 @@ final class LibraryItemDetailModel {
       return lhs.date > rhs.date
     }
     return lhs.created > rhs.created
-  }
-
-  private static func dateOnlyString(from date: Date) -> String {
-    var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = .current
-    let components = calendar.dateComponents([.year, .month, .day], from: date)
-    return String(
-      format: "%04d-%02d-%02d",
-      components.year ?? 0,
-      components.month ?? 0,
-      components.day ?? 0
-    )
   }
 }
 

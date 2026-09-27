@@ -17,6 +17,14 @@ enum DetailDateOnly {
     return date
   }
 
+  /// The calendar day of `date` in `timeZone`, as PocketBase's `yyyy-MM-dd`.
+  static func string(from date: Date, timeZone: TimeZone = .current) -> String {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let day = calendar.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", day.year ?? 0, day.month ?? 0, day.day ?? 0)
+  }
+
   static func formatted(
     _ value: String,
     locale: Locale = .current,
