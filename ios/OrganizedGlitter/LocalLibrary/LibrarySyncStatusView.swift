@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LibrarySyncStatusView: View {
   let library: LibrarySession
@@ -22,6 +23,7 @@ struct LibrarySyncStatusView: View {
       }
       .padding()
       .background(.regularMaterial)
+      .accessibilityIdentifier("library.syncStatus")
       .sheet(isPresented: $showingChanges) {
         NavigationStack { LibraryConflictView(library: library) }
       }
@@ -57,14 +59,16 @@ private struct LibraryConflictView: View {
           } else {
             Text("This item changed on another device. Review both versions before choosing which changes to keep.")
             LibraryConflictFields(library: library, entry: entry)
-            Button("Keep My Changes") { resolve(entry, retainLocal: true) }
-            Button("Use Account Version", role: .destructive) { resolve(entry, retainLocal: false) }
           }
         }
       }
     }
     .navigationTitle("Review Saved Changes")
     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+    .onChange(of: errorMessage) { _, message in
+      guard let message, UIAccessibility.isVoiceOverRunning else { return }
+      UIAccessibility.post(notification: .announcement, argument: message)
+    }
   }
 
   private func resolve(_ entry: LocalLibraryEntry, retainLocal: Bool) {
@@ -90,19 +94,65 @@ private struct LibraryConflictView: View {
 private struct LibraryConflictFields: View {
   let library: LibrarySession
   let entry: LocalLibraryEntry
-  @State private var changes: [LocalConflictChange] = []
+  @State private var changes: [LocalConflictChange]?
+  @State private var errorMessage: String?
+  @State private var isResolving = false
 
   var body: some View {
-    ForEach(changes, id: \.field) { change in
-      VStack(alignment: .leading, spacing: 4) {
-        Text(change.field.replacingOccurrences(of: "_", with: " ").capitalized).font(.headline)
-        Text("On this device: \(display(change.local))")
-        Text("In your account: \(display(change.server))")
+    Group {
+      if let changes {
+        if let errorMessage { AccessibleErrorLabel(message: errorMessage) }
+        if changes.isEmpty {
+          Text("The compared fields currently match.")
+        }
+        ForEach(changes, id: \.field) { change in
+          VStack(alignment: .leading, spacing: 4) {
+            Text(change.field.replacingOccurrences(of: "_", with: " ").capitalized)
+              .font(.headline)
+            Text("\(change.isComparisonOnly ? "When you saved" : "On this device"): \(display(change.local))")
+            Text("In your account: \(display(change.server))")
+            if change.isComparisonOnly {
+              Text("This field was included in the conflict check.")
+                .font(.footnote)
+            }
+          }
+        }
+        Button("Keep My Changes") { resolve(retainLocal: true) }
+          .disabled(isResolving)
+        Button("Use Account Version", role: .destructive) { resolve(retainLocal: false) }
+          .disabled(isResolving)
+      } else if let errorMessage {
+        AccessibleErrorLabel(message: errorMessage)
+        Button("Try Again") { Task { await load() } }
+      } else {
+        ProgressView("Loading differences")
       }
     }
-    .task {
-      changes = (try? await library.store.conflictChanges(
-        scope: library.scope, key: entry.item.localRecordKey)) ?? []
+    .task(id: entry.item) { await load() }
+    .onChange(of: errorMessage) { _, message in
+      guard let message, UIAccessibility.isVoiceOverRunning else { return }
+      UIAccessibility.post(notification: .announcement, argument: message)
+    }
+  }
+
+  private func load() async {
+    changes = nil
+    errorMessage = nil
+    do {
+      changes = try await library.store.conflictChanges(
+        scope: library.scope, key: entry.item.localRecordKey)
+    } catch {
+      errorMessage = "The differences could not be loaded. Try again."
+    }
+  }
+
+  private func resolve(retainLocal: Bool) {
+    guard changes != nil, !isResolving else { return }
+    isResolving = true
+    Task {
+      defer { isResolving = false }
+      do { try await library.resolve(entry, retainLocal: retainLocal) }
+      catch { errorMessage = "The changes could not be resolved. Please try again." }
     }
   }
 

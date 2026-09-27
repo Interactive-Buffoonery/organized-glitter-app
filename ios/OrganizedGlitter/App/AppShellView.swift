@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AppTab: Hashable {
   case home
@@ -23,6 +24,7 @@ struct AppShellView: View {
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
   @State private var protectedFiles: ProtectedFileAccess
+  @State private var lastAnnouncedSyncMessage: String?
 
   init(model: AppModel, client: PocketBaseClient, user: UserRecord, library: LibrarySession) {
     self.model = model
@@ -41,7 +43,7 @@ struct AppShellView: View {
   var body: some View {
     TabView(selection: $selectedTab) {
       Tab("Home", systemImage: "house", value: .home) {
-        NavigationStack {
+        tabContent(NavigationStack {
           OverviewView(
             library: library, verticals: accountPreferences.verticals,
             onLibraryRequest: { request in
@@ -66,7 +68,7 @@ struct AppShellView: View {
               )
             }
           }
-        }
+        })
       }
 
       // ponytail: iPad lists crafts as sidebar rows so Library never nests a
@@ -76,19 +78,19 @@ struct AppShellView: View {
         TabSection("Library") {
           ForEach(LibrarySection.available(for: accountPreferences.verticals)) { section in
             Tab(section.pickerTitle, systemImage: section.systemImage, value: AppTab.craft(section)) {
-              library(.craft(section))
+              tabContent(library(.craft(section)))
             }
           }
         }
       } else {
         Tab("Library", systemImage: "books.vertical", value: .library) {
-          library(.browse)
+          tabContent(library(.browse))
         }
       }
 
       if LibraryPresentation.hasSearchTab {
         Tab("Search", systemImage: "magnifyingglass", value: .search) {
-          library(.search)
+          tabContent(library(.search))
         }
       }
     }
@@ -105,8 +107,16 @@ struct AppShellView: View {
         break
       }
     }
-    .safeAreaInset(edge: .bottom) {
-      LibrarySyncStatusView(library: library)
+    .onChange(of: syncAnnouncement, initial: true) { _, announcement in
+      guard let announcement else {
+        lastAnnouncedSyncMessage = nil
+        return
+      }
+      guard announcement != lastAnnouncedSyncMessage else { return }
+      lastAnnouncedSyncMessage = announcement
+      if UIAccessibility.isVoiceOverRunning {
+        UIAccessibility.post(notification: .announcement, argument: announcement)
+      }
     }
     .onChange(of: scenePhase) { _, phase in
       if phase == .active { Task { try? await library.refresh(force: true) } }
@@ -139,5 +149,17 @@ struct AppShellView: View {
       request: libraryRequest,
       onSessionExpired: { await model.expireSession() }
     )
+  }
+
+  private func tabContent<Content: View>(_ content: Content) -> some View {
+    content.safeAreaInset(edge: .bottom) {
+      LibrarySyncStatusView(library: library)
+    }
+  }
+
+  private var syncAnnouncement: String? {
+    if !library.conflicts.isEmpty { return "Some saved changes need your attention. Review." }
+    if library.pendingCount > 0 { return "Saved on this device. Waiting to sync." }
+    return library.syncMessage
   }
 }

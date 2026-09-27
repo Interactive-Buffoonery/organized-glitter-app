@@ -73,6 +73,25 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("shell-03-search")
   }
 
+  func testSyncStatusKeepsNavigationAvailable() {
+    for scenario in ["loading", "error"] {
+      let app = launchFixture(scenario: scenario)
+      let status = element("library.syncStatus", in: app)
+      XCTAssertTrue(status.waitForExistence(timeout: 5), "Missing sync status for \(scenario)")
+
+      let libraryTab = app.tabBars.buttons["Library"].firstMatch
+      if libraryTab.exists {
+        XCTAssertTrue(libraryTab.isHittable, "Library tab is covered during \(scenario)")
+      }
+      openLibrary(app)
+      XCTAssertTrue(
+        app.navigationBars["Library"].waitForExistence(timeout: 5)
+          || app.navigationBars["Diamond art"].exists,
+        "Library cannot be opened during \(scenario)")
+      app.terminate()
+    }
+  }
+
   func testDiamondEditCancelSaveAndDeleteRemainStateful() {
     let app = launchFixture()
     openLibrary(app)

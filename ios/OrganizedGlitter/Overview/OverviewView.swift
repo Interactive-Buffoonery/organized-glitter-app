@@ -41,6 +41,8 @@ final class OverviewModel {
         if case .page(let page) = item { return page }
         return nil
       }
+      let projectIDs = Set(projects.map(\.id))
+      let pageIDs = Set(pages.map(\.id))
       completedThisMonthCount = projects.filter {
         $0.status == "completed" && ($0.dateCompleted ?? "") >= monthStart
           && ($0.dateCompleted ?? "") < monthEnd
@@ -49,10 +51,10 @@ final class OverviewModel {
           && ($0.completedAt ?? "") < monthEnd
       }.count
       var dates: [String: String] = [:]
-      for note in library.progressNotes where projects.contains(where: { $0.id == note.project }) {
+      for note in library.progressNotes where projectIDs.contains(note.project) {
         if note.date > dates[note.project, default: ""] { dates[note.project] = note.date }
       }
-      for note in library.coloringPageProgressNotes where pages.contains(where: { $0.id == note.page }) {
+      for note in library.coloringPageProgressNotes where pageIDs.contains(note.page) {
         if note.date > dates[note.page, default: ""] { dates[note.page] = note.date }
       }
       latestNoteDates = dates
