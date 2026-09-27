@@ -8,9 +8,10 @@ screen backgrounds. The Shelf redesign (Option B in
 
 ## Shelf
 
-- **Shell.** Home, Library, and on iOS 26 a `Tab(role: .search)`. iOS 18
-  searches inside Library with `.searchable`. Account opens from the Home
-  toolbar avatar. Create is the toolbar `+` `CreateMenu` on Home and Library.
+- **Shell.** Home, Library, and on iOS 26 an ordinary labeled Search tab in
+  the native tab bar. iOS 18 searches inside Library with `.searchable`.
+  Account opens from the Home toolbar avatar. Create is the toolbar `+`
+  `CreateMenu` on Home and Library.
   The randomizer code stays but has no tab.
 - **iPad.** The `.sidebarAdaptable` `TabView` lists one sidebar row per craft
   in a `TabSection("Library")`. The single Library tab shows only in the tab
