@@ -2,7 +2,6 @@ import Foundation
 
 struct OAuthProvider: Decodable, Sendable {
   let name: String
-  let state: String
   let authURL: String
   let codeVerifier: String
 
@@ -30,7 +29,6 @@ enum OAuthError: Error, Equatable {
   case invalidResponse
   case disconnected
   case denied
-  case timedOut
   case presentationFailed
 }
 

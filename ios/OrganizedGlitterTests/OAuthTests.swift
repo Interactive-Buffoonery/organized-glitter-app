@@ -8,7 +8,6 @@ struct OAuthTests {
   func preservesProviderPKCEAndEncodesBackendRedirect() throws {
     let provider = OAuthProvider(
       name: "google",
-      state: "initial",
       authURL: "https://accounts.example.test/authorize?code_challenge=challenge&code_challenge_method=S256&redirect_uri=",
       codeVerifier: "verifier"
     )
@@ -190,6 +189,137 @@ struct OAuthTests {
     await #expect(throws: APIError.cancelled) { _ = try await task.value }
     #expect(try store.load() == nil)
     continuation.finish()
+  }
+
+  @MainActor
+  @Test(arguments: [false, true])
+  func cancellingModelRejectsLateResultAndAllowsRetry(duringExchange: Bool) async throws {
+    OAuthHTTP.reset()
+    if duringExchange { OAuthHTTP.holdExchange() }
+    defer { OAuthHTTP.releaseExchange() }
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
+    )
+    defer { try? store.clear() }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [OAuthHTTP.self]
+    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
+    let (stops, stopped) = AsyncStream<Void>.makeStream()
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://data.example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration),
+      oauthEvents: { _, _ in
+        OAuthRealtime.Connection(events: stream, stop: { stopped.yield(()) })
+      }
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+    model.socialProviders = [.google]
+    let presentation = OAuthPresentation()
+    continuation.yield(.connected("client-1"))
+    model.signInWithOAuth(
+      provider: .google,
+      present: { presentation.url = $0 },
+      dismissAccepted: { presentation.dismissed = true }
+    )
+    while presentation.url == nil { await Task.yield() }
+
+    if duringExchange {
+      continuation.yield(.callback(OAuthCallback(state: "client-1", code: "code-1", error: nil)))
+      while !OAuthHTTP.paths().contains("POST /api/collections/users/auth-with-oauth2") {
+        await Task.yield()
+      }
+    }
+    model.cancelOAuth()
+    OAuthHTTP.releaseExchange()
+    continuation.yield(.callback(OAuthCallback(state: "client-1", code: "late-code", error: nil)))
+    var stoppedIterator = stops.makeAsyncIterator()
+    await stoppedIterator.next()
+
+    #expect(model.phase == .signedOut)
+    #expect(!model.isSubmitting)
+    #expect(presentation.dismissed == duringExchange)
+    #expect(try store.load() == nil)
+    #expect(OAuthHTTP.paths().contains("POST /api/collections/users/auth-with-oauth2") == duringExchange)
+    continuation.finish()
+    stopped.finish()
+
+    let retry = await client.beginExternalAuthAttempt()
+    let response = AuthResponse(token: "retry-token", record: .preview)
+    _ = try await client.acceptExternalAuthResponse(response, attempt: retry)
+    #expect(try store.load()?.token == "retry-token")
+  }
+
+  @MainActor
+  @Test
+  func timeoutEndsModelAttemptWithoutPublishingSession() async throws {
+    OAuthHTTP.reset()
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
+    )
+    defer { try? store.clear() }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [OAuthHTTP.self]
+    let (stream, continuation) = AsyncThrowingStream<OAuthRealtimeEvent, Error>.makeStream()
+    defer { continuation.finish() }
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://data.example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration),
+      oauthEvents: { _, _ in OAuthRealtime.Connection(events: stream, stop: {}) }
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+    model.socialProviders = [.google]
+    model.signInWithOAuth(provider: .google, present: { _ in }, dismissAccepted: {}, timeout: .zero)
+    while model.isSubmitting { await Task.yield() }
+
+    #expect(model.phase == .signedOut)
+    #expect(model.oauthError == "Sign-in timed out. Try again.")
+    #expect(try store.load() == nil)
+  }
+
+  @Test
+  func cancellingAttemptRejectsLateResponseWithoutTaskCancellation() async throws {
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
+    )
+    defer { try? store.clear() }
+    let client = PocketBaseClient(baseURL: URL(string: "https://data.example.test")!, sessionStore: store)
+    let id = UUID()
+    let attempt = await client.beginExternalAuthAttempt(id: id)
+    await client.cancelExternalAuthAttempt(id: id)
+
+    await #expect(throws: APIError.cancelled) {
+      _ = try await client.acceptExternalAuthResponse(
+        AuthResponse(token: "late-token", record: .preview), attempt: attempt
+      )
+    }
+    #expect(try store.load() == nil)
+  }
+
+  @Test
+  func delayedCancellationDoesNotInvalidateNewerAttempt() async throws {
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.oauth-tests.\(UUID().uuidString)"
+    )
+    defer { try? store.clear() }
+    let client = PocketBaseClient(baseURL: URL(string: "https://data.example.test")!, sessionStore: store)
+    let oldID = UUID()
+    let oldAttempt = await client.beginExternalAuthAttempt(id: oldID)
+    let retry = await client.beginExternalAuthAttempt()
+    await client.cancelExternalAuthAttempt(id: oldID)
+
+    await #expect(throws: APIError.cancelled) {
+      _ = try await client.acceptExternalAuthResponse(
+        AuthResponse(token: "old-token", record: .preview), attempt: oldAttempt
+      )
+    }
+    _ = try await client.acceptExternalAuthResponse(
+      AuthResponse(token: "retry-token", record: .preview), attempt: retry
+    )
+    #expect(try store.load()?.token == "retry-token")
   }
 
   @MainActor

@@ -17,6 +17,7 @@ actor PocketBaseClient {
   private var refreshGeneration: Int?
   private var sessionGeneration = 0
   private var oauthGeneration = 0
+  private var oauthAttemptID: UUID?
 
   init(
     baseURL: URL,
@@ -72,10 +73,12 @@ actor PocketBaseClient {
 
   func signInWithOAuth(
     providerName: String,
+    attemptID: UUID = UUID(),
     present: @MainActor @Sendable (URL) throws -> Void,
     dismissAccepted: @MainActor @Sendable () -> Void
   ) async throws -> AuthenticatedSession {
-    let attempt = beginExternalAuthAttempt()
+    try Task.checkCancellation()
+    let attempt = beginExternalAuthAttempt(id: attemptID)
     guard let provider = try await oauthProviders().first(where: { $0.name == providerName }) else {
       throw OAuthError.unavailable
     }
@@ -142,7 +145,8 @@ actor PocketBaseClient {
     throw OAuthError.disconnected
   }
 
-  func beginExternalAuthAttempt() -> ExternalAuthAttempt {
+  func beginExternalAuthAttempt(id: UUID = UUID()) -> ExternalAuthAttempt {
+    oauthAttemptID = id
     oauthGeneration &+= 1
     return ExternalAuthAttempt(
       sessionGeneration: sessionGeneration,
@@ -150,7 +154,9 @@ actor PocketBaseClient {
     )
   }
 
-  func cancelExternalAuthAttempt() {
+  func cancelExternalAuthAttempt(id: UUID) {
+    guard oauthAttemptID == id else { return }
+    oauthAttemptID = nil
     oauthGeneration &+= 1
   }
 
