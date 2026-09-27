@@ -7,7 +7,10 @@ import UniformTypeIdentifiers
 struct DetailPhoto: Identifiable, Hashable, Sendable {
   let id: String
   let url: URL
+  let fullSizeURL: URL
   let accessibilityLabel: String
+  var date: String? = nil
+  var caption: String? = nil
 }
 
 struct DetailPhotoGallery: View {
@@ -21,6 +24,7 @@ struct DetailPhotoGallery: View {
         ForEach(photos) { photo in
           DetailPhotoTile(photo: photo, contentMode: .fit, maxPixelDimension: thumbnailSize * 3)
             .frame(width: thumbnailSize, height: thumbnailSize)
+            .photoViewerSource(photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen")
         }
       }
     }
@@ -50,6 +54,7 @@ struct DetailPhotoContactSheet: View {
       ForEach(photos) { photo in
         DetailPhotoTile(photo: photo, contentMode: .fill, maxPixelDimension: 480)
           .aspectRatio(1, contentMode: .fit)
+          .photoViewerSource(photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen")
           .savedEntryReveal(isPending: photo.id == pendingID, isHighlighted: photo.id == highlightedID)
           .id("photo-\(photo.id)")
       }

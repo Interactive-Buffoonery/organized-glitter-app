@@ -105,6 +105,7 @@
 		DD668F2CEE5B98E2302D60C2 /* AuthChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9079468E04D40FFDADAC626 /* AuthChrome.swift */; };
 		E446C2D725742D28F1775107 /* DiamondProjectWriteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2D9D83C502889A70BE1CD7 /* DiamondProjectWriteTests.swift */; };
 		EB3F5E51F262CFE28DFBD02A /* BackendContract.json in Resources */ = {isa = PBXBuildFile; fileRef = 6C50EC0F0E446D63E719ED45 /* BackendContract.json */; };
+		EE221F9C41092F13F0A58DDF /* PhotoViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE908FC7F918916A465558B7 /* PhotoViewer.swift */; };
 		F0CCF62DA6B4D1196F85DF73 /* APIErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */; };
 		F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */; };
 		F2EB4D73479C7792156305A5 /* AccountEntryRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66315A4B533EEEAF9FEFE7D /* AccountEntryRoute.swift */; };
@@ -231,6 +232,7 @@
 		D9AF6A3CC8D0561397DBC098 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		DA27606235E3389778F8BBEA /* LibraryItemDetailModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetailModelTests.swift; sourceTree = "<group>"; };
 		DAB439CF518C859A6EDDB5B2 /* CoverArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverArtwork.swift; sourceTree = "<group>"; };
+		DE908FC7F918916A465558B7 /* PhotoViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewer.swift; sourceTree = "<group>"; };
 		E05CD6F576A55CBFC96BBDE7 /* ProtectedFileAccessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtectedFileAccessTests.swift; sourceTree = "<group>"; };
 		E0CD4E065759D3DC0D45CF73 /* PrivateArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateArtworkStore.swift; sourceTree = "<group>"; };
 		E7EA344F5E1133CC94BAC6DB /* RecordStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordStatusTests.swift; sourceTree = "<group>"; };
@@ -503,6 +505,7 @@
 				CD03178006CC4D181EC25E88 /* DetailHeader.swift */,
 				CF6D23DFA92798FB254E1CF8 /* DetailPhoto.swift */,
 				851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */,
+				DE908FC7F918916A465558B7 /* PhotoViewer.swift */,
 			);
 			path = Details;
 			sourceTree = "<group>";
@@ -716,6 +719,7 @@
 				231E18A07A8460FFF70BE63B /* PasswordResetConfirmationView.swift in Sources */,
 				078BE9150039F5E8D8CECA68 /* PasswordResetLink.swift in Sources */,
 				4ECAD66E63E4BEDDBFE4A420 /* PasswordResetView.swift in Sources */,
+				EE221F9C41092F13F0A58DDF /* PhotoViewer.swift in Sources */,
 				33F937DC2E7932E23F2042D3 /* PocketBaseClient.swift in Sources */,
 				99314484D0CFB4AD1B9F4D28 /* PocketBaseDate.swift in Sources */,
 				194236C29D621F54421005AB /* PocketBaseFilter.swift in Sources */,
