@@ -14,7 +14,7 @@ struct CreateMenu: View {
   var body: some View {
     Menu {
       if verticals.diamondPainting {
-        Button("Diamond painting project", systemImage: "diamond") { target = .diamond }
+        Button("Diamond painting project", systemImage: "sparkles.rectangle.stack") { target = .diamond }
           .accessibilityIdentifier("create.diamond")
       }
       if verticals.coloringBooks {

@@ -28,7 +28,7 @@ struct ColoringBookDetailView: View {
         if model.bookPages.isEmpty, !model.isLoading, model.errorMessage == nil {
           ContentUnavailableView(
             "No matching pages",
-            systemImage: "doc.richtext",
+            systemImage: "pencil.and.scribble",
             description: Text(emptyPagesMessage)
           )
           .frame(maxWidth: .infinity)
@@ -223,7 +223,7 @@ struct ColoringBookDetailView: View {
     Button {
       onEditPageCount()
     } label: {
-      Label("Edit page count", systemImage: "number")
+      Label("Edit page count", systemImage: "list.number")
     }
     .buttonStyle(.bordered)
     .accessibilityIdentifier("detail.book.editPageCount")
