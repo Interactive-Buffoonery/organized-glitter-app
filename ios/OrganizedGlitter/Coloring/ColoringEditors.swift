@@ -118,7 +118,7 @@ struct ColoringBookEditor: View {
 
           Section("Credits") {
             TaxonomyPicker(
-              client: client,
+              library: library,
               userID: userID,
               collection: "book_publishers",
               label: "Publisher",
@@ -126,7 +126,7 @@ struct ColoringBookEditor: View {
               selection: $draft.publisher
             )
             TaxonomyPicker(
-              client: client,
+              library: library,
               userID: userID,
               collection: "book_illustrators",
               label: "Illustrator",

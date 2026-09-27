@@ -4,7 +4,33 @@ import Testing
 @testable import OrganizedGlitter
 
 @MainActor
+@Suite(.serialized)
 struct LibraryTests {
+  @Test func lostDeleteResponseDoesNotClaimDiskReloadIsServerRefresh() async throws {
+    LostDeleteURLProtocol.snapshotAvailable = false
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [LostDeleteURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://lost-delete.example.test")!,
+      sessionStore: KeychainSessionStore(service: "LostDeleteTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(StoredSession(token: "example-token", userID: "feature-user"))
+    let library = LibrarySession(
+      client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryModel(library: library)
+    await model.load()
+
+    await model.delete(.diamond(project))
+    #expect(model.items.map(\.id) == [project.id])
+    #expect(model.mutationError?.contains("status is unknown") == true)
+
+    LostDeleteURLProtocol.snapshotAvailable = true
+    await model.refresh()
+    #expect(model.items.isEmpty)
+  }
+
   @Test func localLibrarySearchesFiltersAndSortsWithoutNetwork() async throws {
     let library = try localFeatureLibrary()
     try await library.store.ingest(.diamond(featureProject("a", title: "Moon Garden", status: "wishlist", updated: "2026-09-02")), scope: library.scope)
@@ -124,4 +150,31 @@ struct LibraryTests {
     #expect(LibraryItem.page(page).galleryCaption == "Quiet Pages")
     #expect(LibraryItem.diamond(featureProject("project", title: "Moon")).galleryCaption.isEmpty)
   }
+}
+
+private final class LostDeleteURLProtocol: URLProtocol, @unchecked Sendable {
+  nonisolated(unsafe) static var snapshotAvailable = false
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+  override func startLoading() {
+    guard request.url?.path == "/api/mobile/sync/snapshot" else {
+      client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+      return
+    }
+    guard Self.snapshotAvailable else {
+      client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+      return
+    }
+    let body = #"{"version":1,"projects":[],"coloringBooks":[],"coloringPages":[],"progressNotes":[],"coloringPageProgressNotes":[]}"#
+    let response = HTTPURLResponse(
+      url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+      headerFields: ["Content-Type": "application/json"])!
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data(body.utf8))
+    client?.urlProtocolDidFinishLoading(self)
+  }
+
+  override func stopLoading() {}
 }

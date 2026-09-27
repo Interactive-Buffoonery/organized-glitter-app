@@ -334,12 +334,17 @@ final class LibraryModel {
       await load()
     } catch {
       if error as? APIError == .offline || error as? APIError == .server {
-        await load()
-        if !items.contains(where: { $0.id == item.id }) {
-          return
+        do {
+          try await library.refreshFromServer()
+          await load()
+          if !library.items.contains(where: { $0.id == item.id }) {
+            return
+          }
+          mutationError = "The item is still in your account. Try deleting it again."
+        } catch {
+          mutationError =
+            "Delete status is unknown. Reconnect and refresh your library before trying again."
         }
-        mutationError =
-          "Delete status is unknown. The library was refreshed; check the item before trying again."
       } else {
         mutationError = error.userMessage(
           permission: "Your account does not have permission to delete this item.",

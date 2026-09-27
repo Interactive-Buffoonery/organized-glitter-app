@@ -339,7 +339,13 @@ final class LibraryItemDetailModel {
   }
 
   private func reconcileUnresolvedWrite() async -> Bool {
-    let didRefresh = await load()
+    let didRefresh: Bool
+    do {
+      try await library.refreshFromServer()
+      didRefresh = await load()
+    } catch {
+      didRefresh = false
+    }
     if didRefresh {
       unresolvedWriteState = .refreshed
       if unresolvedStatusWrite {
