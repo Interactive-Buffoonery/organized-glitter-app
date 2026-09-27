@@ -63,6 +63,14 @@ struct LocalLibraryEntry: Sendable {
   let conflict: LocalConflict?
 }
 
+struct LocalLibraryProjection: Sendable {
+  let entries: [LocalLibraryEntry]
+  let progressNotes: [DiamondProgressNoteRecord]
+  let coloringPageProgressNotes: [ColoringProgressNoteRecord]
+  let hasSnapshot: Bool
+  let pendingCount: Int
+}
+
 struct LocalPendingOperation: Codable, Sendable {
   let id: UUID
   let key: LocalRecordKey
@@ -74,6 +82,7 @@ struct LocalConflictChange: Sendable {
   let field: String
   let local: LocalJSONValue
   let server: LocalJSONValue
+  let isComparisonOnly: Bool
 }
 
 enum LocalLibraryError: Error, Equatable {
