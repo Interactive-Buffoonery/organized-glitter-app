@@ -23,51 +23,53 @@ final class OverviewUITests: XCTestCase {
     }
   }
 
-  func testActiveWorkFilteringAndDetailNavigation() throws {
+  func testContinueOpensDetailAndLogsProgress() throws {
     let app = launch("populated")
     let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden"))
       .firstMatch
     XCTAssertTrue(page.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Logged"))
+        .firstMatch.waitForExistence(timeout: 5))
     try capture(app, "overview-top")
 
-    let segments = app.segmentedControls.firstMatch
-    if segments.exists {
-      segments.buttons["Diamond art"].tap()
-      XCTAssertFalse(page.exists)
-      segments.buttons["Coloring"].tap()
-      XCTAssertTrue(page.waitForExistence(timeout: 3))
-    }
+    let log = app.buttons["overview.log.fictional-project-1"]
+    XCTAssertTrue(log.exists)
+    XCTAssertEqual(log.label, "Log progress for Garden of stars")
+    log.tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond.noteEditor"].waitForExistence(timeout: 5))
+    try capture(app, "overview-log-sheet")
+    app.buttons["Cancel"].tap()
+
     page.tap()
     XCTAssertTrue(
       app.navigationBars["A moonlit garden with a very long, winding path"]
         .waitForExistence(timeout: 3))
   }
 
-  func testWishlistOpensFilteredLibrary() throws {
-    let app = launch("populated")
-    let wishlist = app.buttons["overview.collection.wishlist"]
-    XCTAssertTrue(wishlist.waitForExistence(timeout: 5))
-    for _ in 0..<10 where !wishlist.isHittable { app.swipeUp() }
-    XCTAssertTrue(wishlist.isHittable)
-    try capture(app, "overview-bottom")
-    wishlist.tap()
-    app.buttons["Coloring book wishlist"].tap()
-    let wishlistChip = app.buttons["library.status.wishlist"]
-    XCTAssertTrue(wishlistChip.waitForExistence(timeout: 5))
-    let booksCraft = app.buttons["Books"].exists ? app.buttons["Books"] : app.staticTexts["Books"]
-    XCTAssertTrue(booksCraft.waitForExistence(timeout: 3))
+  func testUpNextOpensTheStashFilter() throws {
+    let app = launch("design")
+    let upNext = app.buttons["overview.upNext"]
+    XCTAssertTrue(upNext.waitForExistence(timeout: 5))
     XCTAssertTrue(
-      app.descendants(matching: .any).matching(
-        NSPredicate(format: "label CONTAINS %@", "Wishlist coloring book")
-      ).firstMatch.waitForExistence(timeout: 5))
-    XCTAssertTrue(wishlistChip.isSelected)
+      app.buttons.matching(NSPredicate(format: "label == %@", "Beachside Gathering, In stash"))
+        .firstMatch.exists)
+    try capture(app, "overview-bottom")
+    upNext.tap()
+    app.buttons["In stash"].tap()
+    let stash = app.buttons["library.status.stash"]
+    XCTAssertTrue(stash.waitForExistence(timeout: 5))
+    XCTAssertTrue(stash.isSelected)
+    XCTAssertTrue(app.staticTexts["Beachside Gathering"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
   }
 
   func testCompletedShortcutOpensTheSelectedLibraryFilter() throws {
     let app = launch("design")
-    let completed = app.buttons["overview.collection.completed"]
-    XCTAssertTrue(completed.waitForExistence(timeout: 5))
-    completed.tap()
+    let finished = app.buttons["overview.finished"]
+    XCTAssertTrue(finished.waitForExistence(timeout: 5))
+    for _ in 0..<5 where !finished.isHittable { app.swipeUp() }
+    finished.tap()
     app.buttons["Completed diamond art"].tap()
 
     XCTAssertTrue(app.buttons["library.status.completed"].waitForExistence(timeout: 5))
@@ -82,19 +84,6 @@ final class OverviewUITests: XCTestCase {
       .firstMatch
     XCTAssertTrue(page.waitForExistence(timeout: 5))
     try capture(app, "overview-accessibility-portrait")
-    if !app.segmentedControls.firstMatch.exists {
-      let picker = app.buttons["overview.craft"]
-      XCTAssertTrue(picker.exists)
-      picker.tap()
-      app.buttons["Coloring"].tap()
-      XCTAssertTrue(page.waitForExistence(timeout: 3))
-      XCTAssertFalse(
-        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Garden of stars"))
-          .firstMatch.exists)
-      app.swipeUp()
-      try capture(app, "overview-accessibility-filtered")
-      app.swipeDown()
-    }
     XCUIDevice.shared.orientation = .landscapeLeft
     defer { XCUIDevice.shared.orientation = .portrait }
     // iPadOS 26 can run the app windowed, where its frame ignores rotation.

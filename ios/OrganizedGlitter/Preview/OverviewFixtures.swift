@@ -194,6 +194,9 @@
         if self.scenario != scenario {
           reset(for: scenario)
         }
+        if request.url?.path == "/api/notes/latest" {
+          return latestNotes(request: request)
+        }
         guard let url = request.url,
           let target = OverviewFixtureProtocol.collectionAndID(from: url)
         else {
@@ -256,6 +259,17 @@
               ? OverviewFixtureProtocol.designProgressNotes
               : OverviewFixtureProtocol.progressNoteItems) : [],
         ]
+      }
+
+      private func latestNotes(request: URLRequest) -> FixtureResponse {
+        let body = jsonValues(from: request)
+        let ids = body["targetIds"] as? [String] ?? []
+        let notes = body["craft"] as? String == "diamond" ? collections["progress_notes"] ?? [] : []
+        let items: [[String: Any]] = ids.compactMap { id in
+          let dates = notes.filter { $0["project"] as? String == id }.compactMap { $0["date"] as? String }
+          return dates.max().map { ["id": "latest-\(id)", "targetId": id, "date": $0, "created": $0] }
+        }
+        return FixtureResponse(object: ["items": items], status: 200)
       }
 
       private func get(collection: String, id: String) -> FixtureResponse {

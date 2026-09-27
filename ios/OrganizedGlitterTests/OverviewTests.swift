@@ -84,57 +84,28 @@ struct OverviewPresentationTests {
       ))
   }
 
-  @Test func craftFilterPreservesRecordIdentityAndOrder() {
-    let items = [project(), page()]
-    #expect(items.filter(OverviewCraft.all.includes) == items)
-    #expect(items.filter(OverviewCraft.diamonds.includes) == [items[0]])
-    #expect(items.filter(OverviewCraft.coloring.includes) == [items[1]])
-    #expect([items[0]].filter(OverviewCraft.coloring.includes).isEmpty)
+  @Test func continueOrdersByLatestNoteThenUpdated() {
+    let noted = project()
+    let recent = page()
+    // The page was updated later, but the project was logged the same day.
+    #expect(
+      OverviewModel.continueOrder([recent, noted], latestNoteDates: ["fictional-project": "2026-09-06 00:00:00.000Z"])
+        == [noted, recent])
+    #expect(OverviewModel.continueOrder([noted, recent], latestNoteDates: [:]) == [noted, recent])
+    #expect(
+      OverviewModel.continueOrder([noted, recent], latestNoteDates: ["fictional-page": "2026-09-01"])
+        == [noted, recent])
   }
 
-  @Test func completedShortcutsFollowCraftAndEnabledPreferences() {
-    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
-    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
-    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
-
-    #expect(OverviewCraft.all.completedSections(for: both) == [.diamonds, .pages])
-    #expect(OverviewCraft.diamonds.completedSections(for: both) == [.diamonds])
-    #expect(OverviewCraft.coloring.completedSections(for: both) == [.pages])
-    #expect(OverviewCraft.all.completedSections(for: diamondsOnly) == [.diamonds])
-    #expect(OverviewCraft.all.completedSections(for: coloringOnly) == [.pages])
-    #expect(OverviewCraft.coloring.completedSections(for: diamondsOnly).isEmpty)
-    #expect(OverviewCraft.diamonds.completedSections(for: coloringOnly).isEmpty)
-  }
-
-  @Test func inProgressShortcutsFollowCraftAndEnabledPreferences() {
-    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
-    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
-    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
-
-    #expect(OverviewCraft.all.inProgressSections(for: both) == [.diamonds, .pages])
-    #expect(OverviewCraft.diamonds.inProgressSections(for: both) == [.diamonds])
-    #expect(OverviewCraft.coloring.inProgressSections(for: both) == [.pages])
-    #expect(OverviewCraft.all.inProgressSections(for: diamondsOnly) == [.diamonds])
-    #expect(OverviewCraft.all.inProgressSections(for: coloringOnly) == [.pages])
-    #expect(OverviewCraft.coloring.inProgressSections(for: diamondsOnly).isEmpty)
-    #expect(OverviewCraft.diamonds.inProgressSections(for: coloringOnly).isEmpty)
-    #expect(OverviewCraft.all.inProgressStatus(for: .diamonds) == "progress")
-    #expect(OverviewCraft.all.inProgressStatus(for: .pages) == "in_progress")
-    #expect(OverviewCraft.all.inProgressStatus(for: .books) == nil)
-  }
-
-  @Test func wishlistShortcutsFollowCraftAndEnabledPreferences() {
-    let both = VerticalPreferences(diamondPainting: true, coloringBooks: true)
-    let diamondsOnly = VerticalPreferences(diamondPainting: true, coloringBooks: false)
-    let coloringOnly = VerticalPreferences(diamondPainting: false, coloringBooks: true)
-
-    #expect(OverviewCraft.all.wishlistSections(for: both) == [.diamonds, .books])
-    #expect(OverviewCraft.diamonds.wishlistSections(for: both) == [.diamonds])
-    #expect(OverviewCraft.coloring.wishlistSections(for: both) == [.books])
-    #expect(OverviewCraft.all.wishlistSections(for: diamondsOnly) == [.diamonds])
-    #expect(OverviewCraft.all.wishlistSections(for: coloringOnly) == [.books])
-    #expect(OverviewCraft.coloring.wishlistSections(for: diamondsOnly).isEmpty)
-    #expect(OverviewCraft.diamonds.wishlistSections(for: coloringOnly).isEmpty)
+  @Test func loggedCaptionIsRelativeForAWeek() throws {
+    let zone = try #require(TimeZone(identifier: "America/New_York"))
+    // 2026-09-20 23:30 in New York, already the 21st in UTC.
+    let now = try #require(ISO8601DateFormatter().date(from: "2026-09-21T03:30:00Z"))
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-20", now: now, timeZone: zone) == "Logged today")
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-19 00:00:00.000Z", now: now, timeZone: zone) == "Logged yesterday")
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-15", now: now, timeZone: zone) == "Logged 5 days ago")
+    #expect(OverviewModel.loggedCaption(noteDate: "2026-09-13", now: now, timeZone: zone)?.hasPrefix("Logged Sep") == true)
+    #expect(OverviewModel.loggedCaption(noteDate: "not a date", now: now, timeZone: zone) == nil)
   }
 
   @Test func artworkUsesTheFileAccessBoundary() {
@@ -144,18 +115,263 @@ struct OverviewPresentationTests {
       model.artworkURL(for: project(image: "garden image.png"), token: "file-token")
         == client.fileURL(
           collection: "projects", recordID: "fictional-project", filename: "garden image.png",
-          thumb: ArtworkThumb.compact, token: "file-token"
+          thumb: ArtworkThumb.gallery, token: "file-token"
         ))
     #expect(
       model.artworkURL(for: page(photos: ["", "page.png", "later.png"]), token: "file-token")
         == client.fileURL(
           collection: "coloring_pages", recordID: "fictional-page", filename: "page.png",
-          thumb: ArtworkThumb.compact, token: "file-token"
+          thumb: ArtworkThumb.gallery, token: "file-token"
         ))
     #expect(model.artworkURL(for: project(), token: "file-token") == nil)
     #expect(model.artworkURL(for: project(image: ""), token: "file-token") == nil)
     #expect(model.artworkURL(for: page(), token: "file-token") == nil)
     #expect(model.artworkURL(for: page(photos: [""]), token: "file-token") == nil)
     #expect(model.artworkURL(for: project(image: "garden image.png"), token: nil) == nil)
+  }
+}
+
+@MainActor
+@Suite("Overview loading", .serialized)
+struct OverviewLoadingTests {
+  private func model() async throws -> OverviewModel {
+    OverviewURLProtocol.reset()
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [OverviewURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://overview.example.invalid")!,
+      sessionStore: KeychainSessionStore(service: "OverviewLoadingTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+    _ = try await client.signIn(identity: "fictional-user", password: "example-password")
+    return OverviewModel(client: client, userID: "fictional-user")
+  }
+
+  private func waitForFirstNoteRequest() async -> Bool {
+    await waitForSignal(OverviewURLProtocol.firstNoteStarted)
+  }
+
+  private func waitForFirstActiveRequest() async -> Bool {
+    await waitForSignal(OverviewURLProtocol.firstActiveStarted)
+  }
+
+  private func waitForSignal(_ signal: DispatchSemaphore) async -> Bool {
+    await withCheckedContinuation { continuation in
+      DispatchQueue.global().async {
+        continuation.resume(returning: signal.wait(timeout: .now() + 2) == .success)
+      }
+    }
+  }
+
+  @Test func shelvesAppearBeforeOptionalNoteDatesReturn() async throws {
+    let model = try await model()
+
+    await model.load()
+
+    #expect(model.hasLoaded)
+    #expect(!model.isLoading)
+    #expect(model.items.map(\.recordID) == ["project-1"])
+    #expect(model.completedThisMonthCount == 5)
+    #expect(model.latestNoteDates.isEmpty)
+    #expect(await waitForFirstNoteRequest())
+
+    OverviewURLProtocol.firstNoteGate.signal()
+    await model.noteDatesTask?.value
+    #expect(model.latestNoteDates == ["project-1": "2026-09-20"])
+  }
+
+  @Test func supersededNoteDatesCannotReplaceReloadedShelves() async throws {
+    let model = try await model()
+    await model.load()
+    #expect(await waitForFirstNoteRequest())
+    let oldDatesTask = model.noteDatesTask
+
+    await model.load()
+    await model.noteDatesTask?.value
+    OverviewURLProtocol.firstNoteGate.signal()
+    await oldDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-2"])
+    #expect(model.latestNoteDates == ["project-2": "2026-09-21"])
+  }
+
+  @Test func cancelledNoteDatesDoNotEnrichTheShelf() async throws {
+    let model = try await model()
+    await model.load()
+    #expect(await waitForFirstNoteRequest())
+
+    model.cancelNoteDates()
+    OverviewURLProtocol.firstNoteGate.signal()
+    await model.noteDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-1"])
+    #expect(model.latestNoteDates.isEmpty)
+  }
+
+  @Test func supersededListErrorDoesNotReplaceReloadedShelf() async throws {
+    let model = try await model()
+    OverviewURLProtocol.delayFirstActiveFailure = true
+    let firstLoad = Task { await model.load() }
+    #expect(await waitForFirstActiveRequest())
+
+    await model.load()
+    OverviewURLProtocol.firstActiveGate.signal()
+    await firstLoad.value
+    await model.noteDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-2"])
+    #expect(model.errorMessage == nil)
+  }
+
+  @Test func supersededUnauthorizedListCannotExpireSession() async throws {
+    let model = try await model()
+    let expirations = OverviewExpirationCounter()
+    model.onSessionExpired = { expirations.count += 1 }
+    OverviewURLProtocol.delayFirstActiveFailure = true
+    OverviewURLProtocol.firstActiveFailureStatus = 401
+    let firstLoad = Task { await model.load() }
+    #expect(await waitForFirstActiveRequest())
+
+    await model.load()
+    OverviewURLProtocol.firstActiveGate.signal()
+    await firstLoad.value
+    await model.noteDatesTask?.value
+
+    #expect(model.items.map(\.recordID) == ["project-3"])
+    #expect(model.errorMessage == nil)
+    #expect(expirations.count == 0)
+  }
+}
+
+@MainActor
+private final class OverviewExpirationCounter {
+  var count = 0
+}
+
+private final class OverviewURLProtocol: URLProtocol, @unchecked Sendable {
+  nonisolated(unsafe) static var firstNoteGate = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var firstNoteStarted = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var firstActiveGate = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var firstActiveStarted = DispatchSemaphore(value: 0)
+  nonisolated(unsafe) static var delayFirstActiveFailure = false
+  nonisolated(unsafe) static var firstActiveFailureStatus = 500
+  nonisolated(unsafe) static var activeListCount = 0
+  private static let stateLock = NSLock()
+
+  private let requestLock = NSLock()
+  private var cancelled = false
+  private var waitingForNote = false
+  private var waitingForActive = false
+
+  static func reset() {
+    stateLock.lock()
+    activeListCount = 0
+    firstNoteGate = DispatchSemaphore(value: 0)
+    firstNoteStarted = DispatchSemaphore(value: 0)
+    firstActiveGate = DispatchSemaphore(value: 0)
+    firstActiveStarted = DispatchSemaphore(value: 0)
+    delayFirstActiveFailure = false
+    firstActiveFailureStatus = 500
+    stateLock.unlock()
+  }
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+  override func startLoading() {
+    let path = request.url?.path ?? ""
+    if path == "/api/notes/latest" {
+      Self.stateLock.lock()
+      let isFirstLoad = Self.activeListCount == 1
+      Self.stateLock.unlock()
+      if isFirstLoad {
+        requestLock.lock()
+        waitingForNote = true
+        requestLock.unlock()
+        Self.firstNoteStarted.signal()
+        DispatchQueue.global().async {
+          Self.firstNoteGate.wait()
+          self.respond(#"{"items":[{"targetId":"project-1","date":"2026-09-20"}]}"#)
+        }
+      } else {
+        respond(#"{"items":[{"targetId":"project-2","date":"2026-09-21"}]}"#)
+      }
+      return
+    }
+
+    if path == "/api/collections/users/auth-with-password" {
+      respond(#"{"token":"example-token","record":{"id":"fictional-user","verified":true}}"#)
+      return
+    }
+    if path == "/api/collections/users/auth-refresh" {
+      respond(#"{"token":"refreshed-token","record":{"id":"fictional-user","verified":true}}"#)
+      return
+    }
+
+    let filter = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?
+      .queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
+    if path.contains("/projects/") && filter.contains(#"status = "progress""#) {
+      Self.stateLock.lock()
+      Self.activeListCount += 1
+      let number = Self.activeListCount
+      let delayedFailure = number == 1 && Self.delayFirstActiveFailure
+      let retryFailure = number == 2 && Self.delayFirstActiveFailure
+        && Self.firstActiveFailureStatus == 401
+      let failureStatus = Self.firstActiveFailureStatus
+      Self.stateLock.unlock()
+      if delayedFailure {
+        requestLock.lock()
+        waitingForActive = true
+        requestLock.unlock()
+        Self.firstActiveStarted.signal()
+        DispatchQueue.global().async {
+          Self.firstActiveGate.wait()
+          self.respond("{}", status: failureStatus)
+        }
+      } else if retryFailure {
+        respond("{}", status: 401)
+      } else {
+        respond(list(
+          items: """
+            {"id":"project-\(number)","title":"Example \(number)","user":"fictional-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-0\(number)"}
+            """, total: 1))
+      }
+    } else if path.contains("/projects/") && filter.contains(#"status = "completed""#) {
+      respond(list(items: "", total: 2))
+    } else if path.contains("/coloring_pages/") && filter.contains(#"status = "completed""#) {
+      respond(list(items: "", total: 3))
+    } else {
+      respond(list(items: "", total: 0))
+    }
+  }
+
+  override func stopLoading() {
+    requestLock.lock()
+    cancelled = true
+    let unblockNote = waitingForNote
+    let unblockActive = waitingForActive
+    requestLock.unlock()
+    if unblockNote { Self.firstNoteGate.signal() }
+    if unblockActive { Self.firstActiveGate.signal() }
+  }
+
+  private func list(items: String, total: Int) -> String {
+    """
+    {"page":1,"perPage":10,"totalItems":\(total),"totalPages":1,"items":[\(items)]}
+    """
+  }
+
+  private func respond(_ body: String, status: Int = 200) {
+    requestLock.lock()
+    let shouldRespond = !cancelled
+    requestLock.unlock()
+    guard shouldRespond, let url = request.url else { return }
+    let response = HTTPURLResponse(
+      url: url, statusCode: status, httpVersion: nil,
+      headerFields: ["Content-Type": "application/json"]
+    )!
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data(body.utf8))
+    client?.urlProtocolDidFinishLoading(self)
   }
 }
