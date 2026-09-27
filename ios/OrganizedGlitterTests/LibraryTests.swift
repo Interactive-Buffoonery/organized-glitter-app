@@ -23,7 +23,7 @@ struct LibraryTests {
     await model.load()
 
     await model.delete(.diamond(project))
-    #expect(model.items.map(\.id) == [project.id])
+    #expect(model.items.map(\.recordID) == [project.id])
     #expect(model.mutationError?.contains("status is unknown") == true)
 
     LostDeleteURLProtocol.snapshotAvailable = true
