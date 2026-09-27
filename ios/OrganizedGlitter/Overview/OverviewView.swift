@@ -170,6 +170,7 @@ struct OverviewView: View {
   let refreshGeneration: Int
   let verticals: VerticalPreferences
   let onLibraryRequest: (LibraryRequest) -> Void
+  let onAddNote: () -> Void
 
   init(
     library: LibrarySession,
@@ -178,6 +179,7 @@ struct OverviewView: View {
     loggedItemID: LibraryItem.ID?,
     refreshGeneration: Int,
     onLibraryRequest: @escaping (LibraryRequest) -> Void,
+    onAddNote: @escaping () -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
     let model = OverviewModel(library: library)
@@ -188,6 +190,7 @@ struct OverviewView: View {
     self.refreshGeneration = refreshGeneration
     self.verticals = verticals
     self.onLibraryRequest = onLibraryRequest
+    self.onAddNote = onAddNote
   }
 
   var body: some View {
@@ -292,7 +295,7 @@ struct OverviewView: View {
       model.latestNotes, craft: .all.visible(for: verticals), year: nil).first
 
     return NavigationLink {
-      NotesFeedView(library: model.library, verticals: verticals)
+      NotesFeedView(library: model.library, verticals: verticals, onAddNote: onAddNote)
     } label: {
       HStack(alignment: .center, spacing: 12) {
         Image(systemName: "book.pages")

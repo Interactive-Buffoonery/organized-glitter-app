@@ -37,10 +37,11 @@ screen backgrounds. The Shelf redesign (Option B in
   a status icon, and a written label; its touch target remains at least 44 points.
   Diamonds show a spec strip (size, drill, diamonds, started) that turns into
   rows at accessibility sizes, then a Progress heading with a small Log progress
-  action, a progress contact sheet, and a Details card (company, artist, kit,
+  action, shared photo-forward note entries, and a Details card (company, artist, kit,
   dates, tags, source link, notes as plain text). Books keep the page count and
   completion bar below status, then show pages as a contact sheet with a status
-  glyph per page. Detail scroll content uses a plain `VStack`; a `LazyVGrid`
+  glyph per page. Page detail uses the same Progress entries below its photos.
+  Detail scroll content uses a plain `VStack`; a `LazyVGrid`
   inside a `LazyVStack` loops layout at AX5.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
   clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient

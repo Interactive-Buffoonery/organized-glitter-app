@@ -2,36 +2,25 @@ import SwiftUI
 
 /// Notes from every enabled craft, grouped by the date the maker chose.
 struct NotesFeedView: View {
+  @Environment(\.locale) private var locale
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
+  @Environment(\.timeZone) private var timeZone
 
   let library: LibrarySession
   let verticals: VerticalPreferences
+  let onAddNote: () -> Void
 
   @State private var craft: NotesCraft = .all
   @State private var year: Int?
-  @State private var isPickingTarget = false
   @State private var loadMessage: String?
+  @State private var allEntries: [NotesFeedEntry] = []
+  @State private var sections: [NotesFeedSection] = []
+  @State private var years: [Int] = []
+  @State private var photos: [DetailPhoto] = []
 
   var body: some View {
     let visibleCraft = craft.visible(for: verticals)
-    let allEntries = NotesFeed.entries(
-      items: library.items, diamondNotes: library.progressNotes,
-      coloringNotes: library.coloringPageProgressNotes)
-    let craftEntries = NotesFeed.filter(allEntries, craft: visibleCraft, year: nil)
-    let years = NotesFeed.years(in: craftEntries)
-    let entries = NotesFeed.filter(craftEntries, craft: .all, year: year)
-    let photos = entries.compactMap { entry -> DetailPhoto? in
-      guard
-        let thumbnail = protectedFiles?.photoURL(for: entry.note, thumb: ArtworkThumb.gallery),
-        let fullSize = protectedFiles?.photoURL(for: entry.note)
-      else { return nil }
-      return DetailPhoto(
-        id: entry.id, url: thumbnail, fullSizeURL: fullSize,
-        accessibilityLabel: "Progress photo for \(entry.contextTitle)",
-        date: DetailDateOnly.formatted(entry.note.date),
-        caption: entry.note.content.nonEmpty)
-    }
 
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 20) {
@@ -61,10 +50,10 @@ struct NotesFeedView: View {
           if let loadMessage {
             AccessibleErrorLabel(message: loadMessage)
           }
-          if entries.isEmpty {
+          if sections.isEmpty {
             emptyState(craft: visibleCraft)
           } else {
-            ForEach(NotesFeed.months(entries)) { month in
+            ForEach(sections) { month in
               Section {
                 ForEach(month.entries) { entry in
                   VStack(alignment: .leading, spacing: 8) {
@@ -84,7 +73,7 @@ struct NotesFeedView: View {
                   }
                 }
               } header: {
-                Text(month.title())
+                Text(month.title)
                   .font(.title3.weight(.semibold))
                   .foregroundStyle(theme.foreground)
                   .accessibilityAddTraits(.isHeader)
@@ -121,22 +110,77 @@ struct NotesFeedView: View {
         }
       }
       ToolbarItem(placement: .topBarTrailing) {
-        Button("Add progress note", systemImage: "square.and.pencil") { isPickingTarget = true }
+        Button("Add progress note", systemImage: "square.and.pencil", action: onAddNote)
           .disabled(!verticals.hasEnabledVertical)
           .accessibilityIdentifier("notes.add")
       }
     }
-    .onChange(of: craft) { _, _ in year = nil }
-    .onChange(of: years) { _, available in
-      if let year, !available.contains(year) { self.year = nil }
+    .onChange(of: craft) { _, _ in year = nil; updateVisible() }
+    .onChange(of: year) { _, _ in updateVisible() }
+    .onChange(of: verticals) { _, _ in updateVisible() }
+    .onChange(of: protectedFiles?.token) { _, _ in updatePhotos() }
+    .onChange(of: locale) { _, _ in updateVisible() }
+    .onChange(of: timeZone) { _, _ in updatePhotos() }
+    .task(id: library.generation) {
+      do {
+        try await library.loadLocal()
+        loadMessage = nil
+      } catch is CancellationError {
+        return
+      } catch {
+        loadMessage = "Notes couldn’t load. Try again shortly."
+        return
+      }
+      allEntries = NotesFeed.entries(
+        items: library.items, diamondNotes: library.progressNotes,
+        coloringNotes: library.coloringPageProgressNotes)
+      updateVisible()
     }
-    .inspector(isPresented: $isPickingTarget) {
-      NoteTargetPicker(library: library, verticals: verticals)
+  }
+
+  private func updateVisible() {
+    let craftEntries = NotesFeed.filter(
+      allEntries, craft: craft.visible(for: verticals), year: nil)
+    let availableYears = NotesFeed.years(in: craftEntries)
+    years = availableYears
+    if let year, !availableYears.contains(year) { self.year = nil }
+    let visibleEntries = NotesFeed.filter(craftEntries, craft: .all, year: year)
+    sections = NotesFeed.months(visibleEntries).map {
+      NotesFeedSection(id: $0.id, title: $0.title(locale: locale), entries: $0.entries)
     }
-    .task {
-      do { try await library.loadLocal() }
-      catch is CancellationError { }
-      catch { loadMessage = "Notes couldn’t load. Try again shortly." }
+    updatePhotos(entries: visibleEntries)
+  }
+
+  private func updatePhotos(entries: [NotesFeedEntry]? = nil) {
+    let entries = entries ?? sections.flatMap(\.entries)
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    let parser = DateFormatter()
+    parser.calendar = calendar
+    parser.locale = Locale(identifier: "en_US_POSIX")
+    parser.timeZone = timeZone
+    parser.dateFormat = "yyyy-MM-dd"
+    parser.isLenient = false
+    let display = DateFormatter()
+    display.calendar = calendar
+    display.locale = locale
+    display.timeZone = timeZone
+    display.dateStyle = .medium
+    display.timeStyle = .none
+
+    photos = entries.compactMap { entry -> DetailPhoto? in
+      guard
+        let thumbnail = protectedFiles?.photoURL(for: entry.note, thumb: ArtworkThumb.gallery),
+        let fullSize = protectedFiles?.photoURL(for: entry.note)
+      else { return nil }
+      let source = String(entry.note.date.prefix(10))
+      let date = parser.date(from: source).flatMap {
+        parser.string(from: $0) == source ? display.string(from: $0) : nil
+      }
+      return DetailPhoto(
+        id: entry.id, url: thumbnail, fullSizeURL: fullSize,
+        accessibilityLabel: "Progress photo for \(entry.contextTitle)",
+        date: date, caption: entry.note.content.nonEmpty)
     }
   }
 
@@ -152,7 +196,7 @@ struct NotesFeedView: View {
       Text(year.map { "No notes from \($0)." } ?? description)
     } actions: {
       if year == nil, verticals.hasEnabledVertical {
-        Button("Add a progress note") { isPickingTarget = true }
+        Button("Add a progress note", action: onAddNote)
           .buttonStyle(.borderedProminent)
           .tint(theme.primary)
       }
@@ -168,9 +212,17 @@ struct NotesFeedView: View {
     } catch APIError.cancelled {
     } catch is CancellationError {
     } catch APIError.offline {
-      loadMessage = "You’re offline. Showing your downloaded notes."
+      loadMessage = library.hasSnapshot
+        ? "You’re offline. Showing your downloaded notes."
+        : "Connect to download your notes."
     } catch {
       loadMessage = library.syncMessage ?? "Notes couldn’t refresh. Try again shortly."
     }
   }
+}
+
+private struct NotesFeedSection: Identifiable {
+  let id: String
+  let title: String
+  let entries: [NotesFeedEntry]
 }
