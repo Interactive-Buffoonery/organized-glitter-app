@@ -54,6 +54,14 @@
         return
       }
       let scenario = Self.scenario ?? "populated"
+      if url.path == "/api/collections/users/confirm-password-reset" {
+        if scenario == "reset-lost-connection" {
+          client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+        } else if scenario == "reset-server-failure" {
+          respond(object: ["message": "Fictional service failure"], status: 503)
+        }
+        return
+      }
       let collection = Self.collectionAndID(from: url)?.collection
       if scenario == "loading", Self.contentCollections.contains(collection ?? "") { return }
       if scenario == "error", Self.contentCollections.contains(collection ?? "") {
