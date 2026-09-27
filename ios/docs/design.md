@@ -27,13 +27,16 @@ screen backgrounds. The Shelf redesign (Option B in
   In stash covers. A single "N finished this month" row opens Completed.
   Section titles open the matching Library filter; a menu picks the craft when
   both are enabled.
-- **Detail.** A centered hero cover over the title and credits, then a status
-  `Menu` beside the prominent Log button. Diamonds show a spec strip (size,
-  drill, diamonds, started) that turns into rows at accessibility sizes, a
-  progress contact sheet, and a Details card (company, artist, kit, dates,
-  tags, source link, notes as plain text). Books show pages as a contact sheet
-  with a status glyph per page. Detail scroll content uses a plain `VStack`;
-  a `LazyVGrid` inside a `LazyVStack` loops layout at AX5.
+- **Detail.** A centered hero cover sits above the title and credits. A compact
+  status `Menu` below them uses a soft tint from the web status color family,
+  a status icon, and a written label; its touch target remains at least 44 points.
+  Diamonds show a spec strip (size, drill, diamonds, started) that turns into
+  rows at accessibility sizes, then a Progress heading with a small Log progress
+  action, a progress contact sheet, and a Details card (company, artist, kit,
+  dates, tags, source link, notes as plain text). Books keep the page count and
+  completion bar below status, then show pages as a contact sheet with a status
+  glyph per page. Detail scroll content uses a plain `VStack`; a `LazyVGrid`
+  inside a `LazyVStack` loops layout at AX5.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
   clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient
   seeded by record id, the title in Caveat, and a craft glyph.
@@ -44,10 +47,16 @@ screen backgrounds. The Shelf redesign (Option B in
 
 ## Current design reference
 
-The current six-screen references are in
-[native refinement](design-previews/native-refinement/README.md). Generated
-boards guide hierarchy and composition; real model values and native platform
-behavior take precedence over their illustrative labels and tab bars.
+Detail and navigation follow the approved artwork-first Option 2 B described
+above: soft status chips, compact section actions, and Home, Library, and Search
+in one native tab group. Simulator screenshots in the implementation PRs record
+the native result.
+
+The earlier six-screen boards in
+[native refinement](design-previews/native-refinement/README.md) remain references
+for unaffected screens. Their detail layouts and tab bars are superseded by
+Option 2 B. Real record content and native platform behavior take precedence
+over illustrative labels and artwork in design mockups.
 
 ## Historical D reference
 

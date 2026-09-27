@@ -16,18 +16,6 @@ struct ColoringBookDetailView: View {
       VStack(alignment: .leading, spacing: 18) {
         bookHeader
 
-        DetailStatusMenu<BookStatus>(current: book.status) { status in
-          Task {
-            let changed = await model.setStatus(status)
-            if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
-              await onCollectionChanged()
-            }
-          }
-        }
-        .controlSize(.large)
-        .disabled(model.isMutating || model.unresolvedWriteState != nil)
-        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 360)
-        .frame(maxWidth: .infinity)
         DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
         pagesHeader
@@ -143,7 +131,7 @@ struct ColoringBookDetailView: View {
         maxPixelDimension: 900,
         loadedAccessibilityLabel: "Book cover"
       )
-      .frame(width: horizontalSizeClass == .regular ? 240 : 180)
+      .frame(width: horizontalSizeClass == .regular ? 240 : 184)
       .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
       .padding(.bottom, 8)
       .accessibilityIdentifier("detail.hero")
@@ -156,9 +144,20 @@ struct ColoringBookDetailView: View {
         Text(credits)
           .foregroundStyle(theme.pageSecondaryForeground)
       }
+      DetailStatusMenu<BookStatus>(current: book.status) { status in
+        Task {
+          let changed = await model.setStatus(status)
+          if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
+            await onCollectionChanged()
+          }
+        }
+      }
+      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      .padding(.top, 4)
       Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
         .font(.subheadline)
         .foregroundStyle(theme.pageSecondaryForeground)
+        .padding(.top, 8)
       ProgressView(
         value: min(max(book.completionPercentage ?? 0, 0), 100),
         total: 100
@@ -240,9 +239,15 @@ struct ColoringBookDetailView: View {
     Button {
       onEditPageCount()
     } label: {
-      Label("Edit page count", systemImage: "number")
+      Text("Edit page count")
+        .font(.subheadline)
+        .frame(minHeight: 44)
+        .contentShape(.rect)
     }
-    .buttonStyle(.bordered)
+    .buttonStyle(.plain)
+    .foregroundStyle(
+      theme.backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
+    )
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }

@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Status as a menu button: the current value is the label, the choices check-mark it.
 struct DetailStatusMenu<Status: RecordStatus>: View {
+  @Environment(\.colorScheme) private var colorScheme
+
   let current: String
   let onSelect: (String) -> Void
 
@@ -19,16 +21,57 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
     } label: {
       HStack(spacing: 6) {
         Label(Status.label(for: current), systemImage: Status.systemImage(for: current))
+          .labelStyle(.titleAndIcon)
         Image(systemName: "chevron.down")
           .font(.caption.weight(.semibold))
           .accessibilityHidden(true)
       }
-      .frame(maxWidth: .infinity, minHeight: 36)
+      .font(.subheadline.weight(.semibold))
+      .foregroundStyle(DetailStatusAppearance.foreground(for: current, colorScheme: colorScheme))
+      .padding(.horizontal, 14)
+      .padding(.vertical, 7)
+      .background(
+        DetailStatusAppearance.background(for: current, colorScheme: colorScheme),
+        in: .capsule
+      )
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(minHeight: 44)
+      .contentShape(.rect)
     }
-    .glassButton()
     .accessibilityLabel("Status")
     .accessibilityValue(Status.label(for: current))
     .accessibilityIdentifier("detail.status")
+  }
+}
+
+/// Soft status pairs follow the web app's status color families.
+enum DetailStatusAppearance {
+  static func foreground(for status: String, colorScheme: ColorScheme) -> Color {
+    let dark = colorScheme == .dark
+    return switch status {
+    case "wishlist", "destashed": Color(hex: dark ? 0xFFE4E6 : 0x9F1239)
+    case "purchased": Color(hex: dark ? 0xD9F2FF : 0x075985)
+    case "stash", "in_stash": Color(hex: dark ? 0xFFEDD5 : 0x9A3412)
+    case "kitted": Color(hex: dark ? 0xCCFBF1 : 0x115E59)
+    case "progress", "in_progress": Color(hex: dark ? 0xF3E8FF : 0x6B21A8)
+    case "onhold": Color(hex: dark ? 0xFEF3C7 : 0x92400E)
+    case "completed": Color(hex: dark ? 0xD1FAE5 : 0x065F46)
+    default: Color(hex: dark ? 0xE5E7EB : 0x374151)
+    }
+  }
+
+  static func background(for status: String, colorScheme: ColorScheme) -> Color {
+    let dark = colorScheme == .dark
+    return switch status {
+    case "wishlist", "destashed": Color(hex: dark ? 0x6B2138 : 0xFFE4E6)
+    case "purchased": Color(hex: dark ? 0x164E63 : 0xE0F2FE)
+    case "stash", "in_stash": Color(hex: dark ? 0x7C2D12 : 0xFFEDD5)
+    case "kitted": Color(hex: dark ? 0x134E4A : 0xCCFBF1)
+    case "progress", "in_progress": Color(hex: dark ? 0x581C87 : 0xEAD7FF)
+    case "onhold": Color(hex: dark ? 0x78350F : 0xFEF3C7)
+    case "completed": Color(hex: dark ? 0x064E3B : 0xD1FAE5)
+    default: Color(hex: dark ? 0x374151 : 0xE5E7EB)
+    }
   }
 }
 
