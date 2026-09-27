@@ -1,7 +1,8 @@
 # Social sign-in parity for iOS
 
-Updated: 2026-09-27. Status: reviewed plan; implementation has not started.
+Updated: 2026-09-27. Status: Google/Discord draft implemented; Apple and release gates pending.
 Planning branch: `feat/social-sign-in`, created from `origin/main`.
+Simulator evidence and remaining checks: [social-oauth-validation.md](social-oauth-validation.md).
 
 ## Goal and boundaries
 
