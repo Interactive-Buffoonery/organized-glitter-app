@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AppTab: Hashable {
   case home
@@ -11,6 +12,9 @@ struct AppShellView: View {
   let model: AppModel
   let client: PocketBaseClient
   let user: UserRecord
+  let library: LibrarySession
+
+  @Environment(\.scenePhase) private var scenePhase
 
   @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -20,11 +24,13 @@ struct AppShellView: View {
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
   @State private var protectedFiles: ProtectedFileAccess
+  @State private var lastAnnouncedSyncMessage: String?
 
-  init(model: AppModel, client: PocketBaseClient, user: UserRecord) {
+  init(model: AppModel, client: PocketBaseClient, user: UserRecord, library: LibrarySession) {
     self.model = model
     self.client = client
     self.user = user
+    self.library = library
     _protectedFiles = State(initialValue: ProtectedFileAccess(client: client))
     _accountPreferences = State(
       initialValue: AccountPreferencesModel(
@@ -37,9 +43,9 @@ struct AppShellView: View {
   var body: some View {
     TabView(selection: $selectedTab) {
       Tab("Home", systemImage: "house", value: .home) {
-        NavigationStack {
+        tabContent(NavigationStack {
           OverviewView(
-            client: client, userID: user.id, verticals: accountPreferences.verticals,
+            library: library, verticals: accountPreferences.verticals,
             onLibraryRequest: { request in
               libraryRequest = request
               selectedTab = sizeClass == .regular ? .craft(request.section) : .library
@@ -55,15 +61,14 @@ struct AppShellView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
               CreateMenu(
-                client: client,
-                userID: user.id,
+                library: library,
                 verticals: accountPreferences.verticals,
                 onRefresh: { libraryRefresh.bump() },
                 onSaved: { _ in libraryRefresh.bump() }
               )
             }
           }
-        }
+        })
       }
 
       // ponytail: iPad lists crafts as sidebar rows so Library never nests a
@@ -73,19 +78,19 @@ struct AppShellView: View {
         TabSection("Library") {
           ForEach(LibrarySection.available(for: accountPreferences.verticals)) { section in
             Tab(section.pickerTitle, systemImage: section.systemImage, value: AppTab.craft(section)) {
-              library(.craft(section))
+              tabContent(library(.craft(section)))
             }
           }
         }
       } else {
         Tab("Library", systemImage: "books.vertical", value: .library) {
-          library(.browse)
+          tabContent(library(.browse))
         }
       }
 
       if LibraryPresentation.hasSearchTab {
         Tab("Search", systemImage: "magnifyingglass", value: .search) {
-          library(.search)
+          tabContent(library(.search))
         }
       }
     }
@@ -102,10 +107,27 @@ struct AppShellView: View {
         break
       }
     }
+    .onChange(of: syncAnnouncement, initial: true) { _, announcement in
+      guard let announcement else {
+        lastAnnouncedSyncMessage = nil
+        return
+      }
+      guard announcement != lastAnnouncedSyncMessage else { return }
+      lastAnnouncedSyncMessage = announcement
+      if UIAccessibility.isVoiceOverRunning {
+        UIAccessibility.post(notification: .announcement, argument: announcement)
+      }
+    }
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { try? await library.refresh(force: true) } }
+    }
+    .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
+    .task { try? await library.refresh() }
+    .task { await library.monitorConnectivity() }
     .sheet(isPresented: $isShowingAccount) {
       NavigationStack {
         AccountView(appModel: model, client: client, preferences: accountPreferences)
@@ -120,13 +142,24 @@ struct AppShellView: View {
 
   private func library(_ presentation: LibraryPresentation) -> some View {
     LibraryView(
-      client: client,
-      userID: user.id,
+      library: library,
       presentation: presentation,
       libraryRefresh: libraryRefresh,
       verticals: accountPreferences.verticals,
       request: libraryRequest,
       onSessionExpired: { await model.expireSession() }
     )
+  }
+
+  private func tabContent<Content: View>(_ content: Content) -> some View {
+    content.safeAreaInset(edge: .bottom) {
+      LibrarySyncStatusView(library: library)
+    }
+  }
+
+  private var syncAnnouncement: String? {
+    if !library.conflicts.isEmpty { return "Some saved changes need your attention. Review." }
+    if library.pendingCount > 0 { return "Saved on this device. Waiting to sync." }
+    return library.syncMessage
   }
 }

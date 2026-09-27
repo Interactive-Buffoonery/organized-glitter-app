@@ -81,13 +81,19 @@ their URL and test credentials from environment variables.
 - `ios/docs/architecture.md` documents data handling and release gates.
 - `ios/docs/design.md` documents the Berry Cream design system.
 
-The approved offline-library design uses private, account- and backend-scoped
-SwiftData storage for downloaded records and pending existing-record metadata
-and status edits. PocketBase remains authoritative. This layer provides the
-storage and sync foundation; the follow-up integration enables it in the app.
-Until then, feature views continue to read and write online. Creates, deletes,
-notes, uploads, taxonomy, account settings, and book page-count changes remain
-online-only in the integrated design too.
+The app keeps downloaded records and pending edits in a private SwiftData
+library scoped to the PocketBase server and account. Existing project, book,
+and page metadata and status edits can be saved offline and later synchronized;
+PocketBase remains authoritative for shared data. Previously viewed artwork
+may be stored in a bounded private cache. New records, deletion, note
+submissions, file uploads, taxonomy changes, account settings, and book page
+counts still require connectivity. Sign-out drains active saves, asks before
+discarding pending edits, and removes that account’s local library and artwork;
+interrupted cleanup finishes before another account can sign in.
+
+The mobile sync backend must be deployed before this native build is released.
+See [`ios/docs/offline-library.md`](ios/docs/offline-library.md) for the contract,
+security boundaries, supported operations, and validation.
 
 ## Security and privacy
 

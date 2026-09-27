@@ -4,7 +4,7 @@ import SwiftUI
 /// `selection` is the record id; "" means none (PocketBase relation-clear sentinel).
 /// Must be hosted inside a NavigationStack (both coloring editors provide one).
 struct TaxonomyPicker: View {
-  let client: PocketBaseClient
+  let library: LibrarySession
   let userID: String
   let collection: String
   let label: String
@@ -18,7 +18,7 @@ struct TaxonomyPicker: View {
   var body: some View {
     NavigationLink {
       TaxonomyOptionList(
-        client: client,
+        library: library,
         userID: userID,
         collection: collection,
         label: label,
@@ -43,7 +43,7 @@ struct TaxonomyPicker: View {
 }
 
 private struct TaxonomyOptionList: View {
-  let client: PocketBaseClient
+  let library: LibrarySession
   let userID: String
   let collection: String
   let label: String
@@ -139,7 +139,7 @@ private struct TaxonomyOptionList: View {
   private func load() async {
     errorMessage = nil
     do {
-      let records: [NamedRelationRecord] = try await client.allRecords(
+      let records: [NamedRelationRecord] = try await library.client.allRecords(
         collection: collection,
         filter: PocketBaseFilter.equals(.user, userID),
         sort: "+name"
@@ -167,7 +167,7 @@ private struct TaxonomyOptionList: View {
     defer { isCreating = false }
 
     do {
-      let created: NamedRelationRecord = try await client.create(
+      let created: NamedRelationRecord = try await library.create(
         collection: collection,
         body: TaxonomyWrite(user: userID, name: name)
       )

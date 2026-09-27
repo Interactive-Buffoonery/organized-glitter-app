@@ -39,6 +39,8 @@ struct DetailPhotoContactSheet: View {
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
   let photos: [DetailPhoto]
+  var pendingID: String?
+  var highlightedID: String?
 
   var body: some View {
     LazyVGrid(
@@ -48,6 +50,8 @@ struct DetailPhotoContactSheet: View {
       ForEach(photos) { photo in
         DetailPhotoTile(photo: photo, contentMode: .fill, maxPixelDimension: 480)
           .aspectRatio(1, contentMode: .fit)
+          .savedEntryReveal(isPending: photo.id == pendingID, isHighlighted: photo.id == highlightedID)
+          .id("photo-\(photo.id)")
       }
     }
     .accessibilityIdentifier("detail.photos")
@@ -56,6 +60,33 @@ struct DetailPhotoContactSheet: View {
   private var columnCount: Int {
     if dynamicTypeSize.isAccessibilitySize { return 2 }
     return horizontalSizeClass == .regular ? 4 : 3
+  }
+}
+
+extension View {
+  /// Keeps a just-saved entry invisible until its sheet closes, then eases it in with a brief ring.
+  func savedEntryReveal(isPending: Bool, isHighlighted: Bool) -> some View {
+    modifier(SavedEntryReveal(isPending: isPending, isHighlighted: isHighlighted))
+  }
+}
+
+private struct SavedEntryReveal: ViewModifier {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.theme) private var theme
+
+  let isPending: Bool
+  let isHighlighted: Bool
+
+  func body(content: Content) -> some View {
+    content
+      .overlay {
+        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+          .strokeBorder(theme.primary, lineWidth: 3)
+          .opacity(isHighlighted ? 1 : 0)
+      }
+      .scaleEffect(isPending && !reduceMotion ? 0.92 : 1)
+      .opacity(isPending ? 0 : 1)
+      .accessibilityHidden(isPending)
   }
 }
 

@@ -4,6 +4,7 @@ actor PocketBaseClient {
   nonisolated let baseURL: URL
   private let sessionStore: KeychainSessionStore
   private let urlSession: URLSession
+  private let artworkStore = PrivateArtworkStore()
 
   private var authentication: AuthenticatedSession?
   private var refreshTask: Task<AuthenticatedSession, Error>?
@@ -21,12 +22,13 @@ actor PocketBaseClient {
   }
 
   func signIn(identity: String, password: String) async throws -> AuthenticatedSession {
+    sessionGeneration &+= 1
+    let generation = sessionGeneration
     struct Body: Encodable {
       let identity: String
       let password: String
     }
 
-    let generation = sessionGeneration
     let response: AuthResponse = try await request(
       path: "/api/collections/users/auth-with-password",
       method: "POST",
@@ -34,11 +36,9 @@ actor PocketBaseClient {
       includesAuthentication: false
     )
 
+    guard generation == sessionGeneration else { throw APIError.cancelled }
     guard response.record.verified == true else {
       throw APIError.emailUnverified
-    }
-    guard generation == sessionGeneration else {
-      throw APIError.cancelled
     }
     return try persist(response.session)
   }
@@ -447,38 +447,76 @@ actor PocketBaseClient {
     return url
   }
 
-  /// Downloads a protected PocketBase file using the token-bearing URL.
+  /// Empty-token URLs identify cached artwork and never authorize a download.
   func fileData(at url: URL, maximumByteCount: Int) async throws -> Data {
+    guard let authentication else { throw APIError.unauthenticated }
+    guard url.scheme == baseURL.scheme, url.host == baseURL.host, url.port == baseURL.port,
+      url.path.hasPrefix(baseURL.appending(path: "api/files").path + "/")
+    else { throw APIError.forbidden }
+    let generation = sessionGeneration
+    let scope = LocalAccountScope(backendURL: baseURL, userID: authentication.user.id)
+    if let cached = try? await artworkStore.data(for: url, scope: scope) {
+      guard generation == sessionGeneration else { throw APIError.cancelled }
+      guard cached.count <= maximumByteCount else { throw RemoteArtworkError.payloadTooLarge }
+      return cached
+    }
+    let token = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+      .first(where: { $0.name == "token" })?.value
+    guard let token, !token.isEmpty else { throw APIError.offline }
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
     request.cachePolicy = .reloadIgnoringLocalCacheData
-    if let authentication {
-      request.setValue(authentication.token, forHTTPHeaderField: "Authorization")
-    }
-
+    request.setValue(authentication.token, forHTTPHeaderField: "Authorization")
     let fileURL: URL
     let response: URLResponse
     do {
       (fileURL, response) = try await urlSession.download(for: request)
-    } catch {
-      throw APIError.from(error)
-    }
+    } catch { throw APIError.from(error) }
     defer { try? FileManager.default.removeItem(at: fileURL) }
-
-    guard let httpResponse = response as? HTTPURLResponse else {
-      throw APIError.server
-    }
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    guard let httpResponse = response as? HTTPURLResponse,
+      response.url?.host == baseURL.host, response.url?.scheme == baseURL.scheme
+    else { throw APIError.server }
     guard (200..<300).contains(httpResponse.statusCode) else {
       throw APIError.from(statusCode: httpResponse.statusCode, body: Data())
     }
+    let size = try fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+    guard size <= maximumByteCount else { throw RemoteArtworkError.payloadTooLarge }
+    let data = try Data(contentsOf: fileURL)
+    try? await artworkStore.save(data, for: url, scope: scope)
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    return data
+  }
 
-    let size =
-      (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int)
-      ?? 0
-    guard size <= maximumByteCount else {
-      throw RemoteArtworkError.payloadTooLarge
+  func retainDownloadedArtwork(
+    items: [LibraryItem], notes: [DiamondProgressNoteRecord],
+    coloringNotes: [ColoringProgressNoteRecord], scope: LocalAccountScope
+  ) async throws {
+    guard authentication?.user.id == scope.userID, scope.backendURL == baseURL else {
+      throw APIError.unauthenticated
     }
-    return try Data(contentsOf: fileURL)
+    var urls: [URL] = []
+    func include(_ collection: String, _ id: String, _ filenames: [String]) {
+      for filename in filenames where !filename.isEmpty {
+        for thumb in [nil, ArtworkThumb.gallery, ArtworkThumb.compact] as [String?] {
+          urls.append(fileURL(collection: collection, recordID: id, filename: filename, thumb: thumb, token: ""))
+        }
+      }
+    }
+    for item in items {
+      switch item {
+      case .diamond(let record): include("projects", record.id, [record.image].compactMap { $0 })
+      case .book(let record): include("coloring_books", record.id, [record.coverImage].compactMap { $0 })
+      case .page(let record): include("coloring_pages", record.id, record.photos)
+      }
+    }
+    for note in notes { include("progress_notes", note.id, [note.image].compactMap { $0 }) }
+    for note in coloringNotes { include("coloring_page_progress_notes", note.id, [note.image].compactMap { $0 }) }
+    try await artworkStore.retain(urls, scope: scope)
+  }
+
+  func removeDownloadedArtwork(scope: LocalAccountScope) async throws {
+    try await artworkStore.remove(scope: scope)
   }
 
   private func persist(_ session: AuthenticatedSession) throws -> AuthenticatedSession {

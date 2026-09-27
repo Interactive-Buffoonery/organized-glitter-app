@@ -12,12 +12,11 @@ struct LibraryItemDetailDestination: View {
 
   init(
     item: LibraryItem,
-    client: PocketBaseClient,
-    userID: String,
+    library: LibrarySession,
     onCollectionChanged: @escaping @MainActor @Sendable () async -> Void
   ) {
     _model = State(
-      initialValue: LibraryItemDetailModel(item: item, client: client, userID: userID))
+      initialValue: LibraryItemDetailModel(item: item, library: library))
     self.onCollectionChanged = onCollectionChanged
   }
 
@@ -80,6 +79,9 @@ struct LibraryItemDetailDestination: View {
         await model.load()
       }
     }
+    .onChange(of: model.library.generation) { _, _ in
+      Task { await model.load(preservingLoadedBookPages: true) }
+    }
     .onAppear {
       guard model.hasLoaded, model.needsBookPageRefresh, case .book = model.item else {
         return
@@ -132,8 +134,7 @@ struct LibraryItemDetailDestination: View {
     switch editor {
     case .diamond(let project):
       DiamondProjectEditor(
-        client: model.client,
-        userID: model.userID,
+        library: model.library,
         project: project,
         onLibraryRefresh: refreshCollection,
         onSaved: { saved in
@@ -142,8 +143,7 @@ struct LibraryItemDetailDestination: View {
       )
     case .book(let book):
       ColoringBookEditor(
-        client: model.client,
-        userID: model.userID,
+        library: model.library,
         book: book,
         onLibraryRefresh: refreshCollection,
         onSaved: { saved in
@@ -152,7 +152,7 @@ struct LibraryItemDetailDestination: View {
       )
     case .page(let page):
       ColoringPageEditor(
-        client: model.client,
+        library: model.library,
         page: page,
         onLibraryRefresh: refreshCollection,
         onSaved: { saved in

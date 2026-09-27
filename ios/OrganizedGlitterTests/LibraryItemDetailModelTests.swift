@@ -6,661 +6,249 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct LibraryItemDetailModelTests {
-  @Test
-  func bookPagesAreUserScopedFilteredAndPaginated() async throws {
-    let client = try await signedInClient { request in
-      let components = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)
-      let path = try #require(request.url?.path)
-      if path.hasSuffix("/coloring_books/records/book-1") {
-        return (200, Self.bookJSON)
-      }
-      if path.hasSuffix("/coloring_pages/records") {
-        let page = components?.queryItems?.first(where: { $0.name == "page" })?.value
-        let filter = components?.queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
-        #expect(filter.contains(#"book = "book-1""#))
-        #expect(filter.contains(#"book.user = "user-1""#))
-        if filter.contains(#"status = "completed""#) {
-          return (200, Self.pageListJSON(id: "page-3", number: 3, totalPages: 1))
-        }
-        return page == "2"
-          ? (200, Self.pageListJSON(id: "page-2", number: 2, page: 2, totalPages: 2))
-          : (200, Self.pageListJSON(id: "page-1", number: 1, page: 1, totalPages: 2))
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .book(Self.book), client: client, userID: "user-1")
-
-    await model.load()
-    #expect(model.bookPages.map(\.id) == ["page-1"])
-    #expect(model.canLoadMoreBookPages)
-
-    await model.loadMoreBookPages()
-    #expect(model.bookPages.map(\.id) == ["page-1", "page-2"])
-    #expect(!model.canLoadMoreBookPages)
-
-    await model.setBookPageFilter(.completed)
-    #expect(model.bookPages.map(\.id) == ["page-3"])
-  }
-
-  @Test
-  func pagePhotoUploadUsesTheAppendFieldAndRefreshesTheRecord() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_pages/records/page-1") {
-        let body = String(decoding: DetailURLProtocol.bodyData(for: request), as: UTF8.self)
-        #expect(body.contains("name=\"photos+\""))
-        #expect(body.contains("filename=\"artwork.jpg\""))
-        return (200, Self.pageJSON(id: "page-1", number: 1, photos: ["artwork.jpg"]))
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records/page-1") {
-        return (200, Self.pageJSON(id: "page-1", number: 1, photos: ["artwork.jpg"]))
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .page(Self.page), client: client, userID: "user-1")
-    let photo = ProcessedDetailPhoto(
-      data: Data([0xff, 0xd8, 0xff]),
-      fileName: "artwork.jpg",
-      contentType: "image/jpeg"
-    )
-
-    #expect(await model.appendPagePhoto(photo))
-    guard case .page(let page) = model.item else {
-      Issue.record("Expected a page after upload")
-      return
-    }
-    #expect(page.photos == ["artwork.jpg"])
-  }
-
-  @Test
-  func diamondProgressPhotoCreatesADatedProjectNote() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
-        let body = String(decoding: DetailURLProtocol.bodyData(for: request), as: UTF8.self)
-        #expect(body.contains("name=\"project\"\r\n\r\nproject-1"))
-        #expect(body.contains("name=\"content\"\r\n\r\nHalfway done"))
-        #expect(body.contains("name=\"date\"\r\n\r\n2026-09-19"))
-        #expect(body.contains("name=\"image\""))
-        return (200, Self.noteJSON)
-      }
-      if path.hasSuffix("/projects/records/project-1") {
-        return (200, Self.projectJSON)
-      }
-      if path.hasSuffix("/progress_notes/records") {
-        return (200, Self.noteListJSON)
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .diamond(Self.project), client: client, userID: "user-1")
-    let photo = ProcessedDetailPhoto(
-      data: Data([0x89, 0x50, 0x4e, 0x47]),
-      fileName: "progress.png",
-      contentType: "image/png"
-    )
-    var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = TimeZone(identifier: "America/New_York")!
-    let date = try #require(calendar.date(from: DateComponents(year: 2026, month: 9, day: 19)))
-
-    #expect(
-      await model.addDiamondProgressNote(
-        content: "Halfway done", date: date, photo: photo
-      ))
-    #expect(model.progressNotes.map(\.id) == ["note-1"])
-  }
-
-  @Test
-  func statusChangeSendsOnlyStatusAndReloadsWithTags() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/projects/records/project-1") {
-        let body = try JSONSerialization.jsonObject(
-          with: DetailURLProtocol.bodyData(for: request)) as? [String: String]
-        #expect(body == ["status": "completed"])
-        return (200, Self.projectJSON)
-      }
-      if path.hasSuffix("/projects/records/project-1") {
-        let expand = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)?
-          .queryItems?.first(where: { $0.name == "expand" })?.value
-        #expect(expand == "company,artist,project_tags_via_project.tag")
-        return (200, Self.taggedProjectJSON)
-      }
-      if path.hasSuffix("/progress_notes/records") {
-        return (200, Self.noteListJSON)
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .diamond(Self.project), client: client, userID: "user-1")
-
+  @Test func statusFeedbackFollowsCommittedChanges() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(model.statusSaveRevision == 0)
+    #expect(!(await model.setStatus("wishlist")))
+    #expect(model.statusSaveRevision == 0)
+    #expect(await model.setStatus("progress"))
+    #expect(model.statusSaveRevision == 1)
+    #expect(model.item.status == "progress")
+    #expect(!(await model.setStatus("progress")))
+    #expect(model.statusSaveRevision == 1)
     #expect(await model.setStatus("completed"))
-    guard case .diamond(let project) = model.item else {
-      Issue.record("Expected a project after the status change")
-      return
-    }
-    #expect(project.status == "completed")
-    #expect(project.tags.map(\.name) == ["Animals", "gift"])
-    #expect(project.totalDiamonds == 48_200)
+    #expect(model.statusSaveRevision == 2)
+    try await library.close(removingData: false)
+    #expect(!(await model.setStatus("stash")))
+    #expect(model.statusSaveRevision == 2)
+    #expect(model.item.status == "completed")
   }
 
-  @Test
-  func uncertainDiamondStatusBlocksAnotherPatchUntilReviewed() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/projects/records/project-1") {
-        return (500, "{}")
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
-        return (500, "{}")
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/progress_notes/records") {
-        return (200, Self.noteListJSON)
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .diamond(Self.project), client: client, userID: "user-1")
+  @Test func bookStatusAlsoConfirmsCommittedChanges() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    try await library.store.ingest(.book(book), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .book(book), library: library)
+    #expect(await model.setStatus("completed"))
+    #expect(model.statusSaveRevision == 1)
+    #expect(model.item.status == "completed")
+    try await library.close(removingData: false)
+  }
 
-    #expect(!(await model.setStatus("completed")))
-    #expect(model.unresolvedStatusWrite)
+  @Test(arguments: [false, true])
+  func statusFeedbackRepeatsAfterEditorSave(isBook: Bool) async throws {
+    let library = try localFeatureLibrary()
+    let item: LibraryItem = isBook
+      ? .book(featureBook("book", title: "Quiet Pages"))
+      : .diamond(featureProject("project", title: "Moon Garden"))
+    try await library.store.ingest(item, scope: library.scope)
+    let model = LibraryItemDetailModel(item: item, library: library)
+    #expect(await model.setStatus("completed"))
+    #expect(model.statusSaveRevision == 1)
+
+    let saved: LibraryItem
+    if isBook {
+      saved = .book(try await library.update(
+        collection: "coloring_books", id: "book", body: ["status": "purchased"]))
+    } else {
+      saved = .diamond(try await library.update(
+        collection: "projects", id: "project", body: ["status": "progress"]))
+    }
+    await model.acceptSaved(saved)
+    #expect(model.statusSaveRevision == 1)
+    #expect(await model.setStatus("completed"))
+    #expect(model.statusSaveRevision == 2)
+    #expect(model.item.status == "completed")
+    try await library.close(removingData: false)
+  }
+
+  @Test func lostNoteResponseNeedsAuthoritativeRefreshBeforeRetry() async throws {
+    LostNoteURLProtocol.snapshotAvailable = false
+    LostNoteURLProtocol.createRequests = 0
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [LostNoteURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://lost-note.example.test")!,
+      sessionStore: KeychainSessionStore(service: "LostNoteTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(StoredSession(token: "example-token", userID: "feature-user"))
+    let library = LibrarySession(
+      client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(await model.load())
+
+    let saved = await model.addDiamondProgressNote(
+      content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil)
+    #expect(!saved)
     #expect(model.unresolvedWriteState == .needsRefresh)
-    #expect(!(await model.setStatus("completed")))
-    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count == 1)
+    #expect(model.progressNotes.isEmpty)
+    #expect(LostNoteURLProtocol.createRequests == 1)
+    let duplicate = await model.addDiamondProgressNote(
+      content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil)
+    #expect(!duplicate)
+    #expect(LostNoteURLProtocol.createRequests == 1)
 
-    DetailURLProtocol.handler = { request in
-      let path = try #require(request.url?.path)
-      if path.hasSuffix("/projects/records/project-1") {
-        return (200, Self.taggedProjectJSON)
-      }
-      if path.hasSuffix("/progress_notes/records") {
-        return (200, Self.noteListJSON)
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
+    LostNoteURLProtocol.snapshotAvailable = true
     #expect(await model.refreshUnresolvedWriteStatus())
     #expect(model.unresolvedWriteState == .refreshed)
-    #expect(model.item.status == "completed")
-    #expect(!(await model.setStatus("progress")))
-    model.clearUnresolvedWriteRecovery()
-    #expect(!model.unresolvedStatusWrite)
+    #expect(model.progressNotes.map(\.id) == ["saved-note"])
+    #expect(model.lastAddedProgressNoteID == nil)
   }
 
-  @Test
-  func uncertainBookStatusRefreshesBeforeAnotherChange() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_books/records/book-1") {
-        return (500, "{}")
-      }
-      if path.hasSuffix("/coloring_books/records/book-1") {
-        return (200, Self.bookJSON)
-      }
-      if path.hasSuffix("/coloring_pages/records") {
-        return (200, Self.pageListJSON(id: "page-1", number: 1, totalPages: 1))
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .book(Self.book), client: client, userID: "user-1")
-
-    #expect(!(await model.setStatus("completed")))
-    #expect(model.unresolvedStatusWrite)
-    #expect(model.unresolvedWriteState == .refreshed)
-    #expect(model.item.status == "in_progress")
-    #expect(!(await model.setStatus("completed")))
-    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count == 1)
-  }
-
-  @Test
-  func undecodableStatusResponseRefreshesBeforeAnotherPatch() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_books/records/book-1") {
-        return (200, "not JSON")
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/coloring_books/records/book-1") {
-        return (200, Self.bookJSON)
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records") {
-        return (200, Self.pageListJSON(id: "page-1", number: 1, totalPages: 1))
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .book(Self.book), client: client, userID: "user-1")
-
-    #expect(!(await model.setStatus("completed")))
-    #expect(model.unresolvedStatusWrite)
-    #expect(model.unresolvedWriteState == .refreshed)
-    #expect(model.item.status == "in_progress")
-    #expect(!(await model.setStatus("completed")))
-    #expect(DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count == 1)
-  }
-
-  @Test
-  func rejectedStatusHasDedicatedNearMenuFeedback() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_books/records/book-1") {
-        return (403, "{}")
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .book(Self.book), client: client, userID: "user-1")
-
-    #expect(!(await model.setStatus("completed")))
-    #expect(model.statusErrorMessage?.contains("permission") == true)
-    #expect(model.unresolvedWriteState == nil)
-  }
-
-  @Test
-  func unresolvedPageUploadNeverRepeatsTheWriteWhenRefreshFails() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_pages/records/page-1") {
-        return (500, "{}")
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records/page-1") {
-        return (500, "{}")
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .page(Self.page), client: client, userID: "user-1")
-    let photo = ProcessedDetailPhoto(
-      data: Data([0xff, 0xd8, 0xff]),
-      fileName: "artwork.jpg",
-      contentType: "image/jpeg"
-    )
-
-    #expect(!(await model.appendPagePhoto(photo)))
-    #expect(model.unresolvedWriteState == .needsRefresh)
-    #expect(model.mutationErrorMessage?.contains("could not be refreshed") == true)
-
-    #expect(!(await model.appendPagePhoto(photo)))
-    #expect(!(await model.refreshUnresolvedWriteStatus()))
-    let detailRequests = DetailURLProtocol.requests.dropFirst()
-    #expect(detailRequests.map(\.httpMethod) == ["PATCH", "GET", "GET"])
-    #expect(detailRequests.filter { $0.httpMethod == "PATCH" }.count == 1)
-  }
-
-  @Test
-  func cancelledPageUploadEntersUnresolvedWriteRecovery() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "PATCH", path.hasSuffix("/coloring_pages/records/page-1") {
-        throw URLError(.cancelled)
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/coloring_pages/records/page-1") {
-        return (200, Self.pageJSON(id: "page-1", number: 1, photos: ["artwork.jpg"]))
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .page(Self.page), client: client, userID: "user-1")
-    let photo = ProcessedDetailPhoto(
-      data: Data([0xff, 0xd8, 0xff]),
-      fileName: "artwork.jpg",
-      contentType: "image/jpeg"
-    )
-
-    #expect(!(await model.appendPagePhoto(photo)))
-    #expect(model.unresolvedWriteState == .refreshed)
-    #expect(!(await model.appendPagePhoto(photo)))
-    let patchCount = DetailURLProtocol.requests.filter { $0.httpMethod == "PATCH" }.count
-    #expect(patchCount == 1)
-  }
-
-  @Test
-  func returningToABookKeepsAlreadyLoadedPages() async throws {
-    let client = try await signedInClient { request in
-      let components = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)
-      let path = try #require(request.url?.path)
-      if path.hasSuffix("/coloring_books/records/book-1") {
-        return (200, Self.bookJSON)
-      }
-      if path.hasSuffix("/coloring_pages/records") {
-        let page = components?.queryItems?.first(where: { $0.name == "page" })?.value
-        let perPage = components?.queryItems?.first(where: { $0.name == "perPage" })?.value
-        if page == "2" {
-          return (200, Self.pageListJSON(id: "page-2", number: 2, page: 2, totalPages: 2))
-        }
-        if perPage == "48" {
-          return (
-            200,
-            #"{"page":1,"perPage":48,"totalItems":25,"totalPages":1,"items":[\#(Self.pageJSON(id: "page-1", number: 1, photos: [])),\#(Self.pageJSON(id: "page-2", number: 2, photos: []))]}"#
-          )
-        }
-        return (200, Self.pageListJSON(id: "page-1", number: 1, page: 1, totalPages: 2))
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .book(Self.book), client: client, userID: "user-1")
-
-    await model.load()
-    await model.loadMoreBookPages()
-    #expect(model.bookPages.map(\.id) == ["page-1", "page-2"])
-
-    await model.load(preservingLoadedBookPages: true)
-    #expect(model.bookPages.map(\.id) == ["page-1", "page-2"])
-  }
-
-  @Test
-  func reloadingMultipleBookPagesKeepsLoadMoreOffset() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if path.hasSuffix("/coloring_books/records/book-1") {
-        return (200, Self.bookJSON)
-      }
-      if path.hasSuffix("/coloring_pages/records") {
-        let components = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)
-        let query = components?.queryItems ?? []
-        let page = try #require(Int(query.first { $0.name == "page" }?.value ?? ""))
-        let perPage = try #require(Int(query.first { $0.name == "perPage" }?.value ?? ""))
-        let first = (page - 1) * perPage + 1
-        let last = min(page * perPage, 60)
-        let items = (first...last).map {
-          Self.pageJSON(id: "page-\($0)", number: $0, photos: [])
-        }.joined(separator: ",")
-        return (
-          200,
-          """
-          {"page":\(page),"perPage":\(perPage),"totalItems":60,"totalPages":\((60 + perPage - 1) / perPage),"items":[\(items)]}
-          """
-        )
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .book(Self.book), client: client, userID: "user-1")
-
-    await model.load()
-    await model.loadMoreBookPages()
-    #expect(model.bookPages.count == 48)
-
-    let requestsBeforeReload = DetailURLProtocol.requests.filter {
-      $0.url?.path.hasSuffix("/coloring_pages/records") == true
-    }.count
-    await model.load(preservingLoadedBookPages: true)
-    let reloadRequests = DetailURLProtocol.requests.filter {
-      $0.url?.path.hasSuffix("/coloring_pages/records") == true
-    }.dropFirst(requestsBeforeReload)
-    #expect(reloadRequests.count == 1)
-    let reloadQuery = URLComponents(
-      url: try #require(reloadRequests.first?.url), resolvingAgainstBaseURL: false
-    )?.queryItems
-    #expect(reloadQuery?.first { $0.name == "page" }?.value == "1")
-    #expect(reloadQuery?.first { $0.name == "perPage" }?.value == "48")
-    await model.loadMoreBookPages()
-
-    let ids = model.bookPages.map(\.id)
-    #expect(ids.count == 60)
-    #expect(Set(ids).count == ids.count)
-    #expect(ids == (1...60).map { "page-\($0)" })
-  }
-
-  @Test
-  func confirmedBackdatedDiamondNoteKeepsServerSortWhenRefreshFails() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
-        return (200, Self.projectJSON)
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/progress_notes/records") {
-        return (200, Self.newerNoteListJSON)
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
-    let model = LibraryItemDetailModel(
-      item: .diamond(Self.project), client: client, userID: "user-1")
-    let photo = ProcessedDetailPhoto(
-      data: Data([0x89, 0x50, 0x4e, 0x47]),
-      fileName: "progress.png",
-      contentType: "image/png"
-    )
-
+  @Test func confirmedNoteIsTheOneToReveal() async throws {
+    LostNoteURLProtocol.createSucceeds = true
+    defer { LostNoteURLProtocol.createSucceeds = false }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [LostNoteURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://saved-note.example.test")!,
+      sessionStore: KeychainSessionStore(service: "SavedNoteTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(StoredSession(token: "example-token", userID: "feature-user"))
+    let library = LibrarySession(
+      client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
     #expect(await model.load())
-    #expect(model.progressNotes.map(\.id) == ["note-new"])
-
-    DetailURLProtocol.handler = { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
-        return (200, Self.noteJSON)
-      }
-      if request.httpMethod == "GET",
-        path.hasSuffix("/projects/records/project-1")
-          || path.hasSuffix("/progress_notes/records")
-      {
-        return (500, "{}")
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
-    }
+    #expect(model.lastAddedProgressNoteID == nil)
 
     #expect(
       await model.addDiamondProgressNote(
-        content: "Halfway done", date: Date(timeIntervalSince1970: 0), photo: photo
-      ))
-    #expect(model.progressNotes.map(\.id) == ["note-new", "note-1"])
-    #expect(model.errorMessage != nil)
+        content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil))
+    #expect(model.lastAddedProgressNoteID == "created-note")
+    #expect(model.progressNotes.map(\.id) == ["created-note"])
   }
 
-  @Test
-  func uncertainTextOnlyDiamondNotePointsToProgressNotes() async throws {
-    let client = try await signedInClient { request in
-      let path = try #require(request.url?.path)
-      if request.httpMethod == "POST", path.hasSuffix("/progress_notes/records") {
-        return (500, "{}")
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/projects/records/project-1") {
-        return (200, Self.projectJSON)
-      }
-      if request.httpMethod == "GET", path.hasSuffix("/progress_notes/records") {
-        return (200, Self.textOnlyNoteListJSON)
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
+  @Test func progressNotesKeepLoadedPagesAfterReloadsAndSaves() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    for index in 0..<45 {
+      let note = DiamondProgressNoteRecord(
+        id: "note-\(index)", project: project.id, content: "Progress",
+        date: "2026-09-01", image: nil, created: "2026-09-01",
+        updated: "2026-09-01", expand: nil)
+      try await library.store.ingestNote(note, scope: library.scope)
     }
-    let model = LibraryItemDetailModel(
-      item: .diamond(Self.project), client: client, userID: "user-1")
-
-    #expect(
-      !(await model.addDiamondProgressNote(
-        content: "Reached the halfway point", date: Date(timeIntervalSince1970: 0), photo: nil
-      )))
-    #expect(model.unresolvedWriteState == .refreshed)
-    #expect(model.mutationErrorMessage?.contains("progress notes") == true)
-    #expect(model.mutationErrorMessage?.contains("photos") == false)
-    let progressNoteWrites = DetailURLProtocol.requests.filter {
-      $0.httpMethod == "POST"
-        && $0.url?.path.hasSuffix("/progress_notes/records") == true
-    }
-    #expect(progressNoteWrites.count == 1)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(await model.load())
+    #expect(model.progressNotes.count == 20)
+    await model.loadMoreProgressNotes()
+    let loadedIDs = model.progressNotes.map(\.id)
+    #expect(loadedIDs.count == 40)
+    #expect(await model.load())
+    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    #expect(await model.setStatus("progress"))
+    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    let edited: DiamondProjectRecord = try await library.update(
+      collection: "projects", id: project.id, body: ["title": "Moon Garden updated"])
+    await model.acceptSaved(.diamond(edited))
+    #expect(model.progressNotes.map(\.id) == loadedIDs)
+    #expect(model.canLoadMoreProgressNotes)
+    await model.loadMoreProgressNotes()
+    #expect(model.progressNotes.count == 45)
+    #expect(!model.canLoadMoreProgressNotes)
+    #expect(await model.load())
+    #expect(model.progressNotes.count == 45)
+    try await library.close(removingData: false)
   }
 
-  @Test
-  func failedBookFilterClearsPagesThatBelongToThePreviousFilter() async throws {
-    let client = try await signedInClient { request in
-      let components = URLComponents(
-        url: try #require(request.url), resolvingAgainstBaseURL: false)
-      let path = try #require(request.url?.path)
-      if path.hasSuffix("/coloring_books/records/book-1") {
-        return (200, Self.bookJSON)
-      }
-      if path.hasSuffix("/coloring_pages/records") {
-        let filter = components?.queryItems?.first(where: { $0.name == "filter" })?.value ?? ""
-        if filter.contains(#"status = "completed""#) {
-          return (500, "{}")
-        }
-        return (200, Self.pageListJSON(id: "page-1", number: 1, totalPages: 1))
-      }
-      Issue.record("Unexpected request: \(request)")
-      return (500, "{}")
+  @Test func bookPagesFilterAndPaginateFromLocalLibrary() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    try await library.store.ingest(.book(book), scope: library.scope)
+    for number in 1...30 {
+      try await library.store.ingest(
+        .page(featurePage("page-\(number)", book: book.id, number: number,
+          status: number.isMultiple(of: 2) ? "completed" : "in_progress")),
+        scope: library.scope)
     }
-    let model = LibraryItemDetailModel(
-      item: .book(Self.book), client: client, userID: "user-1")
-
-    await model.load()
-    #expect(model.bookPages.map(\.id) == ["page-1"])
+    let model = LibraryItemDetailModel(item: .book(book), library: library)
+    #expect(await model.load())
+    #expect(model.bookPages.count == 24)
+    #expect(model.canLoadMoreBookPages)
+    await model.loadMoreBookPages()
+    #expect(model.bookPages.count == 30)
     await model.setBookPageFilter(.completed)
-
-    #expect(model.bookPageFilter == .completed)
-    #expect(model.bookPages.isEmpty)
-    #expect(model.errorMessage != nil)
+    #expect(model.bookPages.count == 15)
+    #expect(model.bookPages.allSatisfy { $0.status == "completed" })
   }
 
-  private func signedInClient(
-    handler: @escaping @Sendable (URLRequest) throws -> (Int, String)
-  ) async throws -> PocketBaseClient {
-    DetailURLProtocol.requests = []
-    DetailURLProtocol.handler = { request in
-      if request.url?.path.hasSuffix("/users/auth-with-password") == true {
-        return (
-          200,
-          #"{"token":"token-1","record":{"id":"user-1","email":"test@example.test","verified":true}}"#
-        )
-      }
-      return try handler(request)
+  @Test func detailLoadsCurrentLocalRecordAfterUpdate() async throws {
+    let library = try localFeatureLibrary()
+    let initial = featureProject("project", title: "First", status: "wishlist")
+    try await library.store.ingest(.diamond(initial), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(initial), library: library)
+    #expect(await model.load())
+    try await library.store.ingest(
+      .diamond(featureProject("project", title: "Changed", status: "progress")),
+      scope: library.scope)
+    #expect(await model.load())
+    #expect(model.item.title == "Changed")
+    #expect(model.item.status == "progress")
+  }
+
+  @Test func diamondNotesLoadFromDownloadedSnapshotInDateOrder() async throws {
+    let library = try localFeatureLibrary()
+    let snapshot = try JSONDecoder().decode(LocalFullSnapshot.self, from: Data(#"""
+    {
+      "version":1,
+      "projects":[{"id":"project","title":"Moon Garden","user":"feature-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-01"}],
+      "coloringBooks":[],"coloringPages":[],"coloringPageProgressNotes":[],
+      "progressNotes":[
+        {"id":"older","project":"project","content":"First","date":"2026-09-02","created":"2026-09-02","updated":"2026-09-02"},
+        {"id":"newer","project":"project","content":"Next","date":"2026-09-03","created":"2026-09-03","updated":"2026-09-03"}
+      ]
     }
-    let configuration = URLSessionConfiguration.ephemeral
-    configuration.protocolClasses = [DetailURLProtocol.self]
-    let client = PocketBaseClient(
-      baseURL: URL(string: "https://detail.example.test")!,
-      sessionStore: KeychainSessionStore(
-        service: "com.interactivebuffoonery.organizedglitter.detail-tests.\(UUID().uuidString)"
-      ),
-      urlSession: URLSession(configuration: configuration)
-    )
-    _ = try await client.signIn(identity: "test@example.test", password: "password")
-    return client
-  }
-
-  nonisolated private static let book = ColoringBookRecord(
-    id: "book-1", user: "user-1", title: "Forest Walk", series: nil,
-    status: "in_progress", totalPages: 12, completedPages: 2,
-    completionPercentage: 16.7, coverImage: nil, publisher: nil,
-    illustrator: nil, created: "2026-01-01", updated: "2026-01-02", expand: nil)
-
-  nonisolated private static let page = ColoringPageRecord(
-    id: "page-1", book: "book-1", pageNumber: 1, status: "in_progress",
-    photos: [], revealedSubject: nil, completedAt: nil, startedAt: "2026-01-02",
-    created: "2026-01-01", updated: "2026-01-02", expand: nil)
-
-  nonisolated private static let project = DiamondProjectRecord(
-    id: "project-1", title: "Moon Garden", user: "user-1", company: nil,
-    artist: nil, status: "progress", kitCategory: "full", drillShape: "round",
-    generalNotes: nil, width: 40, height: 50, image: nil, dateStarted: nil,
-    dateCompleted: nil, created: "2026-01-01", updated: "2026-01-02", expand: nil)
-
-  nonisolated private static let bookJSON =
-    #"{"id":"book-1","user":"user-1","title":"Forest Walk","status":"in_progress","total_pages":12,"completed_pages":2,"completion_percentage":16.7,"photos":[],"created":"2026-01-01","updated":"2026-01-02"}"#
-
-  nonisolated private static let projectJSON =
-    #"{"id":"project-1","title":"Moon Garden","user":"user-1","status":"progress","kit_category":"full","drill_shape":"round","width":40,"height":50,"created":"2026-01-01","updated":"2026-01-02"}"#
-
-  nonisolated private static let taggedProjectJSON =
-    #"{"id":"project-1","title":"Moon Garden","user":"user-1","status":"completed","kit_category":"full","drill_shape":"round","width":40,"height":50,"total_diamonds":48200,"created":"2026-01-01","updated":"2026-01-03","expand":{"project_tags_via_project":[{"id":"pt-1","expand":{"tag":{"id":"tag-2","name":"gift"}}},{"id":"pt-2","expand":{"tag":{"id":"tag-1","name":"Animals"}}}]}}"#
-
-  nonisolated private static let noteJSON =
-    #"{"id":"note-1","project":"project-1","content":"Halfway done","date":"2026-09-19 00:00:00.000Z","image":"progress.png","created":"2026-09-19","updated":"2026-09-19"}"#
-
-  nonisolated private static let noteListJSON =
-    #"{"page":1,"perPage":20,"totalItems":1,"totalPages":1,"items":[{"id":"note-1","project":"project-1","content":"Halfway done","date":"2026-09-19 00:00:00.000Z","image":"progress.png","created":"2026-09-19","updated":"2026-09-19"}]}"#
-
-  nonisolated private static let newerNoteListJSON =
-    #"{"page":1,"perPage":20,"totalItems":1,"totalPages":1,"items":[{"id":"note-new","project":"project-1","content":"Latest update","date":"2026-09-20 00:00:00.000Z","created":"2026-09-20","updated":"2026-09-20"}]}"#
-
-  nonisolated private static let textOnlyNoteListJSON =
-    #"{"page":1,"perPage":20,"totalItems":1,"totalPages":1,"items":[{"id":"note-text","project":"project-1","content":"Reached the halfway point","date":"2026-09-19 00:00:00.000Z","created":"2026-09-19","updated":"2026-09-19"}]}"#
-
-  nonisolated private static func pageListJSON(
-    id: String,
-    number: Int,
-    page: Int = 1,
-    totalPages: Int
-  ) -> String {
-    """
-    {"page":\(page),"perPage":24,"totalItems":\(totalPages == 2 ? 25 : 1),"totalPages":\(totalPages),"items":[\(pageJSON(id: id, number: number, photos: []))]}
-    """
-  }
-
-  nonisolated private static func pageJSON(
-    id: String,
-    number: Int,
-    photos: [String]
-  ) -> String {
-    let encodedPhotos = photos.map { #""\#($0)""# }.joined(separator: ",")
-    return """
-      {"id":"\(id)","book":"book-1","page_number":\(number),"status":"in_progress","photos":[\(encodedPhotos)],"created":"2026-01-01","updated":"2026-01-02"}
-      """
+    """#.utf8))
+    try await library.store.ingestSnapshot(snapshot, scope: library.scope)
+    let model = LibraryItemDetailModel(
+      item: .diamond(featureProject("project", title: "Moon Garden", status: "progress")),
+      library: library)
+    #expect(await model.load())
+    #expect(model.progressNotes.map(\.id) == ["newer", "older"])
   }
 }
 
-private final class DetailURLProtocol: URLProtocol, @unchecked Sendable {
-  nonisolated(unsafe) static var handler: (@Sendable (URLRequest) throws -> (Int, String))?
+private final class LostNoteURLProtocol: URLProtocol, @unchecked Sendable {
+  nonisolated(unsafe) static var snapshotAvailable = false
+  nonisolated(unsafe) static var createRequests = 0
+  nonisolated(unsafe) static var createSucceeds = false
 
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
   override func startLoading() {
-    do {
-      Self.requests.append(request)
-      let handler = Self.handler ?? { _ in (500, "{}") }
-      let (status, body) = try handler(request)
-      let response = HTTPURLResponse(
-        url: request.url!, statusCode: status, httpVersion: nil,
-        headerFields: ["Content-Type": "application/json"]
-      )!
-      client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-      client?.urlProtocol(self, didLoad: Data(body.utf8))
-      client?.urlProtocolDidFinishLoading(self)
-    } catch {
-      client?.urlProtocol(self, didFailWithError: error)
+    if Self.createSucceeds, request.httpMethod == "POST" {
+      respond(#"{"id":"created-note","project":"project","content":"Half finished","date":"1970-01-01","created":"2026-09-01","updated":"2026-09-01"}"#)
+      return
     }
+    guard request.url?.path == "/api/mobile/sync/snapshot" else {
+      Self.createRequests += 1
+      client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+      return
+    }
+    guard Self.snapshotAvailable else {
+      client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+      return
+    }
+    respond(#"{"version":1,"projects":[{"id":"project","user":"feature-user","title":"Moon Garden","status":"wishlist","kit_category":"full","created":"2026-09-01","updated":"2026-09-01"}],"coloringBooks":[],"coloringPages":[],"progressNotes":[{"id":"saved-note","project":"project","content":"Half finished","date":"2026-09-01","created":"2026-09-01","updated":"2026-09-01"}],"coloringPageProgressNotes":[]}"#)
+  }
+
+  private func respond(_ body: String) {
+    let response = HTTPURLResponse(
+      url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+      headerFields: ["Content-Type": "application/json"])!
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data(body.utf8))
+    client?.urlProtocolDidFinishLoading(self)
   }
 
   override func stopLoading() {}
-
-  nonisolated(unsafe) static var requests: [URLRequest] = []
-
-  nonisolated static func bodyData(for request: URLRequest) -> Data {
-    if let body = request.httpBody {
-      return body
-    }
-    guard let stream = request.httpBodyStream else {
-      return Data()
-    }
-
-    stream.open()
-    defer { stream.close() }
-
-    var data = Data()
-    var buffer = [UInt8](repeating: 0, count: 1_024)
-    while true {
-      let count = stream.read(&buffer, maxLength: buffer.count)
-      guard count > 0 else {
-        return data
-      }
-      data.append(buffer, count: count)
-    }
-  }
 }

@@ -110,12 +110,28 @@ struct AccountView: View {
             appModel.signOut()
           }
           .accessibilityLabel("Sign out of Organized Glitter")
+          .disabled(appModel.isSigningOut)
+          if let message = appModel.sessionError { Text(message) }
         }
       }
       .listRowBackground(theme.card)
     }
     .themedScrollBackground()
     .navigationTitle("Account")
+    .confirmationDialog(
+      "There are changes saved only on this device.",
+      isPresented: Binding(
+        get: { appModel.requiresDiscardConfirmation },
+        set: { appModel.requiresDiscardConfirmation = $0 }
+      ), titleVisibility: .visible
+    ) {
+      Button("Discard Local Changes and Sign Out", role: .destructive) {
+        appModel.signOut(discardPending: true)
+      }
+      Button("Keep Working", role: .cancel) {}
+    } message: {
+      Text("Stay signed in and synchronize to keep these changes in your account.")
+    }
     .refreshable { await preferences.load() }
     .overlay {
       if preferences.isLoading && preferences.user == .preview {
