@@ -11,6 +11,9 @@ struct AppShellView: View {
   let model: AppModel
   let client: PocketBaseClient
   let user: UserRecord
+  let library: LibrarySession
+
+  @Environment(\.scenePhase) private var scenePhase
 
   @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -21,10 +24,11 @@ struct AppShellView: View {
   @State private var accountPreferences: AccountPreferencesModel
   @State private var protectedFiles: ProtectedFileAccess
 
-  init(model: AppModel, client: PocketBaseClient, user: UserRecord) {
+  init(model: AppModel, client: PocketBaseClient, user: UserRecord, library: LibrarySession) {
     self.model = model
     self.client = client
     self.user = user
+    self.library = library
     _protectedFiles = State(initialValue: ProtectedFileAccess(client: client))
     _accountPreferences = State(
       initialValue: AccountPreferencesModel(
@@ -39,7 +43,7 @@ struct AppShellView: View {
       Tab("Home", systemImage: "house", value: .home) {
         NavigationStack {
           OverviewView(
-            client: client, userID: user.id, verticals: accountPreferences.verticals,
+            library: library, verticals: accountPreferences.verticals,
             onLibraryRequest: { request in
               libraryRequest = request
               selectedTab = sizeClass == .regular ? .craft(request.section) : .library
@@ -55,8 +59,7 @@ struct AppShellView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
               CreateMenu(
-                client: client,
-                userID: user.id,
+                library: library,
                 verticals: accountPreferences.verticals,
                 onRefresh: { libraryRefresh.bump() },
                 onSaved: { _ in libraryRefresh.bump() }
@@ -102,10 +105,19 @@ struct AppShellView: View {
         break
       }
     }
+    .safeAreaInset(edge: .bottom) {
+      LibrarySyncStatusView(library: library)
+    }
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { Task { try? await library.refresh(force: true) } }
+    }
+    .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
+    .task { try? await library.refresh() }
+    .task { await library.monitorConnectivity() }
     .sheet(isPresented: $isShowingAccount) {
       NavigationStack {
         AccountView(appModel: model, client: client, preferences: accountPreferences)
@@ -120,8 +132,7 @@ struct AppShellView: View {
 
   private func library(_ presentation: LibraryPresentation) -> some View {
     LibraryView(
-      client: client,
-      userID: user.id,
+      library: library,
       presentation: presentation,
       libraryRefresh: libraryRefresh,
       verticals: accountPreferences.verticals,

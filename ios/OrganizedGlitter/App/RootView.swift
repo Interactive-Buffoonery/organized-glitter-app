@@ -11,8 +11,9 @@ struct RootView: View {
       case .restoring, .signedOut:
         WelcomeView(model: model)
       case .signedIn(let user):
-        if let client = model.client {
-          AppShellView(model: model, client: client, user: user)
+        if let client = model.client, let library = model.library {
+          AppShellView(model: model, client: client, user: user, library: library)
+            .id(library.scope.storageKey)
         }
       case .offline:
         ConnectionUnavailableView(
