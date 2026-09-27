@@ -7,6 +7,42 @@ import Testing
 @Suite(.serialized)
 struct AppModelTests {
   @Test
+  func appleSignInOpensTheLocalLibrary() async throws {
+    DelayedAuthenticationURLProtocol.reset()
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    defer { try? store.clear() }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [DelayedAuthenticationURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+    model.appleReadiness = .available
+
+    let sourceID = UUID()
+    let request = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(request, sourceID: sourceID)
+    model.completeAppleAuthorization(
+      .authorized(state: request.state, code: "test-code", name: nil),
+      sourceID: sourceID
+    )
+
+    for _ in 0..<100 where model.isSubmitting {
+      try await Task.sleep(for: .milliseconds(20))
+    }
+    guard case .signedIn(let user) = model.phase else {
+      Issue.record("Apple sign-in did not publish a session")
+      return
+    }
+    #expect(model.library?.userID == user.id)
+  }
+
+  @Test
   func lateAppleCallbacksCannotClearANewerRequest() async throws {
     let store = KeychainSessionStore(
       service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
