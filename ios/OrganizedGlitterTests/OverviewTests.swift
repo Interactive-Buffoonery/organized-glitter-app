@@ -148,15 +148,19 @@ struct OverviewLoadingTests {
   }
 
   private func waitForFirstNoteRequest() async -> Bool {
-    await Task.detached {
-      OverviewURLProtocol.firstNoteStarted.wait(timeout: .now() + 2) == .success
-    }.value
+    await waitForSignal(OverviewURLProtocol.firstNoteStarted)
   }
 
   private func waitForFirstActiveRequest() async -> Bool {
-    await Task.detached {
-      OverviewURLProtocol.firstActiveStarted.wait(timeout: .now() + 2) == .success
-    }.value
+    await waitForSignal(OverviewURLProtocol.firstActiveStarted)
+  }
+
+  private func waitForSignal(_ signal: DispatchSemaphore) async -> Bool {
+    await withCheckedContinuation { continuation in
+      DispatchQueue.global().async {
+        continuation.resume(returning: signal.wait(timeout: .now() + 2) == .success)
+      }
+    }
   }
 
   @Test func shelvesAppearBeforeOptionalNoteDatesReturn() async throws {
