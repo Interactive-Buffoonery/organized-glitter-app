@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Observation
 
 extension Font {
   /// Caveat is the large-title face and the generated-cover title, never body
@@ -83,11 +84,48 @@ extension View {
     modifier(ThemedScrollBackground())
   }
 
-  /// Bottom drawer on iPhone, a centered form-size card on iPad.
+  /// Bottom drawer for compact presentations.
   func drawer(_ detents: Set<PresentationDetent>) -> some View {
     presentationDetents(detents)
       .presentationDragIndicator(.visible)
-      .presentationSizing(.form)
+  }
+}
+
+@MainActor
+@Observable
+final class FormDrawer {
+  struct Route {
+    let id = UUID()
+    let detents: Set<PresentationDetent>
+    let content: AnyView
+  }
+
+  var route: Route?
+
+  func present<Content: View>(
+    detents: Set<PresentationDetent>,
+    @ViewBuilder content: () -> Content
+  ) {
+    guard route == nil else { return }
+    route = Route(detents: detents, content: AnyView(content()))
+  }
+}
+
+extension View {
+  func formDrawerHost(_ drawer: FormDrawer) -> some View {
+    inspector(isPresented: Binding(
+      get: { drawer.route != nil },
+      set: { if !$0 { drawer.route = nil } }
+    )) {
+      if let route = drawer.route {
+        route.content
+          .id(route.id)
+          .inspectorColumnWidth(min: 320, ideal: 400, max: 480)
+          .presentationDetents(route.detents)
+          .presentationDragIndicator(.visible)
+      }
+    }
+    .environment(drawer)
   }
 }
 

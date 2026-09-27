@@ -2,8 +2,8 @@ import SwiftUI
 import UIKit
 
 struct LibrarySyncStatusView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   let library: LibrarySession
-  @State private var showingChanges = false
 
   var body: some View {
     if library.isSyncing || library.pendingCount > 0 || library.syncMessage != nil {
@@ -16,7 +16,9 @@ struct LibrarySyncStatusView: View {
           if library.conflicts.isEmpty {
             Task { try? await library.refresh(force: true) }
           } else {
-            showingChanges = true
+            formDrawer.present(detents: [.medium, .large]) {
+              NavigationStack { LibraryConflictView(library: library) }
+            }
           }
         }
         .disabled(library.isSyncing)
@@ -24,10 +26,6 @@ struct LibrarySyncStatusView: View {
       .padding()
       .background(.regularMaterial)
       .accessibilityIdentifier("library.syncStatus")
-      .sheet(isPresented: $showingChanges) {
-        NavigationStack { LibraryConflictView(library: library) }
-          .drawer([.medium, .large])
-      }
     }
   }
 

@@ -25,6 +25,7 @@ struct AppShellView: View {
   @State private var accountPreferences: AccountPreferencesModel
   @State private var protectedFiles: ProtectedFileAccess
   @State private var lastAnnouncedSyncMessage: String?
+  @State private var formDrawer = FormDrawer()
 
   init(model: AppModel, client: PocketBaseClient, user: UserRecord, library: LibrarySession) {
     self.model = model
@@ -95,6 +96,7 @@ struct AppShellView: View {
       }
     }
     .tabViewStyle(.sidebarAdaptable)
+    .formDrawerHost(formDrawer)
     .onChange(of: sizeClass) { _, sizeClass in
       switch (sizeClass, selectedTab) {
       case (.regular, .library):

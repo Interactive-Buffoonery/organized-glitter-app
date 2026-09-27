@@ -1,13 +1,13 @@
 import SwiftUI
 
 struct LibraryView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
-  @State private var firstItemTarget: CreateTarget?
   @State private var pageCountBook: ColoringBookRecord?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
@@ -125,11 +125,6 @@ struct LibraryView: View {
           )
         }
       }
-    }
-    .sheet(item: $firstItemTarget) { target in
-      CreateEditor(
-        target: target, library: model.library,
-        onRefresh: { await model.load() }, onSaved: created)
     }
     .overlay(alignment: .bottom) {
       if model.isLoading, !model.items.isEmpty {
@@ -321,10 +316,16 @@ struct LibraryView: View {
     } description: {
       Text(message)
     } actions: {
-      Button(title) { firstItemTarget = target }
-        .buttonStyle(.borderedProminent)
-        .foregroundStyle(theme.primaryForeground)
-        .accessibilityIdentifier("library.first")
+      Button(title) {
+        formDrawer.present(detents: [.large]) {
+          CreateEditor(
+            target: target, library: model.library,
+            onRefresh: { await model.load() }, onSaved: created)
+        }
+      }
+      .buttonStyle(.borderedProminent)
+      .foregroundStyle(theme.primaryForeground)
+      .accessibilityIdentifier("library.first")
     }
   }
 
