@@ -1,9 +1,9 @@
 // Renders LaunchWordmark.imageset from the same BrandWordmarkArt the app draws.
 //
-// UILaunchScreen centers this image in the safe area. Welcome centers its
-// wordmark 70pt above that point (top padding 24, bottom padding 36, actions
-// 128), so the canvas carries the offset and the launch screen hands off to
-// the restoring splash without the wordmark moving.
+// UILaunchScreen centers this image in the safe area. AccountEntryLayout
+// derives the artwork offset from the same padding and button metrics used
+// by Welcome. Static launch art targets the default content size; Dynamic
+// Type can enlarge the live wordmark and actions after launch.
 //
 // Run from ios/ after changing the wordmark, the theme colors, or the Welcome
 // layout:
@@ -19,8 +19,6 @@ import SwiftUI
 @main
 @MainActor
 enum RenderLaunchWordmark {
-  static let welcomeOffset: CGFloat = -70
-  static let canvas = CGSize(width: 320, height: 400)
   static let output = URL(
     fileURLWithPath: "OrganizedGlitter/Resources/Assets.xcassets/LaunchWordmark.imageset")
 
@@ -36,14 +34,17 @@ enum RenderLaunchWordmark {
     ]
     for appearance in appearances {
       let art = BrandWordmarkArt(
-        size: 64,
+        size: AccountEntryLayout.welcomeWordmarkSize,
         foreground: appearance.foreground,
         primary: appearance.primary,
         accent: appearance.accent,
         sparkles: .still
       )
-      .offset(y: welcomeOffset)
-      .frame(width: canvas.width, height: canvas.height)
+      .offset(y: AccountEntryLayout.launchWordmarkOffset)
+      .frame(
+        width: AccountEntryLayout.launchCanvas.width,
+        height: AccountEntryLayout.launchCanvas.height
+      )
 
       for scale in [2, 3] {
         let renderer = ImageRenderer(content: art)

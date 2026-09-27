@@ -31,7 +31,7 @@ struct WelcomeView: View {
           VStack {
             Spacer(minLength: 0)
             BrandWordmark(
-              size: 64,
+              size: AccountEntryLayout.welcomeWordmarkSize,
               sparkles: isRestoring ? .twinkling : .still,
               accessibilityIdentifier: "welcomeWordmark"
             )
@@ -50,7 +50,7 @@ struct WelcomeView: View {
             Spacer(minLength: 0)
           }
 
-          VStack(spacing: 12) {
+          VStack(spacing: AccountEntryLayout.actionSpacing) {
             Button {
               methodMode = .register
               path.append(AccountEntryRoute.methods)
@@ -79,7 +79,7 @@ struct WelcomeView: View {
                 .alignmentGuide(.bottom) { $0[.top] }
             }
           #endif
-          .padding(.bottom, 16)
+          .padding(.bottom, AccountEntryLayout.actionsBottomPadding)
           .opacity(isRestoring ? 0 : 1)
           .allowsHitTesting(!isRestoring)
           .accessibilityHidden(isRestoring)

@@ -60,7 +60,7 @@ struct AuthPrimaryButtonStyle: ButtonStyle {
     configuration.label
       .font(.body.weight(.semibold))
       .foregroundStyle(theme.foreground)
-      .frame(maxWidth: .infinity, minHeight: 52)
+      .frame(maxWidth: .infinity, minHeight: AccountEntryLayout.primaryButtonHeight)
       .padding(.horizontal, 18)
       .background(fill, in: .rect(cornerRadius: 16))
       .overlay {
@@ -80,7 +80,7 @@ struct AuthSecondaryButtonStyle: ButtonStyle {
     configuration.label
       .font(.body.weight(.medium))
       .foregroundStyle(theme.foreground)
-      .frame(maxWidth: .infinity, minHeight: 48)
+      .frame(maxWidth: .infinity, minHeight: AccountEntryLayout.secondaryButtonHeight)
       .opacity(configuration.isPressed || !isEnabled ? 0.55 : 1)
   }
 }
@@ -140,8 +140,8 @@ struct AuthEntryContainer<Content: View>: View {
         content
           .frame(maxWidth: 420, alignment: Alignment(horizontal: alignment, vertical: .center))
           .padding(.horizontal, 28)
-          .padding(.top, 24)
-          .padding(.bottom, 36)
+          .padding(.top, AccountEntryLayout.topPadding)
+          .padding(.bottom, AccountEntryLayout.bottomPadding)
           .frame(
             maxWidth: .infinity,
             minHeight: fillsHeight ? proxy.size.height : nil,
