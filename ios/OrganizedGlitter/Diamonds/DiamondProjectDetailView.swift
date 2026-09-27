@@ -132,7 +132,7 @@ struct DiamondProjectDetailView: View {
     .background {
       theme.themedBackground.ignoresSafeArea()
     }
-    .refreshable { await model.load() }
+    .refreshable { await model.refresh() }
     .sheet(isPresented: $isAddingNote) {
       DiamondProgressNoteEditor(
         model: model,
@@ -191,8 +191,7 @@ struct DiamondProjectDetailView: View {
     VStack(spacing: 8) {
       CoverArtwork(
         item: .diamond(project),
-        url: LibraryItem.diamond(project).artworkURL(
-          using: model.client, token: protectedFiles?.token),
+        url: protectedFiles?.artworkURL(for: .diamond(project)),
         maxPixelDimension: 1_200,
         loadedAccessibilityLabel: "Project artwork"
       )

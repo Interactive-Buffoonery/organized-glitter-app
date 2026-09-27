@@ -26,8 +26,8 @@ struct DiamondProjectDraft: Equatable {
 }
 
 struct DiamondProjectEditor: View {
-  let client: PocketBaseClient
-  let userID: String
+  let library: LibrarySession
+  var userID: String { library.userID }
   let project: DiamondProjectRecord?
   let onLibraryRefresh: () async -> Void
   let onSaved: (DiamondProjectRecord) -> Void
@@ -39,17 +39,14 @@ struct DiamondProjectEditor: View {
   @State private var draft: DiamondProjectDraft
   @State private var isSaving = false
   @State private var errorMessage: String?
-  @State private var isCompletionUnknown = false
 
   init(
-    client: PocketBaseClient,
-    userID: String,
+    library: LibrarySession,
     project: DiamondProjectRecord? = nil,
     onLibraryRefresh: @escaping () async -> Void = {},
     onSaved: @escaping (DiamondProjectRecord) -> Void
   ) {
-    self.client = client
-    self.userID = userID
+    self.library = library
     self.project = project
     self.onLibraryRefresh = onLibraryRefresh
     self.onSaved = onSaved
@@ -107,7 +104,7 @@ struct DiamondProjectEditor: View {
           Button("Save") {
             Task { await save() }
           }
-          .disabled(!draft.isValid || isSaving || isCompletionUnknown)
+          .disabled(!draft.isValid || isSaving)
         }
       }
     }
@@ -132,32 +129,16 @@ struct DiamondProjectEditor: View {
     do {
       let saved: DiamondProjectRecord
       if let project {
-        saved = try await client.update(
+        saved = try await library.update(
           collection: "projects",
           id: project.id,
           body: write
         )
       } else {
-        saved = try await client.create(collection: "projects", body: write)
+        saved = try await library.create(collection: "projects", body: write)
       }
       onSaved(saved)
       dismiss()
-    } catch APIError.offline, APIError.server {
-      await onLibraryRefresh()
-      if let project,
-        let refreshed: DiamondProjectRecord = try? await client.get(
-          collection: "projects",
-          id: project.id
-        ),
-        draft.matchesSavedRecord(refreshed)
-      {
-        onSaved(refreshed)
-        dismiss()
-        return
-      }
-      isCompletionUnknown = true
-      errorMessage =
-        "Save status is unknown. The library was refreshed; check the project before trying again."
     } catch {
       errorMessage = error.projectSaveMessage
     }
@@ -169,7 +150,7 @@ struct DiamondProjectEditor: View {
 // the synthesized encoder drops nil keys, and a PATCH without `drill_shape`
 // leaves the server value untouched. When the user clears drill shape, the key
 // is included as `""`, PocketBase's unset value for a non-required select.
-struct DiamondProjectWrite: Encodable {
+struct DiamondProjectWrite: Encodable, Sendable {
   let user: String?
   let title: String?
   let status: String?
