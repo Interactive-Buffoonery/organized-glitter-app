@@ -340,7 +340,12 @@ final class AppModel {
       isSubmitting = false
       appleError = "Apple did not provide a valid authorization. Try again."
     case .authorized(let state, let code, let name):
-      guard state == attempt.state else { return }
+      guard state == attempt.state else {
+        appleAttempt = nil
+        isSubmitting = false
+        appleError = "Apple did not provide a valid authorization. Try again."
+        return
+      }
       guard let code, !code.isEmpty, let client else {
         appleAttempt = nil
         isSubmitting = false
