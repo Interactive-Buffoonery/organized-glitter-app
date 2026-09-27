@@ -261,4 +261,8 @@ worth the Dynamic Type / weight-matching loss today.
   written label (`StatusBadge`).
 - Rows and cards combine into single accessibility elements where the parts
   read as one thing.
-- Motion uses `Theme.motion` (ease-out-quart, 0.24 s) — no bounce, no elastic.
+- General transitions use `Theme.motion` (ease-out-quart, 0.24 s), without
+  bounce or elastic motion. A successful detail-menu status save is the exception:
+  its status symbol plays one native bounce and a success haptic after the local
+  save commits. Reduce Motion removes the bounce; the written status remains
+  visible. Failed saves and unchanged selections do not trigger feedback.

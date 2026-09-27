@@ -30,7 +30,7 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
             Image(systemName: Status.systemImage(for: current))
           } else {
             Image(systemName: Status.systemImage(for: current))
-              .symbolEffect(.bounce, options: .nonRepeating, value: model.lastConfirmedStatus)
+              .symbolEffect(.bounce, options: .nonRepeating, value: model.statusSaveRevision)
           }
         }
         .labelStyle(.titleAndIcon)
@@ -47,7 +47,7 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
       .frame(minHeight: 44)
       .contentShape(.rect)
     }
-    .sensoryFeedback(.success, trigger: model.lastConfirmedStatus) { _, saved in saved != nil }
+    .sensoryFeedback(.success, trigger: model.statusSaveRevision)
     .disabled(model.isMutating || model.unresolvedWriteState != nil)
     .accessibilityLabel("Status")
     .accessibilityValue(Status.label(for: current))

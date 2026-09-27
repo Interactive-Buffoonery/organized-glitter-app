@@ -11,19 +11,19 @@ struct LibraryItemDetailModelTests {
     let project = featureProject("project", title: "Moon Garden")
     try await library.store.ingest(.diamond(project), scope: library.scope)
     let model = LibraryItemDetailModel(item: .diamond(project), library: library)
-    #expect(model.lastConfirmedStatus == nil)
+    #expect(model.statusSaveRevision == 0)
     #expect(!(await model.setStatus("wishlist")))
-    #expect(model.lastConfirmedStatus == nil)
+    #expect(model.statusSaveRevision == 0)
     #expect(await model.setStatus("progress"))
-    #expect(model.lastConfirmedStatus == "progress")
+    #expect(model.statusSaveRevision == 1)
     #expect(model.item.status == "progress")
     #expect(!(await model.setStatus("progress")))
-    #expect(model.lastConfirmedStatus == "progress")
+    #expect(model.statusSaveRevision == 1)
     #expect(await model.setStatus("completed"))
-    #expect(model.lastConfirmedStatus == "completed")
+    #expect(model.statusSaveRevision == 2)
     try await library.close(removingData: false)
     #expect(!(await model.setStatus("stash")))
-    #expect(model.lastConfirmedStatus == "completed")
+    #expect(model.statusSaveRevision == 2)
     #expect(model.item.status == "completed")
   }
 
@@ -33,7 +33,34 @@ struct LibraryItemDetailModelTests {
     try await library.store.ingest(.book(book), scope: library.scope)
     let model = LibraryItemDetailModel(item: .book(book), library: library)
     #expect(await model.setStatus("completed"))
-    #expect(model.lastConfirmedStatus == "completed")
+    #expect(model.statusSaveRevision == 1)
+    #expect(model.item.status == "completed")
+    try await library.close(removingData: false)
+  }
+
+  @Test(arguments: [false, true])
+  func statusFeedbackRepeatsAfterEditorSave(isBook: Bool) async throws {
+    let library = try localFeatureLibrary()
+    let item: LibraryItem = isBook
+      ? .book(featureBook("book", title: "Quiet Pages"))
+      : .diamond(featureProject("project", title: "Moon Garden"))
+    try await library.store.ingest(item, scope: library.scope)
+    let model = LibraryItemDetailModel(item: item, library: library)
+    #expect(await model.setStatus("completed"))
+    #expect(model.statusSaveRevision == 1)
+
+    let saved: LibraryItem
+    if isBook {
+      saved = .book(try await library.update(
+        collection: "coloring_books", id: "book", body: ["status": "purchased"]))
+    } else {
+      saved = .diamond(try await library.update(
+        collection: "projects", id: "project", body: ["status": "progress"]))
+    }
+    await model.acceptSaved(saved)
+    #expect(model.statusSaveRevision == 1)
+    #expect(await model.setStatus("completed"))
+    #expect(model.statusSaveRevision == 2)
     #expect(model.item.status == "completed")
     try await library.close(removingData: false)
   }
