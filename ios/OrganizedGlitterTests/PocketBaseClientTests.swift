@@ -103,6 +103,89 @@ struct PocketBaseClientTests {
   }
 
   @Test
+  func mapsVerifiedAuthRuleRejectionToEmailVerification() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (
+        403,
+        #"{"data":{},"message":"The request doesn't satisfy the collection requirements to authenticate.","status":403}"#
+      )
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: APIError.emailUnverified) {
+      _ = try await client.signIn(identity: "unverified@example.test", password: "password")
+    }
+    #expect(try store.load() == nil)
+  }
+
+  @Test(arguments: [
+    #"{"data":{},"message":"This account is restricted.","status":403}"#,
+    #"{"data":{},"message":"Verification service access denied.","status":403}"#,
+    #"{"data":{},"status":403}"#,
+    "not-json",
+    "",
+  ])
+  func preservesUnrelatedPasswordAuthenticationDenials(body: String) async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [(403, body)]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: APIError.forbidden) {
+      _ = try await client.signIn(identity: "restricted@example.test", password: "password")
+    }
+    #expect(try store.load() == nil)
+  }
+
+  @Test
+  func preservesAuthRuleMessageOutsidePasswordAuthentication() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (
+        403,
+        #"{"data":{},"message":"The request doesn't satisfy the collection requirements to authenticate.","status":403}"#
+      )
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+      ),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: APIError.forbidden) {
+      try await client.requestPasswordReset(email: "restricted@example.test")
+    }
+  }
+
+  @Test
   func requestsPasswordResetWithoutAuthentication() async throws {
     PocketBaseClientURLProtocol.requests = []
     PocketBaseClientURLProtocol.requestBodies = []
@@ -122,10 +205,71 @@ struct PocketBaseClientTests {
     #expect(
       PocketBaseClientURLProtocol.requests.first?.url?.path
         == "/api/collections/users/request-password-reset")
-    #expect(PocketBaseClientURLProtocol.requests.first?.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(
+      PocketBaseClientURLProtocol.requests.first?.value(forHTTPHeaderField: "Authorization") == nil)
     #expect(
       try JSONSerialization.jsonObject(with: PocketBaseClientURLProtocol.requestBodies[0])
         as? [String: String] == ["email": "sarah@example.test"])
+  }
+
+  @Test
+  func confirmsPasswordResetWithoutAuthentication() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [(204, "")]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    try await client.confirmPasswordReset(
+      token: "opaque.reset.token",
+      password: "ValidPass1",
+      passwordConfirmation: "ValidPass1"
+    )
+
+    let request = try #require(PocketBaseClientURLProtocol.requests.first)
+    #expect(request.httpMethod == "POST")
+    #expect(request.url?.path == "/api/collections/users/confirm-password-reset")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(
+      try JSONSerialization.jsonObject(with: PocketBaseClientURLProtocol.requestBodies[0])
+        as? [String: String] == [
+          "token": "opaque.reset.token",
+          "password": "ValidPass1",
+          "passwordConfirm": "ValidPass1",
+        ])
+  }
+
+  @Test
+  func mapsRejectedPasswordResetTokenWithoutExposingIt() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (400, #"{"message":"Failed to confirm password reset."}"#)
+    ]
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: APIError.validation("Failed to confirm password reset.")) {
+      try await client.confirmPasswordReset(
+        token: "rejected.reset.token",
+        password: "ValidPass1",
+        passwordConfirmation: "ValidPass1"
+      )
+    }
   }
 
   @Test
@@ -414,6 +558,45 @@ struct PocketBaseClientTests {
     await client.signOut()
     _ = try? await refresh.value
 
+    #expect(try store.load() == nil)
+  }
+
+  @Test
+  func signOutKeepsAnInFlightSignInFromRestoringKeychain() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (
+        200,
+        #"{"token":"token-1","record":{"id":"user-1","email":"sarah@example.test","verified":true}}"#
+      )
+    ]
+    PocketBaseClientURLProtocol.responseDelay = 0.1
+    defer { PocketBaseClientURLProtocol.responseDelay = 0 }
+
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    let signIn = Task {
+      try await client.signIn(identity: "sarah@example.test", password: "password")
+    }
+    while PocketBaseClientURLProtocol.requests.isEmpty {
+      await Task.yield()
+    }
+
+    await client.signOut()
+
+    await #expect(throws: APIError.cancelled) {
+      _ = try await signIn.value
+    }
     #expect(try store.load() == nil)
   }
 

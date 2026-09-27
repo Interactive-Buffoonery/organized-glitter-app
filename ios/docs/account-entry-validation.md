@@ -48,7 +48,7 @@ The App Store / home-screen icon was regenerated from
 | Email sign-in | `SignInView` | `authWithPassword` |
 | Registration | `RegistrationView` | `register` + optional `requestVerification` |
 | Password reset request | `PasswordResetView` | `requestPasswordReset` |
-| Password reset confirmation | Same view, request-complete state | No token confirm |
+| Password reset confirmation | Universal-link sheet | `confirmPasswordReset` |
 | Verification request | `VerificationRequestView` | `requestVerification` |
 | Offline / restore failure / config | `RootView` states | Session preserved on offline/failure |
 
@@ -62,7 +62,7 @@ The App Store / home-screen icon was regenerated from
 | Method selection | Wordmark, Welcome back / Create account, Continue with email, switch link. Mode switches in place without stacking duplicate method screens. |
 | Email sign-in | Email, password, Sign in, Forgot password?, Privacy, Terms, Resend verification. Password reset and verification use the shared path, not nested `NavigationLink` destinations. |
 | Registration | Username, email, password, confirmation; success guidance after create. Sign in pops back to method choice in sign-in mode. |
-| Password reset | Request form distinct from “Check your inbox” confirmation. |
+| Password reset | Request form remains distinct from “Check your inbox.” Canonical reset links present a native password-confirmation sheet from any app state. |
 | Verification request | Request form and confirmation guidance. |
 | Offline / restoration failure / configuration error | Wordmark plus retry or configuration copy. |
 
@@ -147,7 +147,9 @@ Manual review: launch Debug with `-ui-testing-signed-out`.
 - Live email sign-in, registration, verification request, or password-reset
   against a real PocketBase instance
 - Live Discord, Google, or Apple authentication (not implemented on iOS)
-- Universal-link token confirmation for reset or verification
+- Live universal-link routing through the deployed AASA file
+- Live reset-token confirmation against production
+- Universal-link token confirmation for verification
 - System launch screen pixel comparison on device cold start
 - iPad dark-mode and iPad accessibility XXXL account-entry matrices
 
@@ -173,9 +175,10 @@ Manual review: launch Debug with `-ui-testing-signed-out`.
 2. Add Google and Apple only after provider setup and continuity checks; Apple
    becomes mandatory if Google or Discord ship in the App Store build
    (ADR 0007).
-3. Ship Associated Domains, stable HTTPS universal-link routes, token format,
-   and fallback behavior for password-reset and email-verification confirmation;
-   then add native confirmation screens.
-4. Keep password-reset request distinct from token confirmation.
-5. Account deletion remains a separate backend-first App Store blocker per
+3. Deploy and verify the password-reset AASA and web fallback described in
+   `password-reset-links.md`, then update `BackendContract.json` to the verified
+   backend revision.
+4. Define the separate email-verification universal-link contract.
+5. Keep password-reset request distinct from token confirmation.
+6. Account deletion remains a separate backend-first App Store blocker per
    `architecture.md`.
