@@ -86,6 +86,8 @@ struct LibraryItemDetailModelTests {
       content: "Half finished", date: Date(timeIntervalSince1970: 0), photo: nil)
     #expect(!saved)
     #expect(model.unresolvedWriteState == .needsRefresh)
+    #expect(model.mutationErrorMessage?.contains("Adding a progress note needs a connection") == true)
+    #expect(model.mutationErrorMessage?.contains("refresh status before adding another note") == true)
     #expect(model.progressNotes.isEmpty)
     #expect(LostNoteURLProtocol.createRequests == 1)
     let duplicate = await model.addDiamondProgressNote(
@@ -98,6 +100,31 @@ struct LibraryItemDetailModelTests {
     #expect(model.unresolvedWriteState == .refreshed)
     #expect(model.progressNotes.map(\.id) == ["saved-note"])
     #expect(model.lastAddedProgressNoteID == nil)
+  }
+
+  @Test func disconnectedPhotoUploadRequiresRefreshBeforeRetry() async throws {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [OfflinePagePhotoURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://offline-page-photo.example.test")!,
+      sessionStore: KeychainSessionStore(service: "OfflinePagePhotoTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(StoredSession(token: "example-token", userID: "feature-user"))
+    let library = LibrarySession(
+      client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
+    let page = featurePage("page", book: "book", number: 1)
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .page(page), library: library)
+    #expect(await model.load())
+
+    let photo = ProcessedDetailPhoto(
+      data: Data([1, 2, 3]), fileName: "example.jpg", contentType: "image/jpeg")
+    #expect(!(await model.appendPagePhoto(photo)))
+    #expect(model.unresolvedWriteState == .needsRefresh)
+    #expect(model.mutationErrorMessage?.contains("Adding a photo needs a connection") == true)
+    #expect(model.mutationErrorMessage?.contains("refresh status before starting another upload") == true)
+    #expect(!(await model.appendPagePhoto(photo)))
   }
 
   @Test func confirmedNoteIsTheOneToReveal() async throws {
@@ -250,5 +277,14 @@ private final class LostNoteURLProtocol: URLProtocol, @unchecked Sendable {
     client?.urlProtocolDidFinishLoading(self)
   }
 
+  override func stopLoading() {}
+}
+
+private final class OfflinePagePhotoURLProtocol: URLProtocol, @unchecked Sendable {
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+  override func startLoading() {
+    client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+  }
   override func stopLoading() {}
 }

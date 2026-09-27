@@ -349,10 +349,12 @@ final class LibraryItemDetailModel {
 
   private func reconcileUnresolvedWrite() async -> Bool {
     let didRefresh: Bool
+    var refreshError: Error?
     do {
       try await library.refreshFromServer()
       didRefresh = await load()
     } catch {
+      refreshError = error
       didRefresh = false
     }
     if didRefresh {
@@ -378,18 +380,25 @@ final class LibraryItemDetailModel {
     }
 
     unresolvedWriteState = .needsRefresh
+    let needsConnection = refreshError as? APIError == .offline
     if unresolvedStatusWrite {
       mutationErrorMessage =
-        "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
+        needsConnection
+        ? "Changing the status needs a connection. Reconnect and refresh status before changing it again."
+        : "Status is unknown because the item could not be refreshed. Refresh status before changing it again."
       return false
     }
     switch item {
     case .diamond:
       mutationErrorMessage =
-        "Progress note status is unknown because the project could not be refreshed. Refresh status before adding another note."
+        needsConnection
+        ? "Adding a progress note needs a connection. Reconnect and refresh status before adding another note."
+        : "Progress note status is unknown because the project could not be refreshed. Refresh status before adding another note."
     case .page:
       mutationErrorMessage =
-        "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
+        needsConnection
+        ? "Adding a photo needs a connection. Reconnect and refresh status before starting another upload."
+        : "Upload status is unknown because the photos could not be refreshed. Refresh status before starting another upload."
     case .book:
       mutationErrorMessage = "Save status is unknown. Refresh the item before trying again."
     }
