@@ -16,6 +16,8 @@ final class LibrarySession {
   private var active = true
   private var acceptsChanges = true
   private var onlineWrites = 0
+  private var localWrites = 0
+  private var writeWaiters: [CheckedContinuation<Void, Never>] = []
   private var onlineRecords: Set<LocalRecordKey> = []
 
   private(set) var items: [LibraryItem] = []
@@ -150,6 +152,8 @@ final class LibrarySession {
     let patch = try JSONDecoder().decode(
       [String: LocalJSONValue].self, from: JSONEncoder().encode(body))
     if patch.isEmpty { return try record(collection: collection, id: id) }
+    localWrites += 1
+    defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
     let entry = try await store.queueEdit(
       scope: scope, key: LocalRecordKey(kind: kind, id: id), patch: patch)
     try checkActive()
@@ -239,6 +243,8 @@ final class LibrarySession {
 
   func resolve(_ entry: LocalLibraryEntry, retainLocal: Bool) async throws {
     try checkWritable()
+    localWrites += 1
+    defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
     _ = try await store.resolveConflict(
       scope: scope, key: entry.item.localRecordKey, retainLocal: retainLocal)
     try await loadLocal()
@@ -249,7 +255,21 @@ final class LibrarySession {
   func pauseWrites() { acceptsChanges = false }
   func resumeWrites() { if active { acceptsChanges = true } }
 
+  func waitForWrites() async {
+    guard localWrites > 0 || onlineWrites > 0 else { return }
+    await withCheckedContinuation { writeWaiters.append($0) }
+  }
+
+  private func resumeWriteWaitersIfIdle() {
+    guard localWrites == 0, onlineWrites == 0 else { return }
+    let waiters = writeWaiters
+    writeWaiters = []
+    for waiter in waiters { waiter.resume() }
+  }
+
   func close(removingData: Bool) async throws {
+    pauseWrites()
+    await waitForWrites()
     if removingData { try await store.beginRemoval(scope: scope) }
     active = false
     loadGeneration &+= 1
@@ -278,12 +298,14 @@ final class LibrarySession {
       try checkWritable()
     } catch {
       onlineWrites -= 1
+      resumeWriteWaitersIfIdle()
       throw error
     }
   }
 
   private func endOnlineWrite() {
     onlineWrites -= 1
+    resumeWriteWaitersIfIdle()
     if onlineWrites == 0, active { Task { try? await refresh(force: true) } }
   }
 

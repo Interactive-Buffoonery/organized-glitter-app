@@ -225,6 +225,7 @@ final class AppModel {
         library?.resumeWrites()
       }
       do {
+        await library?.waitForWrites()
         try await library?.loadLocal()
         if !discardPending, let library, library.pendingCount > 0 {
           requiresDiscardConfirmation = true

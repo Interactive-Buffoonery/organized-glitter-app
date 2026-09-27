@@ -106,6 +106,37 @@ struct OfflineSessionTests {
     #expect(library.hasSnapshot)
   }
 
+  @Test func signOutNeverDiscardsAnAcceptedConcurrentEditWithoutConfirmation() async throws {
+    for _ in 0..<20 {
+      let (model, local, keychain, scope) = try await makeOfflineModel()
+      defer { try? keychain.clear() }
+      while model.phase == .restoring { await Task.yield() }
+      let library = try #require(model.library)
+      let project = featureProject("concurrent", title: "Original", user: scope.userID)
+      try await local.ingest(.diamond(project), scope: scope)
+      try await library.loadLocal()
+      let edit = Task { () -> Bool in
+        do {
+          let _: DiamondProjectRecord = try await library.update(
+            collection: "projects", id: project.id, body: ["title": "Unsent"])
+          return true
+        } catch { return false }
+      }
+      await Task.yield()
+      model.signOut()
+      let accepted = await edit.value
+      while model.isSigningOut { await Task.yield() }
+      if accepted {
+        #expect(model.requiresDiscardConfirmation)
+        #expect(try await local.pendingCount(scope: scope) == 1)
+        model.signOut(discardPending: true)
+        while model.isSigningOut { await Task.yield() }
+      } else {
+        #expect(model.phase == .signedOut)
+      }
+    }
+  }
+
   private func makeOfflineModel() async throws
     -> (AppModel, LocalLibraryStore, KeychainSessionStore, LocalAccountScope)
   {
