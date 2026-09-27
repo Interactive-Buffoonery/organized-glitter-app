@@ -15,6 +15,7 @@ final class AppModel {
 
   private struct AppleAttempt {
     let generation: Int
+    let sourceID: UUID
     let state: String
     let nonce: AppleSignInNonce
   }
@@ -290,14 +291,27 @@ final class AppModel {
     }
   }
 
-  func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
-    guard appleReadiness == .available else { return }
+  func loadSignInMethods() async {
+    async let apple: Void = loadAppleReadiness()
+    async let social: Void = loadSocialProviders()
+    _ = await (apple, social)
+  }
+
+  func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest, sourceID: UUID) {
+    guard appleReadiness == .available, case .signedOut = phase,
+      !isSubmitting, appleAttempt == nil, appleTask == nil
+    else { return }
     let generation = beginSessionTransition()
     appleError = nil
     do {
       let nonce = try AppleSignInNonce.generate()
       let state = UUID().uuidString
-      appleAttempt = AppleAttempt(generation: generation, state: state, nonce: nonce)
+      appleAttempt = AppleAttempt(
+        generation: generation,
+        sourceID: sourceID,
+        state: state,
+        nonce: nonce
+      )
       request.requestedScopes = [.fullName, .email]
       request.nonce = nonce.digest
       request.state = state
@@ -308,29 +322,31 @@ final class AppModel {
     }
   }
 
-  func completeAppleAuthorization(_ result: Result<ASAuthorization, Error>) {
-    guard let attempt = appleAttempt, attempt.generation == sessionGeneration else { return }
-    switch result {
-    case .failure(let error):
+  func completeAppleAuthorization(_ outcome: AppleAuthorizationOutcome, sourceID: UUID) {
+    guard let attempt = appleAttempt,
+      attempt.generation == sessionGeneration,
+      attempt.sourceID == sourceID
+    else { return }
+    switch outcome {
+    case .cancelled:
       appleAttempt = nil
       isSubmitting = false
-      if (error as? ASAuthorizationError)?.code != .canceled {
-        appleError = "Apple sign-in could not finish. Try again."
-      }
-    case .success(let authorization):
-      guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-        credential.state == attempt.state,
-        let codeData = credential.authorizationCode,
-        let code = String(data: codeData, encoding: .utf8),
-        !code.isEmpty,
-        let client
-      else {
+    case .failed:
+      appleAttempt = nil
+      isSubmitting = false
+      appleError = "Apple sign-in could not finish. Try again."
+    case .invalidCredential:
+      appleAttempt = nil
+      isSubmitting = false
+      appleError = "Apple did not provide a valid authorization. Try again."
+    case .authorized(let state, let code, let name):
+      guard state == attempt.state else { return }
+      guard let code, !code.isEmpty, let client else {
         appleAttempt = nil
         isSubmitting = false
         appleError = "Apple did not provide a valid authorization. Try again."
         return
       }
-      let name = AppleNativeName(fullName: credential.fullName)
       appleTask = Task {
         defer {
           if attempt.generation == sessionGeneration {
