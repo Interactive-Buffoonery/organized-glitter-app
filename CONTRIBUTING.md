@@ -30,8 +30,8 @@ This checks the diff, then builds the app and runs the unit and UI tests on the
 iPhone 17 simulator. To use another installed simulator, set `DESTINATION` to
 an `xcodebuild` destination before running the script.
 
-The app supports iOS and iPadOS 18.0 and newer. Routine development uses iOS
-and iPadOS 26 simulators, but APIs newer than iOS 18 need availability checks.
+The app supports iOS and iPadOS 26.0 and newer. Routine development uses iOS
+and iPadOS 26 simulators; APIs newer than iOS 26 need availability checks.
 
 Seeded backend tests are optional. Use disposable test accounts and records -
 never use customer accounts or customer data.
@@ -74,7 +74,7 @@ Report security problems privately using `SECURITY.md`.
 - Explain what changed and why.
 - Include the smallest test that proves non-trivial behavior.
 - Run relevant tests and `git diff --check`.
-- Call out iOS 18 compatibility and accessibility considerations.
+- Call out iOS 26 compatibility and accessibility considerations.
 - Don’t include unrelated formatting or cleanup.
 - Don’t post private backend links or internal planning context.
 

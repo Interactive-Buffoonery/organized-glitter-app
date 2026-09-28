@@ -10,10 +10,10 @@ At this time, this project is a WIP. This README will be updated as the app prog
 
 - Xcode 26 or newer
 - XcodeGen 2.46 or newer
-- iOS or iPadOS 18.0 or newer
+- iOS or iPadOS 26.0 or newer
 
 Routine builds, tests, and interface review use iOS and iPadOS 26 simulators.
-APIs newer than iOS 18 must stay behind availability checks.
+APIs newer than iOS 26 must stay behind availability checks.
 
 ## Build the app
 
