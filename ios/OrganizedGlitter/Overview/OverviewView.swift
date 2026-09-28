@@ -159,21 +159,28 @@ struct OverviewView: View {
   @Environment(\.theme) private var theme
 
   @State private var model: OverviewModel
-  @State private var logEditor: LibraryItemDetailModel?
-  @State private var loggedItemID: LibraryItem.ID?
+  @Binding private var logEditor: LibraryItemDetailModel?
   @State private var continuePosition: LibraryItem.ID?
+  let loggedItemID: LibraryItem.ID?
+  let refreshGeneration: Int
   let verticals: VerticalPreferences
   let onLibraryRequest: (LibraryRequest) -> Void
 
   init(
     library: LibrarySession,
     verticals: VerticalPreferences,
+    logEditor: Binding<LibraryItemDetailModel?>,
+    loggedItemID: LibraryItem.ID?,
+    refreshGeneration: Int,
     onLibraryRequest: @escaping (LibraryRequest) -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
     let model = OverviewModel(library: library)
     model.onSessionExpired = onSessionExpired
     _model = State(initialValue: model)
+    _logEditor = logEditor
+    self.loggedItemID = loggedItemID
+    self.refreshGeneration = refreshGeneration
     self.verticals = verticals
     self.onLibraryRequest = onLibraryRequest
   }
@@ -218,28 +225,20 @@ struct OverviewView: View {
       LibraryItemDetailDestination(
         item: item,
         library: model.library,
+        logEditor: $logEditor,
         onCollectionChanged: { await model.load() }
       )
     }
-    .sheet(item: $logEditor, onDismiss: showLoggedItem) { editor in
-      DiamondProgressNoteEditor(
-        model: editor,
-        onCollectionChanged: {
-          if editor.lastAddedProgressNoteID != nil {
-            loggedItemID = editor.item.id
-          } else {
-            await model.load()
-          }
-        }
-      )
-    }
     .task(id: model.library.generation) { await model.load() }
+    .onChange(of: refreshGeneration) { _, _ in Task { await model.load() } }
+    .onChange(of: loggedItemID) { _, id in
+      guard let id else { return }
+      showLoggedItem(id)
+    }
   }
 
-  /// Reorders Continue after the sheet closes, so the confirmed card visibly moves to the front.
-  private func showLoggedItem() {
-    guard let id = loggedItemID else { return }
-    loggedItemID = nil
+  /// Reorders Continue after the inspector closes, so the confirmed card moves to the front.
+  private func showLoggedItem(_ id: LibraryItem.ID) {
     Task {
       await model.load(animation: reduceMotion ? nil : Theme.motion)
       withAnimation(reduceMotion ? nil : Theme.motion) { continuePosition = id }
@@ -372,10 +371,13 @@ struct OverviewView: View {
     }
   }
 
-  // ponytail: pages have no Log sheet yet, so their cover opens the detail.
   private func logAction(for item: LibraryItem) -> (() -> Void)? {
-    guard case .diamond(let project) = item else { return nil }
-    return { logEditor = LibraryItemDetailModel(item: .diamond(project), library: model.library) }
+    switch item {
+    case .diamond, .page:
+      return { logEditor = LibraryItemDetailModel(item: item, library: model.library) }
+    case .book:
+      return nil
+    }
   }
 
   private var upNextShelf: some View {

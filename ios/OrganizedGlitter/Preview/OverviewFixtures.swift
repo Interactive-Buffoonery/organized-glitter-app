@@ -320,7 +320,8 @@
             ? (usesDesignData
               ? OverviewFixtureProtocol.designProgressNotes
               : OverviewFixtureProtocol.progressNoteItems) : [],
-          "coloring_page_progress_notes": [],
+          "coloring_page_progress_notes": hasContent && usesDesignData
+            ? OverviewFixtureProtocol.designPageProgressNotes : [],
         ]
         if scenario == "many-pages", var books = collections["coloring_books"],
           var firstBook = books.first
@@ -442,8 +443,11 @@
           record["status"] = record["status"] ?? "in_stash"
           record["total_pages"] = record["total_pages"] ?? 1
           record["completed_pages"] = 0
-        case "progress_notes":
+        case "progress_notes", "coloring_page_progress_notes":
           record["content"] = record["content"] ?? ""
+          if collection == "coloring_page_progress_notes" {
+            record["user"] = "preview-user"
+          }
           if let image = upload.files["image"]?.first {
             record["image"] = image
           }
@@ -812,6 +816,22 @@
           "content": "Started in the top corner.", "date": "2026-08-14",
           "image": "design-yorkie-roses.jpg",
           "created": "2026-08-14 16:00:00", "updated": "2026-08-14 16:00:00",
+        ],
+      ]
+    }
+
+    private static var designPageProgressNotes: [[String: Any]] {
+      [
+        [
+          "id": "design-page-note-1", "user": "preview-user", "page": "design-page-0",
+          "content": "The first **colors** are in place.", "date": "2026-09-19",
+          "image": "design-princesses-rapunzel.jpg", "created": "2026-09-19 15:00:00",
+          "updated": "2026-09-19 15:00:00",
+        ],
+        [
+          "id": "design-page-note-2", "user": "preview-user", "page": "design-page-0",
+          "content": "Started with the hair and flowers.", "date": "2026-08-20",
+          "created": "2026-08-20 15:00:00", "updated": "2026-08-20 15:00:00",
         ],
       ]
     }

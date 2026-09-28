@@ -19,6 +19,11 @@ struct AppShellView: View {
   @Environment(\.horizontalSizeClass) private var sizeClass
 
   @State private var selectedTab: AppTab = .home
+  @State private var homePath: [LibraryItem] = []
+  @State private var homeLogEditor: LibraryItemDetailModel?
+  @State private var homePendingLoggedItemID: LibraryItem.ID?
+  @State private var homeRevealedLoggedItemID: LibraryItem.ID?
+  @State private var homeRefreshGeneration = 0
   @State private var isShowingAccount = false
   @State private var libraryRefresh = LibraryRefresh()
   @State private var libraryRequest: LibraryRequest?
@@ -44,9 +49,12 @@ struct AppShellView: View {
   var body: some View {
     TabView(selection: $selectedTab) {
       Tab("Home", systemImage: "house", value: .home) {
-        tabContent(NavigationStack {
+        tabContent(NavigationStack(path: $homePath) {
           OverviewView(
             library: library, verticals: accountPreferences.verticals,
+            logEditor: $homeLogEditor,
+            loggedItemID: homeRevealedLoggedItemID,
+            refreshGeneration: homeRefreshGeneration,
             onLibraryRequest: { request in
               libraryRequest = request
               selectedTab = sizeClass == .regular ? .craft(request.section) : .library
@@ -69,6 +77,33 @@ struct AppShellView: View {
               )
             }
           }
+        }
+        .inspector(isPresented: Binding(
+          get: { homeLogEditor != nil },
+          set: { isPresented in
+            if !isPresented {
+              homeLogEditor = nil
+              homeRevealedLoggedItemID = homePendingLoggedItemID
+              homePendingLoggedItemID = nil
+            }
+          }
+        )) {
+          if let editor = homeLogEditor {
+            ProgressNoteEditor(
+              model: editor,
+              onCollectionChanged: {
+                if editor.lastAddedProgressNoteID != nil {
+                  homePendingLoggedItemID = editor.item.id
+                } else {
+                  homeRefreshGeneration += 1
+                }
+              }
+            )
+            .inspectorColumnWidth(min: 300, ideal: 380, max: 440)
+          }
+        }
+        .onChange(of: homeLogEditor == nil) { _, isDismissed in
+          if !isDismissed { homeRevealedLoggedItemID = nil }
         })
       }
 
