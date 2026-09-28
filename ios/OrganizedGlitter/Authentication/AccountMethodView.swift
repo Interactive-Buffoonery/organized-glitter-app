@@ -5,6 +5,8 @@ import SwiftUI
 struct AccountMethodView: View {
   @Environment(\.theme) private var theme
   @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @ScaledMetric(relativeTo: .body) private var providerHeight = 52
   @State private var presentationAnchor: UIWindow?
   @State private var appleSourceID = UUID()
 
@@ -69,14 +71,6 @@ struct AccountMethodView: View {
             appleButton
           }
 
-          NavigationLink(value: mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister) {
-            Label(mode.emailDestinationTitle, systemImage: "envelope")
-              .labelStyle(.titleAndIcon)
-          }
-          .buttonStyle(AuthMethodButtonStyle())
-          .accessibilityIdentifier("continueWithEmail")
-          .disabled(model.client == nil)
-
           if model.appleReadiness == .failed {
             Button("Check Apple sign-in again") {
               Task { await model.loadSignInMethods() }
@@ -93,10 +87,18 @@ struct AccountMethodView: View {
               guard let presentationAnchor else { return }
               model.signInWithOAuth(provider: provider, anchor: presentationAnchor)
             } label: {
-              Label(
-                "Continue with \(provider.displayName)",
-                systemImage: provider.symbolName
-              )
+              HStack(spacing: 12) {
+                Image(provider.logoAssetName)
+                  .resizable()
+                  .scaledToFit()
+                  .frame(width: 20, height: 20)
+                  .accessibilityHidden(true)
+                Text("Continue with \(provider.displayName)")
+                  .frame(maxWidth: .infinity)
+                Color.clear.frame(width: 20, height: 20)
+                  .accessibilityHidden(true)
+              }
+              .accessibilityElement(children: .combine)
             }
             .buttonStyle(AuthMethodButtonStyle())
             .disabled(model.isSubmitting || presentationAnchor == nil)
@@ -106,11 +108,32 @@ struct AccountMethodView: View {
             AccessibleErrorLabel(message: error)
               .accessibilityIdentifier("oauthError")
           }
+
+          if !model.socialProviders.isEmpty || model.appleReadiness == .available {
+            HStack(spacing: 12) {
+              Rectangle().fill(theme.border).frame(height: 1)
+              Text("or")
+                .font(.footnote)
+                .foregroundStyle(theme.mutedForeground)
+              Rectangle().fill(theme.border).frame(height: 1)
+            }
+            .padding(.vertical, 4)
+            .accessibilityHidden(true)
+          }
+
+          NavigationLink(value: mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister) {
+            Label(mode.emailDestinationTitle, systemImage: "envelope")
+              .labelStyle(.titleAndIcon)
+          }
+          .buttonStyle(AuthMethodButtonStyle(isEmail: true))
+          .accessibilityIdentifier("continueWithEmail")
+          .disabled(model.client == nil)
         }
+        .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 300)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Account providers")
 
-        HStack(spacing: 6) {
+        VStack(spacing: 0) {
           Text(mode.switchPrompt)
             .font(.subheadline)
             .foregroundStyle(theme.mutedForeground)
@@ -133,7 +156,9 @@ struct AccountMethodView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .task { await model.loadSignInMethods() }
+    .task {
+      await model.loadSignInMethods()
+    }
     .onDisappear {
       model.cancelOAuth()
       model.cancelAppleSignIn()
@@ -149,29 +174,39 @@ struct AccountMethodView: View {
       model.completeAppleAuthorization(AppleAuthorizationOutcome(result), sourceID: sourceID)
     }
     .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-    .frame(maxWidth: .infinity, minHeight: 52)
+    .frame(height: providerHeight)
+    .clipShape(.rect(cornerRadius: 12))
     .disabled(model.isSubmitting)
     .accessibilityIdentifier("continueWithApple")
     .id(sourceID)
   }
 }
 
-/// Rounded method-choice control matching the studio’s quiet provider rows.
+/// Provider marks keep their original colors on neutral button surfaces.
 struct AuthMethodButtonStyle: ButtonStyle {
   @Environment(\.theme) private var theme
+  @Environment(\.colorScheme) private var colorScheme
   @Environment(\.isEnabled) private var isEnabled
+
+  var isEmail = false
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .font(.body.weight(.medium))
-      .foregroundStyle(theme.foreground)
-      .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-      .padding(.horizontal, 18)
-      .background(theme.card, in: .capsule)
+      .multilineTextAlignment(.center)
+      .foregroundStyle(isEmail ? theme.foreground : (colorScheme == .dark ? .white : Color(white: 0.12)))
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+      .frame(maxWidth: .infinity, minHeight: 52)
+      .background(
+        isEmail ? theme.card : (colorScheme == .dark ? Color(white: 0.075) : .white),
+        in: .rect(cornerRadius: 12)
+      )
       .overlay {
-        Capsule().stroke(theme.border, lineWidth: 1)
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(isEmail ? theme.border : Color(white: 0.46), lineWidth: 1)
       }
-      .opacity(configuration.isPressed ? 0.85 : (isEnabled ? 1 : 0.5))
+      .opacity(!isEnabled ? 0.5 : (configuration.isPressed ? 0.8 : 1))
   }
 }
 
@@ -186,10 +221,10 @@ enum SocialProvider: String, Sendable {
     }
   }
 
-  var symbolName: String {
+  var logoAssetName: String {
     switch self {
-    case .google: "globe"
-    case .discord: "bubble.left.and.bubble.right"
+    case .google: "GoogleSignIn"
+    case .discord: "DiscordSignIn"
     }
   }
 }

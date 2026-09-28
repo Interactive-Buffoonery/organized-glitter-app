@@ -43,7 +43,7 @@ final class ScreenshotCaptureTests: XCTestCase {
 
   private func captureAccountEntry(into dir: String) throws {
     let signedOut = XCUIApplication()
-    signedOut.launchArguments.append("-ui-testing-signed-out")
+    signedOut.launchArguments += ["-ui-testing-signed-out", "-ui-testing-social-providers"]
     signedOut.launch()
     XCTAssertTrue(signedOut.buttons["welcomeSignIn"].waitForExistence(timeout: 5))
     try save(signedOut.screenshot(), to: "\(dir)/welcome.png")

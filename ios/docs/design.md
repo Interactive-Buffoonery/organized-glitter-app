@@ -150,12 +150,21 @@ launch image targets the default text size; Dynamic Type can resize the live UI.
 Signed-out users land on Welcome (wordmark
 with still sparkles above Create account and Sign in) with no authenticated
 tabs. `WelcomeView` owns the
-signed-out `NavigationStack`. Method selection offers Continue with email only;
-Apple, Google, and Discord stay out until a native OAuth path and provider
-continuity land. Email sign-in, registration, password-reset
-request/confirmation, and verification request use quiet auth controls instead
-of sticker pills. See
-[account-entry validation](account-entry-validation.md).
+signed-out `NavigationStack`. Method selection places Apple (when available), Google, and Discord
+above a separated Continue with email action. Provider controls use a centered
+300-point column, 52-point minimum touch targets, and 12-point corners. Apple
+keeps its native control with an explicit, Dynamic Type-scaled height. Google
+and Discord use original brand marks on neutral light/dark surfaces; these
+provider marks are an exception to the general SF Symbols rule below.
+
+Email sign-in, registration, reset, and verification forms use a 360-point
+maximum reading width. Primary actions use the raspberry primary fill and a
+280-point maximum width; accessibility text sizes can use the available form
+width. Loading preserves the action label and footprint. Secondary actions are
+quiet text links; account-switch prompts stack above their action to support
+larger text. Welcome retains the shared launch geometry and wordmark.
+See [account-entry validation](account-entry-validation.md) for earlier captures
+and [auth presentation](auth-presentation.md) for this refinement.
 
 The sticker system (`StickerCard`, `IconBadge`, `PillButtonStyle`, and their
 tokens) was removed with the Create tab.
