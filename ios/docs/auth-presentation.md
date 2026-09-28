@@ -28,3 +28,19 @@ artwork license. They identify authentication options only.
 
 Provider logos are decorative within buttons whose full text supplies their
 accessible name. No new third-party SDK is used.
+
+## Verification
+
+- iOS 26.5 iPhone: unit suite and focused UI checks for method ordering, native
+  account entry, and reset-link recovery. Debug and Release simulator builds.
+- Captured welcome, both method modes, registration, email sign-in, and password
+  reset on iPhone in light appearance, iPad in dark appearance, and iPhone at
+  accessibility-extra-large in dark appearance. Large text scrolls and wraps.
+- Provider screenshots use fixture Google/Discord availability. The captures
+  precede the PR #18 Release-enablement rebase; its Debug presentation is the same.
+- Provider authorization and physical-device behavior are outside this visual
+  change's verification; this does not replace PR #18's release checks.
+
+| iPhone methods | iPhone email | iPad dark methods |
+| --- | --- | --- |
+| ![Compact provider buttons and email last](screenshots/auth-presentation/iphone-methods.png) | ![Email sign-in form](screenshots/auth-presentation/iphone-email.png) | ![Dark iPad account methods](screenshots/auth-presentation/ipad-methods-dark.png) |
