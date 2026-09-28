@@ -2,6 +2,35 @@ import XCTest
 
 @MainActor
 final class NativeRefinementAccessibilityUITests: XCTestCase {
+  func testPageCountDrawerPreservesDetailAndDisablesOtherForms() {
+    let app = launchFixture()
+    openLibrary(app)
+    selectCraft("Books", in: app)
+    openCard(named: "Princesses", in: app)
+    XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
+
+    let editPageCount = button("detail.book.editPageCount", in: app)
+    makeHittable(editPageCount, in: app)
+    editPageCount.tap()
+    let editor = app.navigationBars["Page count"]
+    XCTAssertTrue(editor.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.textFields["pageCount.field"].exists)
+
+    for identifier in ["create.menu", "detail.edit", "detail.book.editPageCount"] {
+      let trigger = button(identifier, in: app)
+      if trigger.exists {
+        XCTAssertFalse(trigger.isEnabled)
+      }
+    }
+
+    editor.buttons["Cancel"].tap()
+    XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+    XCTAssertTrue(element("detail.book", in: app).exists)
+    XCTAssertTrue(editPageCount.isEnabled)
+    button("detail.edit", in: app).tap()
+    XCTAssertTrue(app.navigationBars["Edit Coloring Book"].waitForExistence(timeout: 5))
+  }
+
   func testCapturesLowerDetailLayoutsAtAccessibilityXXXL() throws {
     guard ProcessInfo.processInfo.environment["RUN_REFINEMENT_AX_CAPTURE"] == "1" else {
       throw XCTSkip(

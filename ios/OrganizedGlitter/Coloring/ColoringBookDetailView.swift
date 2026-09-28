@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ColoringBookDetailView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -237,6 +238,7 @@ struct ColoringBookDetailView: View {
     }
     .buttonStyle(.plain)
     .foregroundStyle(theme.pageAction)
+    .disabledWhileFormPresented(formDrawer, or: model.isMutating)
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }
