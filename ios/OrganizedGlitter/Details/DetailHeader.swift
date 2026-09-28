@@ -330,10 +330,9 @@ struct DetailInlineTitle: View {
   }
 
   private func commit() {
-    guard isEditing, !formDrawer.isPresenting,
-      !model.isMutating, model.unresolvedWriteState == nil
-    else { return }
+    guard isEditing, !formDrawer.isPresenting else { return }
     isEditing = false
+    guard !model.isMutating, model.unresolvedWriteState == nil else { return }
     let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
     guard trimmed != value, allowsEmpty || !trimmed.isEmpty else { return }
     saveDetailChange(
