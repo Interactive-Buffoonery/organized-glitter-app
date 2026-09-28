@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Email and password sign-in. Reached from account method selection.
+/// Email and password sign-in. Reached from the email-only method screen.
 struct SignInView: View {
   @Environment(\.theme) private var theme
 

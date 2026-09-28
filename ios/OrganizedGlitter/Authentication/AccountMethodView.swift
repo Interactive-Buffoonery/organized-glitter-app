@@ -87,18 +87,17 @@ struct AccountMethodView: View {
               guard let presentationAnchor else { return }
               model.signInWithOAuth(provider: provider, anchor: presentationAnchor)
             } label: {
-              HStack(spacing: 12) {
-                Image(provider.logoAssetName)
-                  .resizable()
-                  .scaledToFit()
-                  .frame(width: 20, height: 20)
-                  .accessibilityHidden(true)
-                Text("Continue with \(provider.displayName)")
-                  .frame(maxWidth: .infinity)
-                Color.clear.frame(width: 20, height: 20)
-                  .accessibilityHidden(true)
-              }
-              .accessibilityElement(children: .combine)
+              Text("Continue with \(provider.displayName)")
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 32)
+                .overlay(alignment: .leading) {
+                  Image(provider.logoAssetName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
+                    .accessibilityHidden(true)
+                }
+                .accessibilityElement(children: .combine)
             }
             .buttonStyle(AuthMethodButtonStyle())
             .disabled(model.isSubmitting || presentationAnchor == nil)
@@ -125,7 +124,7 @@ struct AccountMethodView: View {
             Label(mode.emailDestinationTitle, systemImage: "envelope")
               .labelStyle(.titleAndIcon)
           }
-          .buttonStyle(AuthMethodButtonStyle(isEmail: true))
+          .buttonStyle(AuthEmailButtonStyle())
           .accessibilityIdentifier("continueWithEmail")
           .disabled(model.client == nil)
         }
@@ -156,9 +155,7 @@ struct AccountMethodView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .task {
-      await model.loadSignInMethods()
-    }
+    .task { await model.loadSignInMethods() }
     .onDisappear {
       model.cancelOAuth()
       model.cancelAppleSignIn()
@@ -174,7 +171,7 @@ struct AccountMethodView: View {
       model.completeAppleAuthorization(AppleAuthorizationOutcome(result), sourceID: sourceID)
     }
     .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-    .frame(height: providerHeight)
+    .frame(maxWidth: .infinity, minHeight: providerHeight)
     .clipShape(.rect(cornerRadius: 12))
     .disabled(model.isSubmitting)
     .accessibilityIdentifier("continueWithApple")
@@ -184,27 +181,45 @@ struct AccountMethodView: View {
 
 /// Provider marks keep their original colors on neutral button surfaces.
 struct AuthMethodButtonStyle: ButtonStyle {
-  @Environment(\.theme) private var theme
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.isEnabled) private var isEnabled
-
-  var isEmail = false
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .font(.body.weight(.medium))
       .multilineTextAlignment(.center)
-      .foregroundStyle(isEmail ? theme.foreground : (colorScheme == .dark ? .white : Color(white: 0.12)))
+      .foregroundStyle(colorScheme == .dark ? .white : Color(white: 0.12))
       .padding(.horizontal, 16)
       .padding(.vertical, 12)
       .frame(maxWidth: .infinity, minHeight: 52)
       .background(
-        isEmail ? theme.card : (colorScheme == .dark ? Color(white: 0.075) : .white),
+        colorScheme == .dark ? Color(white: 0.075) : .white,
         in: .rect(cornerRadius: 12)
       )
       .overlay {
         RoundedRectangle(cornerRadius: 12)
-          .stroke(isEmail ? theme.border : Color(white: 0.46), lineWidth: 1)
+          .stroke(Color(white: 0.46), lineWidth: 1)
+      }
+      .opacity(!isEnabled ? 0.5 : (configuration.isPressed ? 0.8 : 1))
+  }
+}
+
+struct AuthEmailButtonStyle: ButtonStyle {
+  @Environment(\.theme) private var theme
+  @Environment(\.isEnabled) private var isEnabled
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .font(.body.weight(.medium))
+      .multilineTextAlignment(.center)
+      .foregroundStyle(theme.foreground)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 12)
+      .frame(maxWidth: .infinity, minHeight: 52)
+      .background(theme.card, in: .rect(cornerRadius: 12))
+      .overlay {
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(theme.border, lineWidth: 1)
       }
       .opacity(!isEnabled ? 0.5 : (configuration.isPressed ? 0.8 : 1))
   }

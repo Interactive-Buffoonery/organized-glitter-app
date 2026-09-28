@@ -153,7 +153,7 @@ tabs. `WelcomeView` owns the
 signed-out `NavigationStack`. Method selection places Apple (when available), Google, and Discord
 above a separated Continue with email action. Provider controls use a centered
 300-point column, 52-point minimum touch targets, and 12-point corners. Apple
-keeps its native control with an explicit, Dynamic Type-scaled height. Google
+keeps its native control with a Dynamic Type-scaled minimum height. Google
 and Discord use original brand marks on neutral light/dark surfaces; these
 provider marks are an exception to the general SF Symbols rule below.
 
