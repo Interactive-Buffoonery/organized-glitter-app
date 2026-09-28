@@ -128,7 +128,7 @@ final class NativeRefinementUITests: XCTestCase {
     openCard(named: "Yorkie & Roses", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(element("detail.specs", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(button("detail.diamond.addNote", in: app).exists)
+    XCTAssertTrue(button("detail.progress.addNote", in: app).exists)
     let photo = app.images.matching(
       NSPredicate(format: "label BEGINSWITH %@", "Progress photo from")
     ).firstMatch
@@ -376,7 +376,10 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
     field.tap()
-    field.typeKey("a", modifierFlags: .command)
+    field.press(forDuration: 1.1)
+    let selectAll = app.menuItems["Select All"].firstMatch
+    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
+    selectAll.tap()
     field.typeText(value)
     XCTAssertEqual(field.value as? String, value)
   }

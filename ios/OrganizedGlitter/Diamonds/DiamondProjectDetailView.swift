@@ -21,7 +21,8 @@ struct DiamondProjectDetailView: View {
           DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
           if !specs.isEmpty {
-            DetailSpecStrip(specs: specs)
+            DetailSpecStrip(
+              specs: specs, isDisabled: model.isMutating || model.unresolvedWriteState != nil)
           }
 
           ProgressNotesSection(
@@ -38,8 +39,14 @@ struct DiamondProjectDetailView: View {
                 DetailMetadataRow(label: "Artist", value: artist)
               }
               DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
-              ForEach(dateRows, id: \.label) { row in
-                DetailMetadataRow(label: row.label, value: row.value)
+              ForEach(dateFields, id: \.field) { row in
+                DetailDateRow(
+                  label: row.label,
+                  value: row.value,
+                  isDisabled: model.isMutating || model.unresolvedWriteState != nil
+                ) { date in
+                  save { await model.setDate(row.field, to: date) }
+                }
               }
               if !project.tags.isEmpty {
                 DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
@@ -103,10 +110,9 @@ struct DiamondProjectDetailView: View {
       .photoViewer(opening: coverPhoto)
       .accessibilityIdentifier("detail.hero")
 
-      Text(project.title)
-        .font(.title2.bold())
-        .foregroundStyle(theme.foreground)
-        .accessibilityAddTraits(.isHeader)
+      DetailInlineTitle(
+        value: project.title, field: "title", label: "Title", model: model,
+        onCollectionChanged: onCollectionChanged)
       if !LibraryItem.diamond(project).subtitle.isEmpty {
         Text(LibraryItem.diamond(project).subtitle)
           .foregroundStyle(theme.pageSecondaryForeground)
@@ -127,13 +133,37 @@ struct DiamondProjectDetailView: View {
           title: "Size", value: "\(width.formatted())×\(height.formatted())", caption: "cm",
           accessibilityValue: "\(width.formatted()) by \(height.formatted()) centimeters"))
     }
-    if let drill = project.drillShape?.nonEmpty {
-      let kit = "\(project.kitCategory.lowercased()) kit"
-      specs.append(
-        DetailSpec(
-          title: "Drill", value: drill.capitalized, caption: kit,
-          accessibilityValue: "\(drill), \(kit)"))
-    }
+    let drill = project.drillShape?.nonEmpty
+    let kit = "\(project.kitCategory.lowercased()) kit"
+    specs.append(
+      DetailSpec(
+        title: "Drill", value: drill?.capitalized ?? "Not set", caption: kit,
+        accessibilityValue: "\(drill ?? "Not set"), \(kit)",
+        choices: [
+          DetailSpec.Choice(
+            title: "Drill shape",
+            options: [
+              .init(value: "", label: "Not set"),
+              .init(value: "round", label: "Round"),
+              .init(value: "square", label: "Square"),
+            ],
+            selection: drill ?? ""
+          ) { value in
+            guard value != (drill ?? "") else { return }
+            save { await model.updateFields(["drill_shape": value]) }
+          },
+          DetailSpec.Choice(
+            title: "Kit",
+            options: [
+              .init(value: "full", label: "Full size"),
+              .init(value: "mini", label: "Mini"),
+            ],
+            selection: project.kitCategory
+          ) { value in
+            guard value != project.kitCategory else { return }
+            save { await model.updateFields(["kit_category": value]) }
+          },
+        ]))
     if let total = project.totalDiamonds, total > 0 {
       let colors = project.colorCount.flatMap { $0 > 0 ? "\(Int($0)) colors" : nil }
       specs.append(
@@ -156,15 +186,17 @@ struct DiamondProjectDetailView: View {
     return specs
   }
 
-  private var dateRows: [(label: String, value: String)] {
+  private var dateFields: [(field: String, label: String, value: String?)] {
     [
-      ("Purchased", project.datePurchased),
-      ("Received", project.dateReceived),
-      ("Started", project.dateStarted),
-      ("Completed", project.dateCompleted),
-    ].compactMap { label, value in
-      value.flatMap { DetailDateOnly.formatted($0) }.map { (label, $0) }
-    }
+      ("date_purchased", "Purchased", project.datePurchased),
+      ("date_received", "Received", project.dateReceived),
+      ("date_started", "Started", project.dateStarted),
+      ("date_completed", "Completed", project.dateCompleted),
+    ]
+  }
+
+  private func save(_ write: @escaping @MainActor () async -> Bool) {
+    saveDetailChange(write, onCollectionChanged: onCollectionChanged)
   }
 
   private var sourceURL: URL? {
@@ -200,6 +232,93 @@ struct DiamondProjectDetailView: View {
 }
 
 
+/// A date-only field edited in place, committed only after the picker closes.
+private struct DetailDateRow: View {
+  @Environment(FormDrawer.self) private var formDrawer
+  @Environment(\.theme) private var theme
+  @State private var isEditingDate = false
+  @State private var draftDate = Date.now
+
+  let label: String
+  let value: String?
+  let isDisabled: Bool
+  let onChange: (Date?) -> Void
+
+  var body: some View {
+    let storedDate = value.flatMap { DetailDateOnly.date($0) }
+    DetailMetadataRow(label: label, combinesChildren: false) {
+      HStack(spacing: 0) {
+        Button {
+          draftDate = storedDate ?? .now
+          isEditingDate = true
+        } label: {
+          if let value, let formatted = DetailDateOnly.formatted(value) {
+            Text(formatted)
+              .frame(minHeight: 44)
+              .contentShape(.rect)
+          } else {
+            Label("Add date", systemImage: "plus")
+              .frame(minHeight: 44)
+              .contentShape(.rect)
+          }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(theme.pageAction)
+        .accessibilityLabel(storedDate == nil
+          ? "Add \(label.lowercased()) date" : "Change \(label.lowercased()) date")
+        .accessibilityValue(value.flatMap { DetailDateOnly.formatted($0) } ?? "No date")
+        if storedDate != nil {
+          Button {
+            onChange(nil)
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+              .foregroundStyle(theme.pageSecondaryForeground)
+              .frame(width: 44, height: 44)
+              .contentShape(.rect)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Clear \(label.lowercased()) date")
+        }
+      }
+    }
+    .disabledWhileFormPresented(formDrawer, or: isDisabled)
+    .accessibilityIdentifier("detail.date.\(label.lowercased())")
+    .onChange(of: formDrawer.isPresenting) { _, isPresenting in
+      if isPresenting { isEditingDate = false }
+    }
+    .popover(isPresented: $isEditingDate) {
+      VStack(alignment: .leading, spacing: 16) {
+        Text("\(storedDate == nil ? "Add" : "Change") \(label.lowercased()) date")
+          .font(.headline)
+          .foregroundStyle(theme.foreground)
+        DatePicker(label, selection: $draftDate, displayedComponents: .date)
+          .datePickerStyle(.graphical)
+        HStack {
+          Button("Cancel") { isEditingDate = false }
+          Spacer()
+          Button("Save") {
+            guard !formDrawer.isPresenting, !isDisabled else { return }
+            isEditingDate = false
+            if storedDate.map({ DetailDateOnly.string(from: $0) })
+              != DetailDateOnly.string(from: draftDate)
+            {
+              onChange(draftDate)
+            }
+          }
+          .buttonStyle(.borderedProminent)
+          .disabledWhileFormPresented(formDrawer, or: isDisabled)
+        }
+      }
+      .padding()
+      .frame(maxWidth: 380)
+      .background(theme.card)
+      .presentationCompactAdaptation(.sheet)
+      .presentationDetents([.medium, .large])
+      .presentationDragIndicator(.visible)
+    }
+  }
+}
+
 struct DetailMetadataCard<Content: View>: View {
   @Environment(\.theme) private var theme
   let content: Content
@@ -223,14 +342,17 @@ struct DetailMetadataRow<Content: View>: View {
 
   let label: String
   let content: Content
+  private var combinesChildren = true
 
   init(label: String, value: String) where Content == Text {
     self.label = label
     content = Text(value)
   }
 
-  init(label: String, @ViewBuilder content: () -> Content) {
+  /// Rows holding several controls pass `combinesChildren: false` so each stays reachable.
+  init(label: String, combinesChildren: Bool = true, @ViewBuilder content: () -> Content) {
     self.label = label
+    self.combinesChildren = combinesChildren
     self.content = content()
   }
 
@@ -243,17 +365,16 @@ struct DetailMetadataRow<Content: View>: View {
             .foregroundStyle(theme.foreground)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        } else {
+      } else {
         LabeledContent {
           content
             .foregroundStyle(theme.foreground)
         } label: {
           labelView
         }
-        .accessibilityElement(children: .combine)
       }
     }
+    .accessibilityElement(children: combinesChildren ? .combine : .contain)
     .padding(.vertical, 10)
     .frame(minHeight: 44)
     .overlay(alignment: .bottom) {

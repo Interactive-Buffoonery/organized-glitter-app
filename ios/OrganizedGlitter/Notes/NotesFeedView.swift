@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Notes from every enabled craft, grouped by the date the maker chose.
 struct NotesFeedView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.locale) private var locale
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
@@ -127,6 +128,7 @@ struct NotesFeedView: View {
       }
       ToolbarItem(placement: .topBarTrailing) {
         Button("Add progress note", systemImage: "square.and.pencil", action: onAddNote)
+          .disabledWhileFormPresented(formDrawer)
           .disabled(availableCrafts.isEmpty)
           .accessibilityIdentifier("notes.add")
       }
@@ -222,6 +224,7 @@ struct NotesFeedView: View {
     } actions: {
       if year == nil, !NotesCraft.available(for: verticals).isEmpty {
         Button("Add a progress note", action: onAddNote)
+          .disabledWhileFormPresented(formDrawer)
           .buttonStyle(.borderedProminent)
           .tint(theme.primary)
       }

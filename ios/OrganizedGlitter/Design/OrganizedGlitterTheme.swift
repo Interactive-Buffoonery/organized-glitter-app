@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Observation
 
 extension Font {
   /// Caveat is the large-title face and the generated-cover title, never body
@@ -81,6 +82,60 @@ struct ThemedScrollBackground: ViewModifier {
 extension View {
   func themedScrollBackground() -> some View {
     modifier(ThemedScrollBackground())
+  }
+}
+
+@MainActor
+@Observable
+final class FormDrawer {
+  struct Route {
+    let id = UUID()
+    let detents: Set<PresentationDetent>
+    let content: AnyView
+    let onDismiss: () -> Void
+  }
+
+  var route: Route?
+  var isPresenting: Bool { route != nil }
+
+  @discardableResult
+  func present<Content: View>(
+    detents: Set<PresentationDetent>,
+    onDismiss: @escaping () -> Void = {},
+    @ViewBuilder content: () -> Content
+  ) -> Bool {
+    guard route == nil else { return false }
+    route = Route(detents: detents, content: AnyView(content()), onDismiss: onDismiss)
+    return true
+  }
+
+  func dismiss() {
+    let onDismiss = route?.onDismiss
+    route = nil
+    onDismiss?()
+  }
+
+}
+
+extension View {
+  func disabledWhileFormPresented(_ drawer: FormDrawer, or isDisabled: Bool = false) -> some View {
+    disabled(isDisabled || drawer.isPresenting)
+  }
+
+  func formDrawerHost(_ drawer: FormDrawer) -> some View {
+    inspector(isPresented: Binding(
+      get: { drawer.route != nil },
+      set: { if !$0 { drawer.dismiss() } }
+    )) {
+      if let route = drawer.route {
+        route.content
+          .id(route.id)
+          .inspectorColumnWidth(min: 320, ideal: 400, max: 480)
+          .presentationDetents(route.detents)
+          .presentationDragIndicator(.visible)
+      }
+    }
+    .environment(drawer)
   }
 }
 

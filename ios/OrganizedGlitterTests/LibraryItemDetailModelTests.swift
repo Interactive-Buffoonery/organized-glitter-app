@@ -38,6 +38,82 @@ struct LibraryItemDetailModelTests {
     try await library.close(removingData: false)
   }
 
+  @Test func pageStatusQueuesPlainStatusPatch() async throws {
+    let library = try localFeatureLibrary()
+    let page = featurePage("page", book: "book", number: 3)
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .page(page), library: library)
+    #expect(await model.setStatus("in_progress"))
+    #expect(model.statusSaveRevision == 1)
+    #expect(model.item.status == "in_progress")
+    let patch = try #require(await library.store.pendingOperations(scope: library.scope).last?.patch)
+    #expect(patch == ["status": .string("in_progress")])
+    try await library.close(removingData: false)
+  }
+
+  @Test func inlineDateEditsQueueDateOnlyStringsAndClear() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject(
+      "project", title: "Moon Garden", status: "completed", dateCompleted: "2026-09-01")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    let day = try #require(DetailDateOnly.date("2026-09-17"))
+
+    #expect(await model.setDate("date_completed", to: day))
+    guard case .diamond(let saved) = model.item else { Issue.record("Expected project"); return }
+    #expect(saved.dateCompleted?.hasPrefix("2026-09-17") == true)
+    var patch = try #require(await library.store.pendingOperations(scope: library.scope).last?.patch)
+    #expect(patch["date_completed"] == .string("2026-09-17"))
+    #expect(patch["status"] == nil)
+
+    #expect(await model.setDate("date_completed", to: nil))
+    guard case .diamond(let cleared) = model.item else { Issue.record("Expected project"); return }
+    #expect(cleared.dateCompleted?.nonEmpty == nil)
+    let first = try #require(await library.store.pendingOperations(scope: library.scope).first)
+    _ = try await library.store.acknowledge(
+      scope: library.scope, operationID: first.id,
+      record: .diamond(featureProject(
+        "project", title: "Moon Garden", status: "completed", dateCompleted: "2026-09-17")))
+    patch = try #require(await library.store.pendingOperations(scope: library.scope).first?.patch)
+    #expect(patch["date_completed"] == .string(""))
+    try await library.close(removingData: false)
+  }
+
+  @Test func inlineRenameAndSpecEditsSaveLocally() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(await model.updateFields(["title": "Sun Garden", "kit_category": "mini"]))
+    guard case .diamond(let saved) = model.item else { Issue.record("Expected project"); return }
+    #expect(saved.title == "Sun Garden")
+    #expect(saved.kitCategory == "mini")
+    #expect(!(await model.updateFields([:])))
+    try await library.close(removingData: false)
+  }
+
+  @Test func rejectedInlineEditKeepsSavedValueAndShowsError() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .diamond(project), library: library)
+    #expect(!(await model.updateFields(["total_pages": "100"])))
+    #expect(model.item.title == "Moon Garden")
+    #expect(model.editErrorMessage != nil)
+    #expect(model.statusSaveRevision == 0)
+    try await library.close(removingData: false)
+  }
+
+  @Test func dateOnlyStringUsesTheGivenTimeZone() throws {
+    let instant = try #require(ISO8601DateFormatter().date(from: "2026-09-18T02:30:00Z"))
+    #expect(DetailDateOnly.string(from: instant, timeZone: .gmt) == "2026-09-18")
+    let pacific = try #require(TimeZone(identifier: "America/Los_Angeles"))
+    #expect(DetailDateOnly.string(from: instant, timeZone: pacific) == "2026-09-17")
+    let day = try #require(DetailDateOnly.date("2026-03-08", timeZone: pacific))
+    #expect(DetailDateOnly.string(from: day, timeZone: pacific) == "2026-03-08")
+  }
+
   @Test(arguments: [false, true])
   func statusFeedbackRepeatsAfterEditorSave(isBook: Bool) async throws {
     let library = try localFeatureLibrary()
@@ -156,7 +232,7 @@ struct LibraryItemDetailModelTests {
     #expect(!model.isMutating)
     #expect(model.unresolvedWriteState == nil)
     #expect(model.mutationErrorMessage == nil)
-    #expect(model.statusErrorMessage == nil)
+    #expect(model.editErrorMessage == nil)
 
     await model.acceptSaved(.page(page))
     let photo = ProcessedDetailPhoto(

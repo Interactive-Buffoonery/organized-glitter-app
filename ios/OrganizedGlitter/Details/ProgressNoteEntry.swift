@@ -178,6 +178,7 @@ struct ProgressNoteEntry: View {
 }
 
 struct ProgressNotesSection: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -277,7 +278,8 @@ struct ProgressNotesSection: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(theme.pageAction)
-        .disabled(model.isMutating || model.unresolvedWriteState != nil)
+        .disabledWhileFormPresented(
+          formDrawer, or: model.isMutating || model.unresolvedWriteState != nil)
         .accessibilityIdentifier("detail.progress.addNote")
         NeedsConnectionHint()
       }
@@ -545,5 +547,38 @@ struct ProgressNoteEditor: View {
         processedPhoto == nil ? "Progress notes refreshed" : "Progress notes and photos refreshed"
       ).post()
     }
+  }
+}
+
+private struct ProgressNoteDrawer: ViewModifier {
+  @Environment(FormDrawer.self) private var formDrawer
+  @Binding var editor: LibraryItemDetailModel?
+  let onDismiss: () -> Void
+  let onCollectionChanged: @MainActor @Sendable (LibraryItemDetailModel) async -> Void
+
+  func body(content: Content) -> some View {
+    content.onChange(of: editor.map(ObjectIdentifier.init)) { _, _ in
+      guard let editor else { return }
+      let accepted = formDrawer.present(detents: [.medium, .large], onDismiss: {
+        self.editor = nil
+        onDismiss()
+      }) {
+        ProgressNoteEditor(model: editor, onCollectionChanged: {
+          await onCollectionChanged(editor)
+        })
+      }
+      if !accepted { self.editor = nil }
+    }
+  }
+}
+
+extension View {
+  func progressNoteDrawer(
+    editor: Binding<LibraryItemDetailModel?>,
+    onDismiss: @escaping () -> Void = {},
+    onCollectionChanged: @escaping @MainActor @Sendable (LibraryItemDetailModel) async -> Void
+  ) -> some View {
+    modifier(ProgressNoteDrawer(
+      editor: editor, onDismiss: onDismiss, onCollectionChanged: onCollectionChanged))
   }
 }
