@@ -87,10 +87,11 @@ deployed PocketBase hooks or configuration.
 
 Later production checks matched the deployed sync hook and migration byte for
 byte to backend source `a64da547c1adf0edd6eebf92e767711ad45aa50e` and
-passed authenticated API smoke checks. The native `BackendContract.json` now
-pins that reviewed source revision, PocketBase 0.40.4, and its verified schema
-digest. The deployment follow-up for backend PR #333 records those checks; it
-does not claim a byte-for-byte inventory of every deployed backend file.
+passed authenticated API smoke checks. Separately, commit `9088401` in merged
+native PR #20 updated `BackendContract.json` to pin that reviewed source,
+PocketBase 0.40.4, and its verified schema digest. The deployment follow-up for
+backend PR #333 records those checks; it does not claim a byte-for-byte
+inventory of every deployed backend file.
 
 ## Physical-device checklist
 

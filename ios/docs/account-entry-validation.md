@@ -180,5 +180,4 @@ Manual review: launch Debug with `-ui-testing-signed-out`.
 5. Account deletion remains a separate backend-first App Store blocker per
    `architecture.md`.
 
-The password-reset AASA, native link, web fallback, and backend contract pin
-were verified later. See `password-reset-links.md` for the results.
+For the later password-reset verification, see `password-reset-links.md`.
