@@ -21,7 +21,7 @@ struct LibrarySyncStatusView: View {
             }
           }
         }
-        .disabled(library.isSyncing || formDrawer.isPresenting)
+        .disabledWhileFormPresented(formDrawer, or: library.isSyncing)
       }
       .padding()
       .background(.regularMaterial)

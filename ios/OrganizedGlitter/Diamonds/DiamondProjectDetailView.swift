@@ -345,11 +345,7 @@ struct DiamondProjectDetailView: View {
   }
 
   private func save(_ write: @escaping @MainActor () async -> Bool) {
-    Task {
-      if await write() {
-        await onCollectionChanged()
-      }
-    }
+    saveDetailChange(write, onCollectionChanged: onCollectionChanged)
   }
 
   private var sourceURL: URL? {

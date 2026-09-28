@@ -46,8 +46,8 @@ struct LibraryView: View {
           detail(for: item)
         }
     }
-    .bookPageCountInspector(book: $pageCountBook, library: model.library) { _ in
-      Task { await model.load() }
+    .bookPageCountInspector(book: $pageCountBook, library: model.library) { saved in
+      model.acceptSavedBook(saved)
     }
     .task(id: model.listingIdentity) {
       path = []
@@ -325,7 +325,7 @@ struct LibraryView: View {
       }
       .buttonStyle(.borderedProminent)
       .foregroundStyle(theme.primaryForeground)
-      .disabled(formDrawer.isPresenting)
+      .disabledWhileFormPresented(formDrawer)
       .accessibilityIdentifier("library.first")
     }
   }
@@ -369,6 +369,7 @@ struct LibraryView: View {
       onCollectionChanged: { await model.load() },
       onEditPageCount: { pageCountBook = $0 }
     )
+    .environment(formDrawer)
   }
 
   private func selectSaved(_ item: LibraryItem) async {

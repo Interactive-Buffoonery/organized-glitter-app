@@ -113,6 +113,10 @@ final class FormDrawer {
 }
 
 extension View {
+  func disabledWhileFormPresented(_ drawer: FormDrawer, or isDisabled: Bool = false) -> some View {
+    disabled(isDisabled || drawer.isPresenting)
+  }
+
   func formDrawerHost(_ drawer: FormDrawer) -> some View {
     inspector(isPresented: Binding(
       get: { drawer.route != nil },

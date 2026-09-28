@@ -215,7 +215,8 @@ struct ColoringBookEditor: View {
   }
 }
 
-/// Page count alone. Online-only: the server regenerates pages from it.
+/// Page count alone. This must stay online because the server regenerates pages;
+/// unlike other inline edits, it cannot be queued as a local record update.
 struct ColoringBookPageCountEditor: View {
   let library: LibrarySession
   let book: ColoringBookRecord
@@ -249,7 +250,7 @@ struct ColoringBookPageCountEditor: View {
             Text("Total pages")
           } footer: {
             Text(
-              "Changing the total updates the generated pages after save. Pages above the new total are removed only if you never touched them."
+              "Connect to change the total. Saving updates the generated pages. Pages above the new total are removed only if you never touched them."
             )
           }
 
@@ -335,7 +336,7 @@ extension View {
   func bookPageCountInspector(
     book: Binding<ColoringBookRecord?>,
     library: LibrarySession,
-    onSaved: @escaping (ColoringBookRecord) -> Void
+    onSaved: @escaping (ColoringBookRecord) -> Void = { _ in }
   ) -> some View {
     modifier(BookPageCountInspector(book: book, library: library, onSaved: onSaved))
   }

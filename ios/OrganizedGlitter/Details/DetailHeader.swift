@@ -288,11 +288,14 @@ struct DetailInlineTitle: View {
         draft = value
         isEditing = true
       } label: {
-        Text(
-          "\(value.nonEmpty ?? placeholder) \(Text(Image(systemName: "pencil")).font(.body.weight(.semibold)).foregroundStyle(theme.pageAction))"
-        )
-        .font(.title2.bold())
-        .foregroundStyle(theme.foreground)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+          Text(value.nonEmpty ?? placeholder)
+            .font(.title2.bold())
+            .foregroundStyle(theme.foreground)
+          Image(systemName: "pencil")
+            .font(.body.weight(.semibold))
+            .foregroundStyle(theme.pageAction)
+        }
         .frame(minHeight: 44)
         .contentShape(.rect)
       }
@@ -310,10 +313,20 @@ struct DetailInlineTitle: View {
     isEditing = false
     let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
     guard trimmed != value, allowsEmpty || !trimmed.isEmpty else { return }
-    Task {
-      if await model.updateFields([field: trimmed]) {
-        await onCollectionChanged()
-      }
+    saveDetailChange(
+      { await model.updateFields([field: trimmed]) },
+      onCollectionChanged: onCollectionChanged)
+  }
+}
+
+@MainActor
+func saveDetailChange(
+  _ write: @escaping @MainActor () async -> Bool,
+  onCollectionChanged: @escaping @MainActor @Sendable () async -> Void
+) {
+  Task {
+    if await write() {
+      await onCollectionChanged()
     }
   }
 }

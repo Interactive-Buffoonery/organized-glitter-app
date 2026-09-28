@@ -154,6 +154,7 @@ final class OverviewModel {
 }
 
 struct OverviewView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
@@ -222,10 +223,9 @@ struct OverviewView: View {
         onCollectionChanged: { await model.load() },
         onEditPageCount: { pageCountBook = $0 }
       )
+      .environment(formDrawer)
     }
-    .bookPageCountInspector(book: $pageCountBook, library: model.library) { _ in
-      Task { await model.load() }
-    }
+    .bookPageCountInspector(book: $pageCountBook, library: model.library)
     .sheet(item: $logEditor, onDismiss: showLoggedItem) { editor in
       DiamondProgressNoteEditor(
         model: editor,
