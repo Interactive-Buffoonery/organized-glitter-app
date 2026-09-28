@@ -31,7 +31,7 @@ struct NoteTargetPicker: View {
     .presentationDragIndicator(.visible)
     .task {
       do { try await library.loadLocal() }
-      catch is CancellationError { }
+      catch is CancellationError, APIError.cancelled { }
       catch { loadMessage = "Projects and pages couldn’t load. Try again shortly." }
     }
   }
