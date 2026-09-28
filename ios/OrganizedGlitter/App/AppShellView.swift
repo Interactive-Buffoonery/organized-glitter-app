@@ -25,6 +25,7 @@ struct AppShellView: View {
   @State private var homeRevealedLoggedItemID: LibraryItem.ID?
   @State private var homeRefreshGeneration = 0
   @State private var isShowingAccount = false
+  @State private var isPickingNoteTarget = false
   @State private var libraryRefresh = LibraryRefresh()
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
@@ -59,6 +60,7 @@ struct AppShellView: View {
               libraryRequest = request
               selectedTab = sizeClass == .regular ? .craft(request.section) : .library
             },
+            onAddNote: { isPickingNoteTarget = true },
             onSessionExpired: { await model.expireSession() }
           )
           .toolbar {
@@ -73,7 +75,8 @@ struct AppShellView: View {
                 library: library,
                 verticals: accountPreferences.verticals,
                 onRefresh: { libraryRefresh.bump() },
-                onSaved: { _ in libraryRefresh.bump() }
+                onSaved: { _ in libraryRefresh.bump() },
+                onAddNote: { isPickingNoteTarget = true }
               )
             }
           }
@@ -131,6 +134,16 @@ struct AppShellView: View {
       }
     }
     .tabViewStyle(.sidebarAdaptable)
+    .inspector(isPresented: $isPickingNoteTarget) {
+      // Remove retained picker state when the inspector closes.
+      if isPickingNoteTarget {
+        NoteTargetPicker(
+          library: library,
+          verticals: accountPreferences.verticals,
+          onSaved: { libraryRefresh.bump() }
+        )
+      }
+    }
     .onChange(of: sizeClass) { _, sizeClass in
       switch (sizeClass, selectedTab) {
       case (.regular, .library):
@@ -185,6 +198,7 @@ struct AppShellView: View {
       libraryRefresh: libraryRefresh,
       verticals: accountPreferences.verticals,
       request: libraryRequest,
+      onAddNote: { isPickingNoteTarget = true },
       onSessionExpired: { await model.expireSession() }
     )
   }
