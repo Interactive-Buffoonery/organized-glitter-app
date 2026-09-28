@@ -7,6 +7,75 @@ import Testing
 @Suite(.serialized)
 struct AppModelTests {
   @Test
+  func appleSignInStartsAfterReadinessSucceeds() async throws {
+    AppleReadinessURLProtocol.status = 200
+    AppleReadinessURLProtocol.body = #"{"available":true}"#
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [AppleReadinessURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+
+    await model.loadSignInMethods()
+    #expect(model.appleReadiness == .available)
+    let request = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(request, sourceID: UUID())
+    #expect(request.state != nil)
+    #expect(request.nonce != nil)
+    #expect(model.isSubmitting)
+    model.cancelAppleSignIn()
+  }
+
+  @Test
+  func appleSignInStaysUnavailableUntilReadinessRetrySucceeds() async throws {
+    AppleReadinessURLProtocol.status = 200
+    AppleReadinessURLProtocol.body = #"{"available":false}"#
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [AppleReadinessURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+
+    await model.loadAppleReadiness()
+    #expect(model.appleReadiness == .unavailable)
+    let unavailableRequest = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(unavailableRequest, sourceID: UUID())
+    #expect(unavailableRequest.state == nil)
+    #expect(!model.isSubmitting)
+
+    AppleReadinessURLProtocol.status = 503
+    await model.loadAppleReadiness()
+    #expect(model.appleReadiness == .failed)
+    let failedRequest = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(failedRequest, sourceID: UUID())
+    #expect(failedRequest.state == nil)
+    #expect(!model.isSubmitting)
+
+    AppleReadinessURLProtocol.status = 200
+    AppleReadinessURLProtocol.body = #"{"available":true}"#
+    await model.loadAppleReadiness()
+    #expect(model.appleReadiness == .available)
+    let retryRequest = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(retryRequest, sourceID: UUID())
+    #expect(retryRequest.state != nil)
+    model.cancelAppleSignIn()
+  }
+
+  @Test
   func appleSignInOpensTheLocalLibrary() async throws {
     DelayedAuthenticationURLProtocol.reset()
     let store = KeychainSessionStore(
@@ -348,6 +417,30 @@ struct AppModelTests {
     #expect(model.phase == .signedOut)
     #expect(try store.load() == nil)
   }
+}
+
+private final class AppleReadinessURLProtocol: URLProtocol, @unchecked Sendable {
+  nonisolated(unsafe) static var status = 200
+  nonisolated(unsafe) static var body = #"{"available":true}"#
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+  override func startLoading() {
+    let isReadiness = request.url?.path == "/api/auth/apple/native/readiness"
+    let response = HTTPURLResponse(
+      url: request.url!,
+      statusCode: isReadiness ? Self.status : 200,
+      httpVersion: nil,
+      headerFields: ["Content-Type": "application/json"]
+    )!
+    let body = isReadiness ? Self.body : #"{"oauth2":{"enabled":false,"providers":[]}}"#
+    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+    client?.urlProtocol(self, didLoad: Data(body.utf8))
+    client?.urlProtocolDidFinishLoading(self)
+  }
+
+  override func stopLoading() {}
 }
 
 private final class DelayedAuthenticationURLProtocol: URLProtocol, @unchecked Sendable {

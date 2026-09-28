@@ -1,8 +1,10 @@
 # Social sign-in parity for iOS
 
-Updated: 2026-09-27. Status: Google/Discord enabled in Debug and Release for
-prelaunch testing; native Apple remains Debug-only. Backend deployment, native
-Apple configuration, device flows, and public-launch checks remain open.
+Updated: 2026-09-27. Status: Google, Discord, and readiness-gated native Apple
+are enabled in Debug and Release for prelaunch testing. The Apple backend routes
+and grant storage are deployed. Sarah confirmed Apple sign-in on a physical
+iPhone opened the same library as her existing web Apple account. Native-first
+identity continuity and the remaining public-launch checks are open.
 Implementation stack: `feat/social-oauth` -> `feat/social-apple`.
 Simulator evidence and remaining checks: [social-oauth-validation.md](social-oauth-validation.md).
 
@@ -77,10 +79,10 @@ Apple console settings, and device flows were not verified.
 - ADR-0007's statement that Apple was disabled on 2026-09-20 is historical,
   not current production evidence.
 - The native Apple client uses `GET /api/auth/apple/native/readiness` returning
-  `{ "available": Bool }` and guest-only `POST /api/auth/apple/native`. Its
-  button remains Debug-only until the backend is deployed and verified.
+  `{ "available": Bool }` and guest-only `POST /api/auth/apple/native`. The
+  button appears in Debug and Release only when readiness succeeds.
 - PR #5 owns session-publication ordering. The implementation stack is
-  PR #5 -> PR #16 (Google/Discord) -> PR #18 (native Apple Debug client).
+  PR #5 -> PR #16 (Google/Discord) -> PR #18 (native Apple client).
 - Do not infer web/native Apple identity continuity solely from console setup.
   Verify the resulting PocketBase record is identical in both directions.
 
@@ -294,7 +296,9 @@ session persistence failure; and provider-button UI using stubbed responses.
 
 ## Phase 3: native Apple on iOS
 
-The native Apple client implementation is present behind `#if DEBUG`. Before Release:
+The native Apple client is available in Debug and Release when the deployed
+readiness endpoint reports availability. Implementation requirements and
+remaining checks before a public release:
 
 - Verify the existing Sign in with Apple entitlement in signed device builds.
 - Use `SignInWithAppleButton`, requesting full name and email. Generate a fresh
@@ -308,11 +312,15 @@ The native Apple client implementation is present behind `#if DEBUG`. Before Rel
 - Place Apple first when native Apple is available. Do not infer its availability
   from Google/Discord. Define the UI behavior for readiness-fetch failure and
   mid-attempt provider disabling, while retaining email access.
-- Pin the verified backend revision once as part of native integration, including
-  the route and readiness-response contract.
+- Pin the verified backend revision after backend PR #332 merges, including
+  the route and readiness-response contract. The deployed routes alone do not
+  establish an immutable source revision for the contract pin.
 
-Google/Discord are enabled in Release builds for owner prelaunch testing.
-Complete native Apple sign-in support before the planned public App Store launch.
+Google, Discord, and Apple controls are enabled in Release builds for owner
+prelaunch testing. The signed Release build completed web-first Apple sign-in
+on Sarah's physical iPhone and opened the matching existing library. Verify
+native-first identity continuity and the remaining device cases before the
+planned public App Store launch.
 Confirm the current App Store login-service requirements at release review;
 the release gate is an operational provider test, not merely a visible button.
 

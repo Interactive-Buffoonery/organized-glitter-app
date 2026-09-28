@@ -4,7 +4,8 @@ Updated: 2026-09-27. Branch: `feat/social-oauth`, rebased onto `main` after PR #
 Google and Discord controls are enabled in both Debug and Release builds for
 prelaunch testing, including TestFlight. The backend must advertise a provider
 before its button appears. Automated-test fixtures remain Debug-only.
-Native Apple and the public-launch checks in `social-sign-in-plan.md` remain
+Native Apple now uses the same Release method screen behind its own backend
+readiness check. The public-launch checks in `social-sign-in-plan.md` remain
 separate work; enabling Release controls does not establish those checks passed.
 
 ## Direct HTTPS callback revision
@@ -114,7 +115,6 @@ Discord sign-in succeeded on the physical iPad using development association.
 Normal CDN association, Google login, web/iOS record continuity, Keychain write
 failure recovery, broader iPad presentation behavior,
 and physical-device app switching and network-loss behavior remain unverified. Those checks remain
-open, along with native Apple Release support and device integration (the Debug
-client exists), backend grant/deletion work, deployed
+open, along with native Apple remaining device cases, backend grant/deletion work, deployed
 revision verification, and the wider release gates in the plan. The simulator
 provider exercise covered presentation, cancellation, and retry only.
