@@ -8,16 +8,19 @@ struct LibraryItemDetailDestination: View {
   @State private var editor: DetailEditor?
   @State private var isConfirmingDelete = false
   @State private var deleteErrorMessage: String?
+  @Binding private var logEditor: LibraryItemDetailModel?
 
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   init(
     item: LibraryItem,
     library: LibrarySession,
+    logEditor: Binding<LibraryItemDetailModel?>,
     onCollectionChanged: @escaping @MainActor @Sendable () async -> Void
   ) {
     _model = State(
       initialValue: LibraryItemDetailModel(item: item, library: library))
+    _logEditor = logEditor
     self.onCollectionChanged = onCollectionChanged
   }
 
@@ -28,6 +31,7 @@ struct LibraryItemDetailDestination: View {
         DiamondProjectDetailView(
           project: project,
           model: model,
+          logEditor: $logEditor,
           onCollectionChanged: onCollectionChanged
         )
         .accessibilityIdentifier("detail.diamond")
@@ -35,6 +39,7 @@ struct LibraryItemDetailDestination: View {
         ColoringBookDetailView(
           book: book,
           model: model,
+          logEditor: $logEditor,
           onEditPageCount: { editor = .book(book) },
           onCollectionChanged: onCollectionChanged
         )
@@ -43,6 +48,7 @@ struct LibraryItemDetailDestination: View {
         ColoringPageDetailView(
           page: page,
           model: model,
+          logEditor: $logEditor,
           onCollectionChanged: onCollectionChanged
         )
         .accessibilityIdentifier("detail.page")

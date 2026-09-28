@@ -8,6 +8,7 @@ struct ColoringBookDetailView: View {
 
   let book: ColoringBookRecord
   let model: LibraryItemDetailModel
+  @Binding var logEditor: LibraryItemDetailModel?
   let onEditPageCount: () -> Void
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
@@ -42,6 +43,7 @@ struct ColoringBookDetailView: View {
                 LibraryItemDetailDestination(
                   item: .page(page),
                   library: model.library,
+                  logEditor: $logEditor,
                   onCollectionChanged: {
                     model.needsBookPageRefresh = true
                     await onCollectionChanged()
