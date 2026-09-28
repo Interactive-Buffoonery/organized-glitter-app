@@ -1,9 +1,12 @@
+import AuthenticationServices
 import SwiftUI
 
 /// Method choice before the email form.
 struct AccountMethodView: View {
   @Environment(\.theme) private var theme
+  @Environment(\.colorScheme) private var colorScheme
   @State private var presentationAnchor: UIWindow?
+  @State private var appleSourceID = UUID()
 
   enum Mode: Hashable {
     case signIn
@@ -62,6 +65,10 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("accountMethodTitle")
 
         VStack(spacing: 12) {
+          if model.appleReadiness == .available {
+            appleButton
+          }
+
           NavigationLink(value: mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister) {
             Label(mode.emailDestinationTitle, systemImage: "envelope")
               .labelStyle(.titleAndIcon)
@@ -70,6 +77,17 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("continueWithEmail")
           .disabled(model.client == nil)
 
+          if model.appleReadiness == .failed {
+            Button("Check Apple sign-in again") {
+              Task { await model.loadSignInMethods() }
+            }
+            .buttonStyle(AuthLinkButtonStyle())
+            .accessibilityIdentifier("retryAppleReadiness")
+          }
+          if let error = model.appleError {
+            AccessibleErrorLabel(message: error)
+              .accessibilityIdentifier("appleSignInError")
+          }
           ForEach(model.socialProviders, id: \.self) { provider in
             Button {
               guard let presentationAnchor else { return }
@@ -115,8 +133,26 @@ struct AccountMethodView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .task { await model.loadSocialProviders() }
-    .onDisappear { model.cancelOAuth() }
+    .task { await model.loadSignInMethods() }
+    .onDisappear {
+      model.cancelOAuth()
+      model.cancelAppleSignIn()
+      appleSourceID = UUID()
+    }
+  }
+
+  private var appleButton: some View {
+    let sourceID = appleSourceID
+    return SignInWithAppleButton(.continue) { request in
+      model.configureAppleRequest(request, sourceID: sourceID)
+    } onCompletion: { result in
+      model.completeAppleAuthorization(AppleAuthorizationOutcome(result), sourceID: sourceID)
+    }
+    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+    .frame(maxWidth: .infinity, minHeight: 52)
+    .disabled(model.isSubmitting)
+    .accessibilityIdentifier("continueWithApple")
+    .id(sourceID)
   }
 }
 
