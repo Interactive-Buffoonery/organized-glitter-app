@@ -292,7 +292,7 @@ struct OverviewView: View {
 
   private var notesShortcut: some View {
     let latest = NotesFeed.filter(
-      model.latestNotes, craft: .all.visible(for: verticals), year: nil).first
+      model.latestNotes, craft: .all, year: nil, verticals: verticals).first
 
     return NavigationLink {
       NotesFeedView(library: model.library, verticals: verticals, onAddNote: onAddNote)

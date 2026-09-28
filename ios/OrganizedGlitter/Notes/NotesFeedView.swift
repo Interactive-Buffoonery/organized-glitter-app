@@ -20,13 +20,14 @@ struct NotesFeedView: View {
   @State private var photos: [DetailPhoto] = []
 
   var body: some View {
-    let visibleCraft = craft.visible(for: verticals)
+    let availableCrafts = NotesCraft.available(for: verticals)
+    let visibleCraft = craft.resolved(for: verticals)
 
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 20) {
-        if verticals.diamondPainting && verticals.coloringBooks {
+        if availableCrafts.count > 1 {
           Picker("Craft", selection: $craft) {
-            ForEach(NotesCraft.allCases) { Text($0.title).tag($0) }
+            ForEach(availableCrafts) { Text($0.title).tag($0) }
           }
           .pickerStyle(.segmented)
           .accessibilityIdentifier("notes.craft")
@@ -126,13 +127,20 @@ struct NotesFeedView: View {
       }
       ToolbarItem(placement: .topBarTrailing) {
         Button("Add progress note", systemImage: "square.and.pencil", action: onAddNote)
-          .disabled(!verticals.hasEnabledVertical)
+          .disabled(availableCrafts.isEmpty)
           .accessibilityIdentifier("notes.add")
       }
     }
     .onChange(of: craft) { _, _ in year = nil; updateVisible() }
     .onChange(of: year) { _, _ in updateVisible() }
-    .onChange(of: verticals) { _, _ in updateVisible() }
+    .onChange(of: verticals) { _, _ in
+      let selected = craft.resolved(for: verticals) ?? .all
+      if selected != craft {
+        craft = selected
+        year = nil
+      }
+      updateVisible()
+    }
     .onChange(of: protectedFiles?.token) { _, _ in updatePhotos() }
     .onChange(of: locale) { _, _ in updateVisible() }
     .onChange(of: timeZone) { _, _ in updatePhotos() }
@@ -155,11 +163,12 @@ struct NotesFeedView: View {
 
   private func updateVisible() {
     let craftEntries = NotesFeed.filter(
-      allEntries, craft: craft.visible(for: verticals), year: nil)
+      allEntries, craft: craft, year: nil, verticals: verticals)
     let availableYears = NotesFeed.years(in: craftEntries)
     years = availableYears
-    if let year, !availableYears.contains(year) { self.year = nil }
-    let visibleEntries = NotesFeed.filter(craftEntries, craft: .all, year: year)
+    let selectedYear = year.flatMap { availableYears.contains($0) ? $0 : nil }
+    if selectedYear != year { year = selectedYear }
+    let visibleEntries = craftEntries.filter { selectedYear == nil || $0.year == selectedYear }
     sections = NotesFeed.months(visibleEntries).map {
       NotesFeedSection(id: $0.id, title: $0.title(locale: locale), entries: $0.entries)
     }
@@ -199,8 +208,9 @@ struct NotesFeedView: View {
     }
   }
 
-  private func emptyState(craft: NotesCraft) -> some View {
+  private func emptyState(craft: NotesCraft?) -> some View {
     let description = switch craft {
+    case nil: "Enable a craft in account settings to start logging progress."
     case .all: "Add a progress note to a diamond painting or coloring page, and it will show up here."
     case .diamond: "Add a progress note to a diamond painting, and it will show up here."
     case .coloring: "Add a progress note to a coloring page, and it will show up here."
@@ -210,7 +220,7 @@ struct NotesFeedView: View {
     } description: {
       Text(year.map { "No notes from \($0)." } ?? description)
     } actions: {
-      if year == nil, verticals.hasEnabledVertical {
+      if year == nil, !NotesCraft.available(for: verticals).isEmpty {
         Button("Add a progress note", action: onAddNote)
           .buttonStyle(.borderedProminent)
           .tint(theme.primary)
