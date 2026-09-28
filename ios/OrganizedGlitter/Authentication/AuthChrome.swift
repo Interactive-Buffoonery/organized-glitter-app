@@ -41,33 +41,45 @@ struct BrandWordmark: View {
   }
 }
 
-/// Quiet primary action for account entry: full-width, no sticker chrome.
-/// Light uses the soft secondary wash; dark uses the elevated card fill so the
-/// control stays readable over the navy glow without a loud brand pill.
+/// Bounded primary action shared by welcome, forms, and recovery screens.
 struct AuthPrimaryButtonStyle: ButtonStyle {
   @Environment(\.theme) private var theme
-  @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.isEnabled) private var isEnabled
 
   func makeBody(configuration: Configuration) -> some View {
-    let fill: Color = {
-      if colorScheme == .dark {
-        return configuration.isPressed ? theme.muted : theme.card
-      }
-      return configuration.isPressed ? theme.muted : theme.secondary
-    }()
-
     configuration.label
       .font(.body.weight(.semibold))
-      .foregroundStyle(theme.foreground)
-      .frame(maxWidth: .infinity, minHeight: AccountEntryLayout.primaryButtonHeight)
-      .padding(.horizontal, 18)
-      .background(fill, in: .rect(cornerRadius: 16))
+      .multilineTextAlignment(.center)
+      .foregroundStyle(theme.primaryForeground)
+      .tint(theme.primaryForeground)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 12)
+      .frame(
+        maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 280,
+        minHeight: AccountEntryLayout.primaryButtonHeight
+      )
+      .background(theme.primary, in: .rect(cornerRadius: 12))
+      .opacity(!isEnabled ? 0.5 : (configuration.isPressed ? 0.8 : 1))
+      .frame(maxWidth: .infinity)
+  }
+}
+
+struct AuthSubmitLabel: View {
+  let title: String
+  let isSubmitting: Bool
+
+  var body: some View {
+    Text(title)
+      .opacity(isSubmitting ? 0 : 1)
       .overlay {
-        RoundedRectangle(cornerRadius: 16)
-          .stroke(theme.border, lineWidth: 1)
+        if isSubmitting {
+          ProgressView()
+            .accessibilityHidden(true)
+        }
       }
-      .opacity(isEnabled ? 1 : 0.5)
+      .accessibilityLabel(title)
+      .accessibilityValue(isSubmitting ? "In progress" : "")
   }
 }
 
@@ -93,7 +105,6 @@ struct AuthLinkButtonStyle: ButtonStyle {
     configuration.label
       .font(.subheadline.weight(.medium))
       .foregroundStyle(theme.primary)
-      .underline(true, color: theme.primary)
       .opacity(configuration.isPressed ? 0.6 : 1)
       .frame(minHeight: 44)
   }
@@ -129,6 +140,7 @@ struct AuthEntryContainer<Content: View>: View {
   @Environment(\.theme) private var theme
 
   var alignment: HorizontalAlignment = .center
+  var contentWidth: CGFloat = 360
   var fillsHeight: Bool = false
   /// Paints the flat launch color over the themed background.
   var coversBackground: Bool = false
@@ -138,7 +150,7 @@ struct AuthEntryContainer<Content: View>: View {
     GeometryReader { proxy in
       ScrollView {
         content
-          .frame(maxWidth: 420, alignment: Alignment(horizontal: alignment, vertical: .center))
+          .frame(maxWidth: contentWidth, alignment: Alignment(horizontal: alignment, vertical: .center))
           .padding(.horizontal, 28)
           .padding(.top, AccountEntryLayout.topPadding)
           .padding(.bottom, AccountEntryLayout.bottomPadding)

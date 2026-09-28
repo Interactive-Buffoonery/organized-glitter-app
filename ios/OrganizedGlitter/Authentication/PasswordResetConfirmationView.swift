@@ -149,12 +149,7 @@ struct PasswordResetConfirmationView: View {
     Button {
       startConfirmation()
     } label: {
-      if isSubmitting {
-        ProgressView()
-          .frame(maxWidth: .infinity, minHeight: 52)
-      } else {
-        Text("Reset password")
-      }
+      AuthSubmitLabel(title: "Reset password", isSubmitting: isSubmitting)
     }
     .buttonStyle(AuthPrimaryButtonStyle())
     .disabled(isSubmitting || password.isEmpty || passwordConfirmation.isEmpty)

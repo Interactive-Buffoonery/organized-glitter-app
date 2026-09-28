@@ -74,6 +74,13 @@ support@organizedglitter.app
 The bundled Caveat font is not covered by this brand notice. It is distributed
 under the SIL Open Font License included with the font.
 
+## Sign-in provider marks
+
+`GoogleSignIn.imageset` and `DiscordSignIn.imageset` contain third-party marks,
+not Apache-2.0 artwork or Organized Glitter branding. They identify the matching
+sign-in providers. Their owners retain all rights. Sources and usage guidance
+are recorded in [auth presentation](ios/docs/auth-presentation.md).
+
 ## Ownership
 
 Organized Glitter branding and official artwork are copyright © 2026
