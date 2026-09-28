@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 @testable import OrganizedGlitter
 
 struct RemoteArtworkTests {
+  #if DEBUG
   @Test
   func fixtureRunUsesFixtureTransportAndDecodesArtwork() async throws {
     let session = RemoteArtworkLoader.sessionForDebugRun(isFixtureRun: true)
@@ -25,6 +26,7 @@ struct RemoteArtworkTests {
     #expect(image.height > 0)
     #expect(max(image.width, image.height) <= 660)
   }
+  #endif
 
   @Test
   func concurrentAndRepeatedLoadsReuseOneFetch() async throws {
