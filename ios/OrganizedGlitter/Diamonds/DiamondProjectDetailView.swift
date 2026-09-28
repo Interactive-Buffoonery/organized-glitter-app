@@ -296,17 +296,24 @@ struct DiamondProjectDetailView: View {
         title: "Drill", value: drill?.capitalized ?? "Not set", caption: kit,
         accessibilityValue: "\(drill ?? "Not set"), \(kit)",
         choices: [
-          DetailSpecChoice(
+          DetailSpec.Choice(
             title: "Drill shape",
-            options: [("", "Not set"), ("round", "Round"), ("square", "Square")],
+            options: [
+              .init(value: "", label: "Not set"),
+              .init(value: "round", label: "Round"),
+              .init(value: "square", label: "Square"),
+            ],
             selection: drill ?? ""
           ) { value in
             guard value != (drill ?? "") else { return }
             save { await model.updateFields(["drill_shape": value]) }
           },
-          DetailSpecChoice(
+          DetailSpec.Choice(
             title: "Kit",
-            options: [("full", "Full size"), ("mini", "Mini")],
+            options: [
+              .init(value: "full", label: "Full size"),
+              .init(value: "mini", label: "Mini"),
+            ],
             selection: project.kitCategory
           ) { value in
             guard value != project.kitCategory else { return }

@@ -125,21 +125,24 @@ struct DetailStatusRecovery: View {
 }
 
 struct DetailSpec: Identifiable {
+  struct Choice {
+    struct Option {
+      let value: String
+      let label: String
+    }
+
+    let title: String
+    let options: [Option]
+    let selection: String
+    let onSelect: (String) -> Void
+  }
+
   let title: String
   let value: String
   let caption: String?
   let accessibilityValue: String
   /// Non-empty makes the cell a menu of inline pickers, like the status menu.
-  var choices: [DetailSpecChoice] = []
-
-  var id: String { title }
-}
-
-struct DetailSpecChoice: Identifiable {
-  let title: String
-  let options: [(value: String, label: String)]
-  let selection: String
-  let onSelect: (String) -> Void
+  var choices: [Choice] = []
 
   var id: String { title }
 }
@@ -162,8 +165,7 @@ struct DetailSpecStrip: View {
           } else {
             DetailMetadataRow(label: spec.title.capitalized, combinesChildren: false) {
               choiceMenu(spec) {
-                Label(value, systemImage: "chevron.up.chevron.down")
-                  .labelStyle(.titleAndIcon)
+                valueLabel(value, isEditable: true)
                   .foregroundStyle(theme.pageAction)
               }
             }
@@ -197,16 +199,9 @@ struct DetailSpecStrip: View {
       Text(spec.title.uppercased())
         .font(.caption2.weight(.medium))
         .foregroundStyle(theme.pageSecondaryForeground)
-      HStack(spacing: 3) {
-        Text(spec.value)
-          .font(.headline)
-          .foregroundStyle(theme.foreground)
-        if !spec.choices.isEmpty {
-          Image(systemName: "chevron.down")
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(theme.pageAction)
-        }
-      }
+      valueLabel(spec.value, isEditable: !spec.choices.isEmpty)
+        .font(.headline)
+        .foregroundStyle(theme.foreground)
       if let caption = spec.caption {
         Text(caption)
           .font(.caption2)
@@ -222,11 +217,23 @@ struct DetailSpecStrip: View {
     .accessibilityValue(spec.accessibilityValue)
   }
 
+  private func valueLabel(_ value: String, isEditable: Bool) -> some View {
+    HStack(spacing: 3) {
+      Text(value)
+      if isEditable {
+        Image(systemName: "chevron.down")
+          .font(.caption2.weight(.bold))
+          .foregroundStyle(theme.pageAction)
+          .accessibilityHidden(true)
+      }
+    }
+  }
+
   private func choiceMenu<Label: View>(
     _ spec: DetailSpec, @ViewBuilder label: () -> Label
   ) -> some View {
     Menu {
-      ForEach(spec.choices) { choice in
+      ForEach(spec.choices, id: \.title) { choice in
         Picker(
           choice.title,
           selection: Binding(get: { choice.selection }, set: { choice.onSelect($0) })
