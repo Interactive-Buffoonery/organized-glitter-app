@@ -8,16 +8,22 @@ struct CreateMenu: View {
   let verticals: VerticalPreferences
   let onRefresh: () async -> Void
   let onSaved: (LibraryItem) -> Void
+  let onAddNote: () -> Void
 
   var body: some View {
     Menu {
+      NeedsConnectionHint()
       if verticals.diamondPainting {
-        Button("Diamond painting project", systemImage: "diamond") { present(.diamond) }
+        Button("Diamond painting project", systemImage: LibrarySection.diamonds.systemImage) { present(.diamond) }
           .accessibilityIdentifier("create.diamond")
       }
       if verticals.coloringBooks {
-        Button("Coloring book", systemImage: "books.vertical") { present(.book) }
+        Button("Coloring book", systemImage: LibrarySection.books.systemImage) { present(.book) }
           .accessibilityIdentifier("create.book")
+      }
+      if verticals.hasEnabledVertical {
+        Button("Progress note", systemImage: "square.and.pencil", action: onAddNote)
+          .accessibilityIdentifier("create.note")
       }
     } label: {
       Label("Create", systemImage: "plus")

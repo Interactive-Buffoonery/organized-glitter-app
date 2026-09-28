@@ -3,6 +3,7 @@ import SwiftUI
 struct AccountView: View {
   @Environment(ThemeStore.self) private var themeStore
   @Environment(\.theme) private var theme
+  @Environment(\.connectionAvailable) private var connectionAvailable
 
   let appModel: AppModel
   let client: PocketBaseClient
@@ -11,6 +12,12 @@ struct AccountView: View {
   var body: some View {
     List {
       Group {
+        if !connectionAvailable {
+          Section {
+            NeedsConnectionHint()
+          }
+        }
+
         Section("Profile") {
           NavigationLink {
             ProfileNameView(preferences: preferences)

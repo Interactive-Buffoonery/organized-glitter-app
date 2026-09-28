@@ -4,9 +4,11 @@ struct LibraryItemDetailDestination: View {
   @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
+  @Environment(\.connectionAvailable) private var connectionAvailable
   @State private var model: LibraryItemDetailModel
   @State private var isConfirmingDelete = false
   @State private var deleteErrorMessage: String?
+  @Binding private var logEditor: LibraryItemDetailModel?
 
   let onCollectionChanged: @MainActor @Sendable () async -> Void
   let onEditPageCount: ((ColoringBookRecord) -> Void)?
@@ -14,11 +16,13 @@ struct LibraryItemDetailDestination: View {
   init(
     item: LibraryItem,
     library: LibrarySession,
+    logEditor: Binding<LibraryItemDetailModel?>,
     onCollectionChanged: @escaping @MainActor @Sendable () async -> Void,
     onEditPageCount: ((ColoringBookRecord) -> Void)? = nil
   ) {
     _model = State(
       initialValue: LibraryItemDetailModel(item: item, library: library))
+    _logEditor = logEditor
     self.onCollectionChanged = onCollectionChanged
     self.onEditPageCount = onEditPageCount
   }
@@ -30,6 +34,7 @@ struct LibraryItemDetailDestination: View {
         DiamondProjectDetailView(
           project: project,
           model: model,
+          logEditor: $logEditor,
           onCollectionChanged: onCollectionChanged
         )
         .accessibilityIdentifier("detail.diamond")
@@ -37,6 +42,7 @@ struct LibraryItemDetailDestination: View {
         ColoringBookDetailView(
           book: book,
           model: model,
+          logEditor: $logEditor,
           onEditPageCount: { onEditPageCount?(book) },
           onCollectionChanged: onCollectionChanged
         )
@@ -45,6 +51,7 @@ struct LibraryItemDetailDestination: View {
         ColoringPageDetailView(
           page: page,
           model: model,
+          logEditor: $logEditor,
           onCollectionChanged: onCollectionChanged
         )
         .accessibilityIdentifier("detail.page")
@@ -68,6 +75,7 @@ struct LibraryItemDetailDestination: View {
 
         if model.item.canDeleteFromDetail {
           Menu {
+            NeedsConnectionHint()
             Button(model.item.deleteLabel, role: .destructive) {
               isConfirmingDelete = true
             }
@@ -117,7 +125,8 @@ struct LibraryItemDetailDestination: View {
       }
       Button("Cancel", role: .cancel) {}
     } message: {
-      Text(model.item.deleteMessage)
+      Text(model.item.deleteMessage
+        + (connectionAvailable ? "" : " " + APIError.deleteNeedsConnectionMessage))
     }
     .alert(
       "Couldn’t delete item",

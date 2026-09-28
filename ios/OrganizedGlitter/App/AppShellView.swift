@@ -19,11 +19,17 @@ struct AppShellView: View {
   @Environment(\.horizontalSizeClass) private var sizeClass
 
   @State private var selectedTab: AppTab = .home
+  @State private var homePath: [LibraryItem] = []
+  @State private var homeLogEditor: LibraryItemDetailModel?
+  @State private var homePendingLoggedItemID: LibraryItem.ID?
+  @State private var homeRevealedLoggedItemID: LibraryItem.ID?
+  @State private var homeRefreshGeneration = 0
   @State private var isShowingAccount = false
   @State private var libraryRefresh = LibraryRefresh()
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
   @State private var protectedFiles: ProtectedFileAccess
+  @State private var connectivity = Connectivity()
   @State private var lastAnnouncedSyncMessage: String?
   @State private var formDrawer = FormDrawer()
 
@@ -44,13 +50,17 @@ struct AppShellView: View {
   var body: some View {
     TabView(selection: $selectedTab) {
       Tab("Home", systemImage: "house", value: .home) {
-        tabContent(NavigationStack {
+        tabContent(NavigationStack(path: $homePath) {
           OverviewView(
             library: library, verticals: accountPreferences.verticals,
+            logEditor: $homeLogEditor,
+            loggedItemID: homeRevealedLoggedItemID,
+            refreshGeneration: homeRefreshGeneration,
             onLibraryRequest: { request in
               libraryRequest = request
               selectedTab = sizeClass == .regular ? .craft(request.section) : .library
             },
+            onAddNote: presentNoteTargetPicker,
             onSessionExpired: { await model.expireSession() }
           )
           .toolbar {
@@ -65,10 +75,24 @@ struct AppShellView: View {
                 library: library,
                 verticals: accountPreferences.verticals,
                 onRefresh: { libraryRefresh.bump() },
-                onSaved: { _ in libraryRefresh.bump() }
+                onSaved: { _ in libraryRefresh.bump() },
+                onAddNote: presentNoteTargetPicker
               )
             }
           }
+        }
+        .progressNoteDrawer(editor: $homeLogEditor, onDismiss: {
+          homeRevealedLoggedItemID = homePendingLoggedItemID
+          homePendingLoggedItemID = nil
+        }) { editor in
+          if editor.lastAddedProgressNoteID != nil {
+            homePendingLoggedItemID = editor.item.id
+          } else {
+            homeRefreshGeneration += 1
+          }
+        }
+        .onChange(of: homeLogEditor == nil) { _, isDismissed in
+          if !isDismissed { homeRevealedLoggedItemID = nil }
         })
       }
 
@@ -84,7 +108,7 @@ struct AppShellView: View {
           }
         }
       } else {
-        Tab("Library", systemImage: "books.vertical", value: .library) {
+        Tab("Library", systemImage: "rectangle.grid.2x2", value: .library) {
           tabContent(library(.browse))
         }
       }
@@ -126,10 +150,12 @@ struct AppShellView: View {
     .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
+    .environment(\.connectionAvailable, connectivity.connectionAvailable)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
     .task { try? await library.refresh() }
     .task { await library.monitorConnectivity() }
+    .task { await connectivity.monitor() }
     .sheet(isPresented: $isShowingAccount) {
       NavigationStack {
         AccountView(appModel: model, client: client, preferences: accountPreferences)
@@ -142,6 +168,15 @@ struct AppShellView: View {
     }
   }
 
+  private func presentNoteTargetPicker() {
+    formDrawer.present(detents: [.medium, .large]) {
+      NoteTargetPicker(
+        library: library,
+        verticals: accountPreferences.verticals,
+        onSaved: { libraryRefresh.bump() })
+    }
+  }
+
   private func library(_ presentation: LibraryPresentation) -> some View {
     LibraryView(
       library: library,
@@ -149,6 +184,7 @@ struct AppShellView: View {
       libraryRefresh: libraryRefresh,
       verticals: accountPreferences.verticals,
       request: libraryRequest,
+      onAddNote: presentNoteTargetPicker,
       onSessionExpired: { await model.expireSession() }
     )
   }

@@ -31,6 +31,30 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
     XCTAssertTrue(app.navigationBars["Edit Coloring Book"].waitForExistence(timeout: 5))
   }
 
+  func testProgressNoteDrawerPreservesDetailAndReleasesPresentation() {
+    let app = launchFixture()
+    openLibrary(app)
+    openCard(named: "Yorkie & Roses", in: app)
+    let addNote = button("detail.progress.addNote", in: app)
+    makeHittable(addNote, in: app)
+    addNote.tap()
+    let editor = app.navigationBars["Log progress"]
+    XCTAssertTrue(editor.waitForExistence(timeout: 5))
+    let edit = button("detail.edit", in: app)
+    if edit.exists { XCTAssertFalse(edit.isEnabled) }
+    editor.buttons["Cancel"].tap()
+    XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+    XCTAssertTrue(element("detail.diamond", in: app).exists)
+    XCTAssertTrue(addNote.isEnabled)
+
+    addNote.tap()
+    XCTAssertTrue(editor.waitForExistence(timeout: 5))
+    editor.buttons["Cancel"].tap()
+    XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+    edit.tap()
+    XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
+  }
+
   func testCapturesLowerDetailLayoutsAtAccessibilityXXXL() throws {
     guard ProcessInfo.processInfo.environment["RUN_REFINEMENT_AX_CAPTURE"] == "1" else {
       throw XCTSkip(
@@ -43,7 +67,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
     openCard(named: "Yorkie & Roses", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
-    let addProgressPhoto = button("detail.diamond.addNote", in: app)
+    let addProgressPhoto = button("detail.progress.addNote", in: app)
     makeHittable(addProgressPhoto, in: app)
     XCTAssertTrue(app.staticTexts["Progress"].exists)
     try capture("refinement-ax-01-diamond-lower")

@@ -10,6 +10,7 @@ struct ColoringPageDetailView: View {
 
   let page: ColoringPageRecord
   let model: LibraryItemDetailModel
+  @Binding var logEditor: LibraryItemDetailModel?
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   @State private var selectedItem: PhotosPickerItem?
@@ -22,171 +23,179 @@ struct ColoringPageDetailView: View {
     let startedDate = formattedDate(page.startedAt)
     let completedDate = formattedDate(page.completedAt)
 
-    ScrollView {
-      LazyVStack(alignment: .leading, spacing: 18) {
-        CoverArtwork(
-          item: .page(page),
-          url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery),
-          maxPixelDimension: 1_200,
-          loadedAccessibilityLabel: "Page artwork"
-        )
-        .frame(maxWidth: .infinity, maxHeight: heroHeight)
-        .accessibilityIdentifier("detail.hero")
+    ScrollViewReader { proxy in
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 18) {
+          CoverArtwork(
+            item: .page(page),
+            url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery),
+            maxPixelDimension: 1_200,
+            loadedAccessibilityLabel: "Page artwork"
+          )
+          .frame(maxWidth: .infinity, maxHeight: heroHeight)
+          .photoViewer(opening: coverPhoto)
+          .accessibilityIdentifier("detail.hero")
 
-        VStack(alignment: .leading, spacing: 6) {
-          DetailInlineTitle(
-            value: page.revealedSubject ?? "",
-            placeholder: "Page \(page.pageNumber)",
-            field: "revealed_subject",
-            label: "Revealed subject",
-            allowsEmpty: true,
-            model: model,
-            onCollectionChanged: onCollectionChanged)
-          Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
-            .font(.body)
-            .foregroundStyle(theme.pageSecondaryForeground)
+          VStack(alignment: .leading, spacing: 6) {
+            DetailInlineTitle(
+              value: page.revealedSubject ?? "",
+              placeholder: "Page \(page.pageNumber)",
+              field: "revealed_subject",
+              label: "Revealed subject",
+              allowsEmpty: true,
+              model: model,
+              onCollectionChanged: onCollectionChanged)
+            Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
+              .font(.body)
+              .foregroundStyle(theme.pageSecondaryForeground)
+          }
+
           DetailStatusMenu<PageStatus>(
             current: page.status, model: model, onCollectionChanged: onCollectionChanged)
-          .padding(.top, 4)
-        }
+          DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
-        DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
+          VStack(alignment: .leading, spacing: 12) {
+            photoHeader
 
-        VStack(alignment: .leading, spacing: 12) {
-          photoHeader
-
-          if photos.isEmpty {
-            ContentUnavailableView(
-              "No page photos",
-              systemImage: "photo.on.rectangle",
-              description: Text("Add the first photo of this page.")
-            )
-            .frame(maxWidth: .infinity)
-          } else {
-            DetailPhotoGallery(photos: photos)
-          }
-
-          if isPreparingPhoto {
-            ProgressView("Preparing photo…")
-              .frame(maxWidth: .infinity, alignment: .leading)
-          } else if model.isMutating {
-            ProgressView(
-              model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…"
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-          }
-
-          if let message = photoErrorMessage {
-            AccessibleErrorLabel(message: message)
-          }
-
-          if let pendingPhoto {
-            if let preview = pendingPreview {
-              Image(uiImage: preview)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: 240)
-                .clipShape(.rect(cornerRadius: Theme.Radius.medium))
-                .accessibilityLabel("Selected page photo")
-                .accessibilityIdentifier("detail.page.photoPreview")
-            }
-            switch model.unresolvedWriteState {
-            case .needsRefresh:
-              if let message = model.mutationErrorMessage {
-                AccessibleErrorLabel(message: message)
-              }
-              Button {
-                Task { await refreshUploadStatus() }
-              } label: {
-                Label("Refresh status", systemImage: "arrow.clockwise")
-                  .frame(maxWidth: .infinity)
-              }
-              .buttonStyle(.borderedProminent)
-              .controlSize(.large)
-              .disabled(model.isMutating)
-              .accessibilityIdentifier("detail.page.photoRefresh")
-
-            case .refreshed:
-              if let message = model.mutationErrorMessage {
-                Label(message, systemImage: "checkmark.circle")
-                  .foregroundStyle(theme.foreground)
-              }
-              Button("Back to photos") {
-                clearPendingPhoto(clearRecovery: true)
-              }
-              .buttonStyle(.borderedProminent)
-              .controlSize(.large)
-              .frame(maxWidth: .infinity)
-              .accessibilityIdentifier("detail.page.photoReview")
-
-            case nil:
-              if let message = model.mutationErrorMessage {
-                AccessibleErrorLabel(message: message)
-              }
-              Button {
-                Task { await upload(pendingPhoto) }
-              } label: {
-                Label(
-                  model.mutationErrorMessage == nil ? "Add photo" : "Try upload again",
-                  systemImage: model.mutationErrorMessage == nil ? "plus" : "arrow.clockwise"
-                )
-                .frame(maxWidth: .infinity)
-              }
-              .buttonStyle(.borderedProminent)
-              .controlSize(.large)
-              .disabled(isPreparingPhoto || model.isMutating)
-              .accessibilityIdentifier(
-                model.mutationErrorMessage == nil
-                  ? "detail.page.photoSubmit" : "detail.page.photoRetry"
+            if photos.isEmpty {
+              ContentUnavailableView(
+                "No page photos",
+                systemImage: "photo.on.rectangle",
+                description: Text("Add the first photo of this page.")
               )
+              .frame(maxWidth: .infinity)
+            } else {
+              DetailPhotoGallery(photos: photos)
+            }
 
-              Button("Discard pending upload", role: .cancel) {
-                clearPendingPhoto()
+            if isPreparingPhoto {
+              ProgressView("Preparing photo…")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else if model.isMutating {
+              ProgressView(
+                model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…"
+              )
+              .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let message = photoErrorMessage {
+              AccessibleErrorLabel(message: message)
+            }
+
+            if let pendingPhoto {
+              if let preview = pendingPreview {
+                Image(uiImage: preview)
+                  .resizable()
+                  .scaledToFit()
+                  .frame(maxWidth: .infinity, maxHeight: 240)
+                  .clipShape(.rect(cornerRadius: Theme.Radius.medium))
+                  .accessibilityLabel("Selected page photo")
+                  .accessibilityIdentifier("detail.page.photoPreview")
               }
-              .controlSize(.large)
-              .frame(maxWidth: .infinity, minHeight: 44)
-              .disabled(model.isMutating)
+              switch model.unresolvedWriteState {
+              case .needsRefresh:
+                if let message = model.mutationErrorMessage {
+                  AccessibleErrorLabel(message: message)
+                }
+                Button {
+                  Task { await refreshUploadStatus() }
+                } label: {
+                  Label("Refresh status", systemImage: "arrow.clockwise")
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(model.isMutating)
+                .accessibilityIdentifier("detail.page.photoRefresh")
+
+              case .refreshed:
+                if let message = model.mutationErrorMessage {
+                  Label(message, systemImage: "checkmark.circle")
+                    .foregroundStyle(theme.foreground)
+                }
+                Button("Back to photos") {
+                  clearPendingPhoto(clearRecovery: true)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("detail.page.photoReview")
+
+              case nil:
+                if let message = model.mutationErrorMessage {
+                  AccessibleErrorLabel(message: message)
+                }
+                Button {
+                  Task { await upload(pendingPhoto) }
+                } label: {
+                  Label(
+                    model.mutationErrorMessage == nil ? "Add photo" : "Try upload again",
+                    systemImage: model.mutationErrorMessage == nil ? "plus" : "arrow.clockwise"
+                  )
+                  .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(isPreparingPhoto || model.isMutating)
+                .accessibilityIdentifier(
+                  model.mutationErrorMessage == nil
+                    ? "detail.page.photoSubmit" : "detail.page.photoRetry"
+                )
+
+                Button("Discard pending upload", role: .cancel) {
+                  clearPendingPhoto()
+                }
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .disabled(model.isMutating)
+              }
+            }
+          }
+
+          ProgressNotesSection(
+            model: model, onCollectionChanged: onCollectionChanged,
+            logEditor: $logEditor,
+            onReveal: { proxy.scrollTo($0, anchor: .center) })
+
+          if startedDate != nil || completedDate != nil {
+            VStack(alignment: .leading, spacing: 12) {
+              Text("Page details")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(theme.foreground)
+                .accessibilityAddTraits(.isHeader)
+              DetailMetadataCard {
+                if let startedAt = startedDate {
+                  DetailMetadataRow(label: "Started", value: startedAt)
+                }
+                if let completedAt = completedDate {
+                  DetailMetadataRow(label: "Completed", value: completedAt)
+                }
+              }
+            }
+          }
+
+          if let errorMessage = model.errorMessage {
+            VStack(alignment: .leading, spacing: 12) {
+              AccessibleErrorLabel(message: errorMessage)
+              Button("Try again") {
+                Task { await model.load() }
+              }
             }
           }
         }
-
-        if startedDate != nil || completedDate != nil {
-          VStack(alignment: .leading, spacing: 12) {
-            Text("Page details")
-              .font(.title3.weight(.semibold))
-              .foregroundStyle(theme.foreground)
-              .accessibilityAddTraits(.isHeader)
-            DetailMetadataCard {
-              if let startedAt = startedDate {
-                DetailMetadataRow(label: "Started", value: startedAt)
-              }
-              if let completedAt = completedDate {
-                DetailMetadataRow(label: "Completed", value: completedAt)
-              }
-            }
-          }
-        }
-
-        if let errorMessage = model.errorMessage {
-          VStack(alignment: .leading, spacing: 12) {
-            AccessibleErrorLabel(message: errorMessage)
-            Button("Try again") {
-              Task { await model.load() }
-            }
-          }
-        }
+        .frame(maxWidth: 760, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
       }
-      .frame(maxWidth: 760, alignment: .leading)
-      .padding(.horizontal, 20)
-      .padding(.vertical, 16)
-      .frame(maxWidth: .infinity)
-    }
-    .background {
-      theme.themedBackground.ignoresSafeArea()
-    }
-    .refreshable { await model.refresh() }
-    .task(id: selectedItem) {
-      await prepareSelection()
+      .background {
+        theme.themedBackground.ignoresSafeArea()
+      }
+      .refreshable { await model.refresh() }
+      .photoViewer(photos)
+      .task(id: selectedItem) {
+        await prepareSelection()
+      }
     }
   }
 
@@ -195,15 +204,26 @@ struct ColoringPageDetailView: View {
       guard !filename.isEmpty,
         let url = protectedFiles?.url(
           collection: "coloring_pages", recordID: page.id, filename: filename,
-          thumb: ArtworkThumb.compact)
+          thumb: ArtworkThumb.compact),
+        let fullSizeURL = protectedFiles?.url(
+          collection: "coloring_pages", recordID: page.id, filename: filename)
       else { return nil }
       return DetailPhoto(
         id: filename,
         url: url,
+        fullSizeURL: fullSizeURL,
         accessibilityLabel: "Page photo \(index + 1)"
           + pagePhotoSubjectSuffix
       )
     }
+  }
+
+  private var coverPhoto: DetailPhoto? {
+    guard let url = protectedFiles?.artworkURL(for: .page(page)) else { return nil }
+    return DetailPhoto(
+      id: "page-cover", url: url, fullSizeURL: url,
+      accessibilityLabel: "Page artwork"
+    )
   }
 
   private func formattedDate(_ value: String?) -> String? {
@@ -225,14 +245,17 @@ struct ColoringPageDetailView: View {
         Spacer()
       }
       if pendingPhoto == nil {
-        PhotosPicker(selection: $selectedItem, matching: .images) {
-          Label("Add photo", systemImage: "plus")
-            .frame(minHeight: 44)
-            .contentShape(.rect)
+        VStack(alignment: .trailing, spacing: 2) {
+          PhotosPicker(selection: $selectedItem, matching: .images) {
+            Label("Add photo", systemImage: "plus")
+              .frame(minHeight: 44)
+              .contentShape(.rect)
+          }
+          .buttonStyle(.bordered)
+          .disabled(isPreparingPhoto || model.isMutating)
+          .accessibilityIdentifier("detail.page.addPhoto")
+          NeedsConnectionHint()
         }
-        .buttonStyle(.bordered)
-        .disabled(isPreparingPhoto || model.isMutating)
-        .accessibilityIdentifier("detail.page.addPhoto")
       }
     }
   }

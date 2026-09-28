@@ -53,12 +53,7 @@ struct SignInView: View {
         }
 
         Button(action: signIn) {
-          if model.isSubmitting {
-            ProgressView()
-              .frame(maxWidth: .infinity, minHeight: 52)
-          } else {
-            Text("Sign in")
-          }
+          AuthSubmitLabel(title: "Sign in", isSubmitting: model.isSubmitting)
         }
         .buttonStyle(AuthPrimaryButtonStyle())
         .disabled(model.isSubmitting || model.client == nil)
@@ -72,8 +67,6 @@ struct SignInView: View {
           .accessibilityLabel("Reset a forgotten password")
           .disabled(model.client == nil)
 
-          privacyAndTermsLinks
-
           Button("Resend verification email") {
             path.append(AccountEntryRoute.verificationRequest(email: identity))
           }
@@ -83,6 +76,9 @@ struct SignInView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 4)
+
+        privacyAndTermsLinks
+          .frame(maxWidth: .infinity)
       }
     }
     .navigationBarTitleDisplayMode(.inline)

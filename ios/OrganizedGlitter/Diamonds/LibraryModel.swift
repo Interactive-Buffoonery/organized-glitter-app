@@ -21,9 +21,9 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
   var systemImage: String {
     switch self {
-    case .diamonds: "diamond"
+    case .diamonds: "sparkles.rectangle.stack"
     case .books: "books.vertical"
-    case .pages: "doc.richtext"
+    case .pages: "pencil.and.scribble"
     }
   }
 

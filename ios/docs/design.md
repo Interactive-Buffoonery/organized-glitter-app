@@ -26,16 +26,22 @@ screen backgrounds. The Shelf redesign (Option B in
   carrying a glass Log button. "Up next from your stash" shows Kitted up then
   In stash covers. A single "N finished this month" row opens Completed.
   Section titles open the matching Library filter; a menu picks the craft when
-  both are enabled.
+  both are enabled. A Notes shortcut opens the cross-craft progress feed.
+- **Notes.** Group progress notes by month, newest first, with craft and year
+  filters. Each entry identifies its diamond project or coloring page above the
+  shared photo, date, and caption. Home and Create can open the Notes target
+  picker; it lists in-progress work first and can search older projects/pages.
+  The picker uses a trailing inspector on iPad and an adaptive sheet on iPhone.
 - **Detail.** A centered hero cover sits above the title and credits. A compact
   status `Menu` below them uses a soft tint from the web status color family,
   a status icon, and a written label; its touch target remains at least 44 points.
   Diamonds show a spec strip (size, drill, diamonds, started) that turns into
   rows at accessibility sizes, then a Progress heading with a small Log progress
-  action, a progress contact sheet, and a Details card (company, artist, kit,
+  action, shared photo-forward note entries, and a Details card (company, artist, kit,
   dates, tags, source link, notes as plain text). Books keep the page count and
   completion bar below status, then show pages as a contact sheet with a status
-  glyph per page. Detail scroll content uses a plain `VStack`; a `LazyVGrid`
+  glyph per page. Page detail uses the same Progress entries below its photos.
+  Detail scroll content uses a plain `VStack`; a `LazyVGrid`
   inside a `LazyVStack` loops layout at AX5.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and
   clipped. Records without art get a `GeneratedCover`: a Berry Cream gradient
@@ -150,12 +156,21 @@ launch image targets the default text size; Dynamic Type can resize the live UI.
 Signed-out users land on Welcome (wordmark
 with still sparkles above Create account and Sign in) with no authenticated
 tabs. `WelcomeView` owns the
-signed-out `NavigationStack`. Method selection offers Continue with email only;
-Apple, Google, and Discord stay out until a native OAuth path and provider
-continuity land. Email sign-in, registration, password-reset
-request/confirmation, and verification request use quiet auth controls instead
-of sticker pills. See
-[account-entry validation](account-entry-validation.md).
+signed-out `NavigationStack`. Method selection places Apple (when available), Google, and Discord
+above a separated Continue with email action. Provider controls use a centered
+300-point column, 52-point minimum touch targets, and 12-point corners. Apple
+keeps its native control with a Dynamic Type-scaled minimum height. Google
+and Discord use original brand marks on neutral light/dark surfaces; these
+provider marks are an exception to the general SF Symbols rule below.
+
+Email sign-in, registration, reset, and verification forms use a 360-point
+maximum reading width. Primary actions use the raspberry primary fill and a
+280-point maximum width; accessibility text sizes can use the available form
+width. Loading preserves the action label and footprint. Secondary actions are
+quiet text links; account-switch prompts stack above their action to support
+larger text. Welcome retains the shared launch geometry and wordmark.
+See [account-entry validation](account-entry-validation.md) for earlier captures
+and [auth presentation](auth-presentation.md) for this refinement.
 
 The sticker system (`StickerCard`, `IconBadge`, `PillButtonStyle`, and their
 tokens) was removed with the Create tab.
@@ -244,17 +259,23 @@ read as siblings. Established mappings:
 | Concept | Web (Lucide) | iOS (SF Symbol) |
 | --- | --- | --- |
 | Overview / home | `Home` | `house` |
-| Library / dashboard | `LayoutDashboard` | `square.grid.2x2` |
+| Library / dashboard | `LayoutDashboard` | `rectangle.grid.2x2` |
 | Create | `Plus` | `plus` |
 | Randomizer | `Shuffle` | `shuffle` |
 | Account | — | `person.crop.circle` |
-| Diamond project | `Gem` | `diamond` |
-| Coloring | `Palette` | `paintpalette` |
-| Wishlist | `Heart` | `heart.circle.fill` |
-| Completed | `CheckCircle` | `checkmark.circle.fill` |
-| Archived / destashed | `Archive` | `archivebox.circle.fill` |
-| In progress | — | `play.circle.fill` |
-| On hold | — | `pause.circle.fill` |
+| Diamond project | `Gem` | `sparkles.rectangle.stack` |
+| Coloring book | `Palette` | `books.vertical` |
+| Coloring page | — | `pencil.and.scribble` |
+| Wishlist | `Heart` | `heart` |
+| Purchased | — | `shippingbox` |
+| In stash | — | `tray.full` |
+| Kitted up | — | `checklist.checked` |
+| Completed | `CheckCircle` | `checkmark.circle` |
+| Archived | `Archive` | `archivebox` |
+| Destashed | — | `shippingbox.and.arrow.backward` |
+| In progress | — | `play.circle` |
+| On hold | — | `pause.circle` |
+| Palette chosen | — | `swatchpalette` |
 
 If a pixel-exact match with web ever becomes a requirement, Lucide ships SVGs
 that can be imported into the asset catalog as template symbol images — not

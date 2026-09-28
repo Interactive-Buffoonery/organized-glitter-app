@@ -41,7 +41,7 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(log.exists)
     XCTAssertEqual(log.label, "Log progress for Garden of stars")
     log.tap()
-    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond.noteEditor"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.descendants(matching: .any)["detail.progress.noteEditor"].waitForExistence(timeout: 5))
     try capture(app, "overview-log-sheet")
     app.buttons["Cancel"].tap()
 
@@ -54,8 +54,8 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(caption.waitForExistence(timeout: 5))
     caption.tap()
     caption.typeText("Filled the corner")
-    app.buttons["detail.diamond.noteSubmit"].tap()
-    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond.noteEditor"].waitForNonExistence(timeout: 5))
+    app.buttons["detail.progress.noteSubmit"].tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.progress.noteEditor"].waitForNonExistence(timeout: 5))
     let moved = XCTNSPredicateExpectation(
       predicate: NSPredicate { _, _ in
         self.isOnScreen(logLast, in: app) && logLast.frame.minX < log.frame.minX
@@ -172,7 +172,7 @@ final class OverviewUITests: XCTestCase {
       XCTAssertTrue(app.staticTexts[label].waitForExistence(timeout: 5))
       try capture(app, "overview-\(scenario)")
       if scenario == "error" {
-        app.buttons["Try Again"].tap()
+        app.buttons["overview.retry"].tap()
         XCTAssertTrue(app.staticTexts[label].waitForExistence(timeout: 5))
       }
       app.terminate()

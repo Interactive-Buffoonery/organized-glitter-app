@@ -98,6 +98,7 @@ final class FormDrawer {
     let id = UUID()
     let detents: Set<PresentationDetent>
     let content: AnyView
+    let onDismiss: () -> Void
   }
 
   var route: Route?
@@ -105,11 +106,19 @@ final class FormDrawer {
 
   func present<Content: View>(
     detents: Set<PresentationDetent>,
+    onDismiss: @escaping () -> Void = {},
     @ViewBuilder content: () -> Content
   ) {
     guard route == nil else { return }
-    route = Route(detents: detents, content: AnyView(content()))
+    route = Route(detents: detents, content: AnyView(content()), onDismiss: onDismiss)
   }
+
+  func dismiss() {
+    let onDismiss = route?.onDismiss
+    route = nil
+    onDismiss?()
+  }
+
 }
 
 extension View {
@@ -120,7 +129,7 @@ extension View {
   func formDrawerHost(_ drawer: FormDrawer) -> some View {
     inspector(isPresented: Binding(
       get: { drawer.route != nil },
-      set: { if !$0 { drawer.route = nil } }
+      set: { if !$0 { drawer.dismiss() } }
     )) {
       if let route = drawer.route {
         route.content

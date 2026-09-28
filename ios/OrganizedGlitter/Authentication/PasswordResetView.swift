@@ -101,12 +101,7 @@ struct PasswordResetView: View {
     Button {
       startSending()
     } label: {
-      if isSending {
-        ProgressView()
-          .frame(maxWidth: .infinity, minHeight: 52)
-      } else {
-        Text("Send reset link")
-      }
+      AuthSubmitLabel(title: "Send reset link", isSubmitting: isSending)
     }
     .buttonStyle(AuthPrimaryButtonStyle())
     .disabled(isSending || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
