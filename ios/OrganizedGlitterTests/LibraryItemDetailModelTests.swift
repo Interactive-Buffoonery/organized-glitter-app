@@ -212,6 +212,34 @@ struct LibraryItemDetailModelTests {
     #expect(model.progressNotes.isEmpty)
   }
 
+  @Test func pageNoteCreationDecodesColoringRecord() async throws {
+    LostNoteURLProtocol.createPageSucceeds = true
+    defer { LostNoteURLProtocol.createPageSucceeds = false }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [LostNoteURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://saved-page-note.example.test")!,
+      sessionStore: KeychainSessionStore(service: "SavedPageNoteTests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(StoredSession(token: "example-token", userID: "feature-user"))
+    let library = LibrarySession(
+      client: client, userID: "feature-user", store: try LocalLibraryStore.inMemory())
+    let book = featureBook("book", title: "Quiet Pages")
+    let page = featurePage("page", book: book.id, number: 1)
+    try await library.store.ingest(.book(book), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .page(page), library: library)
+    #expect(await model.load())
+
+    #expect(
+      await model.addProgressNote(
+        content: "First colors", date: Date(timeIntervalSince1970: 0), photo: nil))
+    #expect(model.lastAddedProgressNoteID == "created-coloring-note")
+    #expect(model.progressNotes.count == 1)
+    #expect(model.progressNotes.first?.collection == "coloring_page_progress_notes")
+    #expect(model.progressNotes.first?.recordID == "created-coloring-note")
+  }
+
   @Test func progressNotesKeepLoadedPagesAfterReloadsAndSaves() async throws {
     let library = try localFeatureLibrary()
     let project = featureProject("project", title: "Moon Garden")
@@ -321,7 +349,7 @@ struct LibraryItemDetailModelTests {
     #expect(model.progressNotes.allSatisfy { $0.collection == "coloring_page_progress_notes" })
 
     try await library.store.removeNote(
-      collection: "coloring_page_progress_notes", id: "newer", scope: library.scope)
+      kind: .coloring, id: "newer", scope: library.scope)
     #expect(await model.load())
     #expect(model.progressNotes.map(\.recordID) == ["older"])
   }
@@ -331,12 +359,19 @@ private final class LostNoteURLProtocol: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) static var snapshotAvailable = false
   nonisolated(unsafe) static var createRequests = 0
   nonisolated(unsafe) static var createSucceeds = false
+  nonisolated(unsafe) static var createPageSucceeds = false
   nonisolated(unsafe) static var deleteSucceeds = false
 
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
   override func startLoading() {
+    if Self.createPageSucceeds, request.httpMethod == "POST",
+      request.url?.path == "/api/collections/coloring_page_progress_notes/records"
+    {
+      respond(#"{"id":"created-coloring-note","user":"feature-user","page":"page","content":"First colors","date":"1970-01-01","created":"2026-09-01","updated":"2026-09-01"}"#)
+      return
+    }
     if Self.createSucceeds, request.httpMethod == "POST" {
       respond(#"{"id":"created-note","project":"project","content":"Half finished","date":"1970-01-01","created":"2026-09-01","updated":"2026-09-01"}"#)
       return
