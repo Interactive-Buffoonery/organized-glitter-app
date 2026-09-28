@@ -135,11 +135,13 @@ struct AppShellView: View {
     }
     .tabViewStyle(.sidebarAdaptable)
     .inspector(isPresented: $isPickingNoteTarget) {
-      NoteTargetPicker(
-        library: library,
-        verticals: accountPreferences.verticals,
-        onSaved: { libraryRefresh.bump() }
-      )
+      if isPickingNoteTarget {
+        NoteTargetPicker(
+          library: library,
+          verticals: accountPreferences.verticals,
+          onSaved: { libraryRefresh.bump() }
+        )
+      }
     }
     .onChange(of: sizeClass) { _, sizeClass in
       switch (sizeClass, selectedTab) {
