@@ -12,6 +12,11 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
     let draft = app.textFields["detail.title.field"]
     XCTAssertTrue(draft.waitForExistence(timeout: 5))
     draft.typeText(" draft")
+    let updatedTitle = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "value == %@", "Yorkie & Roses draft"),
+      object: draft
+    )
+    XCTAssertEqual(XCTWaiter.wait(for: [updatedTitle], timeout: 5), .completed)
     let pendingTitle = draft.value as? String
     XCTAssertEqual(pendingTitle, "Yorkie & Roses draft")
 
