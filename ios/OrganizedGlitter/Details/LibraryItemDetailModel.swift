@@ -258,15 +258,23 @@ final class LibraryItemDetailModel {
     else {
       return false
     }
-    let collection: String
+    let createNote: @MainActor (PocketBaseMultipartForm) async throws -> ProgressNoteItem
     let parent: (String, String)
     switch item {
     case .diamond(let project):
-      collection = "progress_notes"
       parent = ("project", project.id)
+      createNote = { form in
+        let note: DiamondProgressNoteRecord = try await self.library.create(
+          collection: "progress_notes", multipart: form)
+        return .diamond(note)
+      }
     case .page(let page):
-      collection = "coloring_page_progress_notes"
       parent = ("page", page.id)
+      createNote = { form in
+        let note: ColoringProgressNoteRecord = try await self.library.create(
+          collection: "coloring_page_progress_notes", multipart: form)
+        return .coloring(note)
+      }
     case .book:
       return false
     }
@@ -294,16 +302,7 @@ final class LibraryItemDetailModel {
       ], files: files)
 
     do {
-      let saved: ProgressNoteItem
-      if collection == "progress_notes" {
-        let note: DiamondProgressNoteRecord = try await library.create(
-          collection: collection, multipart: form)
-        saved = .diamond(note)
-      } else {
-        let note: ColoringProgressNoteRecord = try await library.create(
-          collection: collection, multipart: form)
-        saved = .coloring(note)
-      }
+      let saved = try await createNote(form)
       mergeProgressNote(saved)
       lastAddedProgressNoteID = saved.recordID
       unresolvedNoteCreate = false

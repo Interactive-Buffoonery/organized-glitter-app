@@ -57,6 +57,11 @@ final class LocalStoredNote {
   }
 }
 
+enum LocalNoteKind: String, Sendable {
+  case diamond
+  case coloring
+}
+
 @Model
 final class LocalPendingRemoval {
   @Attribute(.unique) var scope: String
@@ -306,14 +311,8 @@ actor LocalLibraryStore: ModelActor {
       data: encoder.encode(note), scope: scope)
   }
 
-  func removeNote(collection: String, id: String, scope: LocalAccountScope) throws {
-    let kind: String
-    switch collection {
-    case "progress_notes": kind = "diamond"
-    case "coloring_page_progress_notes": kind = "coloring"
-    default: return
-    }
-    let key = "\(scope.storageKey)|\(kind):\(id)"
+  func removeNote(kind: LocalNoteKind, id: String, scope: LocalAccountScope) throws {
+    let key = "\(scope.storageKey)|\(kind.rawValue):\(id)"
     var descriptor = FetchDescriptor<LocalStoredNote>(predicate: #Predicate { $0.key == key })
     descriptor.fetchLimit = 1
     if let note = try context.fetch(descriptor).first {
