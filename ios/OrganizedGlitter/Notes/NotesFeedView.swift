@@ -58,10 +58,25 @@ struct NotesFeedView: View {
                 ForEach(month.entries) { entry in
                   VStack(alignment: .leading, spacing: 8) {
                     NavigationLink(value: entry.target) {
-                      Label(entry.contextTitle, systemImage: entry.craft == .diamond ? "diamond" : "paintpalette")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(theme.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                      HStack(spacing: 10) {
+                        Image(systemName: entry.craft == .diamond
+                          ? LibrarySection.diamonds.systemImage : LibrarySection.pages.systemImage)
+                          .font(.subheadline.weight(.medium))
+                          .symbolRenderingMode(.hierarchical)
+                          .foregroundStyle(theme.primary)
+                          .frame(width: 32, height: 32)
+                          .background(theme.primary.opacity(0.10), in: .rect(cornerRadius: 8))
+                          .accessibilityHidden(true)
+                        Text(entry.contextTitle)
+                          .font(.subheadline.weight(.semibold))
+                          .foregroundStyle(theme.foreground)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                          .font(.caption.weight(.semibold))
+                          .foregroundStyle(theme.pageSecondaryForeground)
+                          .accessibilityHidden(true)
+                      }
+                      .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .accessibilityLabel("Open \(entry.contextTitle)")
                     .accessibilityIdentifier("notes.entry.\(entry.note.recordID)")
@@ -191,7 +206,7 @@ struct NotesFeedView: View {
     case .coloring: "Add a progress note to a coloring page, and it will show up here."
     }
     return ContentUnavailableView {
-      Label("Start logging progress", systemImage: "book.pages")
+      Label("Start logging progress", systemImage: "note.text")
     } description: {
       Text(year.map { "No notes from \($0)." } ?? description)
     } actions: {
