@@ -51,6 +51,7 @@ final class AppModel {
   @ObservationIgnored private var oauthTask: Task<Void, Never>?
   @ObservationIgnored private var oauthTimeoutTask: Task<Void, Never>?
   @ObservationIgnored private var oauthBrowser: OAuthWebSession?
+  @ObservationIgnored private var appleTimeoutTask: Task<Void, Never>?
   @ObservationIgnored private var appleTask: Task<Void, Never>?
   @ObservationIgnored private var appleAttempt: AppleAttempt?
   @ObservationIgnored private var appleReadinessGeneration = 0
@@ -290,10 +291,10 @@ final class AppModel {
     appleReadiness = .loading
     do {
       let available = try await client.appleNativeReadiness()
-      guard generation == appleReadinessGeneration, case .signedOut = phase else { return }
+      guard generation == appleReadinessGeneration else { return }
       appleReadiness = available ? .available : .unavailable
     } catch {
-      guard generation == appleReadinessGeneration, case .signedOut = phase else { return }
+      guard generation == appleReadinessGeneration else { return }
       appleReadiness = .failed
     }
   }
@@ -304,7 +305,10 @@ final class AppModel {
     _ = await (apple, social)
   }
 
-  func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest, sourceID: UUID) {
+  func configureAppleRequest(
+    _ request: ASAuthorizationAppleIDRequest, sourceID: UUID,
+    timeout: Duration = .seconds(120)
+  ) {
     guard appleReadiness == .available, case .signedOut = phase,
       !isSigningOut, !cleanupBlocked, !isSubmitting, appleAttempt == nil, appleTask == nil
     else { return }
@@ -323,6 +327,12 @@ final class AppModel {
       request.nonce = nonce.digest
       request.state = state
       isSubmitting = true
+      appleTimeoutTask = Task { [weak self] in
+        try? await Task.sleep(for: timeout)
+        guard !Task.isCancelled, let self, generation == self.sessionGeneration else { return }
+        self.cancelAppleSignIn()
+        self.appleError = "Apple sign-in timed out. Try again."
+      }
     } catch {
       appleError = "Apple sign-in could not start securely. Try again."
       isSubmitting = false
@@ -336,35 +346,28 @@ final class AppModel {
     else { return }
     switch outcome {
     case .cancelled:
-      appleAttempt = nil
-      isSubmitting = false
+      finishAppleSignIn()
     case .failed:
-      appleAttempt = nil
-      isSubmitting = false
+      finishAppleSignIn()
       appleError = "Apple sign-in could not finish. Try again."
     case .invalidCredential:
-      appleAttempt = nil
-      isSubmitting = false
+      finishAppleSignIn()
       appleError = "Apple did not provide a valid authorization. Try again."
     case .authorized(let state, let code, let name):
       guard state == attempt.state else {
-        appleAttempt = nil
-        isSubmitting = false
+        finishAppleSignIn()
         appleError = "Apple did not provide a valid authorization. Try again."
         return
       }
       guard let code, !code.isEmpty, let client else {
-        appleAttempt = nil
-        isSubmitting = false
+        finishAppleSignIn()
         appleError = "Apple did not provide a valid authorization. Try again."
         return
       }
       appleTask = Task {
         defer {
           if attempt.generation == sessionGeneration {
-            appleTask = nil
-            appleAttempt = nil
-            isSubmitting = false
+            finishAppleSignIn()
           }
         }
         do {
@@ -388,6 +391,14 @@ final class AppModel {
         }
       }
     }
+  }
+
+  private func finishAppleSignIn() {
+    appleTimeoutTask?.cancel()
+    appleTimeoutTask = nil
+    appleTask = nil
+    appleAttempt = nil
+    isSubmitting = false
   }
 
   func cancelAppleSignIn() {
@@ -663,6 +674,8 @@ final class AppModel {
     oauthTask = nil
     oauthTimeoutTask = nil
     oauthBrowser = nil
+    appleTimeoutTask?.cancel()
+    appleTimeoutTask = nil
     appleTask?.cancel()
     appleTask = nil
     appleAttempt = nil

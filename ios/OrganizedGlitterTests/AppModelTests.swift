@@ -76,6 +76,71 @@ struct AppModelTests {
   }
 
   @Test
+  func appleReadinessFinishesOutsideSignedOutPhase() async throws {
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [AppleReadinessURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!, sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+    model.phase = .restorationFailed
+
+    AppleReadinessURLProtocol.status = 200
+    AppleReadinessURLProtocol.body = #"{"available":true}"#
+    await model.loadAppleReadiness()
+    #expect(model.appleReadiness == .available)
+    let request = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(request, sourceID: UUID())
+    #expect(request.state == nil)
+
+    AppleReadinessURLProtocol.status = 503
+    await model.loadAppleReadiness()
+    #expect(model.appleReadiness == .failed)
+    model.phase = .signedOut
+    AppleReadinessURLProtocol.status = 200
+    await model.loadAppleReadiness()
+    #expect(model.appleReadiness == .available)
+  }
+
+  @Test
+  func missingAppleCallbackTimesOutAndAllowsRetry() async throws {
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!, sessionStore: store
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+    model.appleReadiness = .available
+    let sourceID = UUID()
+    let request = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(request, sourceID: sourceID, timeout: .zero)
+    let clock = ContinuousClock()
+    let deadline = clock.now + .seconds(5)
+    while model.isSubmitting && clock.now < deadline { await Task.yield() }
+    #expect(!model.isSubmitting)
+    #expect(model.appleError == "Apple sign-in timed out. Try again.")
+    model.completeAppleAuthorization(
+      .authorized(state: request.state, code: "late-code", name: nil), sourceID: sourceID
+    )
+    #expect(try store.load() == nil)
+    #expect(model.phase == .signedOut)
+
+    let retry = ASAuthorizationAppleIDProvider().createRequest()
+    model.configureAppleRequest(retry, sourceID: UUID())
+    #expect(retry.state != nil)
+    #expect(model.isSubmitting)
+    #expect(model.appleError == nil)
+    model.cancelAppleSignIn()
+  }
+
+  @Test
   func appleSignInOpensTheLocalLibrary() async throws {
     DelayedAuthenticationURLProtocol.reset()
     let store = KeychainSessionStore(
