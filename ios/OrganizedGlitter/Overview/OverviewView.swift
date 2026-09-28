@@ -298,11 +298,11 @@ struct OverviewView: View {
       NotesFeedView(library: model.library, verticals: verticals, onAddNote: onAddNote)
     } label: {
       HStack(alignment: .center, spacing: 12) {
-        Image(systemName: "book.pages")
-          .font(.title3)
+        Image(systemName: "note.text")
+          .font(.title3.weight(.medium))
           .foregroundStyle(theme.primary)
           .frame(width: 44, height: 44)
-          .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+          .background(theme.primary.opacity(0.10), in: .rect(cornerRadius: Theme.Radius.medium))
           .accessibilityHidden(true)
         VStack(alignment: .leading, spacing: 3) {
           Text("Notes")
