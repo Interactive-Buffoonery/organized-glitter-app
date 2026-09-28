@@ -8,10 +8,12 @@ struct LibraryView: View {
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
+  @State private var logEditor: LibraryItemDetailModel?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
   let request: LibraryRequest?
+  let onAddNote: () -> Void
 
   init(
     library: LibrarySession,
@@ -19,6 +21,7 @@ struct LibraryView: View {
     libraryRefresh: LibraryRefresh,
     verticals: VerticalPreferences = .defaultValue,
     request: LibraryRequest? = nil,
+    onAddNote: @escaping () -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
     let model = LibraryModel(library: library)
@@ -36,6 +39,7 @@ struct LibraryView: View {
     self.libraryRefresh = libraryRefresh
     self.verticals = verticals
     self.request = request
+    self.onAddNote = onAddNote
   }
 
   var body: some View {
@@ -45,6 +49,7 @@ struct LibraryView: View {
           detail(for: item)
         }
     }
+    .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
       path = []
       guard !isAwaitingSearch else { return }
@@ -117,7 +122,8 @@ struct LibraryView: View {
             library: model.library,
             verticals: verticals,
             onRefresh: { await model.load() },
-            onSaved: created
+            onSaved: created,
+            onAddNote: onAddNote
           )
         }
       }
@@ -355,6 +361,7 @@ struct LibraryView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading || model.library.isSyncing)
+    .accessibilityIdentifier("library.retry")
   }
 
   @ViewBuilder
@@ -362,6 +369,7 @@ struct LibraryView: View {
     LibraryItemDetailDestination(
       item: item,
       library: model.library,
+      logEditor: $logEditor,
       onCollectionChanged: { await model.load() },
       onEditPageCount: { book in
         formDrawer.presentPageCountEditor(book: book, library: model.library) { saved in

@@ -172,6 +172,26 @@ final class OrganizedGlitterUITests: XCTestCase {
     XCTAssertTrue(app.buttons["continueWithEmail"].waitForExistence(timeout: 3))
     XCTAssertTrue(app.buttons["continueWithGoogle"].waitForExistence(timeout: 3))
     XCTAssertTrue(app.buttons["continueWithDiscord"].waitForExistence(timeout: 3))
+
+    for _ in 0..<2 {
+      let email = app.buttons["continueWithEmail"]
+      for identifier in ["continueWithGoogle", "continueWithDiscord"] {
+        let provider = app.buttons[identifier]
+        XCTAssertLessThan(provider.frame.maxY, email.frame.minY)
+        XCTAssertGreaterThanOrEqual(provider.frame.height, 44)
+        XCTAssertLessThan(provider.frame.width, app.frame.width - 80)
+      }
+      app.buttons["accountMethodSwitch"].tap()
+    }
+  }
+
+  func testAppleButtonAppearsWhenReadinessSucceeds() {
+    let app = XCUIApplication()
+    app.launchArguments += ["-ui-testing-signed-out", "-ui-testing-apple-available"]
+    app.launch()
+
+    app.buttons["welcomeSignIn"].tap()
+    XCTAssertTrue(app.buttons["continueWithApple"].waitForExistence(timeout: 3))
   }
 
   func testAuthenticatedShellShowsDestinationsAndToolbarActions() {

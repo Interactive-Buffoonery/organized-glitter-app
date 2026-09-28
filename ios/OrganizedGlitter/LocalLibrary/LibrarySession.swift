@@ -231,9 +231,21 @@ final class LibrarySession {
     defer { onlineRecords.subtract(reserved) }
     try await client.delete(collection: collection, id: id)
     try checkActive()
+    let noteKind: LocalNoteKind?
+    switch collection {
+    case "progress_notes": noteKind = .diamond
+    case "coloring_page_progress_notes": noteKind = .coloring
+    default: noteKind = nil
+    }
     if let kind = LocalRecordKind(rawValue: collection) {
       do {
         try await store.removeConfirmed(scope: scope, key: LocalRecordKey(kind: kind, id: id))
+        try await loadLocal()
+        generation &+= 1
+      } catch { syncMessage = "Removed from your account. Refresh to update this device." }
+    } else if let noteKind {
+      do {
+        try await store.removeNote(kind: noteKind, id: id, scope: scope)
         try await loadLocal()
         generation &+= 1
       } catch { syncMessage = "Removed from your account. Refresh to update this device." }

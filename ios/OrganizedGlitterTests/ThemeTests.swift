@@ -129,6 +129,23 @@ struct ThemeTests {
   }
 
   @Test
+  func dismissingFormRunsItsCallbackOnceAndAllowsAnotherForm() {
+    let drawer = FormDrawer()
+    var dismissCount = 0
+    drawer.present(detents: [.large], onDismiss: { dismissCount += 1 }) {
+      Text("Progress draft")
+    }
+    drawer.dismiss()
+    drawer.dismiss()
+    #expect(dismissCount == 1)
+    #expect(!drawer.isPresenting)
+
+    drawer.present(detents: [.medium]) { Text("Next form") }
+    #expect(drawer.isPresenting)
+    #expect(drawer.route?.detents == [.medium])
+  }
+
+  @Test
   func openingAnotherFormPreservesTheActiveDraft() throws {
     let drawer = FormDrawer()
     drawer.present(detents: [.large]) { Text("Draft in progress") }

@@ -95,12 +95,7 @@ struct VerificationRequestView: View {
     Button {
       Task { await send() }
     } label: {
-      if isSending {
-        ProgressView()
-          .frame(maxWidth: .infinity, minHeight: 52)
-      } else {
-        Text("Send verification email")
-      }
+      AuthSubmitLabel(title: "Send verification email", isSubmitting: isSending)
     }
     .buttonStyle(AuthPrimaryButtonStyle())
     .disabled(isSending || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

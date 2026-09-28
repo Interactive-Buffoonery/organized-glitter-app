@@ -6,6 +6,162 @@ import Testing
 @Suite(.serialized)
 struct PocketBaseClientTests {
   @Test
+  func appleNonceUsesThirtyTwoRandomBytesAndHashesTheRawValue() throws {
+    let nonce = AppleSignInNonce(bytes: [UInt8](repeating: 0, count: 32))
+    #expect(nonce.raw == String(repeating: "0", count: 64))
+    #expect(nonce.digest == "60e05bd1b195af2f94112fa7197a5c88289058840ce7c6df9693756bc6250f55")
+    #expect(try AppleSignInNonce.generate().raw.count == 64)
+  }
+
+  @Test
+  func appleReadinessIsGuestOnlyAndDecodesAvailability() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [(200, #"{"available":true}"#), (200, #"{"available":false}"#)]
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+      ),
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    #expect(try await client.appleNativeReadiness())
+    #expect(try await !client.appleNativeReadiness())
+    #expect(PocketBaseClientURLProtocol.requests.map(\.url?.path) == [
+      "/api/auth/apple/native/readiness", "/api/auth/apple/native/readiness",
+    ])
+    #expect(PocketBaseClientURLProtocol.requests.allSatisfy {
+      $0.httpMethod == "GET" && $0.value(forHTTPHeaderField: "Authorization") == nil
+    })
+  }
+
+  @Test
+  func appleExchangeSendsOnlyCodeNonceAndOptionalName() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (200, #"{"token":"token-1","record":{"id":"user-1","verified":true}}"#),
+      (200, #"{"token":"token-2","record":{"id":"user-1","verified":true}}"#),
+    ]
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+    var components = PersonNameComponents()
+    components.givenName = " Ada "
+    components.familyName = " Lovelace "
+
+    let first = try await client.signInWithApple(
+      code: "code-1", nonce: "nonce-1", name: AppleNativeName(fullName: components)
+    )
+    let second = try await client.signInWithApple(code: "code-2", nonce: "nonce-2", name: nil)
+
+    #expect(first.user.id == "user-1")
+    #expect(second.token == "token-2")
+    #expect(try store.load()?.token == "token-2")
+    #expect(PocketBaseClientURLProtocol.requests.map(\.url?.path) == [
+      "/api/auth/apple/native", "/api/auth/apple/native",
+    ])
+    #expect(PocketBaseClientURLProtocol.requests.allSatisfy {
+      $0.httpMethod == "POST" && $0.value(forHTTPHeaderField: "Authorization") == nil
+    })
+    let firstBody = try #require(
+      JSONSerialization.jsonObject(with: PocketBaseClientURLProtocol.requestBodies[0]) as? [String: Any]
+    )
+    #expect(firstBody["code"] as? String == "code-1")
+    #expect(firstBody["nonce"] as? String == "nonce-1")
+    #expect(firstBody["name"] as? [String: String] == [
+      "givenName": "Ada", "familyName": "Lovelace",
+    ])
+    #expect(firstBody["email"] == nil)
+    #expect(firstBody["user"] == nil)
+    let secondBody = try #require(
+      JSONSerialization.jsonObject(with: PocketBaseClientURLProtocol.requestBodies[1]) as? [String: Any]
+    )
+    #expect(secondBody["name"] == nil)
+  }
+
+  @Test
+  func appleExchangeMapsFailuresWithoutSavingASession() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (400, "{}"), (409, "{}"), (429, "{}"), (503, "{}"),
+    ]
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    await #expect(throws: AppleSignInError.invalidCredential) {
+      _ = try await client.signInWithApple(code: "", nonce: "nonce", name: nil)
+    }
+    await #expect(throws: AppleSignInError.invalidAuthorization) {
+      _ = try await client.signInWithApple(code: "code", nonce: "nonce", name: nil)
+    }
+    await #expect(throws: APIError.conflict) {
+      _ = try await client.signInWithApple(code: "code", nonce: "nonce", name: nil)
+    }
+    await #expect(throws: AppleSignInError.rateLimited) {
+      _ = try await client.signInWithApple(code: "code", nonce: "nonce", name: nil)
+    }
+    await #expect(throws: AppleSignInError.unavailable) {
+      _ = try await client.signInWithApple(code: "code", nonce: "nonce", name: nil)
+    }
+    #expect(try store.load() == nil)
+    #expect(PocketBaseClientURLProtocol.requests.count == 4)
+  }
+
+  @Test
+  func appleSignOutDuringExchangeCannotPersistLateResponse() async throws {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = [
+      (200, #"{"token":"token-1","record":{"id":"user-1","verified":true}}"#)
+    ]
+    PocketBaseClientURLProtocol.responseDelay = 0.1
+    defer { PocketBaseClientURLProtocol.responseDelay = 0 }
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: configuration)
+    )
+
+    let signIn = Task {
+      try await client.signInWithApple(code: "code", nonce: "nonce", name: nil)
+    }
+    while PocketBaseClientURLProtocol.requests.isEmpty {
+      await Task.yield()
+    }
+    await client.signOut()
+
+    await #expect(throws: APIError.cancelled) {
+      _ = try await signIn.value
+    }
+    #expect(try store.load() == nil)
+  }
+
+  @Test
   func registersAndRequestsVerificationWithoutAuthentication() async throws {
     PocketBaseClientURLProtocol.requests = []
     PocketBaseClientURLProtocol.requestBodies = []

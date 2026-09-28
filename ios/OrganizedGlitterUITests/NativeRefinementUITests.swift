@@ -128,7 +128,7 @@ final class NativeRefinementUITests: XCTestCase {
     openCard(named: "Yorkie & Roses", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(element("detail.specs", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(button("detail.diamond.addNote", in: app).exists)
+    XCTAssertTrue(button("detail.progress.addNote", in: app).exists)
     let photo = app.images.matching(
       NSPredicate(format: "label BEGINSWITH %@", "Progress photo from")
     ).firstMatch
@@ -159,6 +159,52 @@ final class NativeRefinementUITests: XCTestCase {
       app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Soft pink roses"))
         .firstMatch.exists)
     try capture("detail-diamond-lower")
+  }
+
+  func testPhotoViewerOpensCoverAndPagesProgressPhotos() {
+    let app = launchFixture()
+    openLibrary(app)
+    openCard(named: "Yorkie & Roses", in: app)
+    XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
+
+    let cover = element("detail.hero", in: app)
+    makeHittable(cover, in: app)
+    cover.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    button("photoViewer.close", in: app).tap()
+    XCTAssertFalse(element("photoViewer", in: app).waitForExistence(timeout: 2))
+
+    let photo = app.buttons.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Open Progress photo from")
+    ).firstMatch
+    makeHittable(photo, in: app)
+    photo.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    XCTAssertTrue(button("photoViewer.next", in: app).isEnabled)
+    button("photoViewer.next", in: app).tap()
+    XCTAssertTrue(button("photoViewer.previous", in: app).isEnabled)
+    button("photoViewer.close", in: app).tap()
+    XCTAssertTrue(element("detail.diamond", in: app).exists)
+  }
+
+  func testPageArtworkAndPhotoOpenFullScreen() {
+    let app = launchFixture()
+    openFirstDesignPage(in: app)
+
+    let cover = element("detail.hero", in: app)
+    makeHittable(cover, in: app)
+    cover.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    button("photoViewer.close", in: app).tap()
+
+    let photo = app.buttons.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Open Page photo")
+    ).firstMatch
+    makeHittable(photo, in: app)
+    photo.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    button("photoViewer.close", in: app).tap()
+    XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
   func testBookPagesPaginateAndNavigateToTheNextPage() {
