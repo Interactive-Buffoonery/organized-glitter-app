@@ -113,10 +113,8 @@ struct AppShellView: View {
         }
       }
 
-      if LibraryPresentation.hasSearchTab {
-        Tab("Search", systemImage: "magnifyingglass", value: .search) {
-          tabContent(library(.search))
-        }
+      Tab("Search", systemImage: "magnifyingglass", value: .search) {
+        tabContent(library(.search))
       }
     }
     .tabViewStyle(.sidebarAdaptable)

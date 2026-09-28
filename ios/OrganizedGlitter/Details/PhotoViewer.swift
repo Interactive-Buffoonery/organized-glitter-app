@@ -47,7 +47,7 @@ private struct PhotoViewerPresenter: ViewModifier {
         }
       }
       .fullScreenCover(isPresented: $isPresented) {
-        let viewer = PhotoViewer(photos: photos, selection: $currentID)
+        let viewer = PhotoViewer(photos: photos, selection: $currentID, isPresented: $isPresented)
           .presentationBackground(.clear)
         if reduceMotion {
           viewer
@@ -101,12 +101,13 @@ private struct OptionalAccessibilityLabel: ViewModifier {
 
 /// Full-screen photos: swipe between them, pinch or double-tap to zoom, pull down to close.
 struct PhotoViewer: View {
-  @Environment(\.dismiss) private var dismiss
-
   let photos: [DetailPhoto]
   @Binding var selection: DetailPhoto.ID?
+  @Binding var isPresented: Bool
 
   @State private var pullDistance: CGFloat = 0
+
+  private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
 
   var body: some View {
     TabView(selection: $selection) {
@@ -114,7 +115,7 @@ struct PhotoViewer: View {
         PhotoViewerPage(
           photo: photo,
           onPull: { pullDistance = $0 },
-          onDismiss: { dismiss() }
+          onDismiss: { isPresented = false }
         )
         .accessibilityAction(named: "Next photo") { step(1) }
         .accessibilityAction(named: "Previous photo") { step(-1) }
@@ -122,17 +123,19 @@ struct PhotoViewer: View {
       }
     }
     .tabViewStyle(.page(indexDisplayMode: .never))
+    .accessibilityIdentifier("photoViewer")
     .background {
       Color.black.opacity(1 - min(pullDistance / 400, 0.7))
         .ignoresSafeArea()
     }
     .overlay(alignment: .top) {
-      topBar.opacity(pullDistance > 0 ? 0 : 1)
+      topBar
+        .padding(.top, isPad ? 48 : 0)
+        .opacity(pullDistance > 12 ? 0 : 1)
     }
     .environment(\.colorScheme, .dark)
     .statusBarHidden()
-    .accessibilityAction(.escape) { dismiss() }
-    .accessibilityIdentifier("photoViewer")
+    .accessibilityAction(.escape) { isPresented = false }
     .onChange(of: selection) { _, _ in pullDistance = 0 }
   }
 
@@ -173,7 +176,7 @@ struct PhotoViewer: View {
         .accessibilityIdentifier("photoViewer.next")
       }
       Button {
-        dismiss()
+        isPresented = false
       } label: {
         Image(systemName: "xmark")
           .font(.body.weight(.semibold))
@@ -186,7 +189,7 @@ struct PhotoViewer: View {
       .accessibilityIdentifier("photoViewer.close")
     }
     .foregroundStyle(.white)
-    .padding(.horizontal, 16)
+    .padding(.horizontal, isPad ? 56 : 16)
     .padding(.top, 8)
   }
 
