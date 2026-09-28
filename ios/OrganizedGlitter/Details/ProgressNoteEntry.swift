@@ -559,11 +559,7 @@ private struct ProgressNoteDrawer: ViewModifier {
   func body(content: Content) -> some View {
     content.onChange(of: editor.map(ObjectIdentifier.init)) { _, _ in
       guard let editor else { return }
-      guard !formDrawer.isPresenting else {
-        self.editor = nil
-        return
-      }
-      formDrawer.present(detents: [.medium, .large], onDismiss: {
+      let accepted = formDrawer.present(detents: [.medium, .large], onDismiss: {
         self.editor = nil
         onDismiss()
       }) {
@@ -571,6 +567,7 @@ private struct ProgressNoteDrawer: ViewModifier {
           await onCollectionChanged(editor)
         })
       }
+      if !accepted { self.editor = nil }
     }
   }
 }
