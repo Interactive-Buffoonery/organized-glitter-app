@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Status as a menu button: the current value is the label, the choices check-mark it.
 struct DetailStatusMenu<Status: RecordStatus>: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -48,13 +49,15 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
       .contentShape(.rect)
     }
     .sensoryFeedback(.success, trigger: model.statusSaveRevision)
-    .disabled(model.isMutating || model.unresolvedWriteState != nil)
+    .disabledWhileFormPresented(
+      formDrawer, or: model.isMutating || model.unresolvedWriteState != nil)
     .accessibilityLabel("Status")
     .accessibilityValue(Status.label(for: current))
     .accessibilityIdentifier("detail.status")
   }
 
   private func select(_ status: String) {
+    guard !formDrawer.isPresenting else { return }
     Task {
       let changed = await model.setStatus(status)
       if changed || (model.unresolvedStatusWrite && model.unresolvedWriteState == .refreshed) {
@@ -149,6 +152,7 @@ struct DetailSpec: Identifiable {
 
 /// App Store-style info row. Falls back to labeled rows at accessibility sizes.
 struct DetailSpecStrip: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.theme) private var theme
 
@@ -236,7 +240,13 @@ struct DetailSpecStrip: View {
       ForEach(spec.choices, id: \.title) { choice in
         Picker(
           choice.title,
-          selection: Binding(get: { choice.selection }, set: { choice.onSelect($0) })
+          selection: Binding(
+            get: { choice.selection },
+            set: { value in
+              guard !formDrawer.isPresenting, !isDisabled else { return }
+              choice.onSelect(value)
+            }
+          )
         ) {
           ForEach(choice.options, id: \.value) { option in
             Text(option.label).tag(option.value)
@@ -248,7 +258,7 @@ struct DetailSpecStrip: View {
       label()
     }
     .buttonStyle(.plain)
-    .disabled(isDisabled)
+    .disabledWhileFormPresented(formDrawer, or: isDisabled)
     .accessibilityLabel(spec.title.capitalized)
     .accessibilityValue(spec.accessibilityValue)
     .accessibilityHint("Opens choices")
@@ -259,6 +269,7 @@ struct DetailSpecStrip: View {
 /// A title that becomes a text field when tapped, saved through `updateFields`.
 /// `value` is the stored field; `placeholder` is shown while it is empty.
 struct DetailInlineTitle: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.theme) private var theme
 
   let value: String
@@ -278,6 +289,8 @@ struct DetailInlineTitle: View {
       TextField(label, text: $draft, prompt: Text(placeholder.nonEmpty ?? label))
         .font(.title2.bold())
         .foregroundStyle(theme.foreground)
+        .disabledWhileFormPresented(
+          formDrawer, or: model.isMutating || model.unresolvedWriteState != nil)
         .focused($isFocused)
         .submitLabel(.done)
         .onSubmit(commit)
@@ -307,7 +320,8 @@ struct DetailInlineTitle: View {
         .contentShape(.rect)
       }
       .buttonStyle(.plain)
-      .disabled(model.isMutating || model.unresolvedWriteState != nil)
+      .disabledWhileFormPresented(
+        formDrawer, or: model.isMutating || model.unresolvedWriteState != nil)
       .accessibilityLabel(value.nonEmpty ?? placeholder)
       .accessibilityHint("Double-tap to change the \(label.lowercased())")
       .accessibilityAddTraits(.isHeader)
@@ -316,7 +330,9 @@ struct DetailInlineTitle: View {
   }
 
   private func commit() {
-    guard isEditing else { return }
+    guard isEditing, !formDrawer.isPresenting,
+      !model.isMutating, model.unresolvedWriteState == nil
+    else { return }
     isEditing = false
     let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
     guard trimmed != value, allowsEmpty || !trimmed.isEmpty else { return }

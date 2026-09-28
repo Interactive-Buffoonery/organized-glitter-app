@@ -234,6 +234,7 @@ struct DiamondProjectDetailView: View {
 
 /// A date-only field edited in place, committed only after the picker closes.
 private struct DetailDateRow: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.theme) private var theme
   @State private var isEditingDate = false
   @State private var draftDate = Date.now
@@ -280,8 +281,11 @@ private struct DetailDateRow: View {
         }
       }
     }
-    .disabled(isDisabled)
+    .disabledWhileFormPresented(formDrawer, or: isDisabled)
     .accessibilityIdentifier("detail.date.\(label.lowercased())")
+    .onChange(of: formDrawer.isPresenting) { _, isPresenting in
+      if isPresenting { isEditingDate = false }
+    }
     .popover(isPresented: $isEditingDate) {
       VStack(alignment: .leading, spacing: 16) {
         Text("\(storedDate == nil ? "Add" : "Change") \(label.lowercased()) date")
@@ -293,6 +297,7 @@ private struct DetailDateRow: View {
           Button("Cancel") { isEditingDate = false }
           Spacer()
           Button("Save") {
+            guard !formDrawer.isPresenting, !isDisabled else { return }
             isEditingDate = false
             if storedDate.map({ DetailDateOnly.string(from: $0) })
               != DetailDateOnly.string(from: draftDate)
@@ -301,6 +306,7 @@ private struct DetailDateRow: View {
             }
           }
           .buttonStyle(.borderedProminent)
+          .disabledWhileFormPresented(formDrawer, or: isDisabled)
         }
       }
       .padding()
