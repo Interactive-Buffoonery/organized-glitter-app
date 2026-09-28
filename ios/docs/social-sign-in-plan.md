@@ -16,8 +16,8 @@ Never merge accounts or attach identities based only on matching email.
 
 - Keep PocketBase as the only backend and identity system.
 - Keep `PocketBaseClient` concrete and use one session-publication path.
-- Use Apple APIs before dependencies. Support iOS 18; use iOS/iPadOS 26 for
-  routine simulator verification and physical devices for provider flows.
+- Use Apple APIs before dependencies. Support iOS and iPadOS 26; use those
+  simulators for routine verification and physical devices for provider flows.
 - Follow the current local-library session lifecycle when accepting a social sign-in.
 - Backend routes, hooks, migrations, and token storage belong in
   `Interactive-Buffoonery/organized-glitter`, targeting `dev`.
@@ -334,7 +334,7 @@ the release gate is an operational provider test, not merely a visible button.
   Hide My Email delivery, repeat Apple authorization without name, cancellation,
   app switching, network loss, and retry after unknown completion.
 - Verify VoiceOver, Dynamic Type, keyboard/focus behavior, iPad presentation, and
-  availability guards for APIs newer than iOS 18.
+  availability guards for APIs newer than iOS 26.
 - Verify current provider configuration and the actual deployed backend revision.
   Contract tests alone do not establish production readiness.
 

@@ -8,9 +8,9 @@ craft-project library and files are private. Read `README.md` and
 
 ## Hard rules
 
-- Support iPhone and iPad from iOS 18.0.
+- Support iPhone and iPad from iOS and iPadOS 26.0.
 - Use iOS and iPadOS 26 simulators for routine builds, tests, and UI review.
-- Guard APIs newer than iOS 18 with availability checks.
+- Guard APIs newer than iOS 26 with availability checks.
 - Keep PocketBase as the only backend and identity system.
 - Never merge accounts by email or reassign records on the client.
 - Persist downloaded library records and supported existing-record metadata

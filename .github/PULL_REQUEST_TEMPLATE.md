@@ -19,7 +19,7 @@
 
 - [ ] This pull request is focused and contains no unrelated cleanup.
 - [ ] Relevant tests pass, and I ran `git diff --check`.
-- [ ] I considered iOS 18 compatibility and tested routine behavior on iOS 26.
+- [ ] I considered iOS 26 compatibility and tested routine behavior on iOS 26.
 - [ ] New or changed controls have appropriate accessibility behavior.
 - [ ] I included no credentials, tokens, customer content, email addresses, private file URLs, or production configuration.
 - [ ] I included no backend schema, hooks, migrations, collection rules, or private operational details.

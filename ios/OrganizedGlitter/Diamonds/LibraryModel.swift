@@ -74,16 +74,11 @@ extension LibraryItem {
 }
 
 /// How a Library screen is reached. iPhone and the collapsed iPad tab bar
-/// browse every craft; iPad sidebar rows pin one craft; iOS 26 adds a search
-/// tab, while iOS 18 searches inside Library.
+/// browse every craft; iPad sidebar rows pin one craft; Search has its own tab.
 enum LibraryPresentation: Hashable {
   case browse
   case craft(LibrarySection)
   case search
-
-  static var hasSearchTab: Bool {
-    if #available(iOS 26, *) { true } else { false }
-  }
 
   var title: String {
     switch self {
@@ -98,7 +93,7 @@ enum LibraryPresentation: Hashable {
   }
 
   var isSearchable: Bool {
-    self == .search || !Self.hasSearchTab
+    self == .search
   }
 
   func accepts(_ request: LibraryRequest) -> Bool {
