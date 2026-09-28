@@ -83,12 +83,6 @@ extension View {
   func themedScrollBackground() -> some View {
     modifier(ThemedScrollBackground())
   }
-
-  /// Bottom drawer for compact presentations.
-  func drawer(_ detents: Set<PresentationDetent>) -> some View {
-    presentationDetents(detents)
-      .presentationDragIndicator(.visible)
-  }
 }
 
 @MainActor
@@ -104,13 +98,15 @@ final class FormDrawer {
   var route: Route?
   var isPresenting: Bool { route != nil }
 
+  @discardableResult
   func present<Content: View>(
     detents: Set<PresentationDetent>,
     onDismiss: @escaping () -> Void = {},
     @ViewBuilder content: () -> Content
-  ) {
-    guard route == nil else { return }
+  ) -> Bool {
+    guard route == nil else { return false }
     route = Route(detents: detents, content: AnyView(content()), onDismiss: onDismiss)
+    return true
   }
 
   func dismiss() {

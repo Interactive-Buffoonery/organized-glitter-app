@@ -148,12 +148,29 @@ struct ThemeTests {
   @Test
   func openingAnotherFormPreservesTheActiveDraft() throws {
     let drawer = FormDrawer()
-    drawer.present(detents: [.large]) { Text("Draft in progress") }
+    var dismissCount = 0
+    let accepted = drawer.present(detents: [.large], onDismiss: { dismissCount += 1 }) {
+      Text("Draft in progress")
+    }
+    #expect(accepted)
     let activeID = try #require(drawer.route?.id)
 
-    drawer.present(detents: [.medium]) { Text("Another form") }
+    var builtRejectedContent = false
+    var dismissedRejectedForm = false
+    let rejected = drawer.present(
+      detents: [.medium], onDismiss: { dismissedRejectedForm = true }
+    ) {
+      builtRejectedContent = true
+      return Text("Another form")
+    }
 
+    #expect(!rejected)
+    #expect(!builtRejectedContent)
     #expect(drawer.route?.id == activeID)
     #expect(drawer.route?.detents == [.large])
+    drawer.dismiss()
+    #expect(dismissCount == 1)
+    #expect(!dismissedRejectedForm)
+    #expect(drawer.present(detents: [.medium]) { Text("Next form") })
   }
 }
