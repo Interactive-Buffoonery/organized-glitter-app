@@ -248,10 +248,16 @@ final class LibraryModel {
   }
 
   func acceptSavedBook(_ book: ColoringBookRecord) {
-    guard let index = displayedItems.firstIndex(where: { $0.id == book.id }) else { return }
-    displayedItems[index] = LibraryItem.book(book)
+    let saved = LibraryItem.book(book)
+    guard let index = displayedItems.firstIndex(where: { $0.id == saved.id }) else { return }
+    let updated = saved
       .retainingListingContext(from: displayedItems[index])
-    displayedItems.sort(by: precedes)
+    if matchesCurrentListing(updated, bookTitles: ownedBookTitles()) {
+      displayedItems[index] = updated
+      displayedItems.sort(by: precedes)
+    } else {
+      displayedItems.remove(at: index)
+    }
   }
 
   func load(reset: Bool = true) async {
