@@ -247,6 +247,19 @@ final class LibraryModel {
     return matchesCurrentListing(snapshot, bookTitles: ownedBookTitles()) ? snapshot : nil
   }
 
+  func acceptSavedBook(_ book: ColoringBookRecord) {
+    let saved = LibraryItem.book(book)
+    guard let index = displayedItems.firstIndex(where: { $0.id == saved.id }) else { return }
+    let updated = saved
+      .retainingListingContext(from: displayedItems[index])
+    if matchesCurrentListing(updated, bookTitles: ownedBookTitles()) {
+      displayedItems[index] = updated
+      displayedItems.sort(by: precedes)
+    } else {
+      displayedItems.remove(at: index)
+    }
+  }
+
   func load(reset: Bool = true) async {
     if !reset, isLoading || !canLoadMore {
       return

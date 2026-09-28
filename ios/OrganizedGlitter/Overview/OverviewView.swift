@@ -159,6 +159,7 @@ final class OverviewModel {
 }
 
 struct OverviewView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
@@ -236,8 +237,12 @@ struct OverviewView: View {
         item: item,
         library: model.library,
         logEditor: $logEditor,
-        onCollectionChanged: { await model.load() }
+        onCollectionChanged: { await model.load() },
+        onEditPageCount: { book in
+          formDrawer.presentPageCountEditor(book: book, library: model.library)
+        }
       )
+      .environment(formDrawer)
     }
     .task(id: model.library.generation) { await model.load() }
     .onChange(of: refreshGeneration) { _, _ in Task { await model.load() } }
@@ -494,10 +499,12 @@ struct OverviewView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading || model.library.isSyncing)
+    .accessibilityIdentifier("overview.retry")
   }
 }
 
 private struct ContinueCard: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
   @ScaledMetric(relativeTo: .body) private var width = 156
@@ -532,6 +539,7 @@ private struct ContinueCard: View {
     .overlay(alignment: .topTrailing) {
       if let onLog {
         Button("Log", systemImage: "pencil", action: onLog)
+          .disabledWhileFormPresented(formDrawer)
           .font(.footnote.weight(.semibold))
           .glassButton()
           .padding(8)

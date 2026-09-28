@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ColoringBookDetailView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -138,10 +139,9 @@ struct ColoringBookDetailView: View {
       .photoViewer(opening: coverPhoto)
       .accessibilityIdentifier("detail.hero")
 
-      Text(book.title)
-        .font(.title2.bold())
-        .foregroundStyle(theme.foreground)
-        .accessibilityAddTraits(.isHeader)
+      DetailInlineTitle(
+        value: book.title, field: "title", label: "Title", model: model,
+        onCollectionChanged: onCollectionChanged)
       if let credits = credits {
         Text(credits)
           .foregroundStyle(theme.pageSecondaryForeground)
@@ -249,6 +249,7 @@ struct ColoringBookDetailView: View {
     }
     .buttonStyle(.plain)
     .foregroundStyle(theme.pageAction)
+    .disabledWhileFormPresented(formDrawer, or: model.isMutating)
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }

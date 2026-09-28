@@ -1,13 +1,13 @@
 import SwiftUI
 
 struct LibraryView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
-  @State private var firstItemTarget: CreateTarget?
   @State private var logEditor: LibraryItemDetailModel?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
@@ -49,15 +49,7 @@ struct LibraryView: View {
           detail(for: item)
         }
     }
-    .inspector(isPresented: Binding(
-      get: { logEditor != nil },
-      set: { if !$0 { logEditor = nil } }
-    )) {
-      if let editor = logEditor {
-        ProgressNoteEditor(model: editor, onCollectionChanged: { await model.load() })
-          .inspectorColumnWidth(min: 300, ideal: 380, max: 440)
-      }
-    }
+    .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
       path = []
       guard !isAwaitingSearch else { return }
@@ -135,11 +127,6 @@ struct LibraryView: View {
           )
         }
       }
-    }
-    .sheet(item: $firstItemTarget) { target in
-      CreateEditor(
-        target: target, library: model.library,
-        onRefresh: { await model.load() }, onSaved: created)
     }
     .overlay(alignment: .bottom) {
       if model.isLoading, !model.items.isEmpty {
@@ -331,10 +318,17 @@ struct LibraryView: View {
     } description: {
       Text(message)
     } actions: {
-      Button(title) { firstItemTarget = target }
-        .buttonStyle(.borderedProminent)
-        .foregroundStyle(theme.primaryForeground)
-        .accessibilityIdentifier("library.first")
+      Button(title) {
+        formDrawer.present(detents: [.large]) {
+          CreateEditor(
+            target: target, library: model.library,
+            onRefresh: { await model.load() }, onSaved: created)
+        }
+      }
+      .buttonStyle(.borderedProminent)
+      .foregroundStyle(theme.primaryForeground)
+      .disabledWhileFormPresented(formDrawer)
+      .accessibilityIdentifier("library.first")
     }
   }
 
@@ -367,6 +361,7 @@ struct LibraryView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading || model.library.isSyncing)
+    .accessibilityIdentifier("library.retry")
   }
 
   @ViewBuilder
@@ -375,8 +370,14 @@ struct LibraryView: View {
       item: item,
       library: model.library,
       logEditor: $logEditor,
-      onCollectionChanged: { await model.load() }
+      onCollectionChanged: { await model.load() },
+      onEditPageCount: { book in
+        formDrawer.presentPageCountEditor(book: book, library: model.library) { saved in
+          model.acceptSavedBook(saved)
+        }
+      }
     )
+    .environment(formDrawer)
   }
 
   private func selectSaved(_ item: LibraryItem) async {

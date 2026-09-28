@@ -88,7 +88,7 @@ final class LibraryUITests: XCTestCase {
       }
       try capture(app, "library-\(scenario)")
       if scenario == "error" {
-        app.buttons["Try Again"].tap()
+        app.buttons["library.retry"].tap()
         XCTAssertTrue(app.staticTexts[label].waitForExistence(timeout: 5))
       }
       app.terminate()

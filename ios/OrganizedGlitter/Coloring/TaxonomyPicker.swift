@@ -54,7 +54,6 @@ private struct TaxonomyOptionList: View {
   @Environment(\.theme) private var theme
   @State private var errorMessage: String?
   @State private var isCreating = false
-  @State private var isPresentingCreate = false
   @State private var newName = ""
   @State private var usingDownloadedOptions = false
 
@@ -80,13 +79,26 @@ private struct TaxonomyOptionList: View {
                 Task { await load() }
               }
             }
-            Button {
-              isPresentingCreate = true
-            } label: {
-              Label("New \(label.lowercased())…", systemImage: "plus.circle")
+            HStack {
+              TextField("New \(label.lowercased())", text: $newName)
+                .submitLabel(.done)
+                .onSubmit { Task { await create() } }
+                .disabled(isCreating)
+                .accessibilityIdentifier("taxonomy.newName")
+              if isCreating {
+                ProgressView()
+              } else {
+                Button("Add") {
+                  Task { await create() }
+                }
+                .buttonStyle(.borderless)
                 .foregroundStyle(theme.primary)
+                .disabled(trimmedNewName.isEmpty)
+                .accessibilityLabel("Add \(label.lowercased())")
+                .accessibilityIdentifier("taxonomy.add")
+              }
             }
-            .disabled(isCreating)
+          } footer: {
             NeedsConnectionHint()
           }
         } else if let errorMessage {
@@ -111,16 +123,10 @@ private struct TaxonomyOptionList: View {
     .task {
       await load()
     }
-    .alert("New \(label)", isPresented: $isPresentingCreate) {
-      TextField("Name", text: $newName)
-      Button("Create") {
-        Task { await create() }
-      }
-      .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-      Button("Cancel", role: .cancel) {
-        newName = ""
-      }
-    }
+  }
+
+  private var trimmedNewName: String {
+    newName.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   private func selectionRow(id: String, name: String) -> some View {
@@ -173,7 +179,7 @@ private struct TaxonomyOptionList: View {
   }
 
   private func create() async {
-    let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+    let name = trimmedNewName
     guard !name.isEmpty, !isCreating else {
       return
     }

@@ -99,6 +99,24 @@ struct LibraryTests {
     #expect(await model.selection(afterSaving: .diamond(changed)) == nil)
   }
 
+  @Test func savedBookRespectsCurrentFilterWithoutReloading() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages", status: "purchased")
+    try await library.store.ingest(.book(book), scope: library.scope)
+    let model = LibraryModel(library: library)
+    model.select(.books)
+    await model.load()
+
+    let changed = featureBook("book", title: "Quiet Pages", status: "completed")
+    model.acceptSavedBook(changed)
+    #expect(model.items.map(\.status) == ["completed"])
+
+    model.statusFilter = "purchased"
+    await model.load()
+    model.acceptSavedBook(changed)
+    #expect(model.items.isEmpty)
+  }
+
   @Test func pageSearchDoesNotRevealAnotherAccountsBook() async throws {
     let library = try localFeatureLibrary(userID: "another-user")
     await #expect(throws: LocalLibraryError.self) {

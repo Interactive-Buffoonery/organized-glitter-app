@@ -1,27 +1,30 @@
 import SwiftUI
 
 struct LibraryItemDetailDestination: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
   @Environment(\.connectionAvailable) private var connectionAvailable
   @State private var model: LibraryItemDetailModel
-  @State private var editor: DetailEditor?
   @State private var isConfirmingDelete = false
   @State private var deleteErrorMessage: String?
   @Binding private var logEditor: LibraryItemDetailModel?
 
   let onCollectionChanged: @MainActor @Sendable () async -> Void
+  let onEditPageCount: ((ColoringBookRecord) -> Void)?
 
   init(
     item: LibraryItem,
     library: LibrarySession,
     logEditor: Binding<LibraryItemDetailModel?>,
-    onCollectionChanged: @escaping @MainActor @Sendable () async -> Void
+    onCollectionChanged: @escaping @MainActor @Sendable () async -> Void,
+    onEditPageCount: ((ColoringBookRecord) -> Void)? = nil
   ) {
     _model = State(
       initialValue: LibraryItemDetailModel(item: item, library: library))
     _logEditor = logEditor
     self.onCollectionChanged = onCollectionChanged
+    self.onEditPageCount = onEditPageCount
   }
 
   var body: some View {
@@ -40,7 +43,7 @@ struct LibraryItemDetailDestination: View {
           book: book,
           model: model,
           logEditor: $logEditor,
-          onEditPageCount: { editor = .book(book) },
+          onEditPageCount: { onEditPageCount?(book) },
           onCollectionChanged: onCollectionChanged
         )
         .accessibilityIdentifier("detail.book")
@@ -62,9 +65,12 @@ struct LibraryItemDetailDestination: View {
     .toolbar {
       ToolbarItemGroup(placement: .topBarTrailing) {
         Button("Edit") {
-          editor = DetailEditor(item: model.item)
+          let editor = DetailEditor(item: model.item)
+          formDrawer.present(detents: editor.detents) {
+            editorView(for: editor)
+          }
         }
-        .disabled(model.isMutating)
+        .disabledWhileFormPresented(formDrawer, or: model.isMutating)
         .accessibilityIdentifier("detail.edit")
 
         if model.item.canDeleteFromDetail {
@@ -77,7 +83,7 @@ struct LibraryItemDetailDestination: View {
           } label: {
             Label("More", systemImage: "ellipsis.circle")
           }
-          .disabled(model.isMutating)
+          .disabledWhileFormPresented(formDrawer, or: model.isMutating)
           .accessibilityIdentifier("detail.more")
         }
       }
@@ -100,9 +106,6 @@ struct LibraryItemDetailDestination: View {
           model.needsBookPageRefresh = true
         }
       }
-    }
-    .sheet(item: $editor) { editor in
-      editorView(for: editor)
     }
     .confirmationDialog(
       "Delete \(model.item.title)?",
@@ -200,6 +203,13 @@ private enum DetailEditor: Identifiable {
     case .diamond(let project): "diamond:\(project.id)"
     case .book(let book): "book:\(book.id)"
     case .page(let page): "page:\(page.id)"
+    }
+  }
+
+  var detents: Set<PresentationDetent> {
+    switch self {
+    case .diamond, .page: [.medium, .large]
+    case .book: [.large]
     }
   }
 }

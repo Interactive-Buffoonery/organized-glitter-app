@@ -25,13 +25,13 @@ struct AppShellView: View {
   @State private var homeRevealedLoggedItemID: LibraryItem.ID?
   @State private var homeRefreshGeneration = 0
   @State private var isShowingAccount = false
-  @State private var isPickingNoteTarget = false
   @State private var libraryRefresh = LibraryRefresh()
   @State private var libraryRequest: LibraryRequest?
   @State private var accountPreferences: AccountPreferencesModel
   @State private var protectedFiles: ProtectedFileAccess
   @State private var connectivity = Connectivity()
   @State private var lastAnnouncedSyncMessage: String?
+  @State private var formDrawer = FormDrawer()
 
   init(model: AppModel, client: PocketBaseClient, user: UserRecord, library: LibrarySession) {
     self.model = model
@@ -60,7 +60,7 @@ struct AppShellView: View {
               libraryRequest = request
               selectedTab = sizeClass == .regular ? .craft(request.section) : .library
             },
-            onAddNote: { isPickingNoteTarget = true },
+            onAddNote: presentNoteTargetPicker,
             onSessionExpired: { await model.expireSession() }
           )
           .toolbar {
@@ -76,33 +76,19 @@ struct AppShellView: View {
                 verticals: accountPreferences.verticals,
                 onRefresh: { libraryRefresh.bump() },
                 onSaved: { _ in libraryRefresh.bump() },
-                onAddNote: { isPickingNoteTarget = true }
+                onAddNote: presentNoteTargetPicker
               )
             }
           }
         }
-        .inspector(isPresented: Binding(
-          get: { homeLogEditor != nil },
-          set: { isPresented in
-            if !isPresented {
-              homeLogEditor = nil
-              homeRevealedLoggedItemID = homePendingLoggedItemID
-              homePendingLoggedItemID = nil
-            }
-          }
-        )) {
-          if let editor = homeLogEditor {
-            ProgressNoteEditor(
-              model: editor,
-              onCollectionChanged: {
-                if editor.lastAddedProgressNoteID != nil {
-                  homePendingLoggedItemID = editor.item.id
-                } else {
-                  homeRefreshGeneration += 1
-                }
-              }
-            )
-            .inspectorColumnWidth(min: 300, ideal: 380, max: 440)
+        .progressNoteDrawer(editor: $homeLogEditor, onDismiss: {
+          homeRevealedLoggedItemID = homePendingLoggedItemID
+          homePendingLoggedItemID = nil
+        }) { editor in
+          if editor.lastAddedProgressNoteID != nil {
+            homePendingLoggedItemID = editor.item.id
+          } else {
+            homeRefreshGeneration += 1
           }
         }
         .onChange(of: homeLogEditor == nil) { _, isDismissed in
@@ -134,16 +120,7 @@ struct AppShellView: View {
       }
     }
     .tabViewStyle(.sidebarAdaptable)
-    .inspector(isPresented: $isPickingNoteTarget) {
-      // Remove retained picker state when the inspector closes.
-      if isPickingNoteTarget {
-        NoteTargetPicker(
-          library: library,
-          verticals: accountPreferences.verticals,
-          onSaved: { libraryRefresh.bump() }
-        )
-      }
-    }
+    .formDrawerHost(formDrawer)
     .onChange(of: sizeClass) { _, sizeClass in
       switch (sizeClass, selectedTab) {
       case (.regular, .library):
@@ -191,6 +168,15 @@ struct AppShellView: View {
     }
   }
 
+  private func presentNoteTargetPicker() {
+    formDrawer.present(detents: [.medium, .large]) {
+      NoteTargetPicker(
+        library: library,
+        verticals: accountPreferences.verticals,
+        onSaved: { libraryRefresh.bump() })
+    }
+  }
+
   private func library(_ presentation: LibraryPresentation) -> some View {
     LibraryView(
       library: library,
@@ -198,7 +184,7 @@ struct AppShellView: View {
       libraryRefresh: libraryRefresh,
       verticals: accountPreferences.verticals,
       request: libraryRequest,
-      onAddNote: { isPickingNoteTarget = true },
+      onAddNote: presentNoteTargetPicker,
       onSessionExpired: { await model.expireSession() }
     )
   }

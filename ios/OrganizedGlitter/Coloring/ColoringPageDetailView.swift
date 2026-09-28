@@ -37,21 +37,22 @@ struct ColoringPageDetailView: View {
           .accessibilityIdentifier("detail.hero")
 
           VStack(alignment: .leading, spacing: 6) {
-            Text(LibraryItem.page(page).title)
-              .font(.title2.bold())
-              .foregroundStyle(theme.foreground)
+            DetailInlineTitle(
+              value: page.revealedSubject ?? "",
+              placeholder: "Page \(page.pageNumber)",
+              field: "revealed_subject",
+              label: "Revealed subject",
+              allowsEmpty: true,
+              model: model,
+              onCollectionChanged: onCollectionChanged)
             Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
               .font(.body)
               .foregroundStyle(theme.pageSecondaryForeground)
           }
 
-          DetailMetadataCard {
-            DetailMetadataRow(label: "Status") {
-              StatusBadge(
-          label: PageStatus.label(for: page.status),
-          systemImage: PageStatus.systemImage(for: page.status))
-            }
-          }
+          DetailStatusMenu<PageStatus>(
+            current: page.status, model: model, onCollectionChanged: onCollectionChanged)
+          DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
           VStack(alignment: .leading, spacing: 12) {
             photoHeader
