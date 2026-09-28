@@ -1,8 +1,9 @@
 # Password reset links
 
 Status: the release owner verified native iPad email-link reset, rejection of a
-reused link, and desktop web fallback on September 27, 2026. The signed-in guard
-and clarified recovery copy were then verified on the updated iPad build.
+reused link, expired-link recovery, new and old password sign-in behavior, and
+desktop web fallback on September 27, 2026. The signed-in guard, recovery copy,
+and VoiceOver flow were verified on the updated iPad build. Native PR #5 merged.
 
 ## Contract
 
@@ -56,24 +57,14 @@ before clients can continue treating the generic rule rejection this way.
 The backend migration `1789940324_enforce_verified_auth.js` and its disposable
 `scripts/test-auth-verification.mjs` checks establish this source contract.
 
-## Deployment gate
+## Deployment verification
 
 The app carries `applinks:organizedglitter.app`. On September 26, 2026, a direct
 HTTPS GET of the canonical AASA file returned
 `7CNK4YPCQX.com.interactivebuffoonery.organizedglitter` with the
 `/auth/confirm-password-reset/*` component. The coordinated backend PR #261
-merged on September 21, 2026. Neither observation verifies the deployed backend
-revision or proves that iOS opens the link. Before claiming deployed native
-support:
-
-1. Verify a newly generated reset email on a physical iOS 18 or newer device,
-   including app-open, web fallback, success, expired, and reused-token cases.
-2. Check the native flow with VoiceOver.
-3. Verify the deployed backend revision, then record it in
-   `BackendContract.json`.
-
-`BackendContract.json` remains unchanged because the deployed backend revision
-has not been verified.
+merged on September 21, 2026. These checks preceded the physical-device and
+production backend verification below.
 
 On September 27, 2026, browser GET and HEAD checks again returned 200 without
 redirects, with `application/json` and the expected app identifier and path.
@@ -82,15 +73,24 @@ invalid token. These checks do not establish real-email delivery or successful
 reset completion.
 
 During the same validation, the release owner inspected the deployed PocketBase
-dashboard and confirmed `users.authRule = verified = true` and a reset-email
-template using `{APP_URL}/auth/confirm-password-reset/{TOKEN}`. Neither setting
-needed a change. These targeted checks do not establish the full deployed
-backend revision.
+dashboard and confirmed `users.authRule = verified = true`, PocketBase 0.40.4,
+and a reset-email template using
+`{APP_URL}/auth/confirm-password-reset/{TOKEN}`. Neither setting needed a
+change. A newly delivered email opened the native form on an iPad and completed
+the reset. Separate checks covered the browser fallback, reused and expired
+links, new and old password sign-in, and VoiceOver.
 
 The live web page's build identifier was
 `851a929696fc8d3d1e8cfcb450aa26c394199d7a`, which includes the companion
 reset-link PR #261. This identifies the web build, not the independently
 deployed PocketBase hooks or configuration.
+
+Later production checks matched the deployed sync hook and migration byte for
+byte to backend source `a64da547c1adf0edd6eebf92e767711ad45aa50e` and
+passed authenticated API smoke checks. The native `BackendContract.json` now
+pins that reviewed source revision, PocketBase 0.40.4, and its verified schema
+digest. The deployment follow-up for backend PR #333 records those checks; it
+does not claim a byte-for-byte inventory of every deployed backend file.
 
 ## Physical-device checklist
 

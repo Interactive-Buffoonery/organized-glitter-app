@@ -175,10 +175,10 @@ Manual review: launch Debug with `-ui-testing-signed-out`.
 2. Add Google and Apple only after provider setup and continuity checks; Apple
    becomes mandatory if Google or Discord ship in the App Store build
    (ADR 0007).
-3. Deploy and verify the password-reset AASA and web fallback described in
-   `password-reset-links.md`, then update `BackendContract.json` to the verified
-   backend revision.
-4. Define the separate email-verification universal-link contract.
-5. Keep password-reset request distinct from token confirmation.
-6. Account deletion remains a separate backend-first App Store blocker per
+3. Define the separate email-verification universal-link contract.
+4. Keep password-reset request distinct from token confirmation.
+5. Account deletion remains a separate backend-first App Store blocker per
    `architecture.md`.
+
+The password-reset AASA, native link, web fallback, and backend contract pin
+were verified later. See `password-reset-links.md` for the results.
