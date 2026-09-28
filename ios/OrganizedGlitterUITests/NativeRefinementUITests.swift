@@ -22,7 +22,7 @@ final class NativeRefinementUITests: XCTestCase {
       )
       XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
     }
-    XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["create.menu"].waitForExistence(timeout: 5))
     try capture("refinement-01-overview")
 
     openLibrary(app)
@@ -55,7 +55,7 @@ final class NativeRefinementUITests: XCTestCase {
 
   func testCapturesShellActions() throws {
     let app = launchFixture()
-    XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["create.menu"].waitForExistence(timeout: 5))
 
     app.buttons["create.menu"].tap()
     XCTAssertTrue(app.buttons["create.diamond"].waitForExistence(timeout: 3))
@@ -172,10 +172,11 @@ final class NativeRefinementUITests: XCTestCase {
     cover.tap()
     XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
     button("photoViewer.close", in: app).tap()
-    XCTAssertFalse(element("photoViewer", in: app).waitForExistence(timeout: 2))
+    XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
 
+    app.scrollViews["detail.diamond"].swipeUp()
     let photo = app.buttons.matching(
-      NSPredicate(format: "label BEGINSWITH %@", "Open Progress photo from")
+      NSPredicate(format: "label BEGINSWITH %@", "Open progress photo from")
     ).firstMatch
     makeHittable(photo, in: app)
     photo.tap()
@@ -196,11 +197,16 @@ final class NativeRefinementUITests: XCTestCase {
     cover.tap()
     XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
     button("photoViewer.close", in: app).tap()
+    XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
 
     let photo = app.buttons.matching(
       NSPredicate(format: "label BEGINSWITH %@", "Open Page photo")
     ).firstMatch
-    makeHittable(photo, in: app)
+    let pageScroll = app.scrollViews.containing(.button, identifier: "detail.page.addPhoto").firstMatch
+    for _ in 0..<8 where !photo.isHittable {
+      pageScroll.swipeUp()
+    }
+    XCTAssertTrue(photo.isHittable)
     photo.tap()
     XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
     button("photoViewer.close", in: app).tap()
