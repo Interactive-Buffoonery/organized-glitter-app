@@ -173,6 +173,12 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
       return
     }
 
+    let sidebarCraft = app.cells["Diamond art"].firstMatch
+    if sidebarCraft.exists && sidebarCraft.isHittable {
+      sidebarCraft.tap()
+      return
+    }
+
     for destination in [
       app.popUpButtons["Library"].firstMatch,
       app.buttons["Library"].firstMatch,
@@ -186,6 +192,12 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {
+    let sidebarCraft = app.cells[title].firstMatch
+    if sidebarCraft.exists && sidebarCraft.isHittable {
+      sidebarCraft.tap()
+      return
+    }
+
     let directButton = app.buttons[title]
     if directButton.exists {
       directButton.tap()
