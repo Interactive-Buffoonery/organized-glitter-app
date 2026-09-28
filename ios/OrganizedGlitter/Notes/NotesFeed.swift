@@ -15,14 +15,18 @@ enum NotesCraft: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
-  /// The only craft the account can see, or the requested one when both are enabled.
-  func visible(for verticals: VerticalPreferences) -> NotesCraft {
+  static func available(for verticals: VerticalPreferences) -> [NotesCraft] {
     switch (verticals.diamondPainting, verticals.coloringBooks) {
-    case (true, true): self
-    case (true, false): .diamond
-    case (false, true): .coloring
-    case (false, false): .all
+    case (true, true): [.all, .diamond, .coloring]
+    case (true, false): [.diamond]
+    case (false, true): [.coloring]
+    case (false, false): []
     }
+  }
+
+  func resolved(for verticals: VerticalPreferences) -> NotesCraft? {
+    let available = Self.available(for: verticals)
+    return available.contains(self) ? self : available.first
   }
 }
 
@@ -110,10 +114,14 @@ enum NotesFeed {
   }
 
   static func filter(
-    _ entries: [NotesFeedEntry], craft: NotesCraft, year: Int?
+    _ entries: [NotesFeedEntry], craft: NotesCraft, year: Int?, verticals: VerticalPreferences
   ) -> [NotesFeedEntry] {
-    entries.filter {
-      (craft == .all || $0.craft == craft) && (year == nil || $0.year == year)
+    let available = NotesCraft.available(for: verticals)
+    guard let selected = craft.resolved(for: verticals) else { return [] }
+    return entries.filter {
+      available.contains($0.craft)
+        && (selected == .all || $0.craft == selected)
+        && (year == nil || $0.year == year)
     }
   }
 
@@ -144,15 +152,16 @@ enum NotesFeed {
   static func noteTargets(
     items: [LibraryItem], verticals: VerticalPreferences, search: String
   ) -> [NoteTarget] {
+    let available = NotesCraft.available(for: verticals)
     var bookTitles: [String: String] = [:]
     for case .book(let book) in items { bookTitles[book.id] = book.title }
     let targets = items.compactMap { item -> NoteTarget? in
       switch item {
-      case .diamond(let project) where verticals.diamondPainting:
+      case .diamond(let project) where available.contains(.diamond):
         return NoteTarget(
           item: item, title: project.title, subtitle: item.subtitle.nonEmpty ?? "Diamond painting",
           isInProgress: project.status == "progress")
-      case .page(let page) where verticals.coloringBooks:
+      case .page(let page) where available.contains(.coloring):
         return NoteTarget(
           item: item, title: pageTitle(page, bookTitle: bookTitles[page.book]),
           subtitle: page.revealedSubject?.nonEmpty ?? PageStatus.label(for: page.status),

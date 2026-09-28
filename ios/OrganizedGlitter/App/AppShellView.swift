@@ -135,6 +135,7 @@ struct AppShellView: View {
     }
     .tabViewStyle(.sidebarAdaptable)
     .inspector(isPresented: $isPickingNoteTarget) {
+      // Remove retained picker state when the inspector closes.
       if isPickingNoteTarget {
         NoteTargetPicker(
           library: library,
