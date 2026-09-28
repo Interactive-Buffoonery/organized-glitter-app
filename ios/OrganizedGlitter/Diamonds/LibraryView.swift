@@ -268,15 +268,22 @@ struct LibraryView: View {
       if model.items.isEmpty {
         emptyState
           .frame(minHeight: 280)
+      } else if model.isShelved {
+        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
+          ForEach(model.shelves) { shelf in
+            Section {
+              ForEach(shelf.items) { item in
+                galleryItem(item)
+              }
+            } header: {
+              shelfHeader(shelf)
+            }
+          }
+        }
       } else {
         LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
           ForEach(model.items) { item in
             galleryItem(item)
-              .task {
-                if item.id == model.items.last?.id {
-                  await model.load(reset: false)
-                }
-              }
           }
         }
       }
@@ -345,14 +352,50 @@ struct LibraryView: View {
     return dynamicTypeSize.isAccessibilitySize ? [item] : [item, item]
   }
 
-  @ViewBuilder
   private func galleryItem(_ item: LibraryItem) -> some View {
     NavigationLink(value: item) {
       LibraryGalleryCard(
         item: item,
-        imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery))
+        imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
+        showsStatus: !model.committedSearch.isEmpty)
     }
     .buttonStyle(.plain)
+    .task {
+      if item.id == model.items.last?.id {
+        await model.load(reset: false)
+      }
+    }
+  }
+
+  /// Matches Home's section headers; tapping narrows Library to the shelf.
+  private func shelfHeader(_ shelf: LibraryShelf) -> some View {
+    let title = model.section.statusLabel(shelf.status)
+    let count = model.shelfCounts[shelf.status] ?? shelf.items.count
+    return Button {
+      model.statusFilter = shelf.status
+    } label: {
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        Text(title)
+          .font(.title3.weight(.semibold))
+          .foregroundStyle(theme.foreground)
+        Text(count, format: .number)
+          .font(.subheadline.weight(.medium))
+          .monospacedDigit()
+          .foregroundStyle(theme.pageSecondaryForeground)
+        Image(systemName: "chevron.right")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(theme.primary)
+      }
+      .padding(.top, 12)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("\(title), \(count)")
+    .accessibilityHint("Shows only this shelf")
+    .accessibilityAddTraits([.isHeader, .isButton])
+    .accessibilityIdentifier("library.shelf.\(shelf.status)")
   }
 
   private var retryButton: some View {

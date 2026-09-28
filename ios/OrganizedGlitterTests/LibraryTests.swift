@@ -51,6 +51,23 @@ struct LibraryTests {
     #expect(model.committedSearch.isEmpty)
   }
 
+  @Test func browsingAllGroupsActiveShelvesFirst() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.diamond(featureProject("a", title: "Done", status: "completed", updated: "2026-09-05")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("b", title: "Wish", status: "wishlist", updated: "2026-09-04")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("c", title: "Older", status: "progress", updated: "2026-09-01")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("d", title: "Newer", status: "progress", updated: "2026-09-03")), scope: library.scope)
+    let model = LibraryModel(library: library)
+
+    await model.load()
+    #expect(model.shelves.map(\.status) == ["progress", "wishlist", "completed"])
+    #expect(model.shelves.first?.items.map(\.title) == ["Newer", "Older"])
+    #expect(model.shelfCounts["progress"] == 2)
+    model.statusFilter = "progress"
+    await model.load()
+    #expect(!model.isShelved)
+  }
+
   @Test func localPaginationKeepsEarlierItems() async throws {
     let library = try localFeatureLibrary()
     for index in 0..<35 {

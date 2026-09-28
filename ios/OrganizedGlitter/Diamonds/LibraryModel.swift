@@ -51,6 +51,21 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     }
   }
 
+  /// Shelf order when browsing everything: active work first, then what's
+  /// waiting, then finished or gone.
+  var shelfOrder: [String] {
+    switch self {
+    case .diamonds:
+      [DiamondStatus.progress, .onhold, .kitted, .stash, .purchased, .wishlist,
+       .completed, .archived, .destashed].map(\.rawValue)
+    case .books:
+      [BookStatus.inProgress, .inStash, .purchased, .wishlist, .completed, .archived,
+       .destashed].map(\.rawValue)
+    case .pages:
+      [PageStatus.inProgress, .onHold, .paletteChosen, .notStarted, .completed].map(\.rawValue)
+    }
+  }
+
   var sortOptions: [LibrarySort] {
     switch self {
     case .diamonds:
@@ -138,6 +153,13 @@ enum LibrarySort: String, CaseIterable, Identifiable {
   }
 }
 
+struct LibraryShelf: Identifiable {
+  let status: String
+  var items: [LibraryItem]
+
+  var id: String { status }
+}
+
 struct LibraryRequest: Equatable {
   let id = UUID()
   let section: LibrarySection
@@ -163,6 +185,7 @@ final class LibraryModel {
   var mutationError: String?
 
   private(set) var displayedItems: [LibraryItem] = []
+  private(set) var shelfCounts: [String: Int] = [:]
   private var currentPage = 0
   private var totalPages = 0
   private var generation = 0
@@ -175,6 +198,26 @@ final class LibraryModel {
 
   var items: [LibraryItem] {
     displayedItems
+  }
+
+  /// Browsing everything groups the listing into status shelves; a status
+  /// filter or a search lists flat.
+  var isShelved: Bool {
+    statusFilter == nil && committedSearch.isEmpty
+  }
+
+  /// Loaded items grouped by status. Shelved listings sort by shelf first, so
+  /// each shelf is one contiguous run even across pages.
+  var shelves: [LibraryShelf] {
+    var shelves: [LibraryShelf] = []
+    for item in displayedItems {
+      if shelves.last?.status == item.status {
+        shelves[shelves.count - 1].items.append(item)
+      } else {
+        shelves.append(LibraryShelf(status: item.status, items: [item]))
+      }
+    }
+    return shelves
   }
 
   var canLoadMore: Bool {
@@ -287,6 +330,7 @@ final class LibraryModel {
       let bookTitles = ownedBookTitles()
       let matching = library.items.filter { matchesCurrentListing($0, bookTitles: bookTitles) }
         .sorted(by: precedes)
+      shelfCounts = matching.reduce(into: [:]) { $0[$1.status, default: 0] += 1 }
       totalPages = (matching.count + Self.pageSize - 1) / Self.pageSize
       currentPage = min(requestedPage, totalPages)
       displayedItems = Array(matching.prefix(requestedPage * Self.pageSize))
@@ -430,6 +474,12 @@ final class LibraryModel {
   }
 
   private func precedes(_ lhs: LibraryItem, _ rhs: LibraryItem) -> Bool {
+    if isShelved, lhs.status != rhs.status {
+      let order = section.shelfOrder
+      let left = order.firstIndex(of: lhs.status) ?? order.count
+      let right = order.firstIndex(of: rhs.status) ?? order.count
+      return left == right ? lhs.status < rhs.status : left < right
+    }
     switch sort {
     case .recentlyUpdated:
       return lhs.updated == rhs.updated ? lhs.recordID < rhs.recordID : lhs.updated > rhs.updated

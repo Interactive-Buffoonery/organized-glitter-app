@@ -163,14 +163,17 @@ final class LibraryUITests: XCTestCase {
     all.tap()
     app.buttons["library.sort"].tap()
     app.buttons["Title A to Z"].tap()
-    let beachside = app.staticTexts["Beachside Gathering"]
-    let divine = app.staticTexts["Divine Descent"]
-    XCTAssertTrue(beachside.waitForExistence(timeout: 5))
-    XCTAssertTrue(divine.exists)
+    // All groups covers into status shelves; sort orders each shelf.
     XCTAssertTrue(
-      beachside.frame.minY < divine.frame.minY
-        || (beachside.frame.minY == divine.frame.minY
-          && beachside.frame.minX < divine.frame.minX)
+      app.descendants(matching: .any)["library.shelf.progress"].waitForExistence(timeout: 5))
+    let divine = app.staticTexts["Divine Descent"]
+    let yorkie = app.staticTexts["Yorkie & Roses"]
+    XCTAssertTrue(divine.waitForExistence(timeout: 5))
+    XCTAssertTrue(yorkie.exists)
+    XCTAssertTrue(
+      divine.frame.minY < yorkie.frame.minY
+        || (divine.frame.minY == yorkie.frame.minY
+          && divine.frame.minX < yorkie.frame.minX)
     )
 
     app.buttons["Search"].firstMatch.tap()

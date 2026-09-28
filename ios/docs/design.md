@@ -17,7 +17,10 @@ screen backgrounds. The Shelf redesign (Option B in
   in a `TabSection("Library")`. The single Library tab shows only in the tab
   bar, so there is no nested `NavigationSplitView`.
 - **Library.** A covers grid under a row of status chips (All plus every
-  backend status). Sort is a toolbar menu next to `+`. A craft with nothing in
+  backend status). With All selected, covers sit on status shelves, active work
+  first, each under a Home-style header with a count that opens that shelf;
+  cards then omit their status, which only search results show. Sort orders
+  covers within each shelf and is a toolbar menu next to `+`. A craft with nothing in
   it hides chips and sort and shows one "Add your first kit" (or book) prompt
   that opens the editor.
 - **Home.** A Continue carousel of in-progress covers, most recently logged
