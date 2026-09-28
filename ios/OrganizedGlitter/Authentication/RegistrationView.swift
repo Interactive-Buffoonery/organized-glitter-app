@@ -133,12 +133,7 @@ struct RegistrationView: View {
     Button {
       Task { await register() }
     } label: {
-      if isSubmitting {
-        ProgressView()
-          .frame(maxWidth: .infinity, minHeight: 52)
-      } else {
-        Text("Create account")
-      }
+      AuthSubmitLabel(title: "Create account", isSubmitting: isSubmitting)
     }
     .buttonStyle(AuthPrimaryButtonStyle())
     .disabled(isSubmitting || client == nil)
@@ -156,7 +151,7 @@ struct RegistrationView: View {
     }
     .frame(maxWidth: .infinity)
 
-    HStack(spacing: 6) {
+    VStack(spacing: 0) {
       Text("Already have an account?")
         .font(.subheadline)
         .foregroundStyle(theme.mutedForeground)
