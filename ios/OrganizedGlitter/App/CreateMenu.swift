@@ -22,7 +22,8 @@ struct CreateMenu: View {
     } label: {
       Label("Create", systemImage: "plus")
     }
-    .disabled(formDrawer.isPresenting || (!verticals.diamondPainting && !verticals.coloringBooks))
+    .disabledWhileFormPresented(
+      formDrawer, or: !verticals.diamondPainting && !verticals.coloringBooks)
     .accessibilityIdentifier("create.menu")
   }
 
