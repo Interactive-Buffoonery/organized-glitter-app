@@ -274,6 +274,13 @@ final class AppModel {
   }
 
   func loadAppleReadiness() async {
+    #if DEBUG
+      if ProcessInfo.processInfo.arguments.contains("-ui-testing-signed-out") {
+        appleReadiness = ProcessInfo.processInfo.arguments.contains("-ui-testing-apple-available")
+          ? .available : .unavailable
+        return
+      }
+    #endif
     guard let client else {
       appleReadiness = .unavailable
       return

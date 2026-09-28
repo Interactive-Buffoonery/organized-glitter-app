@@ -65,11 +65,9 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("accountMethodTitle")
 
         VStack(spacing: 12) {
-          #if DEBUG
-            if model.appleReadiness == .available {
-              appleButton
-            }
-          #endif
+          if model.appleReadiness == .available {
+            appleButton
+          }
 
           NavigationLink(value: mode == .signIn ? AccountEntryRoute.emailSignIn : .emailRegister) {
             Label(mode.emailDestinationTitle, systemImage: "envelope")
@@ -79,19 +77,17 @@ struct AccountMethodView: View {
           .accessibilityIdentifier("continueWithEmail")
           .disabled(model.client == nil)
 
-          #if DEBUG
-            if model.appleReadiness == .failed {
-              Button("Check Apple sign-in again") {
-                Task { await model.loadSignInMethods() }
-              }
-              .buttonStyle(AuthLinkButtonStyle())
-              .accessibilityIdentifier("retryAppleReadiness")
+          if model.appleReadiness == .failed {
+            Button("Check Apple sign-in again") {
+              Task { await model.loadSignInMethods() }
             }
-            if let error = model.appleError {
-              AccessibleErrorLabel(message: error)
-                .accessibilityIdentifier("appleSignInError")
-            }
-          #endif
+            .buttonStyle(AuthLinkButtonStyle())
+            .accessibilityIdentifier("retryAppleReadiness")
+          }
+          if let error = model.appleError {
+            AccessibleErrorLabel(message: error)
+              .accessibilityIdentifier("appleSignInError")
+          }
           ForEach(model.socialProviders, id: \.self) { provider in
             Button {
               guard let presentationAnchor else { return }
@@ -137,37 +133,27 @@ struct AccountMethodView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .task {
-      #if DEBUG
-        await model.loadSignInMethods()
-      #else
-        await model.loadSocialProviders()
-      #endif
-    }
+    .task { await model.loadSignInMethods() }
     .onDisappear {
       model.cancelOAuth()
-      #if DEBUG
-        model.cancelAppleSignIn()
-        appleSourceID = UUID()
-      #endif
+      model.cancelAppleSignIn()
+      appleSourceID = UUID()
     }
   }
 
-  #if DEBUG
-    private var appleButton: some View {
-      let sourceID = appleSourceID
-      return SignInWithAppleButton(.continue) { request in
-        model.configureAppleRequest(request, sourceID: sourceID)
-      } onCompletion: { result in
-        model.completeAppleAuthorization(AppleAuthorizationOutcome(result), sourceID: sourceID)
-      }
-      .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-      .frame(maxWidth: .infinity, minHeight: 52)
-      .disabled(model.isSubmitting)
-      .accessibilityIdentifier("continueWithApple")
-      .id(sourceID)
+  private var appleButton: some View {
+    let sourceID = appleSourceID
+    return SignInWithAppleButton(.continue) { request in
+      model.configureAppleRequest(request, sourceID: sourceID)
+    } onCompletion: { result in
+      model.completeAppleAuthorization(AppleAuthorizationOutcome(result), sourceID: sourceID)
     }
-  #endif
+    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+    .frame(maxWidth: .infinity, minHeight: 52)
+    .disabled(model.isSubmitting)
+    .accessibilityIdentifier("continueWithApple")
+    .id(sourceID)
+  }
 }
 
 /// Rounded method-choice control matching the studio’s quiet provider rows.
