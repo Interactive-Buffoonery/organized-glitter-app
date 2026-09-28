@@ -13,6 +13,7 @@ struct LibraryView: View {
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
   let request: LibraryRequest?
+  let onAddNote: () -> Void
 
   init(
     library: LibrarySession,
@@ -20,6 +21,7 @@ struct LibraryView: View {
     libraryRefresh: LibraryRefresh,
     verticals: VerticalPreferences = .defaultValue,
     request: LibraryRequest? = nil,
+    onAddNote: @escaping () -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
     let model = LibraryModel(library: library)
@@ -37,6 +39,7 @@ struct LibraryView: View {
     self.libraryRefresh = libraryRefresh
     self.verticals = verticals
     self.request = request
+    self.onAddNote = onAddNote
   }
 
   var body: some View {
@@ -127,7 +130,8 @@ struct LibraryView: View {
             library: model.library,
             verticals: verticals,
             onRefresh: { await model.load() },
-            onSaved: created
+            onSaved: created,
+            onAddNote: onAddNote
           )
         }
       }

@@ -7,6 +7,7 @@ struct CreateMenu: View {
   let verticals: VerticalPreferences
   let onRefresh: () async -> Void
   let onSaved: (LibraryItem) -> Void
+  let onAddNote: () -> Void
 
   @State private var target: CreateTarget?
 
@@ -20,6 +21,10 @@ struct CreateMenu: View {
       if verticals.coloringBooks {
         Button("Coloring book", systemImage: LibrarySection.books.systemImage) { target = .book }
           .accessibilityIdentifier("create.book")
+      }
+      if verticals.hasEnabledVertical {
+        Button("Progress note", systemImage: "square.and.pencil", action: onAddNote)
+          .accessibilityIdentifier("create.note")
       }
     } label: {
       Label("Create", systemImage: "plus")
