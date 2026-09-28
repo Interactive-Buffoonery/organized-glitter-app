@@ -13,8 +13,8 @@ extension Font {
 extension UINavigationBar {
   /// Caveat large titles, once per screen. The legacy proxy attribute alone is
   /// lost after a pop, so every appearance carries it. Backgrounds keep the
-  /// system defaults: transparent on iOS 26 (Liquid Glass and the scroll edge
-  /// effect draw the bar) and at the scroll edge on iOS 18.
+  /// system defaults: Liquid Glass and the scroll edge effect draw the
+  /// transparent bar.
   static func applyCaveatLargeTitles() {
     guard let caveat = UIFont(name: "Caveat", size: 44) else { return }
     let attributes: [NSAttributedString.Key: Any] = [
@@ -26,9 +26,7 @@ extension UINavigationBar {
     let standard = UINavigationBarAppearance()
     let scrollEdge = UINavigationBarAppearance()
     scrollEdge.configureWithTransparentBackground()
-    if #available(iOS 26, *) {
-      standard.configureWithTransparentBackground()
-    }
+    standard.configureWithTransparentBackground()
     standard.largeTitleTextAttributes = attributes
     scrollEdge.largeTitleTextAttributes = attributes
     appearance().standardAppearance = standard
@@ -197,24 +195,11 @@ struct QuietActionStyle: ButtonStyle {
 }
 
 extension View {
-  /// Liquid Glass on iOS 26, a material capsule before it.
-  @ViewBuilder
   func glassButton() -> some View {
-    if #available(iOS 26, *) {
-      buttonStyle(.glass)
-    } else {
-      buttonStyle(.bordered)
-        .background(.ultraThinMaterial, in: .capsule)
-    }
+    buttonStyle(.glass)
   }
 
-  @ViewBuilder
   func glassProminentButton() -> some View {
-    if #available(iOS 26, *) {
-      buttonStyle(.glassProminent)
-    } else {
-      buttonStyle(.borderedProminent)
-        .buttonBorderShape(.capsule)
-    }
+    buttonStyle(.glassProminent)
   }
 }

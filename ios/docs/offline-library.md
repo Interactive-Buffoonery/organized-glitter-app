@@ -92,7 +92,7 @@ resolution, snapshot failure, local search and sorting, session expiration,
 sign-out confirmation, and cache-only artwork requests. Backend tests run
 against a disposable PocketBase instance with the production hooks loaded,
 including unauthorized access, relation ownership, conflicts, replay, and
-schema migration behavior. iOS 18 remains the deployment minimum.
+schema migration behavior. iOS and iPadOS 26 remain the deployment minimum.
 
 ### Debug offline UI fixture
 

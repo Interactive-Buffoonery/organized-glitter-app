@@ -210,7 +210,7 @@ Track A:  0 (incl. Discord) ─ 1 ─ 2 ─┬─ 3 ─ 4 ─ 5 ── H0
 
 ## Architecture constraints to keep
 
-- Swift 6, iOS 18+, availability for newer APIs.
+- Swift 6, iOS and iPadOS 26+, availability for newer APIs.
 - Feature state local; inject `PocketBaseClient` and user id.
 - Partial updates; refresh after unknown write completion.
 - Verticals gate **entry points**, not historical records (timer spec; also tags/notes).
