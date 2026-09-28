@@ -83,7 +83,7 @@ struct LibraryItemDetailDestination: View {
           } label: {
             Label("More", systemImage: "ellipsis.circle")
           }
-          .disabled(model.isMutating)
+          .disabledWhileFormPresented(formDrawer, or: model.isMutating)
           .accessibilityIdentifier("detail.more")
         }
       }

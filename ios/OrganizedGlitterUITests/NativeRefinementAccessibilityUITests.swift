@@ -2,6 +2,59 @@ import XCTest
 
 @MainActor
 final class NativeRefinementAccessibilityUITests: XCTestCase {
+  func testDrawerPreservesInlineTitleDraftAndDisablesBackgroundEdits() {
+    let app = launchFixture()
+    openLibrary(app)
+    openCard(named: "Yorkie & Roses", in: app)
+    let title = button("detail.title", in: app)
+    makeHittable(title, in: app)
+    title.tap()
+    let draft = app.textFields["detail.title.field"]
+    XCTAssertTrue(draft.waitForExistence(timeout: 5))
+    draft.typeText(" draft")
+    let pendingTitle = draft.value as? String
+    XCTAssertEqual(pendingTitle, "Yorkie & Roses draft")
+
+    button("detail.edit", in: app).tap()
+    let editor = app.navigationBars["Edit Project"]
+    XCTAssertTrue(editor.waitForExistence(timeout: 5))
+    if draft.exists { XCTAssertFalse(draft.isEnabled) }
+    for identifier in ["detail.status", "detail.spec.drill", "detail.more"] {
+      let control = button(identifier, in: app)
+      if control.exists { XCTAssertFalse(control.isEnabled, identifier) }
+    }
+    editor.buttons["Cancel"].tap()
+    XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+    XCTAssertTrue(draft.waitForExistence(timeout: 5))
+    XCTAssertTrue(draft.isEnabled)
+    XCTAssertEqual(draft.value as? String, pendingTitle)
+    draft.tap()
+    draft.typeText("\n")
+    XCTAssertTrue(title.waitForExistence(timeout: 5))
+    XCTAssertEqual(title.label, pendingTitle)
+  }
+
+  func testDrawerDisablesDateChangesUntilDismissed() {
+    let app = launchFixture()
+    openLibrary(app)
+    openCard(named: "Yorkie & Roses", in: app)
+    let changeDate = app.buttons["Change started date"]
+    makeHittable(changeDate, in: app)
+    XCTAssertTrue(changeDate.isEnabled)
+    let clearDate = app.buttons["Clear started date"]
+    XCTAssertTrue(clearDate.exists)
+
+    button("detail.edit", in: app).tap()
+    let editor = app.navigationBars["Edit Project"]
+    XCTAssertTrue(editor.waitForExistence(timeout: 5))
+    if changeDate.exists { XCTAssertFalse(changeDate.isEnabled) }
+    if clearDate.exists { XCTAssertFalse(clearDate.isEnabled) }
+    editor.buttons["Cancel"].tap()
+    XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+    XCTAssertTrue(changeDate.isEnabled)
+    XCTAssertTrue(clearDate.isEnabled)
+  }
+
   func testPageCountDrawerPreservesDetailAndDisablesOtherForms() {
     let app = launchFixture()
     openLibrary(app)
@@ -16,7 +69,10 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
     XCTAssertTrue(editor.waitForExistence(timeout: 5))
     XCTAssertTrue(app.textFields["pageCount.field"].exists)
 
-    for identifier in ["create.menu", "detail.edit", "detail.book.editPageCount"] {
+    for identifier in [
+      "create.menu", "detail.edit", "detail.book.editPageCount",
+      "detail.title", "detail.status", "detail.more",
+    ] {
       let trigger = button(identifier, in: app)
       if trigger.exists {
         XCTAssertFalse(trigger.isEnabled)
@@ -108,6 +164,9 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   }
 
   private func openLibrary(_ app: XCUIApplication) {
+    defer {
+      XCTAssertTrue(button("library.status.all", in: app).waitForExistence(timeout: 10))
+    }
     let tab = app.tabBars.buttons["Library"].firstMatch
     if tab.waitForExistence(timeout: 3) {
       tab.tap()
@@ -178,7 +237,12 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   }
 
   private func makeHittable(_ element: XCUIElement, in app: XCUIApplication) {
-    for _ in 0..<10 where !element.isHittable {
+    XCTAssertTrue(element.waitForExistence(timeout: 5))
+    for _ in 0..<10 {
+      let frame = element.frame
+      if !frame.isEmpty, !frame.isInfinite, app.frame.intersects(frame), element.isHittable {
+        return
+      }
       app.swipeUp()
     }
     XCTAssertTrue(element.isHittable)
