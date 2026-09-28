@@ -309,36 +309,15 @@ struct ColoringBookPageCountEditor: View {
   }
 }
 
-private struct BookPageCountInspector: ViewModifier {
-  @Binding var book: ColoringBookRecord?
-  let library: LibrarySession
-  let onSaved: (ColoringBookRecord) -> Void
-
-  func body(content: Content) -> some View {
-    content.inspector(isPresented: Binding(
-      get: { book != nil },
-      set: { if !$0 { book = nil } }
-    )) {
-      if let book {
-        ColoringBookPageCountEditor(library: library, book: book) { saved in
-          self.book = nil
-          onSaved(saved)
-        }
-        .inspectorColumnWidth(min: 280, ideal: 340, max: 400)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-      }
-    }
-  }
-}
-
-extension View {
-  func bookPageCountInspector(
-    book: Binding<ColoringBookRecord?>,
+extension FormDrawer {
+  func presentPageCountEditor(
+    book: ColoringBookRecord,
     library: LibrarySession,
     onSaved: @escaping (ColoringBookRecord) -> Void = { _ in }
-  ) -> some View {
-    modifier(BookPageCountInspector(book: book, library: library, onSaved: onSaved))
+  ) {
+    present(detents: [.medium, .large]) {
+      ColoringBookPageCountEditor(library: library, book: book, onSaved: onSaved)
+    }
   }
 }
 

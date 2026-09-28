@@ -161,7 +161,6 @@ struct OverviewView: View {
 
   @State private var model: OverviewModel
   @State private var logEditor: LibraryItemDetailModel?
-  @State private var pageCountBook: ColoringBookRecord?
   @State private var loggedItemID: LibraryItem.ID?
   @State private var continuePosition: LibraryItem.ID?
   let verticals: VerticalPreferences
@@ -221,11 +220,12 @@ struct OverviewView: View {
         item: item,
         library: model.library,
         onCollectionChanged: { await model.load() },
-        onEditPageCount: { pageCountBook = $0 }
+        onEditPageCount: { book in
+          formDrawer.presentPageCountEditor(book: book, library: model.library)
+        }
       )
       .environment(formDrawer)
     }
-    .bookPageCountInspector(book: $pageCountBook, library: model.library)
     .sheet(item: $logEditor, onDismiss: showLoggedItem) { editor in
       DiamondProgressNoteEditor(
         model: editor,

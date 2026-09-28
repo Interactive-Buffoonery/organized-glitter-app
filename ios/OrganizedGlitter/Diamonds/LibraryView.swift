@@ -8,7 +8,6 @@ struct LibraryView: View {
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
-  @State private var pageCountBook: ColoringBookRecord?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -45,9 +44,6 @@ struct LibraryView: View {
         .navigationDestination(for: LibraryItem.self) { item in
           detail(for: item)
         }
-    }
-    .bookPageCountInspector(book: $pageCountBook, library: model.library) { saved in
-      model.acceptSavedBook(saved)
     }
     .task(id: model.listingIdentity) {
       path = []
@@ -367,7 +363,11 @@ struct LibraryView: View {
       item: item,
       library: model.library,
       onCollectionChanged: { await model.load() },
-      onEditPageCount: { pageCountBook = $0 }
+      onEditPageCount: { book in
+        formDrawer.presentPageCountEditor(book: book, library: model.library) { saved in
+          model.acceptSavedBook(saved)
+        }
+      }
     )
     .environment(formDrawer)
   }
