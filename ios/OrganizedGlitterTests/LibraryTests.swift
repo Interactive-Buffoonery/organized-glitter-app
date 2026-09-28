@@ -63,6 +63,8 @@ struct LibraryTests {
     #expect(model.shelves.map(\.status) == ["progress", "wishlist", "completed"])
     #expect(model.shelves.first?.items.map(\.title) == ["Newer", "Older"])
     #expect(model.shelfCounts["progress"] == 2)
+    #expect(library.shelfCounts(for: .diamonds) == ["progress": 2, "wishlist": 1, "completed": 1])
+    #expect(library.shelfCounts(for: .books).isEmpty)
     model.statusFilter = "progress"
     await model.load()
     #expect(!model.isShelved)

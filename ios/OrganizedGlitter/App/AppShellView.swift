@@ -5,6 +5,7 @@ enum AppTab: Hashable {
   case home
   case library
   case craft(LibrarySection)
+  case shelf(LibrarySection, status: String)
   case search
 }
 
@@ -58,7 +59,8 @@ struct AppShellView: View {
             refreshGeneration: homeRefreshGeneration,
             onLibraryRequest: { request in
               libraryRequest = request
-              selectedTab = sizeClass == .regular ? .craft(request.section) : .library
+              selectedTab =
+                sizeClass == .regular ? .shelf(request.section, status: request.status) : .library
             },
             onAddNote: presentNoteTargetPicker,
             onSessionExpired: { await model.expireSession() }
@@ -96,16 +98,13 @@ struct AppShellView: View {
         })
       }
 
-      // ponytail: iPad lists crafts as sidebar rows so Library never nests a
-      // second sidebar; compact width keeps one Library tab with a craft
-      // picker. `defaultVisibility(_:for:)` doesn't hide tabs on iPhone.
+      // ponytail: iPad lists each craft and its shelves as sidebar rows so
+      // Library never nests a second sidebar; compact width keeps one Library
+      // tab with a craft picker. `defaultVisibility(_:for:)` doesn't hide tabs
+      // on iPhone.
       if sizeClass == .regular {
-        TabSection("Library") {
-          ForEach(LibrarySection.available(for: accountPreferences.verticals)) { section in
-            Tab(section.pickerTitle, systemImage: section.systemImage, value: AppTab.craft(section)) {
-              tabContent(library(.craft(section)))
-            }
-          }
+        ForEach(LibrarySection.available(for: accountPreferences.verticals)) { section in
+          craftSidebarSection(section)
         }
       } else {
         Tab("Library", systemImage: "rectangle.grid.2x2", value: .library) {
@@ -125,7 +124,7 @@ struct AppShellView: View {
         if let first = LibrarySection.available(for: accountPreferences.verticals).first {
           selectedTab = .craft(first)
         }
-      case (.compact, .craft):
+      case (.compact, .craft), (.compact, .shelf):
         selectedTab = .library
       default:
         break
@@ -172,6 +171,49 @@ struct AppShellView: View {
         library: library,
         verticals: accountPreferences.verticals,
         onSaved: { libraryRefresh.bump() })
+    }
+  }
+
+  /// One sidebar section per craft: everything, then each shelf with its
+  /// on-device count. Empty shelves are hidden unless selected, so emptying
+  /// the open shelf doesn't pull the row out from under the user.
+  private func craftSidebarSection(_ section: LibrarySection) -> some TabContent<AppTab> {
+    let counts = library.shelfCounts(for: section)
+    let shelves = section.shelfOrder.filter { status in
+      counts[status, default: 0] > 0 || selectedTab == .shelf(section, status: status)
+    }
+    return TabSection(section.pickerTitle) {
+      Tab(value: AppTab.craft(section)) {
+        tabContent(library(.craft(section)))
+      } label: {
+        Label("All", systemImage: section.systemImage)
+          .accessibilityLabel("All \(section.pickerTitle)")
+      }
+      .badge(counts.values.reduce(0, +))
+      ForEach(shelves, id: \.self) { status in
+        Tab(
+          section.statusLabel(status), systemImage: section.statusSystemImage(status),
+          value: AppTab.shelf(section, status: status)
+        ) {
+          tabContent(library(.shelf(section, status: status)))
+        }
+        .badge(counts[status, default: 0])
+      }
+    }
+    .sectionActions {
+      if let target = section.createTarget {
+        Button("New \(target.title)", systemImage: "plus") { presentCreate(target) }
+          .disabledWhileFormPresented(formDrawer)
+      }
+    }
+  }
+
+  private func presentCreate(_ target: CreateTarget) {
+    formDrawer.present(detents: [.large]) {
+      CreateEditor(
+        target: target, library: library,
+        onRefresh: { libraryRefresh.bump() },
+        onSaved: { _ in libraryRefresh.bump() })
     }
   }
 

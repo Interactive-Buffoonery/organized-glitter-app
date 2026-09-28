@@ -286,6 +286,10 @@ final class NativeRefinementUITests: XCTestCase {
       return
     }
 
+    if app.openCraft("Diamond art") {
+      return
+    }
+
     let destinations = [
       app.popUpButtons["Library"].firstMatch,
       app.buttons["Library"].firstMatch,
@@ -300,38 +304,23 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {
-    let button = app.buttons[title]
-    if button.exists {
-      button.tap()
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      XCTAssertTrue(app.openCraft(title), "\(title) is unavailable")
+      return
+    }
+
+    let directButton = app.buttons[title].firstMatch
+    if directButton.exists {
+      directButton.tap()
       return
     }
 
     let craftMenu = app.buttons.matching(identifier: "library.craft").firstMatch
-    if craftMenu.waitForExistence(timeout: 1) {
-      craftMenu.tap()
-      let option = app.buttons[title]
-      XCTAssertTrue(option.waitForExistence(timeout: 5))
-      option.tap()
-      return
-    }
-
-    var sidebarRow = app.staticTexts[title]
-    if !sidebarRow.exists {
-      let showSidebar = app.buttons.matching(
-        NSPredicate(
-          format: "label ==[c] %@ OR label ==[c] %@",
-          "Show Sidebar",
-          "Toggle sidebar"
-        )
-      ).firstMatch
-      if showSidebar.exists {
-        showSidebar.tap()
-      }
-      sidebarRow = app.staticTexts[title]
-    }
-
-    XCTAssertTrue(sidebarRow.waitForExistence(timeout: 5))
-    sidebarRow.tap()
+    XCTAssertTrue(craftMenu.waitForExistence(timeout: 5))
+    craftMenu.tap()
+    let option = app.buttons[title]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    option.tap()
   }
 
   private func openCard(named title: String, in app: XCUIApplication) {

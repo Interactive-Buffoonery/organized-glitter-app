@@ -15,9 +15,7 @@ final class LibraryUITests: XCTestCase {
       tabBarItem.tap()
       return
     }
-    let library = app.buttons["Library"].firstMatch
-    XCTAssertTrue(library.waitForExistence(timeout: 5))
-    library.tap()
+    XCTAssertTrue(app.openCraft("Diamond art"))
   }
 
   private func capture(_ app: XCUIApplication, _ name: String) throws {
@@ -100,18 +98,21 @@ final class LibraryUITests: XCTestCase {
       throw XCTSkip("iPad sidebar review.")
     }
     let app = launch("populated")
-    let books = app.cells["Books"]
+    let books = app.craftRow("Books")
     if !books.waitForExistence(timeout: 2) {
       app.buttons["ToggleSideBar"].tap()
     }
     XCTAssertTrue(books.waitForExistence(timeout: 5))
-    XCTAssertTrue(app.cells["Diamond art"].exists)
-    XCTAssertTrue(app.cells["Pages"].exists)
+    XCTAssertTrue(app.craftRow("Diamond art").exists)
+    XCTAssertTrue(app.craftRow("Pages").exists)
+    XCTAssertTrue(app.cells["In progress, 5"].exists)
+    XCTAssertTrue(app.cells["New coloring book"].exists)
+    try capture(app, "library-ipad-sidebar")
     books.tap()
     XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.buttons["library.craft"].exists)
     XCTAssertTrue(app.buttons["create.menu"].exists)
-    try capture(app, "library-ipad-sidebar")
+    try capture(app, "library-ipad-books")
   }
 
   func testAccessibleCraftMenuAndRotation() throws {
@@ -189,5 +190,28 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Divine Descent"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Beachside Gathering"].exists)
     try capture(app, "library-search")
+  }
+}
+
+extension XCUIApplication {
+  /// The iPad "All" row for a craft, labeled "All <craft>, <count>".
+  func craftRow(_ craft: String) -> XCUIElement {
+    descendants(matching: .any)
+      .matching(NSPredicate(format: "label BEGINSWITH %@", "All \(craft),")).firstMatch
+  }
+
+  /// Opens a craft's full shelf list from the iPad sidebar, or from the
+  /// collapsed tab bar, where tapping a craft selects its first row.
+  @discardableResult
+  func openCraft(_ craft: String) -> Bool {
+    let row = craftRow(craft)
+    if row.exists && row.isHittable {
+      row.tap()
+      return true
+    }
+    let tab = buttons[craft].firstMatch
+    guard tab.waitForExistence(timeout: 3) else { return false }
+    tab.tap()
+    return true
   }
 }

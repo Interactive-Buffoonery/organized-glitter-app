@@ -43,6 +43,23 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     }
   }
 
+  func statusSystemImage(_ rawValue: String) -> String {
+    switch self {
+    case .diamonds: DiamondStatus.systemImage(for: rawValue)
+    case .books: BookStatus.systemImage(for: rawValue)
+    case .pages: PageStatus.systemImage(for: rawValue)
+    }
+  }
+
+  /// Pages are created from their book, so they have no create target.
+  var createTarget: CreateTarget? {
+    switch self {
+    case .diamonds: .diamond
+    case .books: .book
+    case .pages: nil
+    }
+  }
+
   func statusLabel(_ rawValue: String) -> String {
     switch self {
     case .diamonds: DiamondStatus.label(for: rawValue)
@@ -86,25 +103,76 @@ extension LibraryItem {
     case .page: .pages
     }
   }
+
+  /// Owned by the user in that craft; pages belong through an owned book.
+  func belongs(
+    to section: LibrarySection, userID: String, bookTitles: [String: String]
+  ) -> Bool {
+    switch (section, self) {
+    case (.diamonds, .diamond(let project)): project.user == userID
+    case (.books, .book(let book)): book.user == userID
+    case (.pages, .page(let page)): bookTitles[page.book] != nil
+    default: false
+    }
+  }
+}
+
+extension LibrarySession {
+  func ownedBookTitles() -> [String: String] {
+    var titles: [String: String] = [:]
+    for item in items {
+      if case .book(let book) = item, book.user == userID {
+        titles[book.id] = book.title
+      }
+    }
+    return titles
+  }
+
+  /// On-device counts per status for one craft, so sidebar shelves work offline.
+  func shelfCounts(for section: LibrarySection) -> [String: Int] {
+    let bookTitles = section == .pages ? ownedBookTitles() : [:]
+    return items.reduce(into: [:]) { counts, item in
+      if item.belongs(to: section, userID: userID, bookTitles: bookTitles) {
+        counts[item.status, default: 0] += 1
+      }
+    }
+  }
 }
 
 /// How a Library screen is reached. iPhone and the collapsed iPad tab bar
-/// browse every craft; iPad sidebar rows pin one craft; Search has its own tab.
+/// browse every craft; iPad sidebar rows pin one craft or one of its shelves;
+/// Search has its own tab.
 enum LibraryPresentation: Hashable {
   case browse
   case craft(LibrarySection)
+  case shelf(LibrarySection, status: String)
   case search
 
   var title: String {
     switch self {
     case .browse: "Library"
     case .craft(let section): section.pickerTitle
+    case .shelf(let section, let status): section.statusLabel(status)
     case .search: "Search"
     }
   }
 
+  var pinnedSection: LibrarySection? {
+    switch self {
+    case .craft(let section), .shelf(let section, _): section
+    case .browse, .search: nil
+    }
+  }
+
   var showsCraftPicker: Bool {
-    if case .craft = self { false } else { true }
+    pinnedSection == nil
+  }
+
+  var showsStatusChips: Bool {
+    switch self {
+    case .browse, .craft: true
+    case .shelf, .search: false
+    }
   }
 
   var isSearchable: Bool {
@@ -115,6 +183,7 @@ enum LibraryPresentation: Hashable {
     switch self {
     case .browse: true
     case .craft(let section): section == request.section
+    case .shelf(let section, let status): section == request.section && status == request.status
     case .search: false
     }
   }
@@ -410,27 +479,13 @@ final class LibraryModel {
   private static let pageSize = 30
 
   private func ownedBookTitles() -> [String: String] {
-    guard section == .pages else { return [:] }
-    var titles: [String: String] = [:]
-    for item in library.items {
-      if case .book(let book) = item, book.user == userID {
-        titles[book.id] = book.title
-      }
-    }
-    return titles
+    section == .pages ? library.ownedBookTitles() : [:]
   }
 
   private func matchesCurrentListing(
     _ item: LibraryItem, bookTitles: [String: String]
   ) -> Bool {
-    switch (section, item) {
-    case (.diamonds, .diamond(let project)) where project.user == userID:
-      break
-    case (.books, .book(let book)) where book.user == userID:
-      break
-    case (.pages, .page(let page)) where bookTitles[page.book] != nil:
-      break
-    default:
+    guard item.belongs(to: section, userID: userID, bookTitles: bookTitles) else {
       return false
     }
 

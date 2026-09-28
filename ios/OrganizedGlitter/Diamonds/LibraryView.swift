@@ -26,8 +26,9 @@ struct LibraryView: View {
   ) {
     let model = LibraryModel(library: library)
     model.onSessionExpired = onSessionExpired
-    if case .craft(let section) = presentation {
+    if let section = presentation.pinnedSection {
       model.select(section)
+      if case .shelf(_, let status) = presentation { model.statusFilter = status }
     } else {
       model.align(to: verticals)
     }
@@ -64,7 +65,7 @@ struct LibraryView: View {
       model.apply(request)
     }
     .onChange(of: verticals) { _, next in
-      guard case .craft = presentation else {
+      guard presentation.pinnedSection != nil else {
         let previous = model.listingIdentity
         model.align(to: next)
         if model.listingIdentity != previous {
@@ -96,7 +97,7 @@ struct LibraryView: View {
           craftPicker
         }
 
-        if presentation != .search, !isEmptyLibrary {
+        if presentation.showsStatusChips, !isEmptyLibrary {
           statusChips
         }
         libraryBody
