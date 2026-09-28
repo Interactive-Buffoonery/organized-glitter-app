@@ -6,7 +6,7 @@ Berry Cream background, wordmark, provider readiness, and authentication paths.
 - Primary actions are centered and capped at 280 points; provider choices at
   300 points. Forms have a 360-point reading width on iPad.
 - Buttons retain at least 52-point heights and expand for larger text. Apple's
-  native control has an explicit scaled height instead of an unbounded minimum.
+  native control uses a Dynamic Type-scaled minimum height.
 - Google and Discord use their original marks, with email below the providers.
 - Registration, sign-in, reset confirmation, reset requests, and verification
   requests share the same primary style and stable loading label.
