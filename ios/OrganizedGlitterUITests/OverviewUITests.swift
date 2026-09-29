@@ -81,9 +81,7 @@ final class OverviewUITests: XCTestCase {
     try capture(app, "overview-bottom")
     upNext.tap()
     app.buttons["In stash"].tap()
-    let stash = app.buttons["library.status.stash"]
-    XCTAssertTrue(stash.waitForExistence(timeout: 5))
-    XCTAssertTrue(stash.isSelected)
+    assertOpenedShelf("In stash", status: "stash", in: app)
     XCTAssertTrue(app.staticTexts["Beachside Gathering"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
   }
@@ -96,10 +94,20 @@ final class OverviewUITests: XCTestCase {
     finished.tap()
     app.buttons["Completed diamond art"].tap()
 
-    XCTAssertTrue(app.buttons["library.status.completed"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.buttons["library.status.completed"].isSelected)
+    assertOpenedShelf("Completed", status: "completed", in: app)
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
+  }
+
+  /// iPad opens the shelf's own sidebar row; iPhone selects its status chip.
+  private func assertOpenedShelf(_ title: String, status: String, in app: XCUIApplication) {
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+      return
+    }
+    let chip = app.buttons["library.status.\(status)"]
+    XCTAssertTrue(chip.waitForExistence(timeout: 5))
+    XCTAssertTrue(chip.isSelected)
   }
 
   func testAccessibleLayoutAndRotation() throws {

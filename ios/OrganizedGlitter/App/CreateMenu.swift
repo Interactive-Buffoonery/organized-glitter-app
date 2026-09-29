@@ -45,6 +45,13 @@ enum CreateTarget: String, Identifiable {
   case book
 
   var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .diamond: "diamond painting"
+    case .book: "coloring book"
+    }
+  }
 }
 
 struct CreateEditor: View {

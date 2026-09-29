@@ -68,7 +68,7 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("shell-02-account")
     app.buttons["Done"].tap()
 
-    app.buttons["Search"].firstMatch.tap()
+    XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
     try capture("shell-03-search")
   }
@@ -280,58 +280,11 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func openLibrary(_ app: XCUIApplication) {
-    let tab = app.tabBars.buttons["Library"].firstMatch
-    if tab.waitForExistence(timeout: 3) {
-      tab.tap()
-      return
-    }
-
-    let destinations = [
-      app.popUpButtons["Library"].firstMatch,
-      app.buttons["Library"].firstMatch,
-      app.staticTexts["Library"].firstMatch,
-    ]
-    for destination in destinations where destination.exists && destination.isHittable {
-      destination.tap()
-      return
-    }
-
-    XCTFail("The Library destination is unavailable")
+    XCTAssertTrue(app.openLibrary(), "The Library destination is unavailable")
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {
-    let button = app.buttons[title]
-    if button.exists {
-      button.tap()
-      return
-    }
-
-    let craftMenu = app.buttons.matching(identifier: "library.craft").firstMatch
-    if craftMenu.waitForExistence(timeout: 1) {
-      craftMenu.tap()
-      let option = app.buttons[title]
-      XCTAssertTrue(option.waitForExistence(timeout: 5))
-      option.tap()
-      return
-    }
-
-    var sidebarRow = app.staticTexts[title]
-    if !sidebarRow.exists {
-      let showSidebar = app.buttons.matching(
-        NSPredicate(
-          format: "label ==[c] %@ OR label ==[c] %@",
-          "Show Sidebar",
-          "Toggle sidebar"
-        )
-      ).firstMatch
-      if showSidebar.exists {
-        showSidebar.tap()
-      }
-      sidebarRow = app.staticTexts[title]
-    }
-
-    XCTAssertTrue(sidebarRow.waitForExistence(timeout: 5))
-    sidebarRow.tap()
+    XCTAssertTrue(app.openCraft(title), "\(title) is unavailable")
   }
 
   private func openCard(named title: String, in app: XCUIApplication) {

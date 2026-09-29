@@ -13,11 +13,17 @@ screen backgrounds. The Shelf redesign (Option B in
   Account opens from the Home toolbar avatar. Create is the toolbar `+`
   `CreateMenu` on Home and Library.
   The randomizer code stays but has no tab.
-- **iPad.** The `.sidebarAdaptable` `TabView` lists one sidebar row per craft
-  in a `TabSection("Library")`. The single Library tab shows only in the tab
-  bar, so there is no nested `NavigationSplitView`.
+- **iPad.** The `.sidebarAdaptable` `TabView` gives each craft a `TabSection`:
+  an All row, then one row per non-empty shelf, each badged with its
+  on-device count, plus a `+` section action to create that craft (Pages has
+  none; pages are created from their book). The collapsed tab bar shows the
+  crafts as peers of Home and Search. The single Library tab shows only on
+  iPhone, so there is no nested `NavigationSplitView`.
 - **Library.** A covers grid under a row of status chips (All plus every
-  backend status). Sort is a toolbar menu next to `+`. A craft with nothing in
+  backend status). With All selected, covers sit on status shelves, active work
+  first, each under a Home-style header with a count that opens that shelf;
+  cards then omit their status, which only search results show. Sort orders
+  covers within each shelf and is a toolbar menu next to `+`. A craft with nothing in
   it hides chips and sort and shows one "Add your first kit" (or book) prompt
   that opens the editor.
 - **Home.** A Continue carousel of in-progress covers, most recently logged

@@ -199,7 +199,8 @@ final class OrganizedGlitterUITests: XCTestCase {
     app.launchArguments.append("-ui-testing-authenticated")
     app.launch()
 
-    for label in ["Home", "Library", "Search"] {
+    let library = UIDevice.current.userInterfaceIdiom == .pad ? "Diamond art" : "Library"
+    for label in ["Home", library, "Search"] {
       let destination = app.descendants(matching: .any)[label]
       XCTAssertTrue(destination.waitForExistence(timeout: 2), "\(label) is missing")
     }
