@@ -20,7 +20,11 @@ final class LibrarySession {
   private var writeWaiters: [CheckedContinuation<Void, Never>] = []
   private var onlineRecords: Set<LocalRecordKey> = []
 
-  private(set) var items: [LibraryItem] = []
+  private(set) var items: [LibraryItem] = [] {
+    didSet { rebuildShelfCounts() }
+  }
+  private var bookTitles: [String: String] = [:]
+  private var countsBySection: [LibrarySection: [String: Int]] = [:]
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
   private(set) var coloringPageProgressNotes: [ColoringProgressNoteRecord] = []
   private(set) var entries: [LocalLibraryEntry] = []
@@ -39,6 +43,30 @@ final class LibrarySession {
     self.scope = LocalAccountScope(backendURL: client.baseURL, userID: userID)
     self.store = store
     self.coordinator = LocalSyncCoordinator(store: store, client: client, scope: scope)
+  }
+
+  func ownedBookTitles() -> [String: String] { bookTitles }
+
+  func shelfCounts(for section: LibrarySection) -> [String: Int] {
+    countsBySection[section] ?? [:]
+  }
+
+  private func rebuildShelfCounts() {
+    var titles: [String: String] = [:]
+    for item in items {
+      if case .book(let book) = item, book.user == userID {
+        titles[book.id] = book.title
+      }
+    }
+    var counts: [LibrarySection: [String: Int]] = [:]
+    for item in items {
+      let section = item.section
+      if item.belongs(to: section, userID: userID, bookTitles: titles) {
+        counts[section, default: [:]][item.status, default: 0] += 1
+      }
+    }
+    bookTitles = titles
+    countsBySection = counts
   }
 
   func loadLocal() async throws {

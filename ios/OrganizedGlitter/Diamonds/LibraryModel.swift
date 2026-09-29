@@ -117,28 +117,6 @@ extension LibraryItem {
   }
 }
 
-extension LibrarySession {
-  func ownedBookTitles() -> [String: String] {
-    var titles: [String: String] = [:]
-    for item in items {
-      if case .book(let book) = item, book.user == userID {
-        titles[book.id] = book.title
-      }
-    }
-    return titles
-  }
-
-  /// On-device counts per status for one craft, so sidebar shelves work offline.
-  func shelfCounts(for section: LibrarySection) -> [String: Int] {
-    let bookTitles = section == .pages ? ownedBookTitles() : [:]
-    return items.reduce(into: [:]) { counts, item in
-      if item.belongs(to: section, userID: userID, bookTitles: bookTitles) {
-        counts[item.status, default: 0] += 1
-      }
-    }
-  }
-}
-
 /// How a Library screen is reached. iPhone and the collapsed iPad tab bar
 /// browse every craft; iPad sidebar rows pin one craft or one of its shelves;
 /// Search has its own tab.

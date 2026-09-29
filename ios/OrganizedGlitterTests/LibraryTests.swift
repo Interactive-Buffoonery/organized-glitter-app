@@ -70,6 +70,48 @@ struct LibraryTests {
     #expect(!model.isShelved)
   }
 
+  @Test func shelfCountsFollowLocalEditsAndSessionClosure() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden", status: "wishlist")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .diamonds) == ["wishlist": 1])
+
+    let saved: DiamondProjectRecord = try await library.update(
+      collection: "projects", id: project.id, body: ["status": "stash"])
+    #expect(saved.status == "stash")
+    #expect(library.shelfCounts(for: .diamonds) == ["stash": 1])
+
+    try await library.close(removingData: false)
+    #expect(library.shelfCounts(for: .diamonds).isEmpty)
+    #expect(library.ownedBookTitles().isEmpty)
+  }
+
+  @Test func shelfCountsFollowReloadsAndOwnedBookRemoval() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    let page = featurePage("page", book: book.id, number: 1)
+    try await library.store.ingest(.book(book), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .books) == ["purchased": 1])
+    #expect(library.shelfCounts(for: .pages) == ["not_started": 1])
+    #expect(library.ownedBookTitles() == [book.id: book.title])
+
+    try await library.store.ingest(
+      .page(featurePage(page.id, book: book.id, number: 1, status: "in_progress")),
+      scope: library.scope)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .pages) == ["in_progress": 1])
+
+    try await library.store.removeConfirmed(
+      scope: library.scope, key: LibraryItem.book(book).localRecordKey)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .books).isEmpty)
+    #expect(library.shelfCounts(for: .pages).isEmpty)
+    #expect(library.ownedBookTitles().isEmpty)
+  }
+
   @Test func localPaginationKeepsEarlierItems() async throws {
     let library = try localFeatureLibrary()
     for index in 0..<35 {
