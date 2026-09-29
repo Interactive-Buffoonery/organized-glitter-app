@@ -10,12 +10,7 @@ final class LibraryUITests: XCTestCase {
   }
 
   private func openLibrary(_ app: XCUIApplication) {
-    let tabBarItem = app.tabBars.buttons["Library"]
-    if tabBarItem.exists {
-      tabBarItem.tap()
-      return
-    }
-    XCTAssertTrue(app.openCraft("Diamond art"))
+    XCTAssertTrue(app.openLibrary(), "The Library destination is unavailable")
   }
 
   private func capture(_ app: XCUIApplication, _ name: String) throws {
@@ -200,18 +195,44 @@ extension XCUIApplication {
       .matching(NSPredicate(format: "label BEGINSWITH %@", "All \(craft),")).firstMatch
   }
 
-  /// Opens a craft's full shelf list from the iPad sidebar, or from the
-  /// collapsed tab bar, where tapping a craft selects its first row.
   @discardableResult
-  func openCraft(_ craft: String) -> Bool {
-    let row = craftRow(craft)
-    if row.exists && row.isHittable {
-      row.tap()
+  func openLibrary() -> Bool {
+    let tab = tabBars.buttons["Library"].firstMatch
+    if tab.waitForExistence(timeout: 3) {
+      tab.tap()
       return true
     }
-    let tab = buttons[craft].firstMatch
-    guard tab.waitForExistence(timeout: 3) else { return false }
-    tab.tap()
+    if openCraft("Diamond art") { return true }
+    for destination in [
+      popUpButtons["Library"].firstMatch,
+      buttons["Library"].firstMatch,
+      staticTexts["Library"].firstMatch,
+    ] where destination.exists && destination.isHittable {
+      destination.tap()
+      return true
+    }
+    return false
+  }
+
+  @discardableResult
+  func openCraft(_ craft: String) -> Bool {
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      let row = craftRow(craft)
+      if row.exists && row.isHittable {
+        row.tap()
+        return true
+      }
+    }
+    let button = buttons[craft].firstMatch
+    if button.waitForExistence(timeout: 3), button.isHittable {
+      button.tap()
+      return true
+    }
+    let menu = buttons.matching(identifier: "library.craft").firstMatch
+    guard menu.waitForExistence(timeout: 5), menu.isHittable else { return false }
+    menu.tap()
+    guard button.waitForExistence(timeout: 5), button.isHittable else { return false }
+    button.tap()
     return true
   }
 }

@@ -169,49 +169,12 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   }
 
   private func openLibrary(_ app: XCUIApplication) {
-    defer {
-      XCTAssertTrue(button("library.status.all", in: app).waitForExistence(timeout: 10))
-    }
-    let tab = app.tabBars.buttons["Library"].firstMatch
-    if tab.waitForExistence(timeout: 3) {
-      tab.tap()
-      return
-    }
-
-    if app.openCraft("Diamond art") {
-      return
-    }
-
-    for destination in [
-      app.popUpButtons["Library"].firstMatch,
-      app.buttons["Library"].firstMatch,
-      app.staticTexts["Library"].firstMatch,
-    ] where destination.exists && destination.isHittable {
-      destination.tap()
-      return
-    }
-
-    XCTFail("The Library destination is unavailable")
+    XCTAssertTrue(app.openLibrary(), "The Library destination is unavailable")
+    XCTAssertTrue(button("library.status.all", in: app).waitForExistence(timeout: 10))
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {
-    if UIDevice.current.userInterfaceIdiom == .pad {
-      XCTAssertTrue(app.openCraft(title), "\(title) is unavailable")
-      return
-    }
-
-    let directButton = app.buttons[title].firstMatch
-    if directButton.exists {
-      directButton.tap()
-      return
-    }
-
-    let craftMenu = app.buttons.matching(identifier: "library.craft").firstMatch
-    XCTAssertTrue(craftMenu.waitForExistence(timeout: 5))
-    craftMenu.tap()
-    let option = app.buttons[title]
-    XCTAssertTrue(option.waitForExistence(timeout: 5))
-    option.tap()
+    XCTAssertTrue(app.openCraft(title), "\(title) is unavailable")
   }
 
   private func openCard(named title: String, in app: XCUIApplication) {
