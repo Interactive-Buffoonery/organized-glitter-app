@@ -68,7 +68,7 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("shell-02-account")
     app.buttons["Done"].tap()
 
-    app.buttons["Search"].firstMatch.tap()
+    XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
     try capture("shell-03-search")
   }

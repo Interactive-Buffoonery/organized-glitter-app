@@ -172,7 +172,7 @@ final class LibraryUITests: XCTestCase {
           && divine.frame.minX < yorkie.frame.minX)
     )
 
-    app.buttons["Search"].firstMatch.tap()
+    XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
     let search = app.searchFields.firstMatch
     // iPadOS collapses the field into a toolbar button at accessibility sizes.
@@ -212,6 +212,24 @@ extension XCUIApplication {
       return true
     }
     return false
+  }
+
+  @discardableResult
+  func openSearch() -> Bool {
+    let destination: XCUIElement
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      destination = cells["Search"].firstMatch
+      if !destination.exists || !destination.isHittable {
+        let sidebar = buttons["ToggleSideBar"]
+        guard sidebar.waitForExistence(timeout: 5), sidebar.isHittable else { return false }
+        sidebar.tap()
+      }
+    } else {
+      destination = tabBars.buttons["Search"].firstMatch
+    }
+    guard destination.waitForExistence(timeout: 5), destination.isHittable else { return false }
+    destination.tap()
+    return navigationBars["Search"].waitForExistence(timeout: 5)
   }
 
   @discardableResult
