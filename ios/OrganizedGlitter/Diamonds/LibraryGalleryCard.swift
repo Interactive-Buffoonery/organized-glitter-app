@@ -5,6 +5,8 @@ struct LibraryGalleryCard: View {
 
   let item: LibraryItem
   let imageURL: URL?
+  /// Shelves and status filters already name the status.
+  var showsStatus = true
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -22,7 +24,9 @@ struct LibraryGalleryCard: View {
           .fixedSize(horizontal: false, vertical: true)
       }
 
-      StatusBadge(label: item.statusLabel, systemImage: item.statusSystemImage)
+      if showsStatus {
+        StatusBadge(label: item.statusLabel, systemImage: item.statusSystemImage)
+      }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(.rect)

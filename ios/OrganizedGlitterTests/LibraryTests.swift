@@ -51,6 +51,67 @@ struct LibraryTests {
     #expect(model.committedSearch.isEmpty)
   }
 
+  @Test func browsingAllGroupsActiveShelvesFirst() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.diamond(featureProject("a", title: "Done", status: "completed", updated: "2026-09-05")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("b", title: "Wish", status: "wishlist", updated: "2026-09-04")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("c", title: "Older", status: "progress", updated: "2026-09-01")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("d", title: "Newer", status: "progress", updated: "2026-09-03")), scope: library.scope)
+    let model = LibraryModel(library: library)
+
+    await model.load()
+    #expect(model.shelves.map(\.status) == ["progress", "wishlist", "completed"])
+    #expect(model.shelves.first?.items.map(\.title) == ["Newer", "Older"])
+    #expect(model.shelfCounts["progress"] == 2)
+    #expect(library.shelfCounts(for: .diamonds) == ["progress": 2, "wishlist": 1, "completed": 1])
+    #expect(library.shelfCounts(for: .books).isEmpty)
+    model.statusFilter = "progress"
+    await model.load()
+    #expect(!model.isShelved)
+  }
+
+  @Test func shelfCountsFollowLocalEditsAndSessionClosure() async throws {
+    let library = try localFeatureLibrary()
+    let project = featureProject("project", title: "Moon Garden", status: "wishlist")
+    try await library.store.ingest(.diamond(project), scope: library.scope)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .diamonds) == ["wishlist": 1])
+
+    let saved: DiamondProjectRecord = try await library.update(
+      collection: "projects", id: project.id, body: ["status": "stash"])
+    #expect(saved.status == "stash")
+    #expect(library.shelfCounts(for: .diamonds) == ["stash": 1])
+
+    try await library.close(removingData: false)
+    #expect(library.shelfCounts(for: .diamonds).isEmpty)
+    #expect(library.ownedBookTitles().isEmpty)
+  }
+
+  @Test func shelfCountsFollowReloadsAndOwnedBookRemoval() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    let page = featurePage("page", book: book.id, number: 1)
+    try await library.store.ingest(.book(book), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .books) == ["purchased": 1])
+    #expect(library.shelfCounts(for: .pages) == ["not_started": 1])
+    #expect(library.ownedBookTitles() == [book.id: book.title])
+
+    try await library.store.ingest(
+      .page(featurePage(page.id, book: book.id, number: 1, status: "in_progress")),
+      scope: library.scope)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .pages) == ["in_progress": 1])
+
+    try await library.store.removeConfirmed(
+      scope: library.scope, key: LibraryItem.book(book).localRecordKey)
+    try await library.loadLocal()
+    #expect(library.shelfCounts(for: .books).isEmpty)
+    #expect(library.shelfCounts(for: .pages).isEmpty)
+    #expect(library.ownedBookTitles().isEmpty)
+  }
+
   @Test func localPaginationKeepsEarlierItems() async throws {
     let library = try localFeatureLibrary()
     for index in 0..<35 {

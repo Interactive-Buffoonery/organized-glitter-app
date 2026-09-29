@@ -10,14 +10,7 @@ final class LibraryUITests: XCTestCase {
   }
 
   private func openLibrary(_ app: XCUIApplication) {
-    let tabBarItem = app.tabBars.buttons["Library"]
-    if tabBarItem.exists {
-      tabBarItem.tap()
-      return
-    }
-    let library = app.buttons["Library"].firstMatch
-    XCTAssertTrue(library.waitForExistence(timeout: 5))
-    library.tap()
+    XCTAssertTrue(app.openLibrary(), "The Library destination is unavailable")
   }
 
   private func capture(_ app: XCUIApplication, _ name: String) throws {
@@ -100,18 +93,21 @@ final class LibraryUITests: XCTestCase {
       throw XCTSkip("iPad sidebar review.")
     }
     let app = launch("populated")
-    let books = app.cells["Books"]
+    let books = app.craftRow("Books")
     if !books.waitForExistence(timeout: 2) {
       app.buttons["ToggleSideBar"].tap()
     }
     XCTAssertTrue(books.waitForExistence(timeout: 5))
-    XCTAssertTrue(app.cells["Diamond art"].exists)
-    XCTAssertTrue(app.cells["Pages"].exists)
+    XCTAssertTrue(app.craftRow("Diamond art").exists)
+    XCTAssertTrue(app.craftRow("Pages").exists)
+    XCTAssertTrue(app.cells["In progress, 5"].exists)
+    XCTAssertTrue(app.cells["New coloring book"].exists)
+    try capture(app, "library-ipad-sidebar")
     books.tap()
     XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.buttons["library.craft"].exists)
     XCTAssertTrue(app.buttons["create.menu"].exists)
-    try capture(app, "library-ipad-sidebar")
+    try capture(app, "library-ipad-books")
   }
 
   func testAccessibleCraftMenuAndRotation() throws {
@@ -163,17 +159,20 @@ final class LibraryUITests: XCTestCase {
     all.tap()
     app.buttons["library.sort"].tap()
     app.buttons["Title A to Z"].tap()
-    let beachside = app.staticTexts["Beachside Gathering"]
-    let divine = app.staticTexts["Divine Descent"]
-    XCTAssertTrue(beachside.waitForExistence(timeout: 5))
-    XCTAssertTrue(divine.exists)
+    // All groups covers into status shelves; sort orders each shelf.
     XCTAssertTrue(
-      beachside.frame.minY < divine.frame.minY
-        || (beachside.frame.minY == divine.frame.minY
-          && beachside.frame.minX < divine.frame.minX)
+      app.descendants(matching: .any)["library.shelf.progress"].waitForExistence(timeout: 5))
+    let divine = app.staticTexts["Divine Descent"]
+    let yorkie = app.staticTexts["Yorkie & Roses"]
+    XCTAssertTrue(divine.waitForExistence(timeout: 5))
+    XCTAssertTrue(yorkie.exists)
+    XCTAssertTrue(
+      divine.frame.minY < yorkie.frame.minY
+        || (divine.frame.minY == yorkie.frame.minY
+          && divine.frame.minX < yorkie.frame.minX)
     )
 
-    app.buttons["Search"].firstMatch.tap()
+    XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
     let search = app.searchFields.firstMatch
     // iPadOS collapses the field into a toolbar button at accessibility sizes.
@@ -186,5 +185,72 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Divine Descent"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Beachside Gathering"].exists)
     try capture(app, "library-search")
+  }
+}
+
+extension XCUIApplication {
+  /// The iPad "All" row for a craft, labeled "All <craft>, <count>".
+  func craftRow(_ craft: String) -> XCUIElement {
+    descendants(matching: .any)
+      .matching(NSPredicate(format: "label BEGINSWITH %@", "All \(craft),")).firstMatch
+  }
+
+  @discardableResult
+  func openLibrary() -> Bool {
+    let tab = tabBars.buttons["Library"].firstMatch
+    if tab.waitForExistence(timeout: 3) {
+      tab.tap()
+      return true
+    }
+    if openCraft("Diamond art") { return true }
+    for destination in [
+      popUpButtons["Library"].firstMatch,
+      buttons["Library"].firstMatch,
+      staticTexts["Library"].firstMatch,
+    ] where destination.exists && destination.isHittable {
+      destination.tap()
+      return true
+    }
+    return false
+  }
+
+  @discardableResult
+  func openSearch() -> Bool {
+    let destination: XCUIElement
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      destination = cells["Search"].firstMatch
+      if !destination.exists || !destination.isHittable {
+        let sidebar = buttons["ToggleSideBar"]
+        guard sidebar.waitForExistence(timeout: 5), sidebar.isHittable else { return false }
+        sidebar.tap()
+      }
+    } else {
+      destination = tabBars.buttons["Search"].firstMatch
+    }
+    guard destination.waitForExistence(timeout: 5), destination.isHittable else { return false }
+    destination.tap()
+    return navigationBars["Search"].waitForExistence(timeout: 5)
+  }
+
+  @discardableResult
+  func openCraft(_ craft: String) -> Bool {
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      let row = craftRow(craft)
+      if row.exists && row.isHittable {
+        row.tap()
+        return true
+      }
+    }
+    let button = buttons[craft].firstMatch
+    if button.waitForExistence(timeout: 3), button.isHittable {
+      button.tap()
+      return true
+    }
+    let menu = buttons.matching(identifier: "library.craft").firstMatch
+    guard menu.waitForExistence(timeout: 5), menu.isHittable else { return false }
+    menu.tap()
+    guard button.waitForExistence(timeout: 5), button.isHittable else { return false }
+    button.tap()
+    return true
   }
 }
