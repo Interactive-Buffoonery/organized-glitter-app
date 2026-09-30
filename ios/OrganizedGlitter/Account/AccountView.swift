@@ -48,6 +48,21 @@ struct AccountView: View {
           .accessibilityLabel("Account theme")
 
           Picker(
+            "Background",
+            selection: Binding(
+              get: { ThemePalette(rawValue: preferences.user.themePalette ?? "") ?? themeStore.palette },
+              set: { palette in savePalette(palette) }
+            )
+          ) {
+            ForEach(ThemePalette.allCases) { palette in
+              Text(palette.label).tag(palette)
+            }
+          }
+          .pickerStyle(.segmented)
+          .disabled(preferences.isSaving)
+          .accessibilityLabel("Account background")
+
+          Picker(
             "Time zone",
             selection: Binding(
               get: { preferences.user.timezone ?? TimeZone.current.identifier },
@@ -151,6 +166,14 @@ struct AccountView: View {
     Task {
       if await preferences.updateTheme(flavor) {
         themeStore.flavor = flavor
+      }
+    }
+  }
+
+  private func savePalette(_ palette: ThemePalette) {
+    Task {
+      if await preferences.updatePalette(palette) {
+        themeStore.palette = palette
       }
     }
   }

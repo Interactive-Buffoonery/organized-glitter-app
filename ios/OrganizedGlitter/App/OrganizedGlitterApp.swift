@@ -58,7 +58,7 @@ struct OrganizedGlitterApp: App {
 
   var body: some Scene {
     WindowGroup {
-      ThemedRoot(flavor: themeStore.flavor) {
+      ThemedRoot(flavor: themeStore.flavor, palette: themeStore.palette) {
         RootView(model: model)
           #if DEBUG
             .onChange(of: useSampleData) {

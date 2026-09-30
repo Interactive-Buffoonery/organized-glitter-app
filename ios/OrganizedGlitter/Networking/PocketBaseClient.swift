@@ -337,6 +337,7 @@ actor PocketBaseClient {
         avatar: nil,
         timezone: nil,
         themePreference: nil,
+        themePalette: nil,
         created: nil,
         updated: nil
       )
