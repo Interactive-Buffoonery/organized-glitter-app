@@ -11,6 +11,10 @@ Dated SDK research and planning handoffs live in Sarah's vault at
 The requirements below are self-contained; the vault is not needed to implement
 them. Recheck upstream behavior when selecting or upgrading SDK versions.
 
+RevenueCat setup is underway and awaiting Apple approvals, as reported by the
+release owner on September 30, 2026. Purchase integration is not complete.
+Track remaining provisioning under INT-1154; it does not block PostHog work.
+
 ## Product and identity rules
 
 - Capture every meaningful native action and outcome without user-entered
