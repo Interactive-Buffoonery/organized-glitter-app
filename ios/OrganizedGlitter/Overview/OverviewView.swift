@@ -15,6 +15,7 @@ final class OverviewModel {
   var upNext: [LibraryItem] = []
   /// Latest progress-note date by record id.
   var latestNoteDates: [String: String] = [:]
+  var latestNotes: [NotesFeedEntry] = []
   var isLoading = false
   var hasLoaded = false
   var errorMessage: String?
@@ -29,6 +30,10 @@ final class OverviewModel {
     defer { isLoading = false }
     do {
       try await library.loadLocal()
+      latestNotes = NotesFeed.entries(
+        items: library.items,
+        diamondNotes: library.progressNotes,
+        coloringNotes: library.coloringPageProgressNotes)
       let now = Date()
       let monthStart = Self.startOfMonth(containing: now)
       let monthEnd = Self.startOfNextMonth(containing: now)
@@ -154,28 +159,39 @@ final class OverviewModel {
 }
 
 struct OverviewView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
 
   @State private var model: OverviewModel
-  @State private var logEditor: LibraryItemDetailModel?
-  @State private var loggedItemID: LibraryItem.ID?
+  @Binding private var logEditor: LibraryItemDetailModel?
   @State private var continuePosition: LibraryItem.ID?
+  let loggedItemID: LibraryItem.ID?
+  let refreshGeneration: Int
   let verticals: VerticalPreferences
   let onLibraryRequest: (LibraryRequest) -> Void
+  let onAddNote: () -> Void
 
   init(
     library: LibrarySession,
     verticals: VerticalPreferences,
+    logEditor: Binding<LibraryItemDetailModel?>,
+    loggedItemID: LibraryItem.ID?,
+    refreshGeneration: Int,
     onLibraryRequest: @escaping (LibraryRequest) -> Void,
+    onAddNote: @escaping () -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
     let model = OverviewModel(library: library)
     model.onSessionExpired = onSessionExpired
     _model = State(initialValue: model)
+    _logEditor = logEditor
+    self.loggedItemID = loggedItemID
+    self.refreshGeneration = refreshGeneration
     self.verticals = verticals
     self.onLibraryRequest = onLibraryRequest
+    self.onAddNote = onAddNote
   }
 
   var body: some View {
@@ -187,6 +203,8 @@ struct OverviewView: View {
             requests: inProgressRequests)
           continueContent
         }
+
+        notesShortcut
 
         if model.hasLoaded, !upNext.isEmpty {
           VStack(alignment: .leading, spacing: 12) {
@@ -218,28 +236,24 @@ struct OverviewView: View {
       LibraryItemDetailDestination(
         item: item,
         library: model.library,
-        onCollectionChanged: { await model.load() }
-      )
-    }
-    .sheet(item: $logEditor, onDismiss: showLoggedItem) { editor in
-      DiamondProgressNoteEditor(
-        model: editor,
-        onCollectionChanged: {
-          if editor.lastAddedProgressNoteID != nil {
-            loggedItemID = editor.item.id
-          } else {
-            await model.load()
-          }
+        logEditor: $logEditor,
+        onCollectionChanged: { await model.load() },
+        onEditPageCount: { book in
+          formDrawer.presentPageCountEditor(book: book, library: model.library)
         }
       )
+      .environment(formDrawer)
     }
     .task(id: model.library.generation) { await model.load() }
+    .onChange(of: refreshGeneration) { _, _ in Task { await model.load() } }
+    .onChange(of: loggedItemID) { _, id in
+      guard let id else { return }
+      showLoggedItem(id)
+    }
   }
 
-  /// Reorders Continue after the sheet closes, so the confirmed card visibly moves to the front.
-  private func showLoggedItem() {
-    guard let id = loggedItemID else { return }
-    loggedItemID = nil
+  /// Reorders Continue after the inspector closes, so the confirmed card moves to the front.
+  private func showLoggedItem(_ id: LibraryItem.ID) {
     Task {
       await model.load(animation: reduceMotion ? nil : Theme.motion)
       withAnimation(reduceMotion ? nil : Theme.motion) { continuePosition = id }
@@ -279,6 +293,44 @@ struct OverviewView: View {
       requests.append(("Completed coloring pages", LibraryRequest(section: .pages, status: "completed")))
     }
     return requests
+  }
+
+  private var notesShortcut: some View {
+    let latest = NotesFeed.filter(
+      model.latestNotes, craft: .all, year: nil, verticals: verticals).first
+
+    return NavigationLink {
+      NotesFeedView(library: model.library, verticals: verticals, onAddNote: onAddNote)
+    } label: {
+      HStack(alignment: .center, spacing: 12) {
+        Image(systemName: "note.text")
+          .font(.title3.weight(.medium))
+          .foregroundStyle(theme.primary)
+          .frame(width: 44, height: 44)
+          .background(theme.primary.opacity(0.10), in: .rect(cornerRadius: Theme.Radius.medium))
+          .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 3) {
+          Text("Notes")
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(theme.foreground)
+          Text(latest.map { "Latest: \($0.contextTitle)" } ?? "Every progress note, in one place")
+            .font(.subheadline)
+            .foregroundStyle(theme.pageSecondaryForeground)
+            .lineLimit(2)
+        }
+        Spacer(minLength: 0)
+        Image(systemName: "chevron.right")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(theme.primary)
+          .accessibilityHidden(true)
+      }
+      .padding(.horizontal, 20)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(latest.map { "Notes. Latest: \($0.contextTitle)" } ?? "Notes")
+    .accessibilityHint("Shows progress notes from every craft")
+    .accessibilityIdentifier("overview.notes")
   }
 
   /// A section title that opens Library, or a menu when several crafts apply.
@@ -372,10 +424,13 @@ struct OverviewView: View {
     }
   }
 
-  // ponytail: pages have no Log sheet yet, so their cover opens the detail.
   private func logAction(for item: LibraryItem) -> (() -> Void)? {
-    guard case .diamond(let project) = item else { return nil }
-    return { logEditor = LibraryItemDetailModel(item: .diamond(project), library: model.library) }
+    switch item {
+    case .diamond, .page:
+      return { logEditor = LibraryItemDetailModel(item: item, library: model.library) }
+    case .book:
+      return nil
+    }
   }
 
   private var upNextShelf: some View {
@@ -444,10 +499,12 @@ struct OverviewView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading || model.library.isSyncing)
+    .accessibilityIdentifier("overview.retry")
   }
 }
 
 private struct ContinueCard: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
   @ScaledMetric(relativeTo: .body) private var width = 156
@@ -482,6 +539,7 @@ private struct ContinueCard: View {
     .overlay(alignment: .topTrailing) {
       if let onLog {
         Button("Log", systemImage: "pencil", action: onLog)
+          .disabledWhileFormPresented(formDrawer)
           .font(.footnote.weight(.semibold))
           .glassButton()
           .padding(8)

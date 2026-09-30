@@ -240,14 +240,14 @@ private extension Error {
     }
     switch error {
     case .offline:
-      return "You appear to be offline. Reconnect and try again."
+      return APIError.needsConnection("Changing account settings")
     case .forbidden:
       return "This account does not have permission to make that change."
     case .validation(let message):
       return message
     case .unauthenticated:
       return "Sign in again to update your account."
-    case .emailUnverified, .notFound, .server, .decoding, .cancelled:
+    case .emailUnverified, .notFound, .server, .decoding, .cancelled, .conflict:
       return "The account could not be updated. Try again."
     }
   }

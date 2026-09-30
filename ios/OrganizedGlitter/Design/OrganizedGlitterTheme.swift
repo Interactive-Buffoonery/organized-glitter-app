@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Observation
 
 extension Font {
   /// Caveat is the large-title face and the generated-cover title, never body
@@ -12,8 +13,8 @@ extension Font {
 extension UINavigationBar {
   /// Caveat large titles, once per screen. The legacy proxy attribute alone is
   /// lost after a pop, so every appearance carries it. Backgrounds keep the
-  /// system defaults: transparent on iOS 26 (Liquid Glass and the scroll edge
-  /// effect draw the bar) and at the scroll edge on iOS 18.
+  /// system defaults: Liquid Glass and the scroll edge effect draw the
+  /// transparent bar.
   static func applyCaveatLargeTitles() {
     guard let caveat = UIFont(name: "Caveat", size: 44) else { return }
     let attributes: [NSAttributedString.Key: Any] = [
@@ -25,9 +26,7 @@ extension UINavigationBar {
     let standard = UINavigationBarAppearance()
     let scrollEdge = UINavigationBarAppearance()
     scrollEdge.configureWithTransparentBackground()
-    if #available(iOS 26, *) {
-      standard.configureWithTransparentBackground()
-    }
+    standard.configureWithTransparentBackground()
     standard.largeTitleTextAttributes = attributes
     scrollEdge.largeTitleTextAttributes = attributes
     appearance().standardAppearance = standard
@@ -81,6 +80,60 @@ struct ThemedScrollBackground: ViewModifier {
 extension View {
   func themedScrollBackground() -> some View {
     modifier(ThemedScrollBackground())
+  }
+}
+
+@MainActor
+@Observable
+final class FormDrawer {
+  struct Route {
+    let id = UUID()
+    let detents: Set<PresentationDetent>
+    let content: AnyView
+    let onDismiss: () -> Void
+  }
+
+  var route: Route?
+  var isPresenting: Bool { route != nil }
+
+  @discardableResult
+  func present<Content: View>(
+    detents: Set<PresentationDetent>,
+    onDismiss: @escaping () -> Void = {},
+    @ViewBuilder content: () -> Content
+  ) -> Bool {
+    guard route == nil else { return false }
+    route = Route(detents: detents, content: AnyView(content()), onDismiss: onDismiss)
+    return true
+  }
+
+  func dismiss() {
+    let onDismiss = route?.onDismiss
+    route = nil
+    onDismiss?()
+  }
+
+}
+
+extension View {
+  func disabledWhileFormPresented(_ drawer: FormDrawer, or isDisabled: Bool = false) -> some View {
+    disabled(isDisabled || drawer.isPresenting)
+  }
+
+  func formDrawerHost(_ drawer: FormDrawer) -> some View {
+    inspector(isPresented: Binding(
+      get: { drawer.route != nil },
+      set: { if !$0 { drawer.dismiss() } }
+    )) {
+      if let route = drawer.route {
+        route.content
+          .id(route.id)
+          .inspectorColumnWidth(min: 320, ideal: 400, max: 480)
+          .presentationDetents(route.detents)
+          .presentationDragIndicator(.visible)
+      }
+    }
+    .environment(drawer)
   }
 }
 
@@ -142,24 +195,11 @@ struct QuietActionStyle: ButtonStyle {
 }
 
 extension View {
-  /// Liquid Glass on iOS 26, a material capsule before it.
-  @ViewBuilder
   func glassButton() -> some View {
-    if #available(iOS 26, *) {
-      buttonStyle(.glass)
-    } else {
-      buttonStyle(.bordered)
-        .background(.ultraThinMaterial, in: .capsule)
-    }
+    buttonStyle(.glass)
   }
 
-  @ViewBuilder
   func glassProminentButton() -> some View {
-    if #available(iOS 26, *) {
-      buttonStyle(.glassProminent)
-    } else {
-      buttonStyle(.borderedProminent)
-        .buttonBorderShape(.capsule)
-    }
+    buttonStyle(.glassProminent)
   }
 }

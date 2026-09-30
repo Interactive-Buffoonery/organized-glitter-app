@@ -20,7 +20,11 @@ final class LibrarySession {
   private var writeWaiters: [CheckedContinuation<Void, Never>] = []
   private var onlineRecords: Set<LocalRecordKey> = []
 
-  private(set) var items: [LibraryItem] = []
+  private(set) var items: [LibraryItem] = [] {
+    didSet { rebuildShelfCounts() }
+  }
+  private var bookTitles: [String: String] = [:]
+  private var countsBySection: [LibrarySection: [String: Int]] = [:]
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
   private(set) var coloringPageProgressNotes: [ColoringProgressNoteRecord] = []
   private(set) var entries: [LocalLibraryEntry] = []
@@ -39,6 +43,30 @@ final class LibrarySession {
     self.scope = LocalAccountScope(backendURL: client.baseURL, userID: userID)
     self.store = store
     self.coordinator = LocalSyncCoordinator(store: store, client: client, scope: scope)
+  }
+
+  func ownedBookTitles() -> [String: String] { bookTitles }
+
+  func shelfCounts(for section: LibrarySection) -> [String: Int] {
+    countsBySection[section] ?? [:]
+  }
+
+  private func rebuildShelfCounts() {
+    var titles: [String: String] = [:]
+    for item in items {
+      if case .book(let book) = item, book.user == userID {
+        titles[book.id] = book.title
+      }
+    }
+    var counts: [LibrarySection: [String: Int]] = [:]
+    for item in items {
+      let section = item.section
+      if item.belongs(to: section, userID: userID, bookTitles: titles) {
+        counts[section, default: [:]][item.status, default: 0] += 1
+      }
+    }
+    bookTitles = titles
+    countsBySection = counts
   }
 
   func loadLocal() async throws {
@@ -231,9 +259,21 @@ final class LibrarySession {
     defer { onlineRecords.subtract(reserved) }
     try await client.delete(collection: collection, id: id)
     try checkActive()
+    let noteKind: LocalNoteKind?
+    switch collection {
+    case "progress_notes": noteKind = .diamond
+    case "coloring_page_progress_notes": noteKind = .coloring
+    default: noteKind = nil
+    }
     if let kind = LocalRecordKind(rawValue: collection) {
       do {
         try await store.removeConfirmed(scope: scope, key: LocalRecordKey(kind: kind, id: id))
+        try await loadLocal()
+        generation &+= 1
+      } catch { syncMessage = "Removed from your account. Refresh to update this device." }
+    } else if let noteKind {
+      do {
+        try await store.removeNote(kind: noteKind, id: id, scope: scope)
         try await loadLocal()
         generation &+= 1
       } catch { syncMessage = "Removed from your account. Refresh to update this device." }

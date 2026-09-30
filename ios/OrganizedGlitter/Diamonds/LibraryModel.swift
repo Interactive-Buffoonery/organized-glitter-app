@@ -21,9 +21,9 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
   var systemImage: String {
     switch self {
-    case .diamonds: "diamond"
+    case .diamonds: "sparkles.rectangle.stack"
     case .books: "books.vertical"
-    case .pages: "doc.richtext"
+    case .pages: "pencil.and.scribble"
     }
   }
 
@@ -43,11 +43,43 @@ enum LibrarySection: String, CaseIterable, Identifiable {
     }
   }
 
+  func statusSystemImage(_ rawValue: String) -> String {
+    switch self {
+    case .diamonds: DiamondStatus.systemImage(for: rawValue)
+    case .books: BookStatus.systemImage(for: rawValue)
+    case .pages: PageStatus.systemImage(for: rawValue)
+    }
+  }
+
+  /// Pages are created from their book, so they have no create target.
+  var createTarget: CreateTarget? {
+    switch self {
+    case .diamonds: .diamond
+    case .books: .book
+    case .pages: nil
+    }
+  }
+
   func statusLabel(_ rawValue: String) -> String {
     switch self {
     case .diamonds: DiamondStatus.label(for: rawValue)
     case .books: BookStatus.label(for: rawValue)
     case .pages: PageStatus.label(for: rawValue)
+    }
+  }
+
+  /// Shelf order when browsing everything: active work first, then what's
+  /// waiting, then finished or gone.
+  var shelfOrder: [String] {
+    switch self {
+    case .diamonds:
+      [DiamondStatus.progress, .onhold, .kitted, .stash, .purchased, .wishlist,
+       .completed, .archived, .destashed].map(\.rawValue)
+    case .books:
+      [BookStatus.inProgress, .inStash, .purchased, .wishlist, .completed, .archived,
+       .destashed].map(\.rawValue)
+    case .pages:
+      [PageStatus.inProgress, .onHold, .paletteChosen, .notStarted, .completed].map(\.rawValue)
     }
   }
 
@@ -71,40 +103,65 @@ extension LibraryItem {
     case .page: .pages
     }
   }
+
+  /// Owned by the user in that craft; pages belong through an owned book.
+  func belongs(
+    to section: LibrarySection, userID: String, bookTitles: [String: String]
+  ) -> Bool {
+    switch (section, self) {
+    case (.diamonds, .diamond(let project)): project.user == userID
+    case (.books, .book(let book)): book.user == userID
+    case (.pages, .page(let page)): bookTitles[page.book] != nil
+    default: false
+    }
+  }
 }
 
 /// How a Library screen is reached. iPhone and the collapsed iPad tab bar
-/// browse every craft; iPad sidebar rows pin one craft; iOS 26 adds a search
-/// tab, while iOS 18 searches inside Library.
+/// browse every craft; iPad sidebar rows pin one craft or one of its shelves;
+/// Search has its own tab.
 enum LibraryPresentation: Hashable {
   case browse
   case craft(LibrarySection)
+  case shelf(LibrarySection, status: String)
   case search
-
-  static var hasSearchTab: Bool {
-    if #available(iOS 26, *) { true } else { false }
-  }
 
   var title: String {
     switch self {
     case .browse: "Library"
     case .craft(let section): section.pickerTitle
+    case .shelf(let section, let status): section.statusLabel(status)
     case .search: "Search"
     }
   }
 
+  var pinnedSection: LibrarySection? {
+    switch self {
+    case .craft(let section), .shelf(let section, _): section
+    case .browse, .search: nil
+    }
+  }
+
   var showsCraftPicker: Bool {
-    if case .craft = self { false } else { true }
+    pinnedSection == nil
+  }
+
+  var showsStatusChips: Bool {
+    switch self {
+    case .browse, .craft: true
+    case .shelf, .search: false
+    }
   }
 
   var isSearchable: Bool {
-    self == .search || !Self.hasSearchTab
+    self == .search
   }
 
   func accepts(_ request: LibraryRequest) -> Bool {
     switch self {
     case .browse: true
     case .craft(let section): section == request.section
+    case .shelf(let section, let status): section == request.section && status == request.status
     case .search: false
     }
   }
@@ -143,6 +200,13 @@ enum LibrarySort: String, CaseIterable, Identifiable {
   }
 }
 
+struct LibraryShelf: Identifiable {
+  let status: String
+  var items: [LibraryItem]
+
+  var id: String { status }
+}
+
 struct LibraryRequest: Equatable {
   let id = UUID()
   let section: LibrarySection
@@ -168,6 +232,7 @@ final class LibraryModel {
   var mutationError: String?
 
   private(set) var displayedItems: [LibraryItem] = []
+  private(set) var shelfCounts: [String: Int] = [:]
   private var currentPage = 0
   private var totalPages = 0
   private var generation = 0
@@ -180,6 +245,26 @@ final class LibraryModel {
 
   var items: [LibraryItem] {
     displayedItems
+  }
+
+  /// Browsing everything groups the listing into status shelves; a status
+  /// filter or a search lists flat.
+  var isShelved: Bool {
+    statusFilter == nil && committedSearch.isEmpty
+  }
+
+  /// Loaded items grouped by status. Shelved listings sort by shelf first, so
+  /// each shelf is one contiguous run even across pages.
+  var shelves: [LibraryShelf] {
+    var shelves: [LibraryShelf] = []
+    for item in displayedItems {
+      if shelves.last?.status == item.status {
+        shelves[shelves.count - 1].items.append(item)
+      } else {
+        shelves.append(LibraryShelf(status: item.status, items: [item]))
+      }
+    }
+    return shelves
   }
 
   var canLoadMore: Bool {
@@ -247,6 +332,19 @@ final class LibraryModel {
     return matchesCurrentListing(snapshot, bookTitles: ownedBookTitles()) ? snapshot : nil
   }
 
+  func acceptSavedBook(_ book: ColoringBookRecord) {
+    let saved = LibraryItem.book(book)
+    guard let index = displayedItems.firstIndex(where: { $0.id == saved.id }) else { return }
+    let updated = saved
+      .retainingListingContext(from: displayedItems[index])
+    if matchesCurrentListing(updated, bookTitles: ownedBookTitles()) {
+      displayedItems[index] = updated
+      displayedItems.sort(by: precedes)
+    } else {
+      displayedItems.remove(at: index)
+    }
+  }
+
   func load(reset: Bool = true) async {
     if !reset, isLoading || !canLoadMore {
       return
@@ -279,6 +377,7 @@ final class LibraryModel {
       let bookTitles = ownedBookTitles()
       let matching = library.items.filter { matchesCurrentListing($0, bookTitles: bookTitles) }
         .sorted(by: precedes)
+      shelfCounts = matching.reduce(into: [:]) { $0[$1.status, default: 0] += 1 }
       totalPages = (matching.count + Self.pageSize - 1) / Self.pageSize
       currentPage = min(requestedPage, totalPages)
       displayedItems = Array(matching.prefix(requestedPage * Self.pageSize))
@@ -358,27 +457,13 @@ final class LibraryModel {
   private static let pageSize = 30
 
   private func ownedBookTitles() -> [String: String] {
-    guard section == .pages else { return [:] }
-    var titles: [String: String] = [:]
-    for item in library.items {
-      if case .book(let book) = item, book.user == userID {
-        titles[book.id] = book.title
-      }
-    }
-    return titles
+    section == .pages ? library.ownedBookTitles() : [:]
   }
 
   private func matchesCurrentListing(
     _ item: LibraryItem, bookTitles: [String: String]
   ) -> Bool {
-    switch (section, item) {
-    case (.diamonds, .diamond(let project)) where project.user == userID:
-      break
-    case (.books, .book(let book)) where book.user == userID:
-      break
-    case (.pages, .page(let page)) where bookTitles[page.book] != nil:
-      break
-    default:
+    guard item.belongs(to: section, userID: userID, bookTitles: bookTitles) else {
       return false
     }
 
@@ -422,6 +507,12 @@ final class LibraryModel {
   }
 
   private func precedes(_ lhs: LibraryItem, _ rhs: LibraryItem) -> Bool {
+    if isShelved, lhs.status != rhs.status {
+      let order = section.shelfOrder
+      let left = order.firstIndex(of: lhs.status) ?? order.count
+      let right = order.firstIndex(of: rhs.status) ?? order.count
+      return left == right ? lhs.status < rhs.status : left < right
+    }
     switch sort {
     case .recentlyUpdated:
       return lhs.updated == rhs.updated ? lhs.recordID < rhs.recordID : lhs.updated > rhs.updated

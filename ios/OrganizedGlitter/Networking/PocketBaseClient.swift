@@ -1,6 +1,32 @@
 import Foundation
 
+struct AppleNativeName: Encodable, Sendable, Equatable {
+  let givenName: String?
+  let familyName: String?
+
+  init?(fullName: PersonNameComponents?) {
+    let givenName = fullName?.givenName?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let familyName = fullName?.familyName?.trimmingCharacters(in: .whitespacesAndNewlines)
+    self.givenName = givenName?.isEmpty == false ? givenName : nil
+    self.familyName = familyName?.isEmpty == false ? familyName : nil
+    guard self.givenName != nil || self.familyName != nil else { return nil }
+  }
+}
+
+enum AppleSignInError: Error, Equatable {
+  case nonceGenerationFailed
+  case invalidCredential
+  case invalidAuthorization
+  case rateLimited
+  case unavailable
+}
+
 actor PocketBaseClient {
+  struct ExternalAuthAttempt: Sendable {
+    fileprivate let sessionGeneration: Int
+    fileprivate let authGeneration: Int
+  }
+
   nonisolated let baseURL: URL
   private let sessionStore: KeychainSessionStore
   private let urlSession: URLSession
@@ -10,6 +36,8 @@ actor PocketBaseClient {
   private var refreshTask: Task<AuthenticatedSession, Error>?
   private var refreshGeneration: Int?
   private var sessionGeneration = 0
+  private var oauthGeneration = 0
+  private var oauthAttemptID: UUID?
 
   init(
     baseURL: URL,
@@ -41,6 +69,175 @@ actor PocketBaseClient {
       throw APIError.emailUnverified
     }
     return try persist(response.session)
+  }
+
+  func oauthProviders() async throws -> [OAuthProvider] {
+    struct Methods: Decodable {
+      struct OAuth2: Decodable {
+        let enabled: Bool
+        let providers: [OAuthProvider]
+      }
+      let oauth2: OAuth2
+    }
+
+    let methods: Methods = try await request(
+      path: "/api/collections/users/auth-methods",
+      includesAuthentication: false
+    )
+    return methods.oauth2.enabled
+      ? methods.oauth2.providers.filter { $0.name == "google" || $0.name == "discord" }
+      : []
+  }
+
+  func appleNativeReadiness() async throws -> Bool {
+    struct Readiness: Decodable {
+      let available: Bool
+    }
+
+    let readiness: Readiness = try await request(
+      path: "/api/auth/apple/native/readiness",
+      includesAuthentication: false
+    )
+    return readiness.available
+  }
+
+  func signInWithApple(
+    code: String,
+    nonce: String,
+    name: AppleNativeName?
+  ) async throws -> AuthenticatedSession {
+    guard !code.isEmpty, !nonce.isEmpty else {
+      throw AppleSignInError.invalidCredential
+    }
+    try Task.checkCancellation()
+    let attempt = beginExternalAuthAttempt()
+
+    struct Body: Encodable {
+      let code: String
+      let nonce: String
+      let name: AppleNativeName?
+
+      enum CodingKeys: String, CodingKey {
+        case code, nonce, name
+      }
+
+      func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(code, forKey: .code)
+        try container.encode(nonce, forKey: .nonce)
+        try container.encodeIfPresent(name, forKey: .name)
+      }
+    }
+
+    var request = URLRequest(url: baseURL.appending(path: "/api/auth/apple/native"))
+    request.httpMethod = "POST"
+    request.cachePolicy = .reloadIgnoringLocalCacheData
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONEncoder().encode(Body(code: code, nonce: nonce, name: name))
+
+    let data: Data
+    let response: URLResponse
+    do {
+      (data, response) = try await urlSession.data(for: request)
+    } catch {
+      throw APIError.from(error)
+    }
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw APIError.server
+    }
+    switch httpResponse.statusCode {
+    case 200..<300:
+      break
+    case 400:
+      throw AppleSignInError.invalidAuthorization
+    case 409:
+      throw APIError.conflict
+    case 429:
+      throw AppleSignInError.rateLimited
+    case 503:
+      throw AppleSignInError.unavailable
+    default:
+      throw APIError.from(statusCode: httpResponse.statusCode, body: data)
+    }
+
+    let authResponse: AuthResponse
+    do {
+      authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
+    } catch {
+      throw APIError.decoding
+    }
+    return try acceptExternalAuthResponse(authResponse, attempt: attempt)
+  }
+
+  func signInWithOAuth(
+    providerName: String,
+    attemptID: UUID = UUID(),
+    present: @MainActor @Sendable (URL, URL) async throws -> URL
+  ) async throws -> AuthenticatedSession {
+    try Task.checkCancellation()
+    let attempt = beginExternalAuthAttempt(id: attemptID)
+    guard let provider = try await oauthProviders().first(where: { $0.name == providerName }) else {
+      throw OAuthError.unavailable
+    }
+    try checkExternalAuthAttempt(attempt)
+    let redirectURL = baseURL.appending(path: "/api/oauth2-redirect")
+    let authorizationURL = try provider.authorizationURL(redirectURL: redirectURL)
+    let callback = try await present(authorizationURL, redirectURL)
+    try checkExternalAuthAttempt(attempt)
+    let code = try provider.authorizationCode(from: callback, redirectURL: redirectURL)
+
+    struct Exchange: Encodable {
+      let provider: String
+      let code: String
+      let codeVerifier: String
+      let redirectURL: String
+    }
+    let response: AuthResponse = try await request(
+      path: "/api/collections/users/auth-with-oauth2",
+      method: "POST",
+      body: Exchange(
+        provider: provider.name,
+        code: code,
+        codeVerifier: provider.codeVerifier,
+        redirectURL: redirectURL.absoluteString
+      ),
+      includesAuthentication: false
+    )
+    return try acceptExternalAuthResponse(response, attempt: attempt)
+  }
+
+  func beginExternalAuthAttempt(id: UUID = UUID()) -> ExternalAuthAttempt {
+    oauthAttemptID = id
+    oauthGeneration &+= 1
+    return ExternalAuthAttempt(
+      sessionGeneration: sessionGeneration,
+      authGeneration: oauthGeneration
+    )
+  }
+
+  func cancelExternalAuthAttempt(id: UUID) {
+    guard oauthAttemptID == id else { return }
+    oauthAttemptID = nil
+    oauthGeneration &+= 1
+  }
+
+  func acceptExternalAuthResponse(
+    _ response: AuthResponse,
+    attempt: ExternalAuthAttempt
+  ) throws -> AuthenticatedSession {
+    guard response.record.verified == true else { throw APIError.emailUnverified }
+    try checkExternalAuthAttempt(attempt)
+    return try persist(response.session)
+  }
+
+  private func checkExternalAuthAttempt(_ attempt: ExternalAuthAttempt) throws {
+    try Task.checkCancellation()
+    guard attempt.authGeneration == oauthGeneration,
+      attempt.sessionGeneration == sessionGeneration
+    else {
+      throw APIError.cancelled
+    }
   }
 
   func register(email: String, username: String, password: String) async throws {
@@ -221,6 +418,7 @@ actor PocketBaseClient {
 
   func signOut() {
     sessionGeneration &+= 1
+    oauthGeneration &+= 1
     authentication = nil
     refreshTask?.cancel()
     refreshTask = nil

@@ -4,6 +4,7 @@ enum APIError: Error, Equatable {
   case unauthenticated
   case emailUnverified
   case forbidden
+  case conflict
   case validation(String)
   case notFound
   case offline
@@ -29,6 +30,8 @@ enum APIError: Error, Equatable {
         return .emailUnverified
       }
       return .forbidden
+    case 409:
+      return .conflict
     case 404:
       return .notFound
     default:
@@ -61,22 +64,25 @@ private struct PocketBaseErrorResponse: Decodable {
 }
 
 extension Error {
-  /// The two messages that were byte-identical across every screen. Everything
-  /// else stayed local, because the wording is what makes it useful: "delete
-  /// this note" and "delete this item" are not the same sentence to a reader.
-  ///
-  /// ponytail: `fallback` is a closure so callers keep their own default without
-  /// this helper growing a case per screen.
-  func userMessage(permission: String, fallback: @autoclosure () -> String) -> String {
+  func userMessage(
+    permission: String,
+    offline: String = APIError.offlineMessage,
+    fallback: @autoclosure () -> String
+  ) -> String {
+    if let error = self as? LibrarySessionError, let message = error.errorDescription {
+      return message
+    }
     switch self as? APIError {
     case .unauthenticated:
-      APIError.sessionExpiredMessage
+      return APIError.sessionExpiredMessage
     case .forbidden:
-      permission
+      return permission
     case .validation(let message):
-      message
+      return message
+    case .offline:
+      return offline
     default:
-      fallback()
+      return fallback()
     }
   }
 }
@@ -84,4 +90,9 @@ extension Error {
 extension APIError {
   static let sessionExpiredMessage = "Your session has expired. Sign in again."
   static let offlineMessage = "You’re offline. Reconnect and try again."
+  static let deleteNeedsConnectionMessage = needsConnection("Deleting an item")
+
+  static func needsConnection(_ action: String) -> String {
+    "\(action) needs a connection. Reconnect and try again."
+  }
 }

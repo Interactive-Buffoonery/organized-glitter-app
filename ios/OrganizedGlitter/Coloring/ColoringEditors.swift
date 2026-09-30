@@ -135,6 +135,10 @@ struct ColoringBookEditor: View {
             )
           }
 
+          if book == nil || draft.totalPages != baseline.totalPages {
+            Section { NeedsConnectionHint() }
+          }
+
           if book != nil {
             Section {
               Text(
@@ -209,8 +213,116 @@ struct ColoringBookEditor: View {
     } catch {
       errorMessage = error.userMessage(
         permission: "Your account does not have permission to save this book.",
+        offline: APIError.needsConnection(
+          book == nil ? "Creating a book" : "Changing the page count"),
         fallback: "The book could not be saved. Try again."
       )
+    }
+  }
+}
+
+/// Page count alone. This must stay online because the server regenerates pages;
+/// unlike other inline edits, it cannot be queued as a local record update.
+struct ColoringBookPageCountEditor: View {
+  let library: LibrarySession
+  let book: ColoringBookRecord
+  let onSaved: (ColoringBookRecord) -> Void
+
+  @Environment(\.dismiss) private var dismiss
+  @Environment(\.theme) private var theme
+  @State private var totalPages: Int?
+  @State private var isSaving = false
+  @State private var errorMessage: String?
+
+  init(
+    library: LibrarySession, book: ColoringBookRecord,
+    onSaved: @escaping (ColoringBookRecord) -> Void
+  ) {
+    self.library = library
+    self.book = book
+    self.onSaved = onSaved
+    _totalPages = State(initialValue: book.totalPages)
+  }
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        Group {
+          Section {
+            TextField("Total pages", value: $totalPages, format: .number)
+              .keyboardType(.numberPad)
+              .accessibilityIdentifier("pageCount.field")
+          } header: {
+            Text("Total pages")
+          } footer: {
+            Text(
+              "Connect to change the total. Saving updates the generated pages. Pages above the new total are removed only if you never touched them."
+            )
+          }
+
+          if let errorMessage {
+            Section {
+              AccessibleErrorLabel(message: errorMessage)
+            }
+          }
+        }
+        .listRowBackground(theme.card)
+      }
+      .themedScrollBackground()
+      .navigationTitle("Page count")
+      .navigationBarTitleDisplayMode(.inline)
+      .interactiveDismissDisabled(isSaving)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") { dismiss() }
+            .disabled(isSaving)
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          if isSaving {
+            ProgressView()
+          } else {
+            Button("Save") {
+              Task { await save() }
+            }
+            .disabled((totalPages ?? 0) < 1 || totalPages == book.totalPages)
+            .accessibilityIdentifier("pageCount.save")
+          }
+        }
+      }
+    }
+  }
+
+  private func save() async {
+    guard let totalPages, totalPages >= 1, !isSaving else { return }
+    isSaving = true
+    errorMessage = nil
+    defer { isSaving = false }
+    do {
+      let saved: ColoringBookRecord = try await library.updateOnline(
+        collection: "coloring_books", id: book.id, body: ["total_pages": totalPages])
+      onSaved(saved)
+      dismiss()
+    } catch APIError.cancelled {
+      return
+    } catch APIError.offline {
+      errorMessage = APIError.offlineMessage
+    } catch {
+      errorMessage = error.userMessage(
+        permission: "Your account does not have permission to change this book.",
+        fallback: "The page count could not be saved. Try again."
+      )
+    }
+  }
+}
+
+extension FormDrawer {
+  func presentPageCountEditor(
+    book: ColoringBookRecord,
+    library: LibrarySession,
+    onSaved: @escaping (ColoringBookRecord) -> Void = { _ in }
+  ) {
+    present(detents: [.medium, .large]) {
+      ColoringBookPageCountEditor(library: library, book: book, onSaved: onSaved)
     }
   }
 }
@@ -335,7 +447,7 @@ struct ColoringPageEditor: View {
                   RoundedRectangle(cornerRadius: Theme.Radius.medium)
                     .fill(theme.muted)
                     .overlay {
-                      Image(systemName: "doc.richtext")
+                      Image(systemName: LibrarySection.pages.systemImage)
                         .foregroundStyle(theme.mutedForeground)
                     }
                 }

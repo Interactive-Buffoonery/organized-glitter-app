@@ -1,5 +1,8 @@
 # Native architecture
 
+The app supports iPhone and iPad from iOS and iPadOS 26.0. APIs introduced
+after iOS 26 require availability checks.
+
 ## Boundaries
 
 - `OrganizedGlitter/App` owns configuration, session state, and root navigation.
@@ -60,6 +63,8 @@ production.
 
 Before App Store submission, the release owner must separately verify:
 
+- The submitted build, App Store compatibility metadata, and release notes all
+  state iOS and iPadOS 26.0 as the minimum.
 - Deployed backend Git revision.
 - Production PocketBase version.
 - Account isolation and offline session restoration.

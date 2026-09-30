@@ -10,10 +10,10 @@ At this time, this project is a WIP. This README will be updated as the app prog
 
 - Xcode 26 or newer
 - XcodeGen 2.46 or newer
-- iOS or iPadOS 18.0 or newer
+- iOS or iPadOS 26.0 or newer
 
 Routine builds, tests, and interface review use iOS and iPadOS 26 simulators.
-APIs newer than iOS 18 must stay behind availability checks.
+APIs newer than iOS 26 must stay behind availability checks.
 
 ## Build the app
 
@@ -80,6 +80,9 @@ their URL and test credentials from environment variables.
 - `ios/OrganizedGlitter/Design` owns the native theme and reusable visual pieces.
 - `ios/docs/architecture.md` documents data handling and release gates.
 - `ios/docs/design.md` documents the Berry Cream design system.
+- Cross-platform audits and roadmap planning live in Sarah’s Obsidian vault.
+  [Planning references](ios/docs/audits/web-dev-feature-parity.md) preserve the
+  former document paths and point to the current comparison.
 
 The app keeps downloaded records and pending edits in a private SwiftData
 library scoped to the PocketBase server and account. Existing project, book,

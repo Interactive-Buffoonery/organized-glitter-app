@@ -12,12 +12,12 @@ func localFeatureLibrary(userID: String = "feature-user") throws -> LibrarySessi
 
 func featureProject(
   _ id: String, title: String, status: String = "wishlist", updated: String = "2026-09-01",
-  user: String = "feature-user"
+  user: String = "feature-user", dateCompleted: String? = nil
 ) -> DiamondProjectRecord {
   DiamondProjectRecord(
     id: id, title: title, user: user, company: nil, artist: nil, status: status,
     kitCategory: "full", drillShape: "round", generalNotes: nil, width: nil, height: nil,
-    image: nil, dateStarted: nil, dateCompleted: nil, created: "2026-09-01",
+    image: nil, dateStarted: nil, dateCompleted: dateCompleted, created: "2026-09-01",
     updated: updated, expand: nil)
 }
 

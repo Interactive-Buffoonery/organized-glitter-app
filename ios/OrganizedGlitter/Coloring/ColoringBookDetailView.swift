@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ColoringBookDetailView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -8,6 +9,7 @@ struct ColoringBookDetailView: View {
 
   let book: ColoringBookRecord
   let model: LibraryItemDetailModel
+  @Binding var logEditor: LibraryItemDetailModel?
   let onEditPageCount: () -> Void
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
@@ -31,7 +33,7 @@ struct ColoringBookDetailView: View {
         if model.bookPages.isEmpty, !model.isLoading, model.errorMessage == nil {
           ContentUnavailableView(
             "No matching pages",
-            systemImage: "doc.richtext",
+            systemImage: LibrarySection.pages.systemImage,
             description: Text(emptyPagesMessage)
           )
           .frame(maxWidth: .infinity)
@@ -42,6 +44,7 @@ struct ColoringBookDetailView: View {
                 LibraryItemDetailDestination(
                   item: .page(page),
                   library: model.library,
+                  logEditor: $logEditor,
                   onCollectionChanged: {
                     model.needsBookPageRefresh = true
                     await onCollectionChanged()
@@ -133,12 +136,12 @@ struct ColoringBookDetailView: View {
       .frame(width: horizontalSizeClass == .regular ? 240 : 184)
       .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
       .padding(.bottom, 8)
+      .photoViewer(opening: coverPhoto)
       .accessibilityIdentifier("detail.hero")
 
-      Text(book.title)
-        .font(.title2.bold())
-        .foregroundStyle(theme.foreground)
-        .accessibilityAddTraits(.isHeader)
+      DetailInlineTitle(
+        value: book.title, field: "title", label: "Title", model: model,
+        onCollectionChanged: onCollectionChanged)
       if let credits = credits {
         Text(credits)
           .foregroundStyle(theme.pageSecondaryForeground)
@@ -167,6 +170,14 @@ struct ColoringBookDetailView: View {
       .compactMap { $0?.nonEmpty }
       .joined(separator: " · ")
       .nonEmpty
+  }
+
+  private var coverPhoto: DetailPhoto? {
+    guard let url = protectedFiles?.artworkURL(for: .book(book)) else { return nil }
+    return DetailPhoto(
+      id: "book-cover", url: url, fullSizeURL: url,
+      accessibilityLabel: "Book cover"
+    )
   }
 
   private var emptyPagesMessage: String {
@@ -238,6 +249,7 @@ struct ColoringBookDetailView: View {
     }
     .buttonStyle(.plain)
     .foregroundStyle(theme.pageAction)
+    .disabledWhileFormPresented(formDrawer, or: model.isMutating)
     .accessibilityIdentifier("detail.book.editPageCount")
   }
 }

@@ -131,12 +131,15 @@ final class RemoteArtworkLoader: @unchecked Sendable {
   func load(
     from url: URL,
     maxPixelDimension: CGFloat,
-    client: PocketBaseClient? = nil
+    client: PocketBaseClient? = nil,
+    cachesDecodedImage: Bool = true
   ) async throws -> RemoteArtworkImage {
     let cacheURL = RemoteArtworkCacheKey.url(for: url)
     let pixelSize = Int(maxPixelDimension.rounded(.up))
     let decodedGeneration = await decodedStore.generation
-    if let cached = await decodedStore.image(for: cacheURL, maxPixelDimension: pixelSize) {
+    if cachesDecodedImage,
+      let cached = await decodedStore.image(for: cacheURL, maxPixelDimension: pixelSize)
+    {
       return cached
     }
 
@@ -172,8 +175,10 @@ final class RemoteArtworkLoader: @unchecked Sendable {
     } onCancel: {
       decodingTask.cancel()
     }
-    await decodedStore.insert(
-      image, for: cacheURL, maxPixelDimension: pixelSize, generation: decodedGeneration)
+    if cachesDecodedImage {
+      await decodedStore.insert(
+        image, for: cacheURL, maxPixelDimension: pixelSize, generation: decodedGeneration)
+    }
     return image
   }
 

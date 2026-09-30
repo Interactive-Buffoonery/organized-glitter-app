@@ -1,17 +1,19 @@
 import SwiftUI
 
 struct LibraryView: View {
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
-  @State private var firstItemTarget: CreateTarget?
+  @State private var logEditor: LibraryItemDetailModel?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
   let request: LibraryRequest?
+  let onAddNote: () -> Void
 
   init(
     library: LibrarySession,
@@ -19,12 +21,14 @@ struct LibraryView: View {
     libraryRefresh: LibraryRefresh,
     verticals: VerticalPreferences = .defaultValue,
     request: LibraryRequest? = nil,
+    onAddNote: @escaping () -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
     let model = LibraryModel(library: library)
     model.onSessionExpired = onSessionExpired
-    if case .craft(let section) = presentation {
+    if let section = presentation.pinnedSection {
       model.select(section)
+      if case .shelf(_, let status) = presentation { model.statusFilter = status }
     } else {
       model.align(to: verticals)
     }
@@ -36,6 +40,7 @@ struct LibraryView: View {
     self.libraryRefresh = libraryRefresh
     self.verticals = verticals
     self.request = request
+    self.onAddNote = onAddNote
   }
 
   var body: some View {
@@ -45,6 +50,7 @@ struct LibraryView: View {
           detail(for: item)
         }
     }
+    .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
       path = []
       guard !isAwaitingSearch else { return }
@@ -59,7 +65,7 @@ struct LibraryView: View {
       model.apply(request)
     }
     .onChange(of: verticals) { _, next in
-      guard case .craft = presentation else {
+      guard presentation.pinnedSection != nil else {
         let previous = model.listingIdentity
         model.align(to: next)
         if model.listingIdentity != previous {
@@ -91,7 +97,7 @@ struct LibraryView: View {
           craftPicker
         }
 
-        if presentation != .search, !isEmptyLibrary {
+        if presentation.showsStatusChips, !isEmptyLibrary {
           statusChips
         }
         libraryBody
@@ -117,15 +123,11 @@ struct LibraryView: View {
             library: model.library,
             verticals: verticals,
             onRefresh: { await model.load() },
-            onSaved: created
+            onSaved: created,
+            onAddNote: onAddNote
           )
         }
       }
-    }
-    .sheet(item: $firstItemTarget) { target in
-      CreateEditor(
-        target: target, library: model.library,
-        onRefresh: { await model.load() }, onSaved: created)
     }
     .overlay(alignment: .bottom) {
       if model.isLoading, !model.items.isEmpty {
@@ -267,15 +269,22 @@ struct LibraryView: View {
       if model.items.isEmpty {
         emptyState
           .frame(minHeight: 280)
+      } else if model.isShelved {
+        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
+          ForEach(model.shelves) { shelf in
+            Section {
+              ForEach(shelf.items) { item in
+                galleryItem(item)
+              }
+            } header: {
+              shelfHeader(shelf)
+            }
+          }
+        }
       } else {
         LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
           ForEach(model.items) { item in
             galleryItem(item)
-              .task {
-                if item.id == model.items.last?.id {
-                  await model.load(reset: false)
-                }
-              }
           }
         }
       }
@@ -317,10 +326,17 @@ struct LibraryView: View {
     } description: {
       Text(message)
     } actions: {
-      Button(title) { firstItemTarget = target }
-        .buttonStyle(.borderedProminent)
-        .foregroundStyle(theme.primaryForeground)
-        .accessibilityIdentifier("library.first")
+      Button(title) {
+        formDrawer.present(detents: [.large]) {
+          CreateEditor(
+            target: target, library: model.library,
+            onRefresh: { await model.load() }, onSaved: created)
+        }
+      }
+      .buttonStyle(.borderedProminent)
+      .foregroundStyle(theme.primaryForeground)
+      .disabledWhileFormPresented(formDrawer)
+      .accessibilityIdentifier("library.first")
     }
   }
 
@@ -337,14 +353,50 @@ struct LibraryView: View {
     return dynamicTypeSize.isAccessibilitySize ? [item] : [item, item]
   }
 
-  @ViewBuilder
   private func galleryItem(_ item: LibraryItem) -> some View {
     NavigationLink(value: item) {
       LibraryGalleryCard(
         item: item,
-        imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery))
+        imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
+        showsStatus: !model.committedSearch.isEmpty)
     }
     .buttonStyle(.plain)
+    .task {
+      if item.id == model.items.last?.id {
+        await model.load(reset: false)
+      }
+    }
+  }
+
+  /// Matches Home's section headers; tapping narrows Library to the shelf.
+  private func shelfHeader(_ shelf: LibraryShelf) -> some View {
+    let title = model.section.statusLabel(shelf.status)
+    let count = model.shelfCounts[shelf.status] ?? shelf.items.count
+    return Button {
+      model.statusFilter = shelf.status
+    } label: {
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        Text(title)
+          .font(.title3.weight(.semibold))
+          .foregroundStyle(theme.foreground)
+        Text(count, format: .number)
+          .font(.subheadline.weight(.medium))
+          .monospacedDigit()
+          .foregroundStyle(theme.pageSecondaryForeground)
+        Image(systemName: "chevron.right")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(theme.primary)
+      }
+      .padding(.top, 12)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("\(title), \(count)")
+    .accessibilityHint("Shows only this shelf")
+    .accessibilityAddTraits([.isHeader, .isButton])
+    .accessibilityIdentifier("library.shelf.\(shelf.status)")
   }
 
   private var retryButton: some View {
@@ -353,6 +405,7 @@ struct LibraryView: View {
     }
     .buttonStyle(QuietActionStyle())
     .disabled(model.isLoading || model.library.isSyncing)
+    .accessibilityIdentifier("library.retry")
   }
 
   @ViewBuilder
@@ -360,8 +413,15 @@ struct LibraryView: View {
     LibraryItemDetailDestination(
       item: item,
       library: model.library,
-      onCollectionChanged: { await model.load() }
+      logEditor: $logEditor,
+      onCollectionChanged: { await model.load() },
+      onEditPageCount: { book in
+        formDrawer.presentPageCountEditor(book: book, library: model.library) { saved in
+          model.acceptSavedBook(saved)
+        }
+      }
     )
+    .environment(formDrawer)
   }
 
   private func selectSaved(_ item: LibraryItem) async {

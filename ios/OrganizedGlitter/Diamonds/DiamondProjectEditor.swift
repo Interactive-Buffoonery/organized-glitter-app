@@ -80,6 +80,10 @@ struct DiamondProjectEditor: View {
             }
           }
 
+          if project == nil {
+            Section { NeedsConnectionHint() }
+          }
+
           if let errorMessage {
             Section {
               AccessibleErrorLabel(message: errorMessage)
@@ -193,15 +197,10 @@ struct DiamondProjectWrite: Encodable, Sendable {
 
 extension Error {
   fileprivate var projectSaveMessage: String {
-    switch self as? APIError {
-    case .validation(let message):
-      message
-    case .forbidden:
-      "Your account does not have permission to save this project."
-    case .unauthenticated:
-      "Your session has expired. Sign in again."
-    default:
-      "The project could not be saved. Try again."
-    }
+    userMessage(
+      permission: "Your account does not have permission to save this project.",
+      offline: APIError.needsConnection("Creating a project"),
+      fallback: "The project could not be saved. Try again."
+    )
   }
 }

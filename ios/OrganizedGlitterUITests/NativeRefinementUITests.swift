@@ -22,7 +22,7 @@ final class NativeRefinementUITests: XCTestCase {
       )
       XCTAssertEqual(XCTWaiter.wait(for: [landscape], timeout: 5), .completed)
     }
-    XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["create.menu"].waitForExistence(timeout: 5))
     try capture("refinement-01-overview")
 
     openLibrary(app)
@@ -55,7 +55,7 @@ final class NativeRefinementUITests: XCTestCase {
 
   func testCapturesShellActions() throws {
     let app = launchFixture()
-    XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["create.menu"].waitForExistence(timeout: 5))
 
     app.buttons["create.menu"].tap()
     XCTAssertTrue(app.buttons["create.diamond"].waitForExistence(timeout: 3))
@@ -68,7 +68,7 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("shell-02-account")
     app.buttons["Done"].tap()
 
-    app.buttons["Search"].firstMatch.tap()
+    XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
     try capture("shell-03-search")
   }
@@ -128,7 +128,7 @@ final class NativeRefinementUITests: XCTestCase {
     openCard(named: "Yorkie & Roses", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(element("detail.specs", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(button("detail.diamond.addNote", in: app).exists)
+    XCTAssertTrue(button("detail.progress.addNote", in: app).exists)
     let photo = app.images.matching(
       NSPredicate(format: "label BEGINSWITH %@", "Progress photo from")
     ).firstMatch
@@ -159,6 +159,58 @@ final class NativeRefinementUITests: XCTestCase {
       app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Soft pink roses"))
         .firstMatch.exists)
     try capture("detail-diamond-lower")
+  }
+
+  func testPhotoViewerOpensCoverAndPagesProgressPhotos() {
+    let app = launchFixture()
+    openLibrary(app)
+    openCard(named: "Yorkie & Roses", in: app)
+    XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
+
+    let cover = element("detail.hero", in: app)
+    makeHittable(cover, in: app)
+    cover.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    button("photoViewer.close", in: app).tap()
+    XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
+
+    app.scrollViews["detail.diamond"].swipeUp()
+    let photo = app.buttons.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Open progress photo from")
+    ).firstMatch
+    makeHittable(photo, in: app)
+    photo.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    XCTAssertTrue(button("photoViewer.next", in: app).isEnabled)
+    button("photoViewer.next", in: app).tap()
+    XCTAssertTrue(button("photoViewer.previous", in: app).isEnabled)
+    button("photoViewer.close", in: app).tap()
+    XCTAssertTrue(element("detail.diamond", in: app).exists)
+  }
+
+  func testPageArtworkAndPhotoOpenFullScreen() {
+    let app = launchFixture()
+    openFirstDesignPage(in: app)
+
+    let cover = element("detail.hero", in: app)
+    makeHittable(cover, in: app)
+    cover.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    button("photoViewer.close", in: app).tap()
+    XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
+
+    let photo = app.buttons.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Open Page photo")
+    ).firstMatch
+    let pageScroll = app.scrollViews.containing(.button, identifier: "detail.page.addPhoto").firstMatch
+    for _ in 0..<8 where !photo.isHittable {
+      pageScroll.swipeUp()
+    }
+    XCTAssertTrue(photo.isHittable)
+    photo.tap()
+    XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
+    button("photoViewer.close", in: app).tap()
+    XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
   func testBookPagesPaginateAndNavigateToTheNextPage() {
@@ -228,58 +280,11 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func openLibrary(_ app: XCUIApplication) {
-    let tab = app.tabBars.buttons["Library"].firstMatch
-    if tab.waitForExistence(timeout: 3) {
-      tab.tap()
-      return
-    }
-
-    let destinations = [
-      app.popUpButtons["Library"].firstMatch,
-      app.buttons["Library"].firstMatch,
-      app.staticTexts["Library"].firstMatch,
-    ]
-    for destination in destinations where destination.exists && destination.isHittable {
-      destination.tap()
-      return
-    }
-
-    XCTFail("The Library destination is unavailable")
+    XCTAssertTrue(app.openLibrary(), "The Library destination is unavailable")
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {
-    let button = app.buttons[title]
-    if button.exists {
-      button.tap()
-      return
-    }
-
-    let craftMenu = app.buttons.matching(identifier: "library.craft").firstMatch
-    if craftMenu.waitForExistence(timeout: 1) {
-      craftMenu.tap()
-      let option = app.buttons[title]
-      XCTAssertTrue(option.waitForExistence(timeout: 5))
-      option.tap()
-      return
-    }
-
-    var sidebarRow = app.staticTexts[title]
-    if !sidebarRow.exists {
-      let showSidebar = app.buttons.matching(
-        NSPredicate(
-          format: "label ==[c] %@ OR label ==[c] %@",
-          "Show Sidebar",
-          "Toggle sidebar"
-        )
-      ).firstMatch
-      if showSidebar.exists {
-        showSidebar.tap()
-      }
-      sidebarRow = app.staticTexts[title]
-    }
-
-    XCTAssertTrue(sidebarRow.waitForExistence(timeout: 5))
-    sidebarRow.tap()
+    XCTAssertTrue(app.openCraft(title), "\(title) is unavailable")
   }
 
   private func openCard(named title: String, in app: XCUIApplication) {
@@ -330,7 +335,10 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
     field.tap()
-    field.typeKey("a", modifierFlags: .command)
+    field.press(forDuration: 1.1)
+    let selectAll = app.menuItems["Select All"].firstMatch
+    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
+    selectAll.tap()
     field.typeText(value)
     XCTAssertEqual(field.value as? String, value)
   }

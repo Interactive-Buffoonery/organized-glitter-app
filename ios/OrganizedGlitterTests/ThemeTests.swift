@@ -127,4 +127,50 @@ struct ThemeTests {
     defaults.set("catppuccin-mocha", forKey: "selectedThemeFlavor")
     #expect(ThemeStore(defaults: defaults).flavor == .system)
   }
+
+  @Test
+  func dismissingFormRunsItsCallbackOnceAndAllowsAnotherForm() {
+    let drawer = FormDrawer()
+    var dismissCount = 0
+    drawer.present(detents: [.large], onDismiss: { dismissCount += 1 }) {
+      Text("Progress draft")
+    }
+    drawer.dismiss()
+    drawer.dismiss()
+    #expect(dismissCount == 1)
+    #expect(!drawer.isPresenting)
+
+    drawer.present(detents: [.medium]) { Text("Next form") }
+    #expect(drawer.isPresenting)
+    #expect(drawer.route?.detents == [.medium])
+  }
+
+  @Test
+  func openingAnotherFormPreservesTheActiveDraft() throws {
+    let drawer = FormDrawer()
+    var dismissCount = 0
+    let accepted = drawer.present(detents: [.large], onDismiss: { dismissCount += 1 }) {
+      Text("Draft in progress")
+    }
+    #expect(accepted)
+    let activeID = try #require(drawer.route?.id)
+
+    var builtRejectedContent = false
+    var dismissedRejectedForm = false
+    let rejected = drawer.present(
+      detents: [.medium], onDismiss: { dismissedRejectedForm = true }
+    ) {
+      builtRejectedContent = true
+      return Text("Another form")
+    }
+
+    #expect(!rejected)
+    #expect(!builtRejectedContent)
+    #expect(drawer.route?.id == activeID)
+    #expect(drawer.route?.detents == [.large])
+    drawer.dismiss()
+    #expect(dismissCount == 1)
+    #expect(!dismissedRejectedForm)
+    #expect(drawer.present(detents: [.medium]) { Text("Next form") })
+  }
 }
