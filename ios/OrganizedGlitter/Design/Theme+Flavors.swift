@@ -27,17 +27,49 @@ enum ThemeFlavor: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
-  func theme(for colorScheme: ColorScheme) -> Theme {
+  func theme(for colorScheme: ColorScheme, palette: ThemePalette = .lilacDusk) -> Theme {
+    let isDark =
+      switch self {
+      case .system: colorScheme == .dark
+      case .light: false
+      case .dark: true
+      }
+    return isDark ? palette.dark : palette.light
+  }
+}
+
+/// The page background, chosen independently of light and dark. Stored on the
+/// account as `theme_palette`; unknown or missing values fall back to Lilac Dusk.
+enum ThemePalette: String, CaseIterable, Identifiable, Sendable {
+  case lilacDusk = "lilac-dusk"
+  case raspberrySunrise = "raspberry-sunrise"
+
+  var id: String { rawValue }
+
+  var label: String {
     switch self {
-    case .system: colorScheme == .dark ? .dark : .light
-    case .light: .light
-    case .dark: .dark
+    case .lilacDusk: "Lilac Dusk"
+    case .raspberrySunrise: "Raspberry Sunrise"
+    }
+  }
+
+  var light: Theme {
+    switch self {
+    case .lilacDusk: .light
+    case .raspberrySunrise: .raspberrySunriseLight
+    }
+  }
+
+  var dark: Theme {
+    switch self {
+    case .lilacDusk: .dark
+    case .raspberrySunrise: .raspberrySunriseDark
     }
   }
 }
 
 extension Theme {
-  /// "Berry Cream" — blush-to-lilac gradient, raspberry primary.
+  /// "Lilac Dusk" — violet fading to blush, raspberry primary.
   static let light = Theme(
     background: Color(hex: 0xF8E9F6),
     foreground: Color(hex: 0x46323E),
@@ -57,11 +89,13 @@ extension Theme {
     destructiveForeground: .white,
     border: Color(hex: 0xE5CDD9),
     ring: Color(hex: 0xD23C77),
-    gradientStops: [Color(hex: 0xFDEEF3), Color(hex: 0xF8E9F6), Color(hex: 0xE7DEFA)],
+    gradientStops: [
+      Color(hex: 0xB59BF0), Color(hex: 0xD3B5F2), Color(hex: 0xF1CBE9), Color(hex: 0xFCE9F0),
+    ],
     backgroundBloom: nil
   )
 
-  /// "Berry Cream after dark" — navy stage with a quiet lavender bloom rising
+  /// "Lilac Dusk" after dark — navy stage with a quiet lavender bloom rising
   /// from the bottom.
   static let dark = Theme(
     background: Color(hex: 0x151533),
@@ -93,6 +127,31 @@ extension Theme {
       radiusFraction: CGSize(width: 1.2, height: 0.76)
     )
   )
+
+  /// "Raspberry Sunrise" — raspberry through peach to lilac.
+  static let raspberrySunriseLight: Theme = {
+    var theme = Theme.light
+    theme.gradientStops = [
+      Color(hex: 0xF58FB6), Color(hex: 0xF9B7C4), Color(hex: 0xFCD9DA),
+      Color(hex: 0xF6E6F4), Color(hex: 0xE9DEFA),
+    ]
+    return theme
+  }()
+
+  /// "Raspberry Sunrise" after dark — the same navy stage with a raspberry bloom.
+  static let raspberrySunriseDark: Theme = {
+    var theme = Theme.dark
+    theme.backgroundBloom = Bloom(
+      center: UnitPoint(x: 0.5, y: 1.18),
+      stops: [
+        Bloom.Stop(color: Color(hex: 0xB04A7E, opacity: 0.45), location: 0.0),
+        Bloom.Stop(color: Color(hex: 0x6A2E55, opacity: 0.22), location: 0.42),
+        Bloom.Stop(color: .clear, location: 0.72),
+      ],
+      radiusFraction: CGSize(width: 1.2, height: 0.76)
+    )
+    return theme
+  }()
 }
 
 extension EnvironmentValues {

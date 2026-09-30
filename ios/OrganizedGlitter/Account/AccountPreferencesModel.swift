@@ -83,6 +83,10 @@ final class AccountPreferencesModel {
     await updateUser(ThemeUpdate(themePreference: theme.rawValue))
   }
 
+  func updatePalette(_ palette: ThemePalette) async -> Bool {
+    await updateUser(PaletteUpdate(themePalette: palette.rawValue))
+  }
+
   func updateTimezone(_ identifier: String) async -> Bool {
     guard TimeZone(identifier: identifier) != nil else {
       errorMessage = "Choose a valid time zone."
@@ -208,6 +212,14 @@ private struct ThemeUpdate: Encodable, Sendable {
 
   enum CodingKeys: String, CodingKey {
     case themePreference = "theme_preference"
+  }
+}
+
+private struct PaletteUpdate: Encodable, Sendable {
+  let themePalette: String
+
+  enum CodingKeys: String, CodingKey {
+    case themePalette = "theme_palette"
   }
 }
 
