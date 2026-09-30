@@ -80,6 +80,9 @@ their URL and test credentials from environment variables.
 - `ios/OrganizedGlitter/Design` owns the native theme and reusable visual pieces.
 - `ios/docs/architecture.md` documents data handling and release gates.
 - `ios/docs/design.md` documents the Berry Cream design system.
+- Cross-platform audits and roadmap planning live in Sarah’s Obsidian vault.
+  [Planning references](ios/docs/audits/web-dev-feature-parity.md) preserve the
+  former document paths and point to the current comparison.
 
 The app keeps downloaded records and pending edits in a private SwiftData
 library scoped to the PocketBase server and account. Existing project, book,
