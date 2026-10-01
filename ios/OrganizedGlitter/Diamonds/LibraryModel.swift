@@ -300,6 +300,15 @@ final class LibraryModel {
     sort = .recentlyUpdated
   }
 
+  func submitSearch() async {
+    if section == .pages {
+      section = .books
+      sort = .recentlyUpdated
+    }
+    statusFilter = nil
+    await load()
+  }
+
   func clearSearch() async {
     guard !searchText.isEmpty || !committedSearch.isEmpty else {
       return
