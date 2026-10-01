@@ -304,23 +304,23 @@ struct OverviewView: View {
     } label: {
       HStack(alignment: .center, spacing: 12) {
         Image(systemName: "note.text")
-          .font(.title3.weight(.medium))
+          .font(.karla(.title3).weight(.medium))
           .foregroundStyle(theme.primary)
           .frame(width: 44, height: 44)
           .background(theme.primary.opacity(0.10), in: .rect(cornerRadius: Theme.Radius.medium))
           .accessibilityHidden(true)
         VStack(alignment: .leading, spacing: 3) {
           Text("Notes")
-            .font(.title3.weight(.semibold))
+            .font(.karla(.title3).weight(.semibold))
             .foregroundStyle(theme.foreground)
           Text(latest.map { "Latest: \($0.contextTitle)" } ?? "Every progress note, in one place")
-            .font(.subheadline)
+            .font(.karla(.subheadline))
             .foregroundStyle(theme.pageSecondaryForeground)
-            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
         }
         Spacer(minLength: 0)
         Image(systemName: "chevron.right")
-          .font(.subheadline.weight(.semibold))
+          .font(.karla(.subheadline).weight(.semibold))
           .foregroundStyle(theme.primary)
           .accessibilityHidden(true)
       }
@@ -340,11 +340,11 @@ struct OverviewView: View {
   ) -> some View {
     let label = HStack(spacing: 6) {
       Text(title)
-        .font(.title3.weight(.semibold))
+        .font(.karla(.title3).weight(.semibold))
         .foregroundStyle(theme.foreground)
         .multilineTextAlignment(.leading)
       Image(systemName: "chevron.right")
-        .font(.subheadline.weight(.semibold))
+        .font(.karla(.subheadline).weight(.semibold))
         .foregroundStyle(theme.primary)
         .accessibilityHidden(true)
     }
@@ -458,16 +458,16 @@ struct OverviewView: View {
     let count = model.completedThisMonthCount
     let label = HStack(spacing: 12) {
       Image(systemName: "checkmark.seal.fill")
-        .font(.title3)
+        .font(.karla(.title3))
         .foregroundStyle(theme.accent)
         .accessibilityHidden(true)
       Text(count == 0 ? "Nothing finished yet this month" : "\(count) finished this month")
-        .font(.body.weight(.medium))
+        .font(.karla(.body).weight(.medium))
         .foregroundStyle(theme.foreground)
         .multilineTextAlignment(.leading)
       Spacer(minLength: 0)
       Image(systemName: "chevron.right")
-        .font(.footnote.weight(.semibold))
+        .font(.karla(.footnote).weight(.semibold))
         .foregroundStyle(theme.pageSecondaryForeground)
         .accessibilityHidden(true)
     }
@@ -522,13 +522,14 @@ private struct ContinueCard: View {
           CoverArtwork(item: item, url: imageURL, maxPixelDimension: 660)
             .frame(width: cardWidth, height: cardWidth * 5 / 4)
           Text(item.title)
-            .font(.subheadline.weight(.semibold))
+            .font(.karla(.subheadline).weight(.semibold))
             .foregroundStyle(theme.foreground)
-            .lineLimit(2, reservesSpace: true)
+            .fixedSize(horizontal: false, vertical: true)
           Label(caption ?? item.statusLabel, systemImage: item.statusSystemImage)
             .contentTransition(.opacity)
-            .font(.caption)
+            .font(.karla(.caption))
             .foregroundStyle(theme.pageSecondaryForeground)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .contentShape(.rect)
       }
@@ -540,7 +541,7 @@ private struct ContinueCard: View {
       if let onLog {
         Button("Log", systemImage: "pencil", action: onLog)
           .disabledWhileFormPresented(formDrawer)
-          .font(.footnote.weight(.semibold))
+          .font(.karla(.footnote).weight(.semibold))
           .glassButton()
           .padding(8)
           .frame(width: cardWidth, height: cardWidth * 5 / 4, alignment: .bottomTrailing)

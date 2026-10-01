@@ -10,7 +10,7 @@ struct RandomizerView: View {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
           Text("Numbers to pick from")
-            .font(.headline)
+            .font(.karla(.headline))
           Text("Enter your section numbers, separated by commas.")
             .foregroundStyle(theme.pageSecondaryForeground)
           TextField("2, 5, 8, 12", text: $picker.numbers, axis: .vertical)
@@ -31,9 +31,9 @@ struct RandomizerView: View {
         if let number = picker.selectedNumber {
           VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Text("Number picked")
-              .font(.headline)
+              .font(.karla(.headline))
             Text(String(number))
-              .font(.largeTitle.weight(.semibold))
+              .font(.karla(.largeTitle).weight(.semibold))
           }
           .accessibilityElement(children: .combine)
         }
@@ -52,7 +52,7 @@ struct RandomizerView: View {
         .buttonStyle(QuietActionStyle())
 
         Text("Picks stay on this screen and are not saved to a project.")
-          .font(.footnote)
+          .font(.karla(.footnote))
           .foregroundStyle(theme.pageSecondaryForeground)
       }
       .foregroundStyle(theme.foreground)

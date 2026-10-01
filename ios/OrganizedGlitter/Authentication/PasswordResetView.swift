@@ -25,7 +25,7 @@ struct PasswordResetView: View {
           .frame(maxWidth: .infinity)
 
         Text(didRequest ? "Check your inbox" : "Reset password")
-          .font(.title2.weight(.semibold))
+          .font(.karla(.title2).weight(.semibold))
           .foregroundStyle(theme.foreground)
           .accessibilityAddTraits(.isHeader)
           .accessibilityIdentifier("passwordResetTitle")
@@ -59,13 +59,13 @@ struct PasswordResetView: View {
   private var confirmationContent: some View {
     VStack(spacing: 12) {
       Text("If an account exists for that address, you will receive reset instructions.")
-        .font(.body)
+        .font(.karla(.body))
         .multilineTextAlignment(.center)
         .foregroundStyle(theme.foreground)
         .accessibilityIdentifier("passwordResetConfirmation")
 
       Text("Open the link in the email to choose a new password.")
-        .font(.footnote)
+        .font(.karla(.footnote))
         .multilineTextAlignment(.center)
         .foregroundStyle(theme.mutedForeground)
     }
@@ -76,7 +76,7 @@ struct PasswordResetView: View {
   @ViewBuilder
   private var requestForm: some View {
     Text("Enter your email and we’ll send you a reset link.")
-      .font(.body)
+      .font(.karla(.body))
       .multilineTextAlignment(.center)
       .foregroundStyle(theme.foreground)
 

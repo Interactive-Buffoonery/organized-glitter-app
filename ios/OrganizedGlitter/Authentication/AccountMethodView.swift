@@ -61,7 +61,7 @@ struct AccountMethodView: View {
           .frame(maxWidth: .infinity)
 
         Text(mode.title)
-          .font(.title2.weight(.semibold))
+          .font(.karla(.title2).weight(.semibold))
           .foregroundStyle(theme.foreground)
           .accessibilityAddTraits(.isHeader)
           .accessibilityIdentifier("accountMethodTitle")
@@ -112,7 +112,7 @@ struct AccountMethodView: View {
             HStack(spacing: 12) {
               Rectangle().fill(theme.border).frame(height: 1)
               Text("or")
-                .font(.footnote)
+                .font(.karla(.footnote))
                 .foregroundStyle(theme.mutedForeground)
               Rectangle().fill(theme.border).frame(height: 1)
             }
@@ -134,7 +134,7 @@ struct AccountMethodView: View {
 
         VStack(spacing: 0) {
           Text(mode.switchPrompt)
-            .font(.subheadline)
+            .font(.karla(.subheadline))
             .foregroundStyle(theme.mutedForeground)
           Button(mode.switchActionTitle) {
             mode = mode.opposite
@@ -186,7 +186,7 @@ struct AuthMethodButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.body.weight(.medium))
+      .font(.karla(.body).weight(.medium))
       .multilineTextAlignment(.center)
       .foregroundStyle(colorScheme == .dark ? .white : Color(white: 0.12))
       .padding(.horizontal, 16)
@@ -210,7 +210,7 @@ struct AuthEmailButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.body.weight(.medium))
+      .font(.karla(.body).weight(.medium))
       .multilineTextAlignment(.center)
       .foregroundStyle(theme.foreground)
       .padding(.horizontal, 16)

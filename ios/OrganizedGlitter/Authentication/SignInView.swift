@@ -21,7 +21,7 @@ struct SignInView: View {
     AuthEntryContainer(alignment: .leading) {
       VStack(alignment: .leading, spacing: 24) {
         Text("Sign in with email")
-          .font(.title2.weight(.semibold))
+          .font(.karla(.title2).weight(.semibold))
           .foregroundStyle(theme.foreground)
           .accessibilityAddTraits(.isHeader)
           .accessibilityIdentifier("signInTitle")

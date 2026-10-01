@@ -134,7 +134,7 @@ struct DetailPhotoTile: View {
       .fill(theme.muted)
       .overlay {
         Image(systemName: systemImage)
-          .font(.title2)
+          .font(.karla(.title2))
           .foregroundStyle(theme.mutedForeground)
       }
   }

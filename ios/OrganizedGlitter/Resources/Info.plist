@@ -35,6 +35,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>Caveat.ttf</string>
+		<string>Karla.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict>

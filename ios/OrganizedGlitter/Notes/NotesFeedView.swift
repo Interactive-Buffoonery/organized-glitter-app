@@ -63,18 +63,18 @@ struct NotesFeedView: View {
                       HStack(spacing: 10) {
                         Image(systemName: entry.craft == .diamond
                           ? LibrarySection.diamonds.systemImage : LibrarySection.pages.systemImage)
-                          .font(.subheadline.weight(.medium))
+                          .font(.karla(.subheadline).weight(.medium))
                           .symbolRenderingMode(.hierarchical)
                           .foregroundStyle(theme.primary)
                           .frame(width: 32, height: 32)
                           .background(theme.primary.opacity(0.10), in: .rect(cornerRadius: 8))
                           .accessibilityHidden(true)
                         Text(entry.contextTitle)
-                          .font(.subheadline.weight(.semibold))
+                          .font(.karla(.subheadline).weight(.semibold))
                           .foregroundStyle(theme.foreground)
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
-                          .font(.caption.weight(.semibold))
+                          .font(.karla(.caption).weight(.semibold))
                           .foregroundStyle(theme.pageSecondaryForeground)
                           .accessibilityHidden(true)
                       }
@@ -91,7 +91,7 @@ struct NotesFeedView: View {
                 }
               } header: {
                 Text(month.title)
-                  .font(.title3.weight(.semibold))
+                  .font(.karla(.title3).weight(.semibold))
                   .foregroundStyle(theme.foreground)
                   .accessibilityAddTraits(.isHeader)
                   .padding(.top, 8)

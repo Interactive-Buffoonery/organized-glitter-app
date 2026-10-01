@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AccountView: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(ThemeStore.self) private var themeStore
   @Environment(\.theme) private var theme
   @Environment(\.connectionAvailable) private var connectionAvailable
@@ -32,8 +33,9 @@ struct AccountView: View {
         }
 
         Section("Appearance") {
-          Picker(
-            "Theme",
+          AccountAppearancePicker(
+            title: "Theme",
+            value: selectedFlavor.label,
             selection: Binding(
               get: { ThemeFlavor(rawValue: preferences.user.themePreference ?? "") ?? themeStore.flavor },
               set: { flavor in saveTheme(flavor) }
@@ -43,12 +45,12 @@ struct AccountView: View {
               Text(flavor.label).tag(flavor)
             }
           }
-          .pickerStyle(.segmented)
           .disabled(preferences.isSaving)
           .accessibilityLabel("Account theme")
 
-          Picker(
-            "Background",
+          AccountAppearancePicker(
+            title: "Background",
+            value: selectedPalette.label,
             selection: Binding(
               get: { ThemePalette(rawValue: preferences.user.themePalette ?? "") ?? themeStore.palette },
               set: { palette in savePalette(palette) }
@@ -58,23 +60,27 @@ struct AccountView: View {
               Text(palette.label).tag(palette)
             }
           }
-          .pickerStyle(.segmented)
           .disabled(preferences.isSaving)
           .accessibilityLabel("Account background")
 
-          Picker(
-            "Time zone",
-            selection: Binding(
-              get: { preferences.user.timezone ?? TimeZone.current.identifier },
-              set: { identifier in saveTimezone(identifier) }
-            )
-          ) {
-            ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { identifier in
-              Text(identifier.replacingOccurrences(of: "_", with: " ")).tag(identifier)
+          if dynamicTypeSize.isAccessibilitySize {
+            Menu {
+              timezonePicker
+            } label: {
+              VStack(alignment: .leading, spacing: 8) {
+                Text("Time zone")
+                  .foregroundStyle(theme.foreground)
+                Text(selectedTimezone.replacingOccurrences(of: "_", with: " "))
+                  .fixedSize(horizontal: false, vertical: true)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .accessibilityLabel("Account time zone")
+            .accessibilityValue(selectedTimezone)
+            .disabled(preferences.isSaving)
+          } else {
+            timezonePicker
           }
-          .disabled(preferences.isSaving)
-          .accessibilityLabel("Account time zone")
         }
 
         Section {
@@ -162,6 +168,34 @@ struct AccountView: View {
     }
   }
 
+  private var selectedFlavor: ThemeFlavor {
+    ThemeFlavor(rawValue: preferences.user.themePreference ?? "") ?? themeStore.flavor
+  }
+
+  private var selectedPalette: ThemePalette {
+    ThemePalette(rawValue: preferences.user.themePalette ?? "") ?? themeStore.palette
+  }
+
+  private var selectedTimezone: String {
+    preferences.user.timezone ?? TimeZone.current.identifier
+  }
+
+  private var timezonePicker: some View {
+    Picker(
+      "Time zone",
+      selection: Binding(
+        get: { selectedTimezone },
+        set: { identifier in saveTimezone(identifier) }
+      )
+    ) {
+      ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { identifier in
+        Text(identifier.replacingOccurrences(of: "_", with: " ")).tag(identifier)
+      }
+    }
+    .disabled(preferences.isSaving)
+    .accessibilityLabel("Account time zone")
+  }
+
   private func saveTheme(_ flavor: ThemeFlavor) {
     Task {
       if await preferences.updateTheme(flavor) {
@@ -191,5 +225,38 @@ struct AccountView: View {
         Task { _ = await preferences.updateVerticals(next) }
       }
     )
+  }
+}
+
+private struct AccountAppearancePicker<Selection: Hashable, Options: View>: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.theme) private var theme
+
+  let title: String
+  let value: String
+  @Binding var selection: Selection
+  @ViewBuilder let options: Options
+
+  var body: some View {
+    if dynamicTypeSize.isAccessibilitySize {
+      Menu {
+        picker
+      } label: {
+        VStack(alignment: .leading, spacing: 8) {
+          Text(title)
+            .foregroundStyle(theme.foreground)
+          Text(value)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      .accessibilityValue(value)
+    } else {
+      picker.pickerStyle(.segmented)
+    }
+  }
+
+  private var picker: some View {
+    Picker(title, selection: $selection) { options }
   }
 }

@@ -36,10 +36,10 @@ struct DetailStatusMenu<Status: RecordStatus>: View {
         }
         .labelStyle(.titleAndIcon)
         Image(systemName: "chevron.down")
-          .font(.caption.weight(.semibold))
+          .font(.karla(.caption).weight(.semibold))
           .accessibilityHidden(true)
       }
-      .font(.subheadline.weight(.semibold))
+      .font(.karla(.subheadline).weight(.semibold))
       .foregroundStyle(palette.foreground)
       .padding(.horizontal, 14)
       .padding(.vertical, 7)
@@ -201,14 +201,14 @@ struct DetailSpecStrip: View {
   private func cell(_ spec: DetailSpec) -> some View {
     VStack(spacing: 2) {
       Text(spec.title.uppercased())
-        .font(.caption2.weight(.medium))
+        .font(.karla(.caption2).weight(.medium))
         .foregroundStyle(theme.pageSecondaryForeground)
       valueLabel(spec.value, isEditable: !spec.choices.isEmpty)
-        .font(.headline)
+        .font(.karla(.headline))
         .foregroundStyle(theme.foreground)
       if let caption = spec.caption {
         Text(caption)
-          .font(.caption2)
+          .font(.karla(.caption2))
           .foregroundStyle(theme.pageSecondaryForeground)
       }
     }
@@ -226,7 +226,7 @@ struct DetailSpecStrip: View {
       Text(value)
       if isEditable {
         Image(systemName: "chevron.down")
-          .font(.caption2.weight(.bold))
+          .font(.karla(.caption2).weight(.bold))
           .foregroundStyle(theme.pageAction)
           .accessibilityHidden(true)
       }
@@ -287,7 +287,7 @@ struct DetailInlineTitle: View {
   var body: some View {
     if isEditing {
       TextField(label, text: $draft, prompt: Text(placeholder.nonEmpty ?? label))
-        .font(.title2.bold())
+        .font(.karla(.title2).bold())
         .foregroundStyle(theme.foreground)
         .disabledWhileFormPresented(
           formDrawer, or: model.isMutating || model.unresolvedWriteState != nil)
@@ -310,10 +310,10 @@ struct DetailInlineTitle: View {
       } label: {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
           Text(value.nonEmpty ?? placeholder)
-            .font(.title2.bold())
+            .font(.karla(.title2).bold())
             .foregroundStyle(theme.foreground)
           Image(systemName: "pencil")
-            .font(.body.weight(.semibold))
+            .font(.karla(.body).weight(.semibold))
             .foregroundStyle(theme.pageAction)
         }
         .frame(minHeight: 44)
