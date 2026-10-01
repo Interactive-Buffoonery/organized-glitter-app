@@ -151,6 +151,25 @@ struct LibraryTests {
     #expect(search.items.map(\.recordID) == ["page"])
   }
 
+  @Test func numericColoringSearchMatchesNumbersTitlesAndSubjects() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.book(featureBook("year-book", title: "Garden 2026")), scope: library.scope)
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("title-match", book: "year-book", number: 1)), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("number-match", book: "book", number: 2026)), scope: library.scope)
+    let subjectPage = ColoringPageRecord(
+      id: "subject-match", book: "book", pageNumber: 2, status: "not_started", photos: [],
+      revealedSubject: "2026", completedAt: nil, startedAt: nil,
+      created: "2026-09-01", updated: "2026-09-01", expand: nil)
+    try await library.store.ingest(.page(subjectPage), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("unrelated", book: "book", number: 3)), scope: library.scope)
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.select(.books)
+    model.searchText = "2026"
+    await model.load()
+    #expect(Set(model.items.map(\.recordID)) == ["year-book", "title-match", "number-match", "subject-match"])
+  }
+
   @Test func pageRequestsRemainReachableThroughSearch() async throws {
     let library = try localFeatureLibrary()
     try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)

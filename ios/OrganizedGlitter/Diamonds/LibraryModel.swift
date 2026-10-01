@@ -499,8 +499,8 @@ final class LibraryModel {
           book.expand?.illustrator?.name,
         ])
     case .page(let page):
-      if let pageNumber = Int(search) {
-        return page.pageNumber == pageNumber
+      if let pageNumber = Int(search), page.pageNumber == pageNumber {
+        return true
       }
       let bookTitle = page.expand?.book?.title ?? bookTitles[page.book] ?? ""
       return matchesSearch(search, [bookTitle, page.revealedSubject])
