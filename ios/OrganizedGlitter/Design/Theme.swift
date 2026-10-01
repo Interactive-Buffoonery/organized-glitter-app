@@ -21,19 +21,19 @@ struct Theme: Equatable, Sendable {
   let border: Color
   let ring: Color
 
-  /// Page background, top to bottom.
-  let gradientStops: [Color]
+  /// Page background, top to bottom. Palettes vary only the page, so these
+  /// two are mutable; every other token is shared.
+  var gradientStops: [Color]
   /// Optional elliptical bloom over the opaque page background.
-  let backgroundBloom: Bloom?
+  var backgroundBloom: Bloom?
 
-  /// Secondary text directly over the page must remain readable across the glow.
-  var pageSecondaryForeground: Color {
-    backgroundBloom == nil ? mutedForeground : foreground
-  }
+  /// Secondary text directly over the page. Muted text is too light for the
+  /// saturated top of the light gradients and the dark glow.
+  var pageSecondaryForeground: Color { foreground }
 
-  /// Quiet text actions directly over the page, readable across the glow.
+  /// Quiet text actions directly over the page, readable across every stop.
   var pageAction: Color {
-    backgroundBloom == nil ? Color(hex: 0xB82760) : Color(hex: 0xFFD6E6)
+    backgroundBloom == nil ? Color(hex: 0x781442) : Color(hex: 0xFFD6E6)
   }
 
   var backgroundGradient: LinearGradient {

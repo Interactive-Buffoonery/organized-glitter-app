@@ -35,9 +35,8 @@ extension UINavigationBar {
   }
 }
 
-/// The page background. Light paints the blush-to-lilac `backgroundGradient`.
-/// Dark paints a flat navy base with the theme's `backgroundBloom` over it —
-/// the "Berry Cream after dark" stage. The opaque base keeps nested
+/// The page background. Light paints the palette's `backgroundGradient`.
+/// Dark paints a flat navy base with the palette's `backgroundBloom` over it. The opaque base keeps nested
 /// backgrounds from doubling up the bloom.
 struct ThemeBackground: View {
   let theme: Theme
@@ -67,13 +66,16 @@ struct ThemeBackground: View {
 }
 
 /// Replaces the stock grouped-list grey with the themed background surface.
+/// Section headers and footers draw in the secondary style directly over the
+/// page, so it resolves to the page text color to stay readable on the gradient.
 struct ThemedScrollBackground: ViewModifier {
   @Environment(\.theme) private var theme
 
   func body(content: Content) -> some View {
     content
       .scrollContentBackground(.hidden)
-      .background(theme.themedBackground)
+      .foregroundStyle(theme.foreground, theme.pageSecondaryForeground)
+      .background(theme.themedBackground.ignoresSafeArea())
   }
 }
 

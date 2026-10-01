@@ -9,12 +9,14 @@ struct UserRecord: Codable, Equatable, Sendable {
   let avatar: String?
   let timezone: String?
   let themePreference: String?
+  let themePalette: String?
   let created: String?
   let updated: String?
 
   enum CodingKeys: String, CodingKey {
     case id, email, verified, username, name, avatar, timezone, created, updated
     case themePreference = "theme_preference"
+    case themePalette = "theme_palette"
   }
 
   static let preview = UserRecord(
@@ -26,6 +28,7 @@ struct UserRecord: Codable, Equatable, Sendable {
     avatar: nil,
     timezone: nil,
     themePreference: nil,
+    themePalette: nil,
     created: nil,
     updated: nil
   )
