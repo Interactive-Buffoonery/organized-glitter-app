@@ -10,7 +10,7 @@ struct LibrarySyncStatusView: View {
       HStack(spacing: 12) {
         if library.isSyncing { ProgressView().accessibilityLabel("Synchronizing library") }
         Text(message)
-          .font(.footnote)
+          .font(.karla(.footnote))
           .frame(maxWidth: .infinity, alignment: .leading)
         Button(actionTitle) {
           if library.conflicts.isEmpty {
@@ -138,12 +138,12 @@ private struct LibraryConflictFields: View {
         ForEach(changes, id: \.field) { change in
           VStack(alignment: .leading, spacing: 4) {
             Text(ConflictFieldName.label(for: change.field))
-              .font(.headline)
+              .font(.karla(.headline))
             Text("\(change.isComparisonOnly ? "When you saved" : "On this device"): \(display.text(change.local, field: change.field))")
             Text("In your account: \(display.text(change.server, field: change.field))")
             if change.isComparisonOnly {
               Text("This field was included in the conflict check.")
-                .font(.footnote)
+                .font(.karla(.footnote))
             }
           }
         }

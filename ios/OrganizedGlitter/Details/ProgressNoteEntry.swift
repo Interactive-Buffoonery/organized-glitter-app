@@ -24,7 +24,7 @@ struct ProgressNoteEntry: View {
     VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .top) {
         Label(formattedDate, systemImage: "calendar")
-          .font(.subheadline.weight(.semibold))
+          .font(.karla(.subheadline).weight(.semibold))
           .foregroundStyle(theme.pageSecondaryForeground)
           .accessibilityLabel("Progress logged \(formattedDate)")
         Spacer(minLength: 8)
@@ -82,7 +82,7 @@ struct ProgressNoteEntry: View {
         }
       } else if let content = note.content.nonEmpty {
         Text(renderedCaption(content))
-          .font(.body)
+          .font(.karla(.body))
           .foregroundStyle(theme.foreground)
           .frame(maxWidth: .infinity, alignment: .leading)
           .accessibilityIdentifier("progressNote.caption")
@@ -263,7 +263,7 @@ struct ProgressNotesSection: View {
       : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
     return layout {
       Text("Progress")
-        .font(.title3.weight(.semibold))
+        .font(.karla(.title3).weight(.semibold))
         .foregroundStyle(theme.foreground)
         .accessibilityAddTraits(.isHeader)
       if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
@@ -273,7 +273,7 @@ struct ProgressNotesSection: View {
           logEditor = model
         } label: {
           Label("Log progress", systemImage: "plus.circle")
-            .font(.subheadline)
+            .font(.karla(.subheadline))
             .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
@@ -368,7 +368,7 @@ struct ProgressNoteEditor: View {
             TextField("Caption (optional)", text: $content, axis: .vertical)
               .lineLimit(3...8)
             Text("Add a photo, a caption, or both.")
-              .font(.footnote)
+              .font(.karla(.footnote))
               .foregroundStyle(theme.pageSecondaryForeground)
           }
           .disabled(model.unresolvedWriteState != nil)

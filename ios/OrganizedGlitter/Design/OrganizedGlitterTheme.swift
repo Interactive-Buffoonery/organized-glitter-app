@@ -17,8 +17,11 @@ extension UINavigationBar {
   /// transparent bar.
   static func applyCaveatLargeTitles() {
     guard let caveat = UIFont(name: "Caveat", size: 44) else { return }
+    let scaledFont = UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: caveat)
+    let titleStrokeClearance = scaledFont.pointSize / 11
     let attributes: [NSAttributedString.Key: Any] = [
-      .font: UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: caveat),
+      .font: scaledFont,
+      .kern: titleStrokeClearance,
       .foregroundColor: UIColor { traits in
         UIColor(traits.userInterfaceStyle == .dark ? Theme.dark.foreground : Theme.light.foreground)
       },
@@ -27,6 +30,11 @@ extension UINavigationBar {
     let scrollEdge = UINavigationBarAppearance()
     scrollEdge.configureWithTransparentBackground()
     standard.configureWithTransparentBackground()
+    var inlineAttributes = attributes
+    inlineAttributes.removeValue(forKey: .kern)
+    inlineAttributes[.font] = KarlaTypography.nativeFont(size: 17, relativeTo: .headline)
+    standard.titleTextAttributes = inlineAttributes
+    scrollEdge.titleTextAttributes = inlineAttributes
     standard.largeTitleTextAttributes = attributes
     scrollEdge.largeTitleTextAttributes = attributes
     appearance().standardAppearance = standard
@@ -151,7 +159,7 @@ struct StatusBadge: View {
       // ponytail: .titleAndIcon is load-bearing inside a List row, which otherwise
       // supplies .iconOnly and drops the written status VoiceOver depends on.
       .labelStyle(.titleAndIcon)
-      .font(.caption.weight(.semibold))
+      .font(.karla(.caption).weight(.semibold))
       .foregroundStyle(theme.pageSecondaryForeground)
       .fixedSize(horizontal: false, vertical: true)
   }
@@ -183,7 +191,7 @@ struct QuietActionStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .labelStyle(.titleAndIcon)
-      .font(.body.weight(.medium))
+      .font(.karla(.body).weight(.medium))
       .foregroundStyle(theme.foreground)
       .padding(.horizontal, 12)
       .padding(.vertical, 8)

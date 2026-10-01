@@ -55,7 +55,7 @@ struct NeedsConnectionHint: View {
   var body: some View {
     if !connectionAvailable {
       Label("Needs a connection", systemImage: "wifi.slash")
-        .font(.footnote)
+        .font(.karla(.footnote))
         .foregroundStyle(theme.mutedForeground)
         .accessibilityIdentifier("connection.required")
     }

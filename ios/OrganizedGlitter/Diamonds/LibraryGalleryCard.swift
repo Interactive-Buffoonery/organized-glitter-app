@@ -13,13 +13,13 @@ struct LibraryGalleryCard: View {
       CoverArtwork(item: item, url: imageURL)
 
       Text(item.title)
-        .font(.headline)
+        .font(.karla(.headline))
         .foregroundStyle(theme.foreground)
         .fixedSize(horizontal: false, vertical: true)
 
       if !item.galleryCaption.isEmpty {
         Text(item.galleryCaption)
-          .font(.subheadline)
+          .font(.karla(.subheadline))
           .foregroundStyle(theme.pageSecondaryForeground)
           .fixedSize(horizontal: false, vertical: true)
       }

@@ -54,7 +54,7 @@ struct DiamondProjectDetailView: View {
               if let source = sourceURL {
                 DetailMetadataRow(label: "Source") {
                   Link(source.host() ?? source.absoluteString, destination: source)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityIdentifier("detail.diamond.source")
               }
@@ -208,7 +208,7 @@ struct DiamondProjectDetailView: View {
 
   private func sectionTitle(_ title: String) -> some View {
     Text(title)
-      .font(.title3.weight(.semibold))
+      .font(.karla(.title3).weight(.semibold))
       .foregroundStyle(theme.foreground)
       .accessibilityAddTraits(.isHeader)
   }
@@ -289,7 +289,7 @@ private struct DetailDateRow: View {
     .popover(isPresented: $isEditingDate) {
       VStack(alignment: .leading, spacing: 16) {
         Text("\(storedDate == nil ? "Add" : "Change") \(label.lowercased()) date")
-          .font(.headline)
+          .font(.karla(.headline))
           .foregroundStyle(theme.foreground)
         DatePicker(label, selection: $draftDate, displayedComponents: .date)
           .datePickerStyle(.graphical)

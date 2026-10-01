@@ -18,6 +18,7 @@
 		0FE72C97DBF94E7253AA79EB /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4286752BA69AD6852C049E5D /* LibraryView.swift */; };
 		100BE9E76C3F8F819393FE4E /* ColoringPageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07901506737CEE3AEB38D49A /* ColoringPageDetailView.swift */; };
 		13B196725AFF259CF490B14E /* LibraryItemDetailModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */; };
+		13E04ADC58D7B2567A1DA4D0 /* KarlaTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFEE932858AF3D0A266D8CF /* KarlaTypography.swift */; };
 		1718F3F391D717BF461FB30A /* AccountMethodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3243054F78356C39C4024422 /* AccountMethodView.swift */; };
 		17620B17A9D08B3E442FA6A5 /* LocalSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4964692269A5F0000FBCF10D /* LocalSyncCoordinator.swift */; };
 		194236C29D621F54421005AB /* PocketBaseFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911823E33E157F4AA5946C5D /* PocketBaseFilter.swift */; };
@@ -57,6 +58,7 @@
 		57B719A3A6D4E0E88F59BA9D /* PrivateArtworkStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55DA63A04D6C14AE2EF96802 /* PrivateArtworkStoreTests.swift */; };
 		5984DF19440D36F48EB42089 /* DetailDateOnly.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4598F11155765ABCC33C5CA7 /* DetailDateOnly.swift */; };
 		5A7005B358D623FE511A003B /* BackendContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E0AAB8943F1B2ACAA6F424 /* BackendContract.swift */; };
+		683FBC24FC7949EB597728A4 /* Karla.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D739A8FEE421BD0E3289FC0D /* Karla.ttf */; };
 		68D419A8B6B9C39F6E59D0BA /* LibraryItemDetailModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA27606235E3389778F8BBEA /* LibraryItemDetailModelTests.swift */; };
 		696B08DE9F3F7CED1DE9815D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53BE7051E60073DC0E722076 /* RootView.swift */; };
 		6C69CA216788621BE1C82429 /* DiamondProjectEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3D9D8C588673C2C32B6E0E /* DiamondProjectEditor.swift */; };
@@ -70,6 +72,7 @@
 		7B77225BDD6B7888A3C1A0D3 /* DetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD03178006CC4D181EC25E88 /* DetailHeader.swift */; };
 		7EFBD5D056D07BC5637C0068 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6514166844D26328882B320 /* ThemeStore.swift */; };
 		7F5BD6B19D638072E887F982 /* LocalSyncTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2360F3205301A955F7A2898C /* LocalSyncTransportTests.swift */; };
+		811A66F3A567403D3397B0DF /* Karla-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = A1A062DF60CF1608957A45F7 /* Karla-OFL.txt */; };
 		81A535F58978295A957C45AE /* ColoringBookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2B4F3D4BDDCE126CECB107 /* ColoringBookDetailView.swift */; };
 		81B74D4319E12928F38EE396 /* OrganizedGlitterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87432C7595D56F6A212DA34D /* OrganizedGlitterApp.swift */; };
 		82E7FA3D4B49FA1DF95E4B3C /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9AF6A3CC8D0561397DBC098 /* AccountView.swift */; };
@@ -111,6 +114,7 @@
 		DADD24FA4D40EDDA6A2F5541 /* OrganizedGlitterTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 257F0863604513177CB207BE /* OrganizedGlitterTheme.swift */; };
 		DD668F2CEE5B98E2302D60C2 /* AuthChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9079468E04D40FFDADAC626 /* AuthChrome.swift */; };
 		E446C2D725742D28F1775107 /* DiamondProjectWriteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2D9D83C502889A70BE1CD7 /* DiamondProjectWriteTests.swift */; };
+		E82803F4ABA37726B3AEDBDC /* KarlaTypographyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE8DE8513CA782576A89296 /* KarlaTypographyTests.swift */; };
 		EB3F5E51F262CFE28DFBD02A /* BackendContract.json in Resources */ = {isa = PBXBuildFile; fileRef = 6C50EC0F0E446D63E719ED45 /* BackendContract.json */; };
 		EE221F9C41092F13F0A58DDF /* PhotoViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE908FC7F918916A465558B7 /* PhotoViewer.swift */; };
 		F0CCF62DA6B4D1196F85DF73 /* APIErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */; };
@@ -177,6 +181,7 @@
 		469E2CDC832BD2CCC3A32EB9 /* PocketBaseFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseFilterTests.swift; sourceTree = "<group>"; };
 		4964692269A5F0000FBCF10D /* LocalSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSyncCoordinator.swift; sourceTree = "<group>"; };
 		4BA4E4CDD670B63EB681D20F /* NativeRefinementUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRefinementUITests.swift; sourceTree = "<group>"; };
+		4DE8DE8513CA782576A89296 /* KarlaTypographyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KarlaTypographyTests.swift; sourceTree = "<group>"; };
 		4F9D28127350CFA29235E456 /* PocketBaseClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseClientTests.swift; sourceTree = "<group>"; };
 		512ABFA7EC94F056C621781C /* PocketBaseOAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseOAuth.swift; sourceTree = "<group>"; };
 		5207C33DF1810FC65A8ED7EB /* LibrarySyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySyncStatusView.swift; sourceTree = "<group>"; };
@@ -224,6 +229,7 @@
 		9AAA23B01F0FE65881519282 /* RecordStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordStatus.swift; sourceTree = "<group>"; };
 		A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryTests.swift; sourceTree = "<group>"; };
 		A0EFEA0FDF0D2A4FD5A59E4B /* OfflineSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSessionTests.swift; sourceTree = "<group>"; };
+		A1A062DF60CF1608957A45F7 /* Karla-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Karla-OFL.txt"; sourceTree = "<group>"; };
 		A3277359BD8C95E73E0D0287 /* NumberSectionPickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberSectionPickerTests.swift; sourceTree = "<group>"; };
 		A772994E0DBA96147D63D3F8 /* FixtureAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = FixtureAssets.xcassets; sourceTree = "<group>"; };
 		A9E0AAB8943F1B2ACAA6F424 /* BackendContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendContract.swift; sourceTree = "<group>"; };
@@ -236,6 +242,7 @@
 		C8130E21AA27F12F629A9523 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C95200946F9A7EDC3E14EEB0 /* NoteTargetPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTargetPicker.swift; sourceTree = "<group>"; };
 		CA3A446D1DA89D12E6B2C19C /* AppleSignInNonce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonce.swift; sourceTree = "<group>"; };
+		CAFEE932858AF3D0A266D8CF /* KarlaTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KarlaTypography.swift; sourceTree = "<group>"; };
 		CB2D9D83C502889A70BE1CD7 /* DiamondProjectWriteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiamondProjectWriteTests.swift; sourceTree = "<group>"; };
 		CD03178006CC4D181EC25E88 /* DetailHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailHeader.swift; sourceTree = "<group>"; };
 		CF6D23DFA92798FB254E1CF8 /* DetailPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailPhoto.swift; sourceTree = "<group>"; };
@@ -245,6 +252,7 @@
 		D5AC093CA2382FCEAFA736F1 /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		D6514166844D26328882B320 /* ThemeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeStore.swift; sourceTree = "<group>"; };
 		D6FEE06635DBC0A5ECF26E1C /* CreateMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateMenu.swift; sourceTree = "<group>"; };
+		D739A8FEE421BD0E3289FC0D /* Karla.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Karla.ttf; sourceTree = "<group>"; };
 		D7567298DEDD48B2D921E5BC /* LocalLibraryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLibraryStoreTests.swift; sourceTree = "<group>"; };
 		D9AF6A3CC8D0561397DBC098 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		DA27606235E3389778F8BBEA /* LibraryItemDetailModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetailModelTests.swift; sourceTree = "<group>"; };
@@ -292,6 +300,7 @@
 			isa = PBXGroup;
 			children = (
 				DAB439CF518C859A6EDDB5B2 /* CoverArtwork.swift */,
+				CAFEE932858AF3D0A266D8CF /* KarlaTypography.swift */,
 				257F0863604513177CB207BE /* OrganizedGlitterTheme.swift */,
 				C02EA4614FC4C10D918E0879 /* RemoteArtwork.swift */,
 				15A7FD3C8DA9EFE11CA84D25 /* Theme.swift */,
@@ -469,6 +478,8 @@
 			isa = PBXGroup;
 			children = (
 				63076BFAC078AAEE6B474418 /* Caveat.ttf */,
+				A1A062DF60CF1608957A45F7 /* Karla-OFL.txt */,
+				D739A8FEE421BD0E3289FC0D /* Karla.ttf */,
 				992DFF2FCFEA9047315D14FE /* OFL.txt */,
 			);
 			path = Fonts;
@@ -497,6 +508,7 @@
 				2A4A440302CEFD156DEABCDC /* DetailPhotoProcessorTests.swift */,
 				6BD7BDF23879C0D2F6038DA2 /* DiamondProjectEditorTests.swift */,
 				CB2D9D83C502889A70BE1CD7 /* DiamondProjectWriteTests.swift */,
+				4DE8DE8513CA782576A89296 /* KarlaTypographyTests.swift */,
 				E8B9784FB12A1B3910B9397C /* KeychainSessionStoreTests.swift */,
 				DA27606235E3389778F8BBEA /* LibraryItemDetailModelTests.swift */,
 				A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */,
@@ -662,6 +674,8 @@
 				EB3F5E51F262CFE28DFBD02A /* BackendContract.json in Resources */,
 				3D6BFE41A3B50BDD4E82CCC5 /* Caveat.ttf in Resources */,
 				A63DF636F85B4FFAD55BF0E7 /* FixtureAssets.xcassets in Resources */,
+				811A66F3A567403D3397B0DF /* Karla-OFL.txt in Resources */,
+				683FBC24FC7949EB597728A4 /* Karla.ttf in Resources */,
 				4FB1DD8A2539C2339DCA1E43 /* OFL.txt in Resources */,
 				A7365172AB35A101E89E30AD /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -684,6 +698,7 @@
 				D0EA450F4C08A4646E1ED527 /* DetailPhotoProcessorTests.swift in Sources */,
 				93395587CBC8A8386023D152 /* DiamondProjectEditorTests.swift in Sources */,
 				E446C2D725742D28F1775107 /* DiamondProjectWriteTests.swift in Sources */,
+				E82803F4ABA37726B3AEDBDC /* KarlaTypographyTests.swift in Sources */,
 				0B146CB8F788DA26C94E17F5 /* KeychainSessionStoreTests.swift in Sources */,
 				68D419A8B6B9C39F6E59D0BA /* LibraryItemDetailModelTests.swift in Sources */,
 				4026BC25DE6D2DCB70DB696B /* LibraryTests.swift in Sources */,
@@ -738,6 +753,7 @@
 				2645F8D58F528DFEFAFDBB6B /* DetailPhoto.swift in Sources */,
 				0BA2A83653B1989DD20BFCA2 /* DiamondProjectDetailView.swift in Sources */,
 				6C69CA216788621BE1C82429 /* DiamondProjectEditor.swift in Sources */,
+				13E04ADC58D7B2567A1DA4D0 /* KarlaTypography.swift in Sources */,
 				9A61E9409D757D3C2660080C /* KeychainSessionStore.swift in Sources */,
 				BB7B58E0D6EBBB8F60113CC3 /* LibraryGalleryCard.swift in Sources */,
 				066CE80A7FDA85EE9BB78663 /* LibraryItemDetail.swift in Sources */,

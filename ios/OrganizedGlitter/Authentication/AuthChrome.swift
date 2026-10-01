@@ -49,7 +49,7 @@ struct AuthPrimaryButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.body.weight(.semibold))
+      .font(.karla(.body).weight(.semibold))
       .multilineTextAlignment(.center)
       .foregroundStyle(theme.primaryForeground)
       .tint(theme.primaryForeground)
@@ -90,7 +90,7 @@ struct AuthSecondaryButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.body.weight(.medium))
+      .font(.karla(.body).weight(.medium))
       .foregroundStyle(theme.foreground)
       .frame(maxWidth: .infinity, minHeight: AccountEntryLayout.secondaryButtonHeight)
       .opacity(configuration.isPressed || !isEnabled ? 0.55 : 1)
@@ -103,7 +103,7 @@ struct AuthLinkButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.subheadline.weight(.medium))
+      .font(.karla(.subheadline).weight(.medium))
       .foregroundStyle(theme.primary)
       .opacity(configuration.isPressed ? 0.6 : 1)
       .frame(minHeight: 44)
@@ -120,7 +120,7 @@ struct AuthLabeledField<Content: View>: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       Text(title)
-        .font(.subheadline.weight(.medium))
+        .font(.karla(.subheadline).weight(.medium))
         .foregroundStyle(theme.foreground)
       content
         .padding(.horizontal, 14)

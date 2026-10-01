@@ -51,7 +51,7 @@ struct PasswordResetConfirmationView: View {
           AuthEntryContainer(alignment: .leading) {
             VStack(alignment: .leading, spacing: 24) {
               Text(title)
-                .font(.title2.weight(.semibold))
+                .font(.karla(.title2).weight(.semibold))
                 .foregroundStyle(theme.foreground)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("passwordResetConfirmationTitle")
@@ -120,7 +120,7 @@ struct PasswordResetConfirmationView: View {
   @ViewBuilder
   private var form: some View {
     Text("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.")
-      .font(.body)
+      .font(.karla(.body))
       .foregroundStyle(theme.mutedForeground)
 
     AuthLabeledField(title: "New password") {
@@ -159,7 +159,7 @@ struct PasswordResetConfirmationView: View {
   @ViewBuilder
   private var recovery: some View {
     Text("This link has expired, has already been used, or is invalid. Request a new reset email to choose a password.")
-      .font(.body)
+      .font(.karla(.body))
       .foregroundStyle(theme.foreground)
       .accessibilityFocused($isOutcomeFocused)
       .accessibilityIdentifier("passwordResetInvalidLink")
@@ -178,7 +178,7 @@ struct PasswordResetConfirmationView: View {
       "Your password has been reset. Sign in with your new password.",
       systemImage: "checkmark.circle.fill"
     )
-    .font(.body)
+    .font(.karla(.body))
     .foregroundStyle(theme.foreground)
     .accessibilityFocused($isOutcomeFocused)
     .accessibilityIdentifier("passwordResetComplete")
@@ -193,7 +193,7 @@ struct PasswordResetConfirmationView: View {
   @ViewBuilder
   private var uncertainOutcome: some View {
     Text("We couldn’t confirm whether your password was reset. Try signing in with your new password. If it doesn’t work, request a new reset link.")
-      .font(.body)
+      .font(.karla(.body))
       .foregroundStyle(theme.foreground)
       .accessibilityFocused($isOutcomeFocused)
       .accessibilityIdentifier("passwordResetOutcomeUnknown")

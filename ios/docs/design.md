@@ -253,8 +253,18 @@ base. Light appearance retains its existing palette and gradient.
 - **Caveat** (bundled) is the large-title face, set once per screen through
   `UINavigationBar.applyCaveatLargeTitles()` and scaled with Dynamic Type. It
   is also the generated-cover title. Never use Caveat for body text, labels, or
-  buttons.
-- Everything else is the system font with Dynamic Type styles.
+  buttons. Large-title tracking leaves room for Caveat’s final strokes in
+  UIKit’s measured title bounds.
+- **Karla** (bundled Google Fonts variable TTF, SIL Open Font License) is the
+  interface face. `Font.karla(_:)` maps semantic text styles to their native
+  base sizes and uses `relativeTo:` for Dynamic Type. The app root supplies
+  Karla body text; explicit headings, captions, and control styles use the same
+  helper. Native inline navigation titles and bar controls also use Karla.
+  SF Symbols remain platform symbols; the native Sign in with Apple control
+  keeps Apple’s typography.
+- Text wraps without reserving empty title lines. Accessibility sizes retain
+  the existing single-column grids and stacked detail rows. Scroll content
+  leaves clearance above the floating tab bar.
 
 ## Iconography
 
