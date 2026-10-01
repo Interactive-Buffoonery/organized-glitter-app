@@ -170,6 +170,47 @@ struct LibraryTests {
     #expect(Set(model.items.map(\.recordID)) == ["year-book", "title-match", "number-match", "subject-match"])
   }
 
+  @Test func submittingPageShortcutSearchPreservesQueryAndIncludesBooks() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("active", book: "book", number: 1, status: "in_progress")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("waiting", book: "book", number: 2)), scope: library.scope)
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.apply(LibraryRequest(section: .pages, status: "in_progress"))
+    await model.load()
+    #expect(model.items.map(\.recordID) == ["active"])
+
+    model.sort = .pageDescending
+    model.searchText = "  Quiet  "
+    await model.submitSearch()
+
+    #expect(model.section == .books)
+    #expect(model.searchText == "  Quiet  ")
+    #expect(model.committedSearch == "Quiet")
+    #expect(model.statusFilter == nil)
+    #expect(model.sort == .recentlyUpdated)
+    #expect(Set(model.items.map(\.recordID)) == ["book", "active", "waiting"])
+  }
+
+  @Test func submittingCraftSearchPreservesCraftAndSort() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.diamond(featureProject("a", title: "Moon Garden", status: "wishlist")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("b", title: "Moonlight", status: "progress")), scope: library.scope)
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.statusFilter = "wishlist"
+    model.sort = .titleAscending
+    model.searchText = "moon"
+
+    await model.submitSearch()
+
+    #expect(model.section == .diamonds)
+    #expect(model.searchText == "moon")
+    #expect(model.committedSearch == "moon")
+    #expect(model.statusFilter == nil)
+    #expect(model.sort == .titleAscending)
+    #expect(model.items.map(\.recordID) == ["a", "b"])
+  }
+
   @Test func pageRequestsRemainReachableThroughSearch() async throws {
     let library = try localFeatureLibrary()
     try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
