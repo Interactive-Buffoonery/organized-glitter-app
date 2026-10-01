@@ -9,6 +9,7 @@ struct OrganizedGlitterApp: App {
   #endif
 
   init() {
+    KarlaTypography.applyControlFonts()
     UINavigationBar.applyCaveatLargeTitles()
     let themeStore = ThemeStore()
     _themeStore = State(initialValue: themeStore)
@@ -66,6 +67,7 @@ struct OrganizedGlitterApp: App {
             }
           #endif
       }
+      .font(.karla())
       .environment(themeStore)
       .onOpenURL(perform: model.open)
     }

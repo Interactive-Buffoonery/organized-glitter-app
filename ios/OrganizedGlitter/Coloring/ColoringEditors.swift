@@ -97,7 +97,7 @@ struct ColoringBookEditor: View {
               .accessibilityLabel("Book cover")
 
               Text("Cover upload is coming soon.")
-                .font(.footnote)
+                .font(.karla(.footnote))
                 .foregroundStyle(theme.mutedForeground)
             }
           }
@@ -144,7 +144,7 @@ struct ColoringBookEditor: View {
               Text(
                 "Changing the total updates the generated pages after save. Pages above the new total are removed only if you never touched them."
               )
-              .font(.footnote)
+              .font(.karla(.footnote))
               .foregroundStyle(theme.mutedForeground)
             }
           }
@@ -470,7 +470,7 @@ struct ColoringPageEditor: View {
             TextField("Revealed subject", text: $draft.revealedSubject)
 
             Text("Started and completed dates are set automatically from status.")
-              .font(.footnote)
+              .font(.karla(.footnote))
               .foregroundStyle(theme.mutedForeground)
           }
 

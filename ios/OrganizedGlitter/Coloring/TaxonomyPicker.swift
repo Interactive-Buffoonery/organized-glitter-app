@@ -71,7 +71,7 @@ private struct TaxonomyOptionList: View {
           Section {
             if usingDownloadedOptions {
               Text("Showing \(label.lowercased()) options used by downloaded books. Try again when the service is available for the full list.")
-                .font(.footnote)
+                .font(.karla(.footnote))
             }
             if let errorMessage {
               AccessibleErrorLabel(message: errorMessage)

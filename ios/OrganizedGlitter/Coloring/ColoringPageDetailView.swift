@@ -46,7 +46,7 @@ struct ColoringPageDetailView: View {
               model: model,
               onCollectionChanged: onCollectionChanged)
             Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
-              .font(.body)
+              .font(.karla(.body))
               .foregroundStyle(theme.pageSecondaryForeground)
           }
 
@@ -160,7 +160,7 @@ struct ColoringPageDetailView: View {
           if startedDate != nil || completedDate != nil {
             VStack(alignment: .leading, spacing: 12) {
               Text("Page details")
-                .font(.title3.weight(.semibold))
+                .font(.karla(.title3).weight(.semibold))
                 .foregroundStyle(theme.foreground)
                 .accessibilityAddTraits(.isHeader)
               DetailMetadataCard {
@@ -238,7 +238,7 @@ struct ColoringPageDetailView: View {
       : AnyLayout(HStackLayout())
     return layout {
       Text("Photos")
-        .font(.title3.weight(.semibold))
+        .font(.karla(.title3).weight(.semibold))
         .foregroundStyle(theme.foreground)
         .accessibilityAddTraits(.isHeader)
       if !dynamicTypeSize.isAccessibilitySize {

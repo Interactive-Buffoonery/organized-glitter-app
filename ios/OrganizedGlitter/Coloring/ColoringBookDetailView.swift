@@ -85,7 +85,7 @@ struct ColoringBookDetailView: View {
         {
           VStack(alignment: .leading, spacing: 12) {
             Text("Book details")
-              .font(.title3.weight(.semibold))
+              .font(.karla(.title3).weight(.semibold))
               .foregroundStyle(theme.foreground)
               .accessibilityAddTraits(.isHeader)
             DetailMetadataCard {
@@ -150,7 +150,7 @@ struct ColoringBookDetailView: View {
         current: book.status, model: model, onCollectionChanged: onCollectionChanged)
       .padding(.top, 4)
       Text("\(book.completedPages ?? 0) of \(book.totalPages) pages")
-        .font(.subheadline)
+        .font(.karla(.subheadline))
         .foregroundStyle(theme.pageSecondaryForeground)
         .padding(.top, 8)
       ProgressView(
@@ -233,7 +233,7 @@ struct ColoringBookDetailView: View {
 
   private var pagesTitle: some View {
     Text("Pages")
-      .font(.title3.weight(.semibold))
+      .font(.karla(.title3).weight(.semibold))
       .foregroundStyle(theme.foreground)
       .accessibilityAddTraits(.isHeader)
   }
@@ -243,7 +243,7 @@ struct ColoringBookDetailView: View {
       onEditPageCount()
     } label: {
       Text("Edit page count")
-        .font(.subheadline)
+        .font(.karla(.subheadline))
         .frame(minHeight: 44)
         .contentShape(.rect)
     }
@@ -276,7 +276,7 @@ private struct ColoringBookPageCard: View {
             .foregroundStyle(theme.primary)
         }
       }
-      .font(.caption)
+      .font(.karla(.caption))
       .foregroundStyle(theme.pageSecondaryForeground)
     }
     .frame(maxWidth: .infinity)

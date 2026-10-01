@@ -105,11 +105,11 @@ struct NoteTargetPicker: View {
 
         VStack(alignment: .leading, spacing: 4) {
           Text(target.title)
-            .font(.body.weight(.semibold))
+            .font(.karla(.body).weight(.semibold))
             .foregroundStyle(theme.foreground)
             .multilineTextAlignment(.leading)
           Text(target.subtitle)
-            .font(.subheadline)
+            .font(.karla(.subheadline))
             .foregroundStyle(theme.pageSecondaryForeground)
             .multilineTextAlignment(.leading)
         }
