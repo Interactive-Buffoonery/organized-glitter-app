@@ -126,7 +126,7 @@ final class LibraryUITests: XCTestCase {
       if scenario == "empty" {
         XCTAssertTrue(app.buttons["create.menu"].exists)
         XCTAssertFalse(app.buttons["library.sort"].exists)
-        XCTAssertFalse(app.buttons["library.status.all"].exists)
+        XCTAssertFalse(app.buttons["library.status"].exists)
         app.buttons["library.first"].tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()
@@ -190,25 +190,21 @@ final class LibraryUITests: XCTestCase {
     openLibrary(app)
     XCTAssertTrue(app.staticTexts["Yorkie & Roses"].waitForExistence(timeout: 5))
 
-    let all = app.buttons["library.status.all"]
-    let completed = app.buttons["library.status.completed"]
-    let chipRow = all.frame.midY
-    let origin = app.coordinate(withNormalizedOffset: .zero)
-    for _ in 0..<4 where completed.frame.maxX > app.frame.maxX {
-      origin.withOffset(CGVector(dx: 300, dy: chipRow)).press(
-        forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 60, dy: chipRow)))
-    }
-    completed.tap()
+    let status = app.buttons["library.status"]
+    XCTAssertEqual(status.value as? String, "All, 4")
+    XCTAssertTrue(status.frame.maxX <= app.frame.maxX)
+    XCTAssertTrue(app.buttons["library.sort"].frame.maxX <= app.frame.maxX)
+    status.tap()
+    XCTAssertTrue(app.buttons["In progress 2"].waitForExistence(timeout: 5))
+    try capture(app, "library-status-menu")
+    app.buttons["Completed 1"].tap()
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
-    XCTAssertTrue(app.buttons["library.status.completed"].isSelected)
-    try capture(app, "library-status-chips")
+    XCTAssertEqual(status.value as? String, "Completed, 1")
+    try capture(app, "library-status-filtered")
 
-    for _ in 0..<4 where all.frame.minX < 0 {
-      origin.withOffset(CGVector(dx: 60, dy: chipRow)).press(
-        forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 300, dy: chipRow)))
-    }
-    all.tap()
+    status.tap()
+    app.buttons["All 4"].tap()
     app.buttons["library.sort"].tap()
     app.buttons["Title A to Z"].tap()
     // All groups covers into status shelves; sort orders each shelf.
