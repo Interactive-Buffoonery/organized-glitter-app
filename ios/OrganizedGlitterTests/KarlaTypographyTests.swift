@@ -19,13 +19,15 @@ struct KarlaTypographyTests {
 
   @Test
   func semanticStylesKeepTheirNativeBaseSizes() {
-    let styles: [(Font.TextStyle, CGFloat)] = [
-      (.largeTitle, 34), (.title, 28), (.title2, 22), (.title3, 20),
-      (.headline, 17), (.body, 17), (.callout, 16), (.subheadline, 15),
-      (.footnote, 13), (.caption, 12), (.caption2, 11),
+    let styles: [(Font.TextStyle, UIFont.TextStyle)] = [
+      (.largeTitle, .largeTitle), (.title, .title1), (.title2, .title2), (.title3, .title3),
+      (.headline, .headline), (.body, .body), (.callout, .callout), (.subheadline, .subheadline),
+      (.footnote, .footnote), (.caption, .caption1), (.caption2, .caption2),
     ]
-    for (style, size) in styles {
-      #expect(KarlaTypography.style(style).size == size)
+    let traits = UITraitCollection(preferredContentSizeCategory: .large)
+    for (style, nativeStyle) in styles {
+      let nativeFont = UIFont.preferredFont(forTextStyle: nativeStyle, compatibleWith: traits)
+      #expect(KarlaTypography.style(style).size == nativeFont.pointSize)
     }
     #expect(KarlaTypography.style(.headline).weight == .semibold)
     #expect(KarlaTypography.style(.body).weight == .regular)
