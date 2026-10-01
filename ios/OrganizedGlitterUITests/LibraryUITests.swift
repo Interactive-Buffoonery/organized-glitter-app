@@ -197,14 +197,22 @@ final class LibraryUITests: XCTestCase {
     status.tap()
     XCTAssertTrue(app.buttons["In progress 2"].waitForExistence(timeout: 5))
     try capture(app, "library-status-menu")
-    app.buttons["Completed 1"].tap()
+    let completed = app.buttons["Completed 1"]
+    for _ in 0..<6 where !completed.exists || !completed.isHittable {
+      app.collectionViews.firstMatch.swipeUp()
+    }
+    completed.tap()
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
     XCTAssertEqual(status.value as? String, "Completed, 1")
     try capture(app, "library-status-filtered")
 
     status.tap()
-    app.buttons["All 4"].tap()
+    let all = app.buttons["All 4"]
+    for _ in 0..<6 where !all.exists || !all.isHittable {
+      app.collectionViews.firstMatch.swipeDown()
+    }
+    all.tap()
     app.buttons["library.sort"].tap()
     app.buttons["Title A to Z"].tap()
     // All groups covers into status shelves; sort orders each shelf.
