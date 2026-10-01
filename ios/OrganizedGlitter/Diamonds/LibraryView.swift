@@ -153,15 +153,7 @@ struct LibraryView: View {
       scroll
         .searchable(text: Bindable(model).searchText, prompt: searchPrompt)
         .onSubmit(of: .search) {
-          Task {
-            if model.section == .pages {
-              let text = model.searchText
-              model.select(.books)
-              model.searchText = text
-            }
-            model.statusFilter = nil
-            await model.load()
-          }
+          Task { await model.submitSearch() }
         }
         .onChange(of: model.searchText) { _, text in
           if text.isEmpty {
