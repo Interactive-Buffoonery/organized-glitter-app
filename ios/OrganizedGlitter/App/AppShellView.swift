@@ -230,9 +230,11 @@ struct AppShellView: View {
   }
 
   private func tabContent<Content: View>(_ content: Content) -> some View {
-    content.safeAreaInset(edge: .bottom) {
-      LibrarySyncStatusView(library: library)
-    }
+    content
+      .safeAreaPadding(.bottom, 24)
+      .safeAreaInset(edge: .bottom) {
+        LibrarySyncStatusView(library: library)
+      }
   }
 
   private var syncAnnouncement: String? {

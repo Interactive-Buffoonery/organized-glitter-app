@@ -38,7 +38,7 @@ struct RegistrationView: View {
     AuthEntryContainer(alignment: .leading) {
       VStack(alignment: .leading, spacing: 24) {
         Text(didSucceed ? "Check your inbox" : "Create account with email")
-          .font(.title2.weight(.semibold))
+          .font(.karla(.title2).weight(.semibold))
           .foregroundStyle(theme.foreground)
           .accessibilityAddTraits(.isHeader)
           .accessibilityIdentifier("registrationTitle")
@@ -62,12 +62,12 @@ struct RegistrationView: View {
         message
           ?? "Your account is ready. Check your email to verify it before signing in."
       )
-      .font(.body)
+      .font(.karla(.body))
       .foregroundStyle(theme.foreground)
       .accessibilityIdentifier("registrationSuccess")
 
       Text("Verification confirmation through a universal link is not available in this app yet. Open the link from email on the web, or request another verification email from Sign in.")
-        .font(.footnote)
+        .font(.karla(.footnote))
         .foregroundStyle(theme.mutedForeground)
 
       Button("Back to welcome") {
@@ -122,7 +122,7 @@ struct RegistrationView: View {
     }
 
     Text("Use at least 8 characters for your password. Usernames must be 4–25 letters, numbers, hyphens, or underscores.")
-      .font(.footnote)
+      .font(.karla(.footnote))
       .foregroundStyle(theme.mutedForeground)
 
     if let message, !didSucceed {
@@ -140,7 +140,7 @@ struct RegistrationView: View {
     .accessibilityIdentifier("createAccountButton")
 
     Text("By creating an account you agree to the Privacy Policy and Terms of Service.")
-      .font(.footnote)
+      .font(.karla(.footnote))
       .foregroundStyle(theme.mutedForeground)
 
     HStack(spacing: 20) {
@@ -153,7 +153,7 @@ struct RegistrationView: View {
 
     VStack(spacing: 0) {
       Text("Already have an account?")
-        .font(.subheadline)
+        .font(.karla(.subheadline))
         .foregroundStyle(theme.mutedForeground)
       Button("Sign in") {
         methodMode = .signIn

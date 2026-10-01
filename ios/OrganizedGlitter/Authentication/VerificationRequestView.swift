@@ -22,7 +22,7 @@ struct VerificationRequestView: View {
           .frame(maxWidth: .infinity)
 
         Text(didRequest ? "Check your inbox" : "Verify email")
-          .font(.title2.weight(.semibold))
+          .font(.karla(.title2).weight(.semibold))
           .foregroundStyle(theme.foreground)
           .accessibilityAddTraits(.isHeader)
           .accessibilityIdentifier("verificationTitle")
@@ -54,7 +54,7 @@ struct VerificationRequestView: View {
   private var confirmationContent: some View {
     VStack(spacing: 12) {
       Text("If that account exists, a verification email is on its way.")
-        .font(.body)
+        .font(.karla(.body))
         .multilineTextAlignment(.center)
         .foregroundStyle(theme.foreground)
         .accessibilityIdentifier("verificationConfirmation")
@@ -62,7 +62,7 @@ struct VerificationRequestView: View {
       Text(
         "Open the verification link from email to finish. Native confirmation through a universal link is not available in this app yet."
       )
-      .font(.footnote)
+      .font(.karla(.footnote))
       .multilineTextAlignment(.center)
       .foregroundStyle(theme.mutedForeground)
     }
@@ -71,7 +71,7 @@ struct VerificationRequestView: View {
   @ViewBuilder
   private var requestForm: some View {
     Text("Enter the email for your Organized Glitter account to request a new verification message.")
-      .font(.body)
+      .font(.karla(.body))
       .multilineTextAlignment(.center)
       .foregroundStyle(theme.foreground)
 

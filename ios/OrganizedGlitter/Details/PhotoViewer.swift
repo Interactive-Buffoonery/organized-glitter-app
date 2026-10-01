@@ -143,7 +143,7 @@ struct PhotoViewer: View {
     HStack {
       if let position = Self.position(of: selection, in: photos) {
         Text(position)
-          .font(.subheadline.weight(.semibold).monospacedDigit())
+          .font(.karla(.subheadline).weight(.semibold).monospacedDigit())
           .padding(.horizontal, 12)
           .padding(.vertical, 6)
           .background(.ultraThinMaterial, in: .capsule)
@@ -179,7 +179,7 @@ struct PhotoViewer: View {
         isPresented = false
       } label: {
         Image(systemName: "xmark")
-          .font(.body.weight(.semibold))
+          .font(.karla(.body).weight(.semibold))
           .frame(width: 44, height: 44)
           .background(.ultraThinMaterial, in: .circle)
           .contentShape(.circle)
@@ -268,7 +268,7 @@ private struct PhotoViewerPage: View {
         if fullSizeFailed {
           HStack {
             Label("Full-size photo unavailable", systemImage: "exclamationmark.triangle")
-              .font(.subheadline)
+              .font(.karla(.subheadline))
             Spacer(minLength: 8)
             Button("Retry") { retryCount &+= 1 }
               .accessibilityIdentifier("photoViewer.retry")
@@ -277,11 +277,11 @@ private struct PhotoViewerPage: View {
         }
         if let date = photo.date {
           Text(date)
-            .font(.subheadline.weight(.semibold))
+            .font(.karla(.subheadline).weight(.semibold))
         }
         if let caption = photo.caption {
           Text(caption)
-            .font(.body)
+            .font(.karla(.body))
             .lineLimit(5)
         }
       }

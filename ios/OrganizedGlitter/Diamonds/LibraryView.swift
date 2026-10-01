@@ -377,14 +377,14 @@ struct LibraryView: View {
     } label: {
       HStack(alignment: .firstTextBaseline, spacing: 6) {
         Text(title)
-          .font(.title3.weight(.semibold))
+          .font(.karla(.title3).weight(.semibold))
           .foregroundStyle(theme.foreground)
         Text(count, format: .number)
-          .font(.subheadline.weight(.medium))
+          .font(.karla(.subheadline).weight(.medium))
           .monospacedDigit()
           .foregroundStyle(theme.pageSecondaryForeground)
         Image(systemName: "chevron.right")
-          .font(.subheadline.weight(.semibold))
+          .font(.karla(.subheadline).weight(.semibold))
           .foregroundStyle(theme.primary)
       }
       .padding(.top, 12)
