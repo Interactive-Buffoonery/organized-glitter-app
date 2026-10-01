@@ -63,7 +63,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   func testPageCountDrawerPreservesDetailAndDisablesOtherForms() {
     let app = launchFixture()
     openLibrary(app)
-    selectCraft("Books", in: app)
+    selectCraft("Coloring", in: app)
     openCard(named: "Princesses", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 
@@ -141,7 +141,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
     app.navigationBars.buttons.element(boundBy: 0).tap()
-    selectCraft("Books", in: app)
+    selectCraft("Coloring", in: app)
     openCard(named: "Princesses", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 

@@ -9,7 +9,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
   var id: Self { self }
 
   static func available(for verticals: VerticalPreferences) -> [Self] {
-    allCases.filter { section in
+    [Self.diamonds, .books].filter { section in
       switch section {
       case .diamonds:
         verticals.diamondPainting
@@ -30,7 +30,7 @@ enum LibrarySection: String, CaseIterable, Identifiable {
   var pickerTitle: String {
     switch self {
     case .diamonds: "Diamond art"
-    case .books: "Books"
+    case .books: "Coloring"
     case .pages: "Pages"
     }
   }
@@ -159,10 +159,10 @@ enum LibraryPresentation: Hashable {
 
   func accepts(_ request: LibraryRequest) -> Bool {
     switch self {
-    case .browse: true
+    case .browse: request.section != .pages
     case .craft(let section): section == request.section
     case .shelf(let section, let status): section == request.section && status == request.status
-    case .search: false
+    case .search: request.section == .pages
     }
   }
 }
@@ -217,6 +217,7 @@ struct LibraryRequest: Equatable {
 @Observable
 final class LibraryModel {
   let library: LibrarySession
+  let searchesColoringPages: Bool
   var client: PocketBaseClient { library.client }
   var userID: String { library.userID }
 
@@ -239,8 +240,9 @@ final class LibraryModel {
   private var listingEpoch = 0
   var onSessionExpired: (@MainActor @Sendable () async -> Void)?
 
-  init(library: LibrarySession) {
+  init(library: LibrarySession, searchesColoringPages: Bool = false) {
     self.library = library
+    self.searchesColoringPages = searchesColoringPages
   }
 
   var items: [LibraryItem] {
@@ -310,7 +312,8 @@ final class LibraryModel {
   /// Keeps Library on an enabled craft when preferences load or change.
   func align(to verticals: VerticalPreferences) {
     let available = LibrarySection.available(for: verticals)
-    if !available.contains(section), let first = available.first {
+    let isEnabledPageListing = section == .pages && verticals.coloringBooks
+    if !available.contains(section), !isEnabledPageListing, let first = available.first {
       select(first)
     }
   }
@@ -457,13 +460,15 @@ final class LibraryModel {
   private static let pageSize = 30
 
   private func ownedBookTitles() -> [String: String] {
-    section == .pages ? library.ownedBookTitles() : [:]
+    section == .pages || searchesColoringPages ? library.ownedBookTitles() : [:]
   }
 
   private func matchesCurrentListing(
     _ item: LibraryItem, bookTitles: [String: String]
   ) -> Bool {
-    guard item.belongs(to: section, userID: userID, bookTitles: bookTitles) else {
+    let includesPage = searchesColoringPages && section == .books && !committedSearch.isEmpty
+      && item.belongs(to: .pages, userID: userID, bookTitles: bookTitles)
+    guard includesPage || item.belongs(to: section, userID: userID, bookTitles: bookTitles) else {
       return false
     }
 
@@ -498,7 +503,7 @@ final class LibraryModel {
         return page.pageNumber == pageNumber
       }
       let bookTitle = page.expand?.book?.title ?? bookTitles[page.book] ?? ""
-      return bookTitle.localizedCaseInsensitiveContains(search)
+      return matchesSearch(search, [bookTitle, page.revealedSubject])
     }
   }
 
