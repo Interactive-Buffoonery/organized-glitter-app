@@ -58,29 +58,34 @@ struct ThemeTests {
 
   /// "Berry Cream after dark" paints a deep navy base with a bottom
   /// purple bloom; light retains its vertical gradient with no bloom.
-  @Test
-  func darkStageHasBloomLightDoesNot() {
-    #expect(Theme.light.backgroundBloom == nil)
-    #expect(Theme.dark.backgroundBloom != nil)
-    #expect(rgb(Theme.dark.background) == (0x15, 0x15, 0x33))
+  @Test(arguments: ThemePalette.allCases)
+  func darkStageHasBloomLightDoesNot(palette: ThemePalette) {
+    #expect(palette.light.backgroundBloom == nil)
+    #expect(palette.dark.backgroundBloom != nil)
+    #expect(rgb(palette.dark.background) == (0x15, 0x15, 0x33))
   }
 
-  @Test
-  func secondaryTextMeetsMinimumContrast() {
-    for stop in Theme.light.gradientStops {
-      #expect(contrastRatio(Theme.light.mutedForeground, stop) >= 4.5)
+  @Test(arguments: ThemePalette.allCases)
+  func pageTextMeetsMinimumContrastAcrossTheGradient(palette: ThemePalette) {
+    let theme = palette.light
+    for stop in theme.gradientStops {
+      #expect(contrastRatio(theme.pageSecondaryForeground, stop) >= 4.5)
+      #expect(contrastRatio(theme.pageAction, stop) >= 4.5)
     }
+    #expect(contrastRatio(theme.mutedForeground, theme.card) >= 4.5)
   }
 
-  @Test
-  func pageSecondaryTextRemainsReadableAcrossTheDarkGlow() throws {
-    let bloom = try #require(Theme.dark.backgroundBloom)
+  @Test(arguments: ThemePalette.allCases)
+  func pageSecondaryTextRemainsReadableAcrossTheDarkGlow(palette: ThemePalette) throws {
+    let theme = palette.dark
+    let bloom = try #require(theme.backgroundBloom)
     for stop in bloom.stops.dropLast() {
-      let surface = composited(stop.color, over: Theme.dark.background)
-      #expect(contrastRatio(Theme.dark.pageSecondaryForeground, surface) >= 4.5)
-      #expect(contrastRatio(Theme.dark.mutedForeground, surface) >= 4.5)
+      let surface = composited(stop.color, over: theme.background)
+      #expect(contrastRatio(theme.pageSecondaryForeground, surface) >= 4.5)
+      #expect(contrastRatio(theme.pageAction, surface) >= 4.5)
+      #expect(contrastRatio(theme.mutedForeground, surface) >= 4.5)
     }
-    #expect(contrastRatio(Theme.dark.pageSecondaryForeground, Theme.dark.background) >= 4.5)
+    #expect(contrastRatio(theme.pageSecondaryForeground, theme.background) >= 4.5)
   }
 
   @Test
@@ -95,6 +100,10 @@ struct ThemeTests {
   func systemFlavorFollowsAppearance() {
     #expect(ThemeFlavor.system.theme(for: .light) == Theme.light)
     #expect(ThemeFlavor.system.theme(for: .dark) == Theme.dark)
+    #expect(
+      ThemeFlavor.system.theme(for: .dark, palette: .raspberrySunrise) == Theme.raspberrySunriseDark)
+    #expect(
+      ThemeFlavor.light.theme(for: .dark, palette: .raspberrySunrise) == Theme.raspberrySunriseLight)
     #expect(ThemeFlavor.system.preferredColorScheme == nil)
   }
 
@@ -114,6 +123,19 @@ struct ThemeTests {
 
     defaults.set(ThemeFlavor.dark.rawValue, forKey: "selectedThemeFlavor")
     #expect(ThemeStore(defaults: defaults).flavor == .dark)
+  }
+
+  @Test
+  func storePersistsPaletteAndFallsBackToLilacDusk() throws {
+    let suiteName = "ThemeTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    #expect(ThemeStore(defaults: defaults).palette == .lilacDusk)
+    ThemeStore(defaults: defaults).palette = .raspberrySunrise
+    #expect(ThemeStore(defaults: defaults).palette == .raspberrySunrise)
+    defaults.set("neon", forKey: "selectedThemePalette")
+    #expect(ThemeStore(defaults: defaults).palette == .lilacDusk)
   }
 
   /// Covers both genuinely unknown values and the retired Catppuccin flavor

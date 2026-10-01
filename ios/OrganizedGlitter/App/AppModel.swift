@@ -654,12 +654,16 @@ final class AppModel {
   /// system/light/dark carry over — the web's Catppuccin flavor names don't
   /// exist on iOS and are deliberately ignored, keeping the device preference.
   /// AccountPreferencesModel writes supported theme choices back to the account.
+  /// `theme_palette` is iOS-only; unknown values keep the device palette.
   private func applyThemePreference(from user: UserRecord) {
-    guard let themeStore, let preference = user.themePreference else {
+    guard let themeStore else {
       return
     }
-    if let flavor = ThemeFlavor(rawValue: preference) {
+    if let flavor = user.themePreference.flatMap(ThemeFlavor.init(rawValue:)) {
       themeStore.flavor = flavor
+    }
+    if let palette = user.themePalette.flatMap(ThemePalette.init(rawValue:)) {
+      themeStore.palette = palette
     }
   }
 
