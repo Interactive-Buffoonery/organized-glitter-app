@@ -130,6 +130,45 @@ struct LibraryTests {
     #expect(!model.canLoadMore)
   }
 
+  @Test func coloringBrowsesBooksAndSearchesTheirPages() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    try await library.store.ingest(.book(book), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("page", book: book.id, number: 12)), scope: library.scope)
+    let browse = LibraryModel(library: library)
+    browse.select(.books)
+    await browse.load()
+    #expect(browse.items.map(\.recordID) == [book.id])
+    #expect(browse.shelfCounts == ["purchased": 1])
+
+    let search = LibraryModel(library: library, searchesColoringPages: true)
+    search.select(.books)
+    search.searchText = "Quiet"
+    await search.load()
+    #expect(Set(search.items.map(\.recordID)) == ["book", "page"])
+    search.searchText = "12"
+    await search.load()
+    #expect(search.items.map(\.recordID) == ["page"])
+  }
+
+  @Test func pageRequestsRemainReachableThroughSearch() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("active", book: "book", number: 1, status: "in_progress")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("waiting", book: "book", number: 2)), scope: library.scope)
+    let request = LibraryRequest(section: .pages, status: "in_progress")
+    #expect(LibraryPresentation.search.accepts(request))
+    #expect(!LibraryPresentation.browse.accepts(request))
+    #expect(!LibraryPresentation.craft(.books).accepts(request))
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.apply(request)
+    model.align(to: VerticalPreferences(diamondPainting: true, coloringBooks: true))
+    await model.load()
+    #expect(model.items.map(\.recordID) == ["active"])
+    model.align(to: VerticalPreferences(diamondPainting: true, coloringBooks: false))
+    #expect(model.section == .diamonds)
+  }
+
   @Test func pagesSearchByNumberAndBookTitle() async throws {
     let library = try localFeatureLibrary()
     try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)

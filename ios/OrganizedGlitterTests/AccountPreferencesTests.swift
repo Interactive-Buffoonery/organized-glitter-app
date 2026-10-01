@@ -15,11 +15,11 @@ struct AccountPreferencesTests {
     #expect(
       LibrarySection.available(
         for: VerticalPreferences(diamondPainting: false, coloringBooks: true))
-        == [.books, .pages])
+        == [.books])
     #expect(
       LibrarySection.available(
         for: VerticalPreferences(diamondPainting: true, coloringBooks: true))
-        == [.diamonds, .books, .pages])
+        == [.diamonds, .books])
   }
 
   @Test
