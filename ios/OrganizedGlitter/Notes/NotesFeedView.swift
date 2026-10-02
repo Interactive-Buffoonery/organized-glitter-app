@@ -126,6 +126,7 @@ struct NotesFeedView: View {
     .background { theme.themedBackground.ignoresSafeArea() }
     .refreshable { await refresh() }
     .navigationTitle("Notes")
+    .navigationBarTitleDisplayMode(sizeClass == .regular ? .inline : .large)
     .accessibilityIdentifier("notes.feed")
     .toolbar {
       if years.count > 1 {
