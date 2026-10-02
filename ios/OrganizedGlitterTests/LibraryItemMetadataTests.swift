@@ -74,6 +74,16 @@ struct LibraryItemMetadataTests {
     #expect(east.lifecycle == west.lifecycle)
   }
 
+  @Test func lifecycleUsesEachRequestedLocale() {
+    let item = LibraryItem.diamond(project("stash"))
+    let british = LibraryItemMetadata(item: item, locale: Locale(identifier: "en_GB"),
+      timeZone: timeZone)
+    #expect(british.lifecycle == "Received 03/02/26")
+    #expect(metadata(project("stash")).lifecycle == "Received 2/3/26")
+    #expect(LibraryItemMetadata(item: item, locale: Locale(identifier: "en_GB"),
+      timeZone: timeZone) == british)
+  }
+
   @Test func partialDimensionsDoNotInventSizeAndBooksKeepCounts() throws {
     var fields = try #require(JSONSerialization.jsonObject(with:
       JSONEncoder().encode(project("stash"))) as? [String: Any])
