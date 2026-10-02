@@ -1,10 +1,12 @@
 # Organized Glitter apps
 
 Organized Glitter is a tracking app for diamond painting and coloring. This
-repository contains its native apps. The SwiftUI client for iPhone and iPad
+repository contains the source code for its native apps. 
+
+The SwiftUI client for iPhone and iPad
 lives in `ios/`. Other platforms may be added alongside it in the future.
 
-At this time, this project is a WIP. This README will be updated as the app progresses. You can access the web version of the app at https://organizedglitter.app.
+At this time, this project is very, very much a work in progress. This README will be updated as the app progresses. You can access the web version of the app at https://organizedglitter.app.
 
 ## Requirements
 
