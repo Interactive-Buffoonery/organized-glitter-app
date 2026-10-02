@@ -724,7 +724,7 @@
     private static var designDiamonds: [[String: Any]] {
       let artists = ["Maryline Cazenave", "Thomas Kinkade Studios", "Margaret Morales", "Fictional Artist"]
       let images = ["design-yorkie-roses.jpg", "design-beachside-gathering.jpg", "design-divine-descent.jpg", ""]
-      return zip(["Yorkie & Roses", "Beachside Gathering", "Divine Descent", "Wildflowers"],
+      let featured = zip(["Yorkie & Roses", "Beachside Gathering", "Divine Descent", "Wildflowers"],
           ["progress", "stash", "progress", "completed"]).enumerated().map { index, pair in
         var project: [String: Any] = [
           "id": "design-project-\(index)", "user": "preview-user", "title": pair.0,
@@ -760,6 +760,24 @@
         }
         return project
       }
+      let extraKits = [
+        "Lavender Fields", "Moonlit Koi", "Starry Lighthouse", "Midnight Owl",
+        "Rose Garden", "Quiet Harbor", "Autumn Path", "Crystal Lake",
+      ].enumerated().map { index, title -> [String: Any] in
+        [
+          "id": "design-project-extra-\(index)", "user": "preview-user", "title": title,
+          "status": "stash", "kit_category": "full", "drill_shape": "round",
+          "width": 40, "height": 50, "image": "",
+          "created": "2026-08-01", "updated": "2026-08-01",
+          "date_purchased": "2026-07-10", "date_received": "2026-07-20",
+          "company": "example-company", "artist": "example-artist",
+          "expand": [
+            "company": ["id": "example-company", "name": "Example Kits"],
+            "artist": ["id": "example-artist", "name": "Example Artist"],
+          ],
+        ]
+      }
+      return featured + extraKits
     }
 
     private static var designBooks: [[String: Any]] {

@@ -324,9 +324,9 @@ struct LibraryTests {
     let book = featureBook("book", title: "Quiet Pages")
     let page = featurePage("page", book: book.id, number: 3)
       .withExpand(ColoringPageExpand(book: book))
-    #expect(LibraryItem.book(book).galleryCaption == "40 pages")
-    #expect(LibraryItem.page(page).galleryCaption == "Quiet Pages")
-    #expect(LibraryItem.diamond(featureProject("project", title: "Moon")).galleryCaption.isEmpty)
+    #expect(LibraryItemMetadata(item: .book(book)).specifications == "0 of 40 pages colored")
+    #expect(LibraryItemMetadata(item: .page(page)).maker == "Quiet Pages")
+    #expect(LibraryItemMetadata(item: .diamond(featureProject("project", title: "Moon"))).maker.isEmpty)
   }
 }
 

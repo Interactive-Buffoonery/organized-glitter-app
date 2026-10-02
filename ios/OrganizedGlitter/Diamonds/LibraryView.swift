@@ -8,6 +8,9 @@ struct LibraryView: View {
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+  @AppStorage("library.viewMode.diamonds") private var diamondViewMode: LibraryViewMode = .covers
+  @AppStorage("library.viewMode.coloring") private var coloringViewMode: LibraryViewMode = .covers
+
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
   @State private var logEditor: LibraryItemDetailModel?
@@ -216,9 +219,7 @@ struct LibraryView: View {
       .accessibilityIdentifier("library.heading")
   }
 
-  /// Status and sort share one row that stacks, rather than scrolling or
-  /// truncating, when it can't fit. The trailing space is left for a view
-  /// toggle.
+  /// The controls stack when their full labels cannot fit across the screen.
   private var filterRow: some View {
     ViewThatFits(in: .horizontal) {
       HStack(spacing: 8) { filterControls }
@@ -236,6 +237,32 @@ struct LibraryView: View {
       statusMenu
     }
     sortMenu
+    viewModePicker
+  }
+
+  private var viewMode: LibraryViewMode {
+    model.section == .diamonds ? diamondViewMode : coloringViewMode
+  }
+
+  private var viewModePicker: some View {
+    Picker("Library view", selection: Binding(
+      get: { viewMode },
+      set: { mode in
+        if model.section == .diamonds { diamondViewMode = mode }
+        else { coloringViewMode = mode }
+      }
+    )) {
+      ForEach(LibraryViewMode.allCases) { mode in
+        Label(mode.title, systemImage: mode.systemImage)
+          .labelStyle(.iconOnly)
+          .accessibilityLabel(mode.title)
+          .tag(mode)
+      }
+    }
+    .pickerStyle(.segmented)
+    .frame(width: 132)
+    .accessibilityLabel("Library view")
+    .accessibilityIdentifier("library.viewMode")
   }
 
   private var statusMenu: some View {
@@ -294,7 +321,7 @@ struct LibraryView: View {
       Text(" \($0.formatted())").monospacedDigit().foregroundStyle(theme.pageSecondaryForeground)
     } ?? Text("")
     return Text("\(icon) \(title)\(countText) \(chevron)")
-      .font(.karla(.subheadline).weight(.semibold))
+      .font(.karla(.caption).weight(.semibold))
   }
 
   private func statusHue(_ status: String) -> Color {
@@ -351,7 +378,7 @@ struct LibraryView: View {
         emptyState
           .frame(minHeight: 280)
       } else if model.isShelved {
-        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
+        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: viewMode == .list ? 8 : 14) {
           ForEach(model.shelves) { shelf in
             Section {
               ForEach(shelf.items) { item in
@@ -363,7 +390,7 @@ struct LibraryView: View {
           }
         }
       } else {
-        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: 20) {
+        LazyVGrid(columns: galleryColumns, alignment: .leading, spacing: viewMode == .list ? 8 : 14) {
           ForEach(model.items) { item in
             galleryItem(item)
           }
@@ -431,7 +458,9 @@ struct LibraryView: View {
 
   private var galleryColumns: [GridItem] {
     let item = GridItem(.flexible(), spacing: 18, alignment: .top)
-    return dynamicTypeSize.isAccessibilitySize ? [item] : [item, item]
+    let count = dynamicTypeSize.isAccessibilitySize || viewMode == .list ? 1
+      : (viewMode == .compact ? 3 : 2)
+    return Array(repeating: item, count: count)
   }
 
   private func galleryItem(_ item: LibraryItem) -> some View {
@@ -439,9 +468,14 @@ struct LibraryView: View {
       LibraryGalleryCard(
         item: item,
         imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
-        showsStatus: presentation == .search)
+        mode: viewMode,
+        showsStatus: !model.isShelved && model.statusFilter == nil)
     }
     .buttonStyle(.plain)
+    .contextMenu {
+      Button("Open details", systemImage: "arrow.right.circle") { path.append(item) }
+        .accessibilityLabel("Open details for \(item.title)")
+    }
     .task {
       if item.id == model.items.last?.id {
         await model.load(reset: false)

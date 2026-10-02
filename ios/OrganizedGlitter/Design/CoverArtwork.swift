@@ -31,7 +31,11 @@ struct CoverArtwork: View {
 
   @ViewBuilder
   private func loaded(_ image: Image) -> some View {
-    let image = image.resizable().scaledToFill()
+    let image = GeometryReader { geometry in
+      image.resizable().scaledToFill()
+        .frame(width: geometry.size.width, height: geometry.size.height)
+        .clipped()
+    }
     if let loadedAccessibilityLabel {
       image
         .accessibilityElement(children: .ignore)
