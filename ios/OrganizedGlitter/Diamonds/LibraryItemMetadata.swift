@@ -35,7 +35,8 @@ struct LibraryItemMetadata: Equatable {
       lifecycle = Self.lifecycle(project, locale: locale, timeZone: timeZone)
     case .book(let book):
       maker = Self.join([book.expand?.publisher?.name])
-      specifications = "\(book.completedPages ?? 0) of \(book.totalPages) pages colored"
+      specifications =
+        "\(book.completedPages ?? 0) of \(book.totalPages) \(book.totalPages == 1 ? "page" : "pages") colored"
       lifecycle = ""
     case .page(let page):
       maker = Self.join([page.expand?.book?.title])

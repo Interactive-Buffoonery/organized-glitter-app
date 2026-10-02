@@ -7,6 +7,8 @@ struct LibraryGalleryCard: View {
   let item: LibraryItem
   let imageURL: URL?
   var mode: LibraryViewMode = .covers
+  /// Shelves and status filters already name the status.
+  var showsStatus = true
 
   var body: some View {
     let metadata = LibraryItemMetadata(item: item)
@@ -37,7 +39,9 @@ struct LibraryGalleryCard: View {
                 .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
             }
           }
-          LibraryItemStatus(item: item, compact: mode == .compact)
+          if showsStatus {
+            LibraryItemStatus(item: item, compact: mode == .compact)
+          }
           if mode == .compact {
             metadataText(metadata.lifecycle.isEmpty ? metadata.specifications : metadata.lifecycle)
           }
@@ -62,11 +66,11 @@ struct LibraryGalleryCard: View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
           Text(item.title).font(.karla(.subheadline).weight(.semibold))
           Spacer(minLength: 0)
-          LibraryItemStatus(item: item)
+          if showsStatus { LibraryItemStatus(item: item) }
         }
         VStack(alignment: .leading, spacing: 2) {
           Text(item.title).font(.karla(.subheadline).weight(.semibold))
-          LibraryItemStatus(item: item)
+          if showsStatus { LibraryItemStatus(item: item) }
         }
       }
       metadataText(metadata.maker)

@@ -103,6 +103,12 @@ struct LibraryItemMetadataTests {
     let book = try JSONDecoder().decode(ColoringBookRecord.self,
       from: JSONSerialization.data(withJSONObject: bookFields))
     #expect(LibraryItemMetadata(item: .book(book)).specifications == "7 of 40 pages colored")
+
+    bookFields["total_pages"] = 1
+    bookFields["completed_pages"] = 0
+    let single = try JSONDecoder().decode(ColoringBookRecord.self,
+      from: JSONSerialization.data(withJSONObject: bookFields))
+    #expect(LibraryItemMetadata(item: .book(single)).specifications == "0 of 1 page colored")
   }
 
   @Test func noMetadataHasNoSeparators() throws {
