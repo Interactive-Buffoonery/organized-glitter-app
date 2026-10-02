@@ -37,8 +37,13 @@ screen backgrounds. The Shelf redesign (Option B in
   available width (Covers 160–220 points, Compact 100–140, List rows 360–530)
   inside a 1,060-point content width, so iPad shows four or more covers across
   and List uses two columns of rows.
-  At accessibility sizes, grids use one column (300–420-point columns in
-  regular width) and list rows stack. The
+  At accessibility sizes, compact width uses one column. Regular width keeps
+  multiple columns when space permits: Covers and Compact start at 300 points,
+  List starts at 360, and minimum widths increase by 60 points per accessibility
+  size. Narrow windows fall back to one flexible column when that minimum
+  cannot fit. The largest accessibility size uses one full-width column in every mode.
+  Artwork stays at most 420 points wide so wider text does not create oversized
+  covers. Text wraps, cards grow vertically, and list rows stack. The
   filter controls stack when their full labels cannot fit. With All selected,
   every mode retains status shelves, active work first, with a Home-style
   header that opens the shelf. Sort orders items within each shelf.

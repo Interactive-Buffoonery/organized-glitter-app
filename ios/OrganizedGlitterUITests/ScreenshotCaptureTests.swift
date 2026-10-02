@@ -150,16 +150,29 @@ final class ScreenshotCaptureTests: XCTestCase {
     XCUIDevice.shared.orientation = .portrait
     app.terminate()
 
-    app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXL"]
-    app.launch()
-    XCTAssertTrue(app.openLibrary())
-    XCTAssertTrue(modes.waitForExistence(timeout: 10))
-    for mode in ["Covers", "List"] {
-      modes.buttons[mode].tap()
-      Thread.sleep(forTimeInterval: 1.5)
-      try save(XCUIScreen.main.screenshot(), to: "\(dir)/portrait-ax3-\(appearance)-\(mode.lowercased()).png")
+    let baseArguments = app.launchArguments + ["-fixture-long-library-text"]
+    for (size, category) in [
+      ("ax1", "UICTContentSizeCategoryAccessibilityM"),
+      ("ax3", "UICTContentSizeCategoryAccessibilityXL"),
+      ("ax5", "UICTContentSizeCategoryAccessibilityXXXL"),
+    ] {
+      app.launchArguments = baseArguments + ["-UIPreferredContentSizeCategoryName", category]
+      app.launch()
+      XCTAssertTrue(app.openLibrary())
+      XCTAssertTrue(modes.waitForExistence(timeout: 10))
+      for (orientation, name) in [
+        (UIDeviceOrientation.portrait, "portrait"), (.landscapeLeft, "landscape"),
+      ] {
+        XCUIDevice.shared.orientation = orientation
+        for mode in ["Covers", "Compact", "List"] {
+          modes.buttons[mode].tap()
+          XCTAssertTrue(modes.buttons[mode].isSelected)
+          try save(XCUIScreen.main.screenshot(), to: "\(dir)/\(name)-\(size)-\(appearance)-\(mode.lowercased()).png")
+        }
+      }
+      app.terminate()
     }
-    modes.buttons["Covers"].tap()
+    XCUIDevice.shared.orientation = .portrait
   }
 
   private func captureAccountEntry(into dir: String) throws {
