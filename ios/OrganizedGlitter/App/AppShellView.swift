@@ -60,7 +60,8 @@ struct AppShellView: View {
             onLibraryRequest: { request in
               libraryRequest = request
               selectedTab =
-                sizeClass == .regular ? .shelf(request.section, status: request.status) : .library
+                request.section == .pages ? .search
+                : sizeClass == .regular ? .shelf(request.section, status: request.status) : .library
             },
             onAddNote: presentNoteTargetPicker,
             onSessionExpired: { await model.expireSession() }

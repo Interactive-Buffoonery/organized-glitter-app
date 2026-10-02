@@ -27,18 +27,18 @@ final class LibraryUITests: XCTestCase {
     }
   }
 
-  func testIPhoneBrowsesCraftsAsPeersAndOpensTheSameRecord() throws {
+  func testIPhoneBrowsesTwoCraftsAndOpensPagesThroughBook() throws {
     try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone peer craft browsing.")
     let app = launch("populated")
     openLibrary(app)
     XCTAssertTrue(app.staticTexts["Garden of stars"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["Diamond art"].exists)
-    XCTAssertTrue(app.buttons["Books"].exists)
-    XCTAssertTrue(app.buttons["Pages"].exists)
+    XCTAssertTrue(app.buttons["Coloring"].exists)
+    XCTAssertFalse(app.buttons["Pages"].exists)
     XCTAssertTrue(app.buttons["create.menu"].exists)
     try capture(app, "library-diamonds")
 
-    app.buttons["Books"].tap()
+    app.buttons["Coloring"].tap()
     let book = app.buttons.matching(
       NSPredicate(
         format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@",
@@ -49,16 +49,68 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(book.waitForExistence(timeout: 5))
     try capture(app, "library-books")
 
-    app.buttons["Pages"].tap()
-    let page = app.buttons.matching(
-      NSPredicate(format: "label CONTAINS %@", "A moonlit garden")
-    ).firstMatch
+    book.tap()
+    let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden")).firstMatch
+    if !page.waitForExistence(timeout: 2) {
+      app.swipeUp()
+    }
     XCTAssertTrue(page.waitForExistence(timeout: 5))
     try capture(app, "library-pages")
     page.tap()
     XCTAssertTrue(
       app.navigationBars["A moonlit garden with a very long, winding path"]
         .waitForExistence(timeout: 3))
+  }
+
+  func testColoringSearchFindsPagesAndCreateChoosesTheirBook() throws {
+    let app = launch("populated")
+    openLibrary(app)
+    XCTAssertTrue(app.openCraft("Coloring"))
+    app.buttons["create.menu"].tap()
+    app.buttons["create.page"].tap()
+    let book = app.buttons["Add pages to Moonlit meadows"]
+    XCTAssertTrue(book.waitForExistence(timeout: 5))
+    book.tap()
+    XCTAssertTrue(app.textFields["pageCount.field"].waitForExistence(timeout: 5))
+    app.buttons["Cancel"].tap()
+
+    XCTAssertTrue(app.openSearch())
+    if app.segmentedControls.firstMatch.exists {
+      app.segmentedControls.buttons["Coloring"].tap()
+    } else {
+      app.buttons["library.craft"].tap()
+      app.buttons["Coloring"].tap()
+    }
+    XCTAssertTrue(app.navigationBars["Search"].exists)
+    let search = app.searchFields.firstMatch
+    if !search.waitForExistence(timeout: 2) {
+      app.navigationBars["Search"].buttons["Search"].tap()
+    }
+    search.tap()
+    search.typeText("moonlit\n")
+    let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden")).firstMatch
+    XCTAssertTrue(page.waitForExistence(timeout: 5))
+    page.tap()
+    XCTAssertTrue(app.navigationBars["A moonlit garden with a very long, winding path"].waitForExistence(timeout: 5))
+  }
+
+  func testHomePageShortcutDoesNotReplaceColoringBooks() throws {
+    try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone tab handoff.")
+    let app = launch("populated")
+    openLibrary(app)
+    XCTAssertTrue(app.openCraft("Coloring"))
+    XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
+    app.tabBars.buttons["Home"].tap()
+    app.buttons["overview.continue"].tap()
+    app.buttons["Coloring pages in progress"].tap()
+    XCTAssertTrue(app.navigationBars["Search"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden")).firstMatch.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Coloring pages: In progress"].exists)
+    app.buttons["library.clearPageSearchFilter"].tap()
+    XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
+    openLibrary(app)
+    XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["A moonlit garden with a very long, winding path"].exists)
   }
 
   func testLoadingEmptyAndErrorStates() throws {
@@ -93,13 +145,13 @@ final class LibraryUITests: XCTestCase {
       throw XCTSkip("iPad sidebar review.")
     }
     let app = launch("populated")
-    let books = app.craftRow("Books")
+    let books = app.craftRow("Coloring")
     if !books.waitForExistence(timeout: 2) {
       app.buttons["ToggleSideBar"].tap()
     }
     XCTAssertTrue(books.waitForExistence(timeout: 5))
     XCTAssertTrue(app.craftRow("Diamond art").exists)
-    XCTAssertTrue(app.craftRow("Pages").exists)
+    XCTAssertFalse(app.craftRow("Pages").exists)
     XCTAssertTrue(app.cells["In progress, 5"].exists)
     XCTAssertTrue(app.cells["New coloring book"].exists)
     try capture(app, "library-ipad-sidebar")
@@ -120,7 +172,7 @@ final class LibraryUITests: XCTestCase {
       let picker = app.buttons["library.craft"]
       XCTAssertTrue(picker.exists)
       picker.tap()
-      app.buttons["Books"].tap()
+      app.buttons["Coloring"].tap()
       XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 3))
       XCTAssertFalse(app.staticTexts["Garden of stars"].exists)
       try capture(app, "library-accessibility-filtered")

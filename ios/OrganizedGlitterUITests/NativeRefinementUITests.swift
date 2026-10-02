@@ -35,7 +35,7 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("refinement-03-diamond-detail")
 
     app.navigationBars.buttons.element(boundBy: 0).tap()
-    selectCraft("Books", in: app)
+    selectCraft("Coloring", in: app)
     XCTAssertTrue(app.staticTexts["Princesses"].waitForExistence(timeout: 5))
     try capture("refinement-04-book-gallery")
 
@@ -216,7 +216,7 @@ final class NativeRefinementUITests: XCTestCase {
   func testBookPagesPaginateAndNavigateToTheNextPage() {
     let app = launchFixture(scenario: "many-pages")
     openLibrary(app)
-    selectCraft("Books", in: app)
+    selectCraft("Coloring", in: app)
     openCard(named: "Princesses", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 
@@ -297,7 +297,7 @@ final class NativeRefinementUITests: XCTestCase {
 
   private func openFirstDesignPage(in app: XCUIApplication) {
     openLibrary(app)
-    selectCraft("Books", in: app)
+    selectCraft("Coloring", in: app)
     openCard(named: "Princesses", in: app)
     let page = element("detail.book.page.design-page-0", in: app)
     makeHittable(page, in: app)
