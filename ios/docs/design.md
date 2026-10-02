@@ -25,14 +25,21 @@ screen backgrounds. The Shelf redesign (Option B in
 - **Library.** The iPhone craft picker shows Diamond art and Coloring;
   Coloring lists books. Home’s page-status shortcuts open page results in Search
   with a visible status summary and a Clear filter action.
-  A covers grid under one filter row: a Status menu (All plus every backend
-  status, each with its hue, symbol, and count; the button shows the choice
-  and its count) and a Sort menu, with the trailing end kept for a view
-  toggle. The row stacks at accessibility sizes instead of scrolling or
-  truncating. With All selected, covers sit on status shelves, active work
-  first, each under a Home-style header with a status dot and a count that
-  opens that shelf; cards then omit their status, which only search results
-  show. Sort orders covers within each shelf. A craft with nothing in it hides
+  One filter row holds Status (All plus each status with hue, symbol, and
+  count), Sort, and a native Covers / Compact / List view picker. The choice
+  persists separately for Diamond art and Coloring on this device.
+  Covers uses two columns with maker credits, specifications, and a status
+  pill. Compact uses three columns with title, written status beside a dot,
+  and lifecycle date. List uses a 52-point cover beside title, maker,
+  specifications and date, and a status pill. Every mode exposes the full
+  metadata to VoiceOver and opens the same detail destination.
+  At accessibility sizes, grids use one column and list rows stack. The
+  filter controls stack when their full labels cannot fit. With All selected,
+  every mode retains status shelves, active work first, with a Home-style
+  header that opens the shelf. Sort orders items within each shelf.
+  Diamond lifecycle dates use the web's status-dependent fallback order;
+  books show publisher and the count of pages colored.
+  A craft with nothing in it hides
   the filter row and shows one "Add your first kit" (or book) prompt that
   opens the editor. In regular width a Caveat heading repeats the
   navigation title (the craft or shelf), since iPadOS 26 hides a tab root's navigation title when the
