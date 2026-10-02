@@ -6,6 +6,7 @@ enum AppTab: Hashable {
   case library
   case craft(LibrarySection)
   case shelf(LibrarySection, status: String)
+  case notes
   case search
 }
 
@@ -20,6 +21,7 @@ struct AppShellView: View {
   @Environment(\.horizontalSizeClass) private var sizeClass
 
   @State private var selectedTab: AppTab = .home
+  @State private var notesLogEditor: LibraryItemDetailModel?
   @State private var homePath: [LibraryItem] = []
   @State private var homeLogEditor: LibraryItemDetailModel?
   @State private var homePendingLoggedItemID: LibraryItem.ID?
@@ -63,7 +65,7 @@ struct AppShellView: View {
                 request.section == .pages ? .search
                 : sizeClass == .regular ? .shelf(request.section, status: request.status) : .library
             },
-            onAddNote: presentNoteTargetPicker,
+            onNotesRequest: { selectedTab = .notes },
             onSessionExpired: { await model.expireSession() }
           )
           .toolbar {
@@ -111,6 +113,28 @@ struct AppShellView: View {
         Tab("Library", systemImage: "rectangle.grid.2x2", value: .library) {
           tabContent(library(.browse))
         }
+      }
+
+      Tab("Notes", systemImage: "note.text", value: .notes) {
+        tabContent(NavigationStack {
+          NotesFeedView(
+            library: library,
+            verticals: accountPreferences.verticals,
+            onAddNote: presentNoteTargetPicker
+          )
+          .navigationDestination(for: LibraryItem.self) { item in
+            LibraryItemDetailDestination(
+              item: item,
+              library: library,
+              logEditor: $notesLogEditor,
+              onCollectionChanged: { libraryRefresh.bump() },
+              onEditPageCount: { book in
+                formDrawer.presentPageCountEditor(book: book, library: library)
+              }
+            )
+          }
+        }
+        .progressNoteDrawer(editor: $notesLogEditor) { _ in libraryRefresh.bump() })
       }
 
       Tab("Search", systemImage: "magnifyingglass", value: .search) {
