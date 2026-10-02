@@ -65,15 +65,12 @@ struct LibraryItemMetadata: Equatable {
     case .progress, .onhold: candidates = [started, received, purchased, added]
     case .completed, .archived: candidates = [finished, started, received, purchased, added]
     }
-    let formatter = DateFormatter()
-    formatter.calendar = Calendar(identifier: .gregorian)
-    formatter.locale = locale
-    formatter.timeZone = timeZone
-    formatter.dateStyle = .short
-    formatter.timeStyle = .none
+    let format = Date.FormatStyle(
+      locale: locale, calendar: Calendar(identifier: .gregorian), timeZone: timeZone
+    ).year(.twoDigits).month(.defaultDigits).day(.defaultDigits)
     for (label, value) in candidates {
       if let value, let date = DetailDateOnly.date(value, timeZone: timeZone) {
-        return "\(label) \(formatter.string(from: date))"
+        return "\(label) \(date.formatted(format))"
       }
     }
     return ""
