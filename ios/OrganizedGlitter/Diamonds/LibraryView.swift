@@ -5,6 +5,7 @@ struct LibraryView: View {
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.colorScheme) private var colorScheme
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
@@ -24,7 +25,7 @@ struct LibraryView: View {
     onAddNote: @escaping () -> Void,
     onSessionExpired: @escaping @MainActor @Sendable () async -> Void = {}
   ) {
-    let model = LibraryModel(library: library)
+    let model = LibraryModel(library: library, searchesColoringPages: presentation == .search)
     model.onSessionExpired = onSessionExpired
     if let section = presentation.pinnedSection {
       model.select(section)
@@ -86,7 +87,7 @@ struct LibraryView: View {
 
   /// The search tab shows a prompt until something has been searched.
   private var isAwaitingSearch: Bool {
-    presentation == .search && model.committedSearch.isEmpty
+    presentation == .search && model.committedSearch.isEmpty && model.statusFilter == nil
   }
 
   @ViewBuilder
@@ -95,6 +96,10 @@ struct LibraryView: View {
       LazyVStack(alignment: .leading, spacing: 12) {
         if presentation.showsCraftPicker {
           craftPicker
+        }
+
+        if presentation == .search, model.section == .pages, let status = model.statusFilter {
+          pageSearchFilter(status)
         }
 
         if presentation.showsStatusChips, !isEmptyLibrary {
@@ -146,7 +151,7 @@ struct LibraryView: View {
       scroll
         .searchable(text: Bindable(model).searchText, prompt: searchPrompt)
         .onSubmit(of: .search) {
-          Task { await model.load() }
+          Task { await model.submitSearch() }
         }
         .onChange(of: model.searchText) { _, text in
           if text.isEmpty {
@@ -160,7 +165,7 @@ struct LibraryView: View {
 
   private var craftPicker: some View {
     let selection = Binding<LibrarySection>(
-      get: { model.section },
+      get: { model.section == .pages ? .books : model.section },
       set: { model.select($0) }
     )
     return Group {
@@ -182,6 +187,21 @@ struct LibraryView: View {
       }
     }
     .accessibilityIdentifier("library.craft")
+  }
+
+  private func pageSearchFilter(_ status: String) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Label("Coloring pages: \(PageStatus.label(for: status))", systemImage: PageStatus.systemImage(for: status))
+        .labelStyle(.titleAndIcon)
+        .font(.karla(.subheadline).weight(.semibold))
+        .foregroundStyle(DetailStatusAppearance.palette(for: status, colorScheme: colorScheme).foreground)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("library.pageSearchFilter")
+      Button("Clear filter", systemImage: "xmark.circle") { model.select(.books) }
+        .buttonStyle(.bordered)
+        .accessibilityLabel("Clear coloring page status filter")
+        .accessibilityIdentifier("library.clearPageSearchFilter")
+    }
   }
 
   private var statusChips: some View {
@@ -358,7 +378,7 @@ struct LibraryView: View {
       LibraryGalleryCard(
         item: item,
         imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
-        showsStatus: !model.committedSearch.isEmpty)
+        showsStatus: presentation == .search)
     }
     .buttonStyle(.plain)
     .task {
@@ -435,8 +455,8 @@ struct LibraryView: View {
   private var searchPrompt: String {
     switch model.section {
     case .diamonds: "Search diamond art"
-    case .books: "Search books"
-    case .pages: "Search pages"
+    case .books: "Search books and pages"
+    case .pages: "Search books and pages"
     }
   }
 }

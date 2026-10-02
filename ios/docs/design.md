@@ -14,12 +14,18 @@ screen backgrounds. The Shelf redesign (Option B in
   `CreateMenu` on Home and Library.
   The randomizer code stays but has no tab.
 - **iPad.** The `.sidebarAdaptable` `TabView` gives each craft a `TabSection`:
-  an All row, then one row per non-empty shelf, each badged with its
-  on-device count, plus a `+` section action to create that craft (Pages has
-  none; pages are created from their book). The collapsed tab bar shows the
+  Diamond art and Coloring, each with an All row, then one row per non-empty
+  shelf with its on-device count, plus a `+` section action to create that craft.
+  Pages live inside their
+  coloring book; Coloring search finds both books and pages. The toolbar `+`
+  can choose a book and open its page-count editor to generate pages. The
+  collapsed tab bar shows the
   crafts as peers of Home and Search. The single Library tab shows only on
   iPhone, so there is no nested `NavigationSplitView`.
-- **Library.** A covers grid under a row of status chips (All plus every
+- **Library.** The iPhone craft picker shows Diamond art and Coloring;
+  Coloring lists books. Home’s page-status shortcuts open page results in Search
+  with a visible status summary and a Clear filter action.
+  A covers grid under a row of status chips (All plus every
   backend status). With All selected, covers sit on status shelves, active work
   first, each under a Home-style header with a count that opens that shelf;
   cards then omit their status, which only search results show. Sort orders
@@ -45,8 +51,8 @@ screen backgrounds. The Shelf redesign (Option B in
   rows at accessibility sizes, then a Progress heading with a small Log progress
   action, shared photo-forward note entries, and a Details card (company, artist, kit,
   dates, tags, source link, notes as plain text). Books keep the page count and
-  completion bar below status, then show pages as a contact sheet with a status
-  glyph per page. Page detail uses the same Progress entries below its photos.
+  completion bar below status, then show pages as a contact sheet with a written status
+  and tinted symbol per page. Page detail uses the same Progress entries below its photos.
   Detail scroll content uses a plain `VStack`; a `LazyVGrid`
   inside a `LazyVStack` loops layout at AX5.
 - **Covers.** `CoverArtwork` draws every cover in a 4:5 frame, filled and

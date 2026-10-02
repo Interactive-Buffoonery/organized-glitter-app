@@ -190,12 +190,12 @@ struct ColoringBookDetailView: View {
 
   private var columns: [GridItem] {
     if dynamicTypeSize.isAccessibilitySize {
-      return Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
+      return Array(repeating: GridItem(.flexible(), spacing: 12), count: 1)
     }
     if horizontalSizeClass == .regular {
-      return [GridItem(.adaptive(minimum: 110, maximum: 160), spacing: 10)]
+      return [GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 10)]
     }
-    return Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
+    return Array(repeating: GridItem(.flexible(), spacing: 8), count: 2)
   }
 
   private var pageFilterPicker: some View {
@@ -258,6 +258,7 @@ struct ColoringBookDetailView: View {
 private struct ColoringBookPageCard: View {
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
+  @Environment(\.colorScheme) private var colorScheme
 
   let page: ColoringPageRecord
 
@@ -268,16 +269,14 @@ private struct ColoringBookPageCard: View {
         url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery)
       )
 
-      HStack(spacing: 3) {
-        Text(page.pageNumber, format: .number)
-          .monospacedDigit()
-        if PageStatus(rawValue: page.status) != .notStarted {
-          Image(systemName: PageStatus.systemImage(for: page.status))
-            .foregroundStyle(theme.primary)
-        }
-      }
-      .font(.karla(.caption))
-      .foregroundStyle(theme.pageSecondaryForeground)
+      Text("Page \(page.pageNumber)")
+        .font(.karla(.caption).weight(.semibold))
+        .foregroundStyle(theme.pageSecondaryForeground)
+      Label(PageStatus.label(for: page.status), systemImage: PageStatus.systemImage(for: page.status))
+        .labelStyle(.titleAndIcon)
+        .font(.karla(.caption))
+        .foregroundStyle(DetailStatusAppearance.palette(for: page.status, colorScheme: colorScheme).foreground)
+        .fixedSize(horizontal: false, vertical: true)
     }
     .frame(maxWidth: .infinity)
     .contentShape(.rect)

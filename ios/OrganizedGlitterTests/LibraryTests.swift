@@ -130,6 +130,105 @@ struct LibraryTests {
     #expect(!model.canLoadMore)
   }
 
+  @Test func coloringBrowsesBooksAndSearchesTheirPages() async throws {
+    let library = try localFeatureLibrary()
+    let book = featureBook("book", title: "Quiet Pages")
+    try await library.store.ingest(.book(book), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("page", book: book.id, number: 12)), scope: library.scope)
+    let browse = LibraryModel(library: library)
+    browse.select(.books)
+    await browse.load()
+    #expect(browse.items.map(\.recordID) == [book.id])
+    #expect(browse.shelfCounts == ["purchased": 1])
+
+    let search = LibraryModel(library: library, searchesColoringPages: true)
+    search.select(.books)
+    search.searchText = "Quiet"
+    await search.load()
+    #expect(Set(search.items.map(\.recordID)) == ["book", "page"])
+    search.searchText = "12"
+    await search.load()
+    #expect(search.items.map(\.recordID) == ["page"])
+  }
+
+  @Test func numericColoringSearchMatchesNumbersTitlesAndSubjects() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.book(featureBook("year-book", title: "Garden 2026")), scope: library.scope)
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("title-match", book: "year-book", number: 1)), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("number-match", book: "book", number: 2026)), scope: library.scope)
+    let subjectPage = ColoringPageRecord(
+      id: "subject-match", book: "book", pageNumber: 2, status: "not_started", photos: [],
+      revealedSubject: "2026", completedAt: nil, startedAt: nil,
+      created: "2026-09-01", updated: "2026-09-01", expand: nil)
+    try await library.store.ingest(.page(subjectPage), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("unrelated", book: "book", number: 3)), scope: library.scope)
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.select(.books)
+    model.searchText = "2026"
+    await model.load()
+    #expect(Set(model.items.map(\.recordID)) == ["year-book", "title-match", "number-match", "subject-match"])
+  }
+
+  @Test func submittingPageShortcutSearchPreservesQueryAndIncludesBooks() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("active", book: "book", number: 1, status: "in_progress")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("waiting", book: "book", number: 2)), scope: library.scope)
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.apply(LibraryRequest(section: .pages, status: "in_progress"))
+    await model.load()
+    #expect(model.items.map(\.recordID) == ["active"])
+
+    model.sort = .pageDescending
+    model.searchText = "  Quiet  "
+    await model.submitSearch()
+
+    #expect(model.section == .books)
+    #expect(model.searchText == "  Quiet  ")
+    #expect(model.committedSearch == "Quiet")
+    #expect(model.statusFilter == nil)
+    #expect(model.sort == .recentlyUpdated)
+    #expect(Set(model.items.map(\.recordID)) == ["book", "active", "waiting"])
+  }
+
+  @Test func submittingCraftSearchPreservesCraftAndSort() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.diamond(featureProject("a", title: "Moon Garden", status: "wishlist")), scope: library.scope)
+    try await library.store.ingest(.diamond(featureProject("b", title: "Moonlight", status: "progress")), scope: library.scope)
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.statusFilter = "wishlist"
+    model.sort = .titleAscending
+    model.searchText = "moon"
+
+    await model.submitSearch()
+
+    #expect(model.section == .diamonds)
+    #expect(model.searchText == "moon")
+    #expect(model.committedSearch == "moon")
+    #expect(model.statusFilter == nil)
+    #expect(model.sort == .titleAscending)
+    #expect(model.items.map(\.recordID) == ["a", "b"])
+  }
+
+  @Test func pageRequestsRemainReachableThroughSearch() async throws {
+    let library = try localFeatureLibrary()
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("active", book: "book", number: 1, status: "in_progress")), scope: library.scope)
+    try await library.store.ingest(.page(featurePage("waiting", book: "book", number: 2)), scope: library.scope)
+    let request = LibraryRequest(section: .pages, status: "in_progress")
+    #expect(LibraryPresentation.search.accepts(request))
+    #expect(!LibraryPresentation.browse.accepts(request))
+    #expect(!LibraryPresentation.craft(.books).accepts(request))
+    let model = LibraryModel(library: library, searchesColoringPages: true)
+    model.apply(request)
+    model.align(to: VerticalPreferences(diamondPainting: true, coloringBooks: true))
+    await model.load()
+    #expect(model.items.map(\.recordID) == ["active"])
+    model.align(to: VerticalPreferences(diamondPainting: true, coloringBooks: false))
+    #expect(model.section == .diamonds)
+  }
+
   @Test func pagesSearchByNumberAndBookTitle() async throws {
     let library = try localFeatureLibrary()
     try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
