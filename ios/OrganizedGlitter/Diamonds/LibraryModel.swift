@@ -146,7 +146,7 @@ enum LibraryPresentation: Hashable {
     pinnedSection == nil
   }
 
-  var showsStatusChips: Bool {
+  var showsStatusFilter: Bool {
     switch self {
     case .browse, .craft: true
     case .shelf, .search: false

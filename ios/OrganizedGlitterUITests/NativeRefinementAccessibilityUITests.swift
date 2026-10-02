@@ -170,7 +170,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
 
   private func openLibrary(_ app: XCUIApplication) {
     XCTAssertTrue(app.openLibrary(), "The Library destination is unavailable")
-    XCTAssertTrue(button("library.status.all", in: app).waitForExistence(timeout: 10))
+    XCTAssertTrue(button("library.status", in: app).waitForExistence(timeout: 10))
   }
 
   private func selectCraft(_ title: String, in app: XCUIApplication) {

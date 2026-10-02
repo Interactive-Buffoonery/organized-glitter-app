@@ -6,6 +6,7 @@ struct LibraryView: View {
   @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
@@ -102,8 +103,12 @@ struct LibraryView: View {
           pageSearchFilter(status)
         }
 
-        if presentation.showsStatusChips, !isEmptyLibrary {
-          statusChips
+        if horizontalSizeClass == .regular, presentation != .search {
+          pageHeading
+        }
+
+        if presentation != .search, !isEmptyLibrary {
+          filterRow
         }
         libraryBody
       }
@@ -120,9 +125,6 @@ struct LibraryView: View {
     }
     .toolbar {
       if presentation != .search {
-        if !isEmptyLibrary {
-          ToolbarItem(placement: .topBarTrailing) { sortMenu }
-        }
         ToolbarItem(placement: .topBarTrailing) {
           CreateMenu(
             library: model.library,
@@ -204,41 +206,99 @@ struct LibraryView: View {
     }
   }
 
-  private var statusChips: some View {
-    ScrollViewReader { proxy in
-      ScrollView(.horizontal) {
-        HStack(spacing: 8) {
-          statusChip(nil, title: "All")
-          ForEach(model.section.statusOptions, id: \.self) { status in
-            statusChip(status, title: model.section.statusLabel(status))
-          }
-        }
-        .padding(.horizontal, 20)
-      }
-      .scrollIndicators(.hidden)
-      .onAppear { proxy.scrollTo(model.statusFilter ?? "", anchor: .center) }
-      .onChange(of: model.statusFilter) { _, status in
-        withAnimation(Theme.motion) { proxy.scrollTo(status ?? "", anchor: .center) }
-      }
+  /// iPadOS 26 hides a tab root's navigation title when the tab bar is at
+  /// the top, so regular width repeats it in the content.
+  private var pageHeading: some View {
+    Text(presentation.title)
+      .font(.caveat(size: 44))
+      .foregroundStyle(theme.foreground)
+      .accessibilityAddTraits(.isHeader)
+      .accessibilityIdentifier("library.heading")
+  }
+
+  /// Status and sort share one row that stacks, rather than scrolling or
+  /// truncating, when it can't fit. The trailing space is left for a view
+  /// toggle.
+  private var filterRow: some View {
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: 8) { filterControls }
+      VStack(alignment: .leading, spacing: 8) { filterControls }
     }
-    .padding(.horizontal, -20)
-    .accessibilityElement(children: .contain)
-    .accessibilityLabel("Filter by status")
+    .buttonStyle(.bordered)
+    .buttonBorderShape(.capsule)
+    .foregroundStyle(theme.foreground)
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   @ViewBuilder
-  private func statusChip(_ status: String?, title: String) -> some View {
-    let isSelected = model.statusFilter == status
-    let chip = Button(title) { model.statusFilter = status }
-      .buttonBorderShape(.capsule)
-      .accessibilityAddTraits(isSelected ? .isSelected : [])
-      .accessibilityIdentifier("library.status.\(status ?? "all")")
-      .id(status ?? "")
-    if isSelected {
-      chip.buttonStyle(.borderedProminent).foregroundStyle(theme.primaryForeground)
-    } else {
-      chip.buttonStyle(.bordered).foregroundStyle(theme.foreground)
+  private var filterControls: some View {
+    if presentation.showsStatusFilter {
+      statusMenu
     }
+    sortMenu
+  }
+
+  private var statusMenu: some View {
+    let counts = model.library.shelfCounts(for: model.section)
+    let total = counts.values.reduce(0, +)
+    let selection = model.statusFilter
+    let title = selection.map(model.section.statusLabel) ?? "All"
+    let count = selection.map { counts[$0, default: 0] } ?? total
+    return Menu {
+      Picker("Status", selection: Bindable(model).statusFilter) {
+        statusOption("All", count: total, systemImage: "square.grid.2x2", hue: theme.primary)
+          .tag(String?.none)
+        ForEach(model.section.statusOptions, id: \.self) { status in
+          statusOption(
+            model.section.statusLabel(status), count: counts[status, default: 0],
+            systemImage: model.section.statusSystemImage(status), hue: statusHue(status)
+          )
+          .tag(Optional(status))
+        }
+      }
+    } label: {
+      filterLabel(
+        title, count: count,
+        systemImage: selection.map(model.section.statusSystemImage) ?? "line.3.horizontal.decrease",
+        hue: selection.map(statusHue) ?? theme.primary)
+    }
+    .accessibilityLabel("Status")
+    .accessibilityValue("\(title), \(count)")
+    .accessibilityIdentifier("library.status")
+  }
+
+  /// Menus draw template symbols in the label color, so the hue is baked in.
+  /// Menu rows drop subtitles, so the count follows the title as on the
+  /// button.
+  private func statusOption(
+    _ title: String, count: Int, systemImage: String, hue: Color
+  ) -> some View {
+    let symbol = UIImage(systemName: systemImage)?
+      .withTintColor(UIColor(hue), renderingMode: .alwaysOriginal)
+    return Label {
+      Text("\(title) \(count.formatted())")
+    } icon: {
+      Image(uiImage: symbol ?? UIImage())
+    }
+  }
+
+  /// One text, so at accessibility sizes the label wraps between words
+  /// instead of squeezing the title.
+  private func filterLabel(
+    _ title: String, count: Int? = nil, systemImage: String, hue: Color
+  ) -> some View {
+    let icon = Text(Image(systemName: systemImage)).foregroundStyle(hue)
+    let chevron = Text(Image(systemName: "chevron.down")).font(.karla(.caption).weight(.bold))
+      .foregroundStyle(theme.pageSecondaryForeground)
+    let countText = count.map {
+      Text(" \($0.formatted())").monospacedDigit().foregroundStyle(theme.pageSecondaryForeground)
+    } ?? Text("")
+    return Text("\(icon) \(title)\(countText) \(chevron)")
+      .font(.karla(.subheadline).weight(.semibold))
+  }
+
+  private func statusHue(_ status: String) -> Color {
+    DetailStatusAppearance.hue(for: status, colorScheme: colorScheme)
   }
 
   private var sortMenu: some View {
@@ -249,8 +309,9 @@ struct LibraryView: View {
         }
       }
     } label: {
-      Label("Sort", systemImage: "arrow.up.arrow.down")
+      filterLabel("Sort", systemImage: "arrow.up.arrow.down", hue: theme.primary)
     }
+    .accessibilityLabel("Sort")
     .accessibilityValue(model.sort.title)
     .accessibilityIdentifier("library.sort")
   }
@@ -396,6 +457,9 @@ struct LibraryView: View {
       model.statusFilter = shelf.status
     } label: {
       HStack(alignment: .firstTextBaseline, spacing: 6) {
+        Image(systemName: "circle.fill")
+          .font(.karla(.caption2))
+          .foregroundStyle(statusHue(shelf.status))
         Text(title)
           .font(.karla(.title3).weight(.semibold))
           .foregroundStyle(theme.foreground)

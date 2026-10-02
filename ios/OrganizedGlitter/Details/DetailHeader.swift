@@ -87,6 +87,24 @@ enum DetailStatusAppearance {
       ? (Color(hex: dark), Color(hex: darkBackground))
       : (Color(hex: light), Color(hex: lightBackground))
   }
+
+  /// A dot or symbol beside a label. Dark foregrounds are near white for
+  /// text on a tinted pill, so dark mode uses the family's mid tone.
+  static func hue(for status: String, colorScheme: ColorScheme) -> Color {
+    guard colorScheme == .dark else { return palette(for: status, colorScheme: .light).foreground }
+    let hex: UInt32 =
+      switch status {
+      case "wishlist", "destashed": 0xFB7185
+      case "purchased": 0x38BDF8
+      case "stash", "in_stash": 0xFB923C
+      case "kitted", "palette_chosen": 0x2DD4BF
+      case "progress", "in_progress": 0xC084FC
+      case "onhold", "on_hold": 0xFBBF24
+      case "completed": 0x34D399
+      default: 0x9CA3AF
+      }
+    return Color(hex: hex)
+  }
 }
 
 struct DetailStatusRecovery: View {

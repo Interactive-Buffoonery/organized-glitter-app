@@ -25,13 +25,18 @@ screen backgrounds. The Shelf redesign (Option B in
 - **Library.** The iPhone craft picker shows Diamond art and Coloring;
   Coloring lists books. Home’s page-status shortcuts open page results in Search
   with a visible status summary and a Clear filter action.
-  A covers grid under a row of status chips (All plus every
-  backend status). With All selected, covers sit on status shelves, active work
-  first, each under a Home-style header with a count that opens that shelf;
-  cards then omit their status, which only search results show. Sort orders
-  covers within each shelf and is a toolbar menu next to `+`. A craft with nothing in
-  it hides chips and sort and shows one "Add your first kit" (or book) prompt
-  that opens the editor.
+  A covers grid under one filter row: a Status menu (All plus every backend
+  status, each with its hue, symbol, and count; the button shows the choice
+  and its count) and a Sort menu, with the trailing end kept for a view
+  toggle. The row stacks at accessibility sizes instead of scrolling or
+  truncating. With All selected, covers sit on status shelves, active work
+  first, each under a Home-style header with a status dot and a count that
+  opens that shelf; cards then omit their status, which only search results
+  show. Sort orders covers within each shelf. A craft with nothing in it hides
+  the filter row and shows one "Add your first kit" (or book) prompt that
+  opens the editor. In regular width a Caveat heading repeats the
+  navigation title (the craft or shelf), since iPadOS 26 hides a tab root's navigation title when the
+  tab bar is at the top.
 - **Home.** A Continue carousel of in-progress covers, most recently logged
   first within the fetched records (`/api/notes/latest`, falling back to
   `updated`), each diamond cover
