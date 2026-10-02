@@ -275,6 +275,24 @@ final class LibraryUITests: XCTestCase {
 }
 
 extension XCUIApplication {
+  @discardableResult
+  func openNotes() -> Bool {
+    let destination: XCUIElement
+    if UIDevice.current.userInterfaceIdiom == .pad {
+      destination = cells["Notes"].firstMatch
+      if !destination.exists || !destination.isHittable {
+        let sidebar = buttons["ToggleSideBar"]
+        guard sidebar.waitForExistence(timeout: 5), sidebar.isHittable else { return false }
+        sidebar.tap()
+      }
+    } else {
+      destination = tabBars.buttons["Notes"].firstMatch
+    }
+    guard destination.waitForExistence(timeout: 5), destination.isHittable else { return false }
+    destination.tap()
+    return true
+  }
+
   /// The iPad "All" row for a craft, labeled "All <craft>, <count>".
   func craftRow(_ craft: String) -> XCUIElement {
     descendants(matching: .any)

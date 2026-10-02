@@ -3,6 +3,8 @@ import SwiftUI
 /// Notes from every enabled craft, grouped by the date the maker chose.
 struct NotesFeedView: View {
   @Environment(FormDrawer.self) private var formDrawer
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.horizontalSizeClass) private var sizeClass
   @Environment(\.locale) private var locale
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
@@ -26,12 +28,21 @@ struct NotesFeedView: View {
 
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 20) {
+        if sizeClass == .regular {
+          Text("Notes")
+            .font(.caveat(size: 34))
+            .foregroundStyle(theme.foreground)
+            .accessibilityAddTraits(.isHeader)
+        }
+
         if availableCrafts.count > 1 {
-          Picker("Craft", selection: $craft) {
-            ForEach(availableCrafts) { Text($0.title).tag($0) }
+          if dynamicTypeSize.isAccessibilitySize {
+            craftPicker(availableCrafts)
+              .pickerStyle(.menu)
+          } else {
+            craftPicker(availableCrafts)
+              .pickerStyle(.segmented)
           }
-          .pickerStyle(.segmented)
-          .accessibilityIdentifier("notes.craft")
         }
 
         if !library.hasSnapshot {
@@ -56,27 +67,39 @@ struct NotesFeedView: View {
             emptyState(craft: visibleCraft)
           } else {
             ForEach(sections) { month in
-              Section {
+              VStack(alignment: .leading, spacing: 20) {
+                Text(month.title)
+                  .font(.karla(.title3).weight(.semibold))
+                  .foregroundStyle(theme.foreground)
+                  .accessibilityAddTraits(.isHeader)
+                  .padding(.top, 8)
+
                 ForEach(month.entries) { entry in
                   VStack(alignment: .leading, spacing: 8) {
                     NavigationLink(value: entry.target) {
-                      HStack(spacing: 10) {
-                        Image(systemName: entry.craft == .diamond
-                          ? LibrarySection.diamonds.systemImage : LibrarySection.pages.systemImage)
-                          .font(.karla(.subheadline).weight(.medium))
-                          .symbolRenderingMode(.hierarchical)
-                          .foregroundStyle(theme.primary)
-                          .frame(width: 32, height: 32)
-                          .background(theme.primary.opacity(0.10), in: .rect(cornerRadius: 8))
-                          .accessibilityHidden(true)
+                      HStack(alignment: .top, spacing: 10) {
+                        if !dynamicTypeSize.isAccessibilitySize {
+                          Image(systemName: entry.craft == .diamond
+                            ? LibrarySection.diamonds.systemImage : LibrarySection.pages.systemImage)
+                            .font(.karla(.subheadline).weight(.medium))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(theme.primary)
+                            .frame(width: 32, height: 32)
+                            .background(theme.primary.opacity(0.10), in: .rect(cornerRadius: 8))
+                            .accessibilityHidden(true)
+                        }
                         Text(entry.contextTitle)
                           .font(.karla(.subheadline).weight(.semibold))
                           .foregroundStyle(theme.foreground)
+                          .multilineTextAlignment(.leading)
+                          .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                          .font(.karla(.caption).weight(.semibold))
-                          .foregroundStyle(theme.pageSecondaryForeground)
-                          .accessibilityHidden(true)
+                        if !dynamicTypeSize.isAccessibilitySize {
+                          Image(systemName: "chevron.right")
+                            .font(.karla(.caption).weight(.semibold))
+                            .foregroundStyle(theme.pageSecondaryForeground)
+                            .accessibilityHidden(true)
+                        }
                       }
                       .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -89,12 +112,6 @@ struct NotesFeedView: View {
                         for: entry.note, thumb: ArtworkThumb.gallery))
                   }
                 }
-              } header: {
-                Text(month.title)
-                  .font(.karla(.title3).weight(.semibold))
-                  .foregroundStyle(theme.foreground)
-                  .accessibilityAddTraits(.isHeader)
-                  .padding(.top, 8)
               }
             }
           }
@@ -109,6 +126,7 @@ struct NotesFeedView: View {
     .background { theme.themedBackground.ignoresSafeArea() }
     .refreshable { await refresh() }
     .navigationTitle("Notes")
+    .navigationBarTitleDisplayMode(sizeClass == .regular ? .inline : .large)
     .accessibilityIdentifier("notes.feed")
     .toolbar {
       if years.count > 1 {
@@ -161,6 +179,14 @@ struct NotesFeedView: View {
         coloringNotes: library.coloringPageProgressNotes)
       updateVisible()
     }
+  }
+
+  private func craftPicker(_ crafts: [NotesCraft]) -> some View {
+    Picker("Craft", selection: $craft) {
+      ForEach(crafts) { Text($0.title).tag($0) }
+    }
+    .accessibilityLabel("Filter notes by craft")
+    .accessibilityIdentifier("notes.craft")
   }
 
   private func updateVisible() {
