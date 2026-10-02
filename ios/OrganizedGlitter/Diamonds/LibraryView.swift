@@ -181,13 +181,19 @@ struct LibraryView: View {
     )
     return Group {
       if dynamicTypeSize.isAccessibilitySize {
-        Picker("Craft", selection: selection) {
-          ForEach(LibrarySection.available(for: verticals)) { section in
-            Text(section.pickerTitle).tag(section)
+        Menu {
+          Picker("Craft", selection: selection) {
+            ForEach(LibrarySection.available(for: verticals)) { section in
+              Text(section.pickerTitle).tag(section)
+            }
           }
+        } label: {
+          Text(selection.wrappedValue.pickerTitle)
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .pickerStyle(.menu)
         .buttonStyle(QuietActionStyle())
+        .accessibilityLabel("Craft")
+        .accessibilityValue(selection.wrappedValue.pickerTitle)
       } else {
         Picker("Craft", selection: selection) {
           ForEach(LibrarySection.available(for: verticals)) { section in
