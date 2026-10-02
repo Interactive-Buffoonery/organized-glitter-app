@@ -468,7 +468,8 @@ struct LibraryView: View {
       LibraryGalleryCard(
         item: item,
         imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
-        mode: viewMode)
+        mode: viewMode,
+        showsStatus: !model.isShelved && model.statusFilter == nil)
     }
     .buttonStyle(.plain)
     .contextMenu {
