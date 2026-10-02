@@ -8,6 +8,16 @@
     static let sampleDataKey = "use-sample-data"
     static let offlineAfterSeedArgument = "-fixture-offline-after-seed"
 
+    /// The sample-data switch, ignored by unit tests (hosted in the app) and
+    /// UI test launches, so a simulator left in sample mode can't change them.
+    static var usesSampleData: Bool {
+      let process = ProcessInfo.processInfo
+      let isTestLaunch =
+        process.environment["XCTestConfigurationFilePath"] != nil
+        || process.arguments.contains { $0 == "-overview-fixture" || $0.hasPrefix("-ui-testing") }
+      return !isTestLaunch && UserDefaults.standard.bool(forKey: sampleDataKey)
+    }
+
     static var offlineAfterSeed: Bool {
       scenario != nil && ProcessInfo.processInfo.arguments.contains(offlineAfterSeedArgument)
     }
@@ -22,8 +32,7 @@
         arguments.indices.contains(index + 1)
       else {
         if arguments.contains("-ui-testing-authenticated") { return "populated" }
-        if arguments.contains(where: { $0.hasPrefix("-ui-testing") }) { return nil }
-        return UserDefaults.standard.bool(forKey: sampleDataKey) ? "design" : nil
+        return usesSampleData ? "design" : nil
       }
       return arguments[index + 1]
     }
