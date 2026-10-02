@@ -13,6 +13,7 @@ struct LibraryView: View {
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
+  @State private var contentWidth: CGFloat = 0
   @State private var logEditor: LibraryItemDetailModel?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
@@ -123,6 +124,9 @@ struct LibraryView: View {
       .padding(.bottom, 32)
       .frame(maxWidth: .infinity)
     }
+    .onGeometryChange(for: CGFloat.self) { proxy in
+      min(LibraryViewMode.regularMaxWidth, max(0, proxy.size.width - 40))
+    } action: { contentWidth = $0 }
     .refreshable { await model.refresh() }
     .navigationTitle(presentation.title)
     .background {
@@ -461,7 +465,8 @@ struct LibraryView: View {
   private var galleryColumns: [GridItem] {
     viewMode.columns(
       regularWidth: horizontalSizeClass == .regular,
-      accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+      dynamicTypeSize: dynamicTypeSize,
+      availableWidth: contentWidth)
   }
 
   private func galleryItem(_ item: LibraryItem) -> some View {
@@ -566,18 +571,35 @@ extension LibraryViewMode {
 
   /// iPhone keeps fixed counts. Regular width fits as many cards as the width
   /// allows, so iPad shows a screenful of projects in every mode.
-  func columns(regularWidth: Bool, accessibilitySize: Bool) -> [GridItem] {
+  func columns(
+    regularWidth: Bool, dynamicTypeSize: DynamicTypeSize,
+    availableWidth: CGFloat = regularMaxWidth
+  ) -> [GridItem] {
     guard regularWidth else {
-      let count = accessibilitySize || self == .list ? 1 : (self == .compact ? 3 : 2)
+      let count = dynamicTypeSize.isAccessibilitySize || self == .list ? 1 : (self == .compact ? 3 : 2)
       return Array(repeating: GridItem(.flexible(), spacing: 18, alignment: .top), count: count)
     }
-    let (minimum, maximum): (CGFloat, CGFloat) =
-      switch (self, accessibilitySize) {
-      case (_, true): (300, 420)
-      case (.covers, false): (160, 220)
-      case (.compact, false): (100, 140)
-      case (.list, false): (360, 530)
+    if dynamicTypeSize >= .accessibility5 {
+      return [GridItem(.flexible(), spacing: 14, alignment: .top)]
+    }
+    if dynamicTypeSize.isAccessibilitySize {
+      let growth: CGFloat = switch dynamicTypeSize {
+      case .accessibility2: 60
+      case .accessibility3: 120
+      case .accessibility4: 180
+      default: 0
       }
+      let minimum: CGFloat = (self == .list ? 360 : 300) + growth
+      if availableWidth < minimum {
+        return [GridItem(.flexible(), spacing: 14, alignment: .top)]
+      }
+      return [GridItem(.adaptive(minimum: minimum, maximum: minimum * 1.4), spacing: 14, alignment: .top)]
+    }
+    let (minimum, maximum): (CGFloat, CGFloat) = switch self {
+    case .covers: (160, 220)
+    case .compact: (100, 140)
+    case .list: (360, 530)
+    }
     return [GridItem(.adaptive(minimum: minimum, maximum: maximum), spacing: 14, alignment: .top)]
   }
 }

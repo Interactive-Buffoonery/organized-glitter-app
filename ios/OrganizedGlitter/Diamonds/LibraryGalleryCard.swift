@@ -28,6 +28,7 @@ struct LibraryGalleryCard: View {
       } else {
         VStack(alignment: .leading, spacing: mode == .compact ? 4 : 8) {
           artwork
+            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 420 : .infinity)
           Text(item.title)
             .font(.karla(mode == .compact ? .caption : .headline).weight(.semibold))
           if mode == .covers {
