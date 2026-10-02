@@ -126,7 +126,7 @@ final class LibraryUITests: XCTestCase {
       if scenario == "empty" {
         XCTAssertTrue(app.buttons["create.menu"].exists)
         XCTAssertFalse(app.buttons["library.sort"].exists)
-        XCTAssertFalse(app.buttons["library.status.all"].exists)
+        XCTAssertFalse(app.buttons["library.status"].exists)
         app.buttons["library.first"].tap()
         XCTAssertTrue(app.buttons["Cancel"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()
@@ -190,23 +190,27 @@ final class LibraryUITests: XCTestCase {
     openLibrary(app)
     XCTAssertTrue(app.staticTexts["Yorkie & Roses"].waitForExistence(timeout: 5))
 
-    let all = app.buttons["library.status.all"]
-    let completed = app.buttons["library.status.completed"]
-    let chipRow = all.frame.midY
-    let origin = app.coordinate(withNormalizedOffset: .zero)
-    for _ in 0..<4 where completed.frame.maxX > app.frame.maxX {
-      origin.withOffset(CGVector(dx: 300, dy: chipRow)).press(
-        forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 60, dy: chipRow)))
+    let status = app.buttons["library.status"]
+    XCTAssertEqual(status.value as? String, "All, 4")
+    XCTAssertTrue(status.frame.maxX <= app.frame.maxX)
+    XCTAssertTrue(app.buttons["library.sort"].frame.maxX <= app.frame.maxX)
+    status.tap()
+    XCTAssertTrue(app.buttons["In progress 2"].waitForExistence(timeout: 5))
+    try capture(app, "library-status-menu")
+    let completed = app.buttons["Completed 1"]
+    for _ in 0..<6 where !completed.exists || !completed.isHittable {
+      app.collectionViews.firstMatch.swipeUp()
     }
     completed.tap()
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
-    XCTAssertTrue(app.buttons["library.status.completed"].isSelected)
-    try capture(app, "library-status-chips")
+    XCTAssertEqual(status.value as? String, "Completed, 1")
+    try capture(app, "library-status-filtered")
 
-    for _ in 0..<4 where all.frame.minX < 0 {
-      origin.withOffset(CGVector(dx: 60, dy: chipRow)).press(
-        forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 300, dy: chipRow)))
+    status.tap()
+    let all = app.buttons["All 4"]
+    for _ in 0..<6 where !all.exists || !all.isHittable {
+      app.collectionViews.firstMatch.swipeDown()
     }
     all.tap()
     app.buttons["library.sort"].tap()
