@@ -98,7 +98,7 @@ final class AppModel {
         return
       }
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated")
-        || UserDefaults.standard.bool(forKey: OverviewFixtureProtocol.sampleDataKey)
+        || OverviewFixtureProtocol.usesSampleData
       {
         let generation = beginSessionTransition()
         Task {
