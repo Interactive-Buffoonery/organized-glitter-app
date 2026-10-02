@@ -115,7 +115,9 @@ struct LibraryView: View {
         }
         libraryBody
       }
-      .frame(maxWidth: 760, alignment: .leading)
+      .frame(
+        maxWidth: horizontalSizeClass == .regular ? LibraryViewMode.regularMaxWidth : 760,
+        alignment: .leading)
       .padding(.horizontal, 20)
       .padding(.top, 12)
       .padding(.bottom, 32)
@@ -457,10 +459,9 @@ struct LibraryView: View {
   }
 
   private var galleryColumns: [GridItem] {
-    let item = GridItem(.flexible(), spacing: 18, alignment: .top)
-    let count = dynamicTypeSize.isAccessibilitySize || viewMode == .list ? 1
-      : (viewMode == .compact ? 3 : 2)
-    return Array(repeating: item, count: count)
+    viewMode.columns(
+      regularWidth: horizontalSizeClass == .regular,
+      accessibilitySize: dynamicTypeSize.isAccessibilitySize)
   }
 
   private func galleryItem(_ item: LibraryItem) -> some View {
@@ -556,5 +557,27 @@ struct LibraryView: View {
     case .books: "Search books and pages"
     case .pages: "Search books and pages"
     }
+  }
+}
+
+extension LibraryViewMode {
+  /// Wide enough for two list rows, too narrow for three.
+  static let regularMaxWidth: CGFloat = 1060
+
+  /// iPhone keeps fixed counts. Regular width fits as many cards as the width
+  /// allows, so iPad shows a screenful of projects in every mode.
+  func columns(regularWidth: Bool, accessibilitySize: Bool) -> [GridItem] {
+    guard regularWidth else {
+      let count = accessibilitySize || self == .list ? 1 : (self == .compact ? 3 : 2)
+      return Array(repeating: GridItem(.flexible(), spacing: 18, alignment: .top), count: count)
+    }
+    let (minimum, maximum): (CGFloat, CGFloat) =
+      switch (self, accessibilitySize) {
+      case (_, true): (300, 420)
+      case (.covers, false): (160, 220)
+      case (.compact, false): (100, 140)
+      case (.list, false): (360, 530)
+      }
+    return [GridItem(.adaptive(minimum: minimum, maximum: maximum), spacing: 14, alignment: .top)]
   }
 }

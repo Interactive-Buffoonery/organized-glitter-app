@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import OrganizedGlitter
 
@@ -122,5 +123,42 @@ struct LibraryItemMetadataTests {
     #expect(value.specifications.isEmpty)
     #expect(value.detailLine.isEmpty)
     #expect(value.accessibilityLabel(for: .diamond(empty)) == "Empty, Wishlist")
+  }
+}
+
+struct LibraryViewModeColumnTests {
+  @Test func compactWidthKeepsFixedCounts() {
+    #expect(LibraryViewMode.covers.columns(regularWidth: false, accessibilitySize: false).count == 2)
+    #expect(LibraryViewMode.compact.columns(regularWidth: false, accessibilitySize: false).count == 3)
+    #expect(LibraryViewMode.list.columns(regularWidth: false, accessibilitySize: false).count == 1)
+    for mode in LibraryViewMode.allCases {
+      #expect(mode.columns(regularWidth: false, accessibilitySize: true).count == 1)
+    }
+  }
+
+  @Test(arguments: [
+    (LibraryViewMode.covers, CGFloat(160), CGFloat(220)),
+    (.compact, 100, 140),
+    (.list, 360, 530),
+  ])
+  func regularWidthSizesColumnsByWidth(mode: LibraryViewMode, minimum: CGFloat, maximum: CGFloat) {
+    #expect(mode.columns(regularWidth: true, accessibilitySize: false)
+      == [GridItem(.adaptive(minimum: minimum, maximum: maximum), spacing: 14, alignment: .top)])
+  }
+
+  @Test func regularWidthFitsTwoListRowsButNeverThree() {
+    let columns = LibraryViewMode.list.columns(regularWidth: true, accessibilitySize: false)
+    guard case .adaptive(let minimum, _) = columns.first?.size, let spacing = columns.first?.spacing
+    else { Issue.record("List should be adaptive in regular width"); return }
+    #expect(minimum * 3 + spacing * 2 > LibraryViewMode.regularMaxWidth)
+    // An 11-inch iPad in portrait, less the 20-point margins.
+    #expect(minimum * 2 + spacing <= 834 - 40)
+  }
+
+  @Test func accessibilitySizesUseFewerWiderColumns() {
+    for mode in LibraryViewMode.allCases {
+      #expect(mode.columns(regularWidth: true, accessibilitySize: true)
+        == [GridItem(.adaptive(minimum: 300, maximum: 420), spacing: 14, alignment: .top)])
+    }
   }
 }
