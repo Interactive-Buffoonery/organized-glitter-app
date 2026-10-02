@@ -113,6 +113,36 @@ final class LibraryUITests: XCTestCase {
     XCTAssertFalse(app.staticTexts["A moonlit garden with a very long, winding path"].exists)
   }
 
+  func testViewModesRememberEachCraftAndOpenDetails() throws {
+    let app = launch("design")
+    openLibrary(app)
+    let modes = app.segmentedControls["library.viewMode"]
+    XCTAssertTrue(modes.waitForExistence(timeout: 5))
+    modes.buttons["List"].tap()
+    XCTAssertTrue(modes.buttons["List"].isSelected)
+    XCTAssertTrue(app.openCraft("Coloring"))
+    modes.buttons["Compact"].tap()
+    XCTAssertTrue(modes.buttons["Compact"].isSelected)
+    XCTAssertTrue(app.openCraft("Diamond art"))
+    XCTAssertTrue(modes.buttons["List"].isSelected)
+    app.terminate()
+    app.launch()
+    openLibrary(app)
+    XCTAssertTrue(modes.buttons["List"].waitForExistence(timeout: 5))
+    XCTAssertTrue(modes.buttons["List"].isSelected)
+    let card = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Yorkie & Roses,")).firstMatch
+    XCTAssertTrue(card.waitForExistence(timeout: 5))
+    XCTAssertTrue(card.label.contains("40×50"))
+    XCTAssertTrue(card.label.contains("Started"))
+    card.tap()
+    XCTAssertTrue(app.buttons["detail.title"].waitForExistence(timeout: 5))
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    modes.buttons["Covers"].tap()
+    XCTAssertTrue(app.openCraft("Coloring"))
+    XCTAssertTrue(modes.buttons["Compact"].isSelected)
+    modes.buttons["Covers"].tap()
+  }
+
   func testLoadingEmptyAndErrorStates() throws {
     for (scenario, label) in [
       ("loading", "Loading diamond projects"),
@@ -191,7 +221,7 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Yorkie & Roses"].waitForExistence(timeout: 5))
 
     let status = app.buttons["library.status"]
-    XCTAssertEqual(status.value as? String, "All, 4")
+    XCTAssertEqual(status.value as? String, "All, 12")
     XCTAssertTrue(status.frame.maxX <= app.frame.maxX)
     XCTAssertTrue(app.buttons["library.sort"].frame.maxX <= app.frame.maxX)
     status.tap()
@@ -208,7 +238,7 @@ final class LibraryUITests: XCTestCase {
     try capture(app, "library-status-filtered")
 
     status.tap()
-    let all = app.buttons["All 4"]
+    let all = app.buttons["All 12"]
     for _ in 0..<6 where !all.exists || !all.isHittable {
       app.collectionViews.firstMatch.swipeDown()
     }
