@@ -7,6 +7,28 @@ import Testing
 @Suite(.serialized)
 struct AppModelTests {
   @Test
+  func unitTestsIgnoreTheSimulatorSampleDataSwitch() async throws {
+    let defaults = UserDefaults.standard
+    let key = OverviewFixtureProtocol.sampleDataKey
+    let previous = defaults.object(forKey: key)
+    defaults.set(true, forKey: key)
+    defer { defaults.set(previous, forKey: key) }
+
+    let store = KeychainSessionStore(
+      service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"
+    )
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: store,
+      urlSession: URLSession(configuration: .ephemeral)
+    )
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    while model.phase == .restoring { await Task.yield() }
+
+    #expect(model.phase == .signedOut)
+  }
+
+  @Test
   func appleSignInStartsAfterReadinessSucceeds() async throws {
     AppleReadinessURLProtocol.status = 200
     AppleReadinessURLProtocol.body = #"{"available":true}"#
