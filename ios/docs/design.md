@@ -8,7 +8,7 @@ screen backgrounds. The Shelf redesign (Option B in
 
 ## Shelf
 
-- **Shell.** Home, Library, and an ordinary labeled Search tab in the native
+- **Shell.** Home, Library, Notes, and an ordinary labeled Search tab in the native
   tab bar. Search uses `.searchable`.
   Account opens from the Home toolbar avatar. Create is the toolbar `+`
   `CreateMenu` on Home and Library.
@@ -50,11 +50,14 @@ screen backgrounds. The Shelf redesign (Option B in
   carrying a glass Log button. "Up next from your stash" shows Kitted up then
   In stash covers. A single "N finished this month" row opens Completed.
   Section titles open the matching Library filter; a menu picks the craft when
-  both are enabled. A Notes shortcut opens the cross-craft progress feed.
+  both are enabled. Notes lives in its own tab and iPad sidebar destination.
 - **Notes.** Group progress notes by month, newest first, with craft and year
   filters. Each entry identifies its diamond project or coloring page above the
   shared photo, date, and caption. Home and Create can open the Notes target
   picker; it lists in-progress work first and can search older projects/pages.
+  The Notes toolbar can open the same target picker. Notes has its own detail
+  navigation and shares the account-scoped library with every log flow. Home
+  receives an `onNotesRequest` callback for feature actions that select Notes.
   The picker uses a trailing inspector on iPad and an adaptive sheet on iPhone.
 - **Detail.** A centered hero cover sits above the title and credits. A compact
   status `Menu` below them uses a soft tint from the web status color family,
@@ -78,7 +81,7 @@ screen backgrounds. The Shelf redesign (Option B in
 ## Current design reference
 
 Detail and navigation follow the approved artwork-first Option 2 B described
-above: soft status chips, compact section actions, and Home, Library, and Search
+above: soft status chips, compact section actions, and Home, Library, Notes, and Search
 in one native tab group. Simulator screenshots in the implementation PRs record
 the native result.
 
