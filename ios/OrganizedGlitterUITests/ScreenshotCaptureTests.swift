@@ -17,7 +17,7 @@ final class ScreenshotCaptureTests: XCTestCase {
     app.launchArguments.append("-ui-testing-authenticated")
     app.launch()
 
-    for label in ["Home", "Library", "Search"] {
+    for label in ["Home", "Library", "Notes", "Search"] {
       let tab = app.buttons[label].firstMatch
       guard tab.waitForExistence(timeout: 3) else {
         // iPad may present destinations outside a compact tab bar.

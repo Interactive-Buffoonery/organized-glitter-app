@@ -27,6 +27,69 @@ final class OverviewUITests: XCTestCase {
     element.exists && !element.frame.isEmpty && app.frame.contains(element.frame)
   }
 
+  func testNotesTabSharesNewLogsAndKeepsItsOwnDetailStack() throws {
+    let app = launch("design")
+    XCTAssertTrue(app.buttons["account.open"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["overview.notes"].exists)
+    XCTAssertTrue(app.openNotes())
+    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].waitForExistence(timeout: 5))
+
+    app.buttons["notes.add"].tap()
+    let target = app.buttons["notes.target.design-project-0"]
+    XCTAssertTrue(target.waitForExistence(timeout: 5))
+    target.tap()
+    let caption = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "placeholderValue == %@", "Caption (optional)")).firstMatch
+    XCTAssertTrue(caption.waitForExistence(timeout: 5))
+    caption.tap()
+    caption.typeText("Logged from the Notes tab")
+    app.buttons["detail.progress.noteSubmit"].tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.progress.noteEditor"]
+      .waitForNonExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Logged from the Notes tab"].waitForExistence(timeout: 5))
+
+    let entry = app.buttons["notes.entry.design-note-1"]
+    for _ in 0..<5 where !entry.isHittable { app.swipeUp() }
+    XCTAssertTrue(entry.isHittable)
+    entry.tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.openSearch())
+    XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.openNotes())
+    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond"].waitForExistence(timeout: 5))
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    XCTAssertTrue(app.buttons["notes.add"].waitForExistence(timeout: 5))
+  }
+
+  func testHomeLogAppearsInNotesTab() throws {
+    let app = launch("design")
+    XCTAssertTrue(app.openNotes())
+    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].waitForExistence(timeout: 5))
+    let home = UIDevice.current.userInterfaceIdiom == .pad
+      ? app.cells["Home"].firstMatch : app.tabBars.buttons["Home"].firstMatch
+    if !home.isHittable, app.buttons["ToggleSideBar"].exists {
+      app.buttons["ToggleSideBar"].tap()
+    }
+    XCTAssertTrue(home.waitForExistence(timeout: 5))
+    home.tap()
+    let log = app.buttons["overview.log.design-project-0"]
+    XCTAssertTrue(log.waitForExistence(timeout: 5))
+    let shelf = app.scrollViews["overview.continue.shelf"]
+    for _ in 0..<6 where !isOnScreen(log, in: app) { shelf.swipeLeft() }
+    XCTAssertTrue(isOnScreen(log, in: app))
+    log.tap()
+    let caption = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "placeholderValue == %@", "Caption (optional)")).firstMatch
+    XCTAssertTrue(caption.waitForExistence(timeout: 5))
+    caption.tap()
+    caption.typeText("Logged from Home")
+    app.buttons["detail.progress.noteSubmit"].tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.progress.noteEditor"]
+      .waitForNonExistence(timeout: 5))
+    XCTAssertTrue(app.openNotes())
+    XCTAssertTrue(app.staticTexts["Logged from Home"].waitForExistence(timeout: 5))
+  }
+
   func testContinueOpensDetailAndLogsProgress() throws {
     let app = launch("populated")
     let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden"))
