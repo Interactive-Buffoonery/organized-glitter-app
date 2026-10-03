@@ -26,15 +26,20 @@ Before opening a pull request, run the local preflight check:
 ./ios/script/pre-pr.sh
 ```
 
-This checks the diff, then builds the app and runs the unit and UI tests on the
-iPhone 17 simulator. To use another installed simulator, set `DESTINATION` to
-an `xcodebuild` destination before running the script.
+This checks the diff, regenerates the Xcode project, then runs unit tests on
+an iPhone and fixture UI tests on both iPhone and iPad simulators running iOS 26.
+To select specific installed simulators, set `IPHONE_SIMULATOR_ID` and
+`IPAD_SIMULATOR_ID` before running the script. Get their IDs with
+`xcrun simctl list devices available`. Each override is optional and must match
+the device family and iOS 26 runtime. See [the local test guide](README.md#tests)
+for an example, saved results, and opt-in checks.
 
 The app supports iOS and iPadOS 26.0 and newer. Routine development uses iOS
 and iPadOS 26 simulators; APIs newer than iOS 26 need availability checks.
 
-Seeded backend tests are optional. Use disposable test accounts and records -
-never use customer accounts or customer data.
+Seeded backend tests are optional and run separately from this routine gate.
+Use disposable test accounts and records - never use customer accounts or
+customer data.
 
 ## Code changes
 
