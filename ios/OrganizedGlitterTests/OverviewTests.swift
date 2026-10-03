@@ -39,11 +39,11 @@ struct OverviewPresentationTests {
     let recent = page()
     // The page was updated later, but the project was logged the same day.
     #expect(
-      OverviewModel.continueOrder([recent, noted], latestNoteDates: ["fictional-project": "2026-09-06 00:00:00.000Z"])
+      OverviewModel.continueOrder([recent, noted], latestNoteDates: ["fictional-project": "2026-09-06 00:00:00.000Z"], noteCreated: [:])
         == [noted, recent])
-    #expect(OverviewModel.continueOrder([noted, recent], latestNoteDates: [:]) == [noted, recent])
+    #expect(OverviewModel.continueOrder([noted, recent], latestNoteDates: [:], noteCreated: [:]) == [noted, recent])
     #expect(
-      OverviewModel.continueOrder([noted, recent], latestNoteDates: ["fictional-page": "2026-09-01"])
+      OverviewModel.continueOrder([noted, recent], latestNoteDates: ["fictional-page": "2026-09-01"], noteCreated: [:])
         == [noted, recent])
   }
 
@@ -53,12 +53,12 @@ struct OverviewPresentationTests {
     #expect(
       OverviewModel.continueOrder(
         [diamond, coloring],
-        latestNoteDates: ["fictional-project": "2026-09-18", "fictional-page": "2026-09-19"]
+        latestNoteDates: ["fictional-project": "2026-09-18", "fictional-page": "2026-09-19"], noteCreated: [:]
       ).first == coloring)
     #expect(
       OverviewModel.continueOrder(
         [coloring, diamond],
-        latestNoteDates: ["fictional-project": "2026-09-20 00:00:00.000Z", "fictional-page": "2026-09-19"]
+        latestNoteDates: ["fictional-project": "2026-09-20 00:00:00.000Z", "fictional-page": "2026-09-19"], noteCreated: [:]
       ).first == diamond)
   }
 
@@ -82,13 +82,13 @@ struct OverviewPresentationTests {
     // The project was edited more recently, but the page was started later.
     let diamond = project(started: "2026-09-03")
     let coloring = page(started: "2026-09-05 11:00:00.000Z")
-    #expect(OverviewModel.continueOrder([diamond, coloring], latestNoteDates: [:]) == [coloring, diamond])
+    #expect(OverviewModel.continueOrder([diamond, coloring], latestNoteDates: [:], noteCreated: [:]) == [coloring, diamond])
     // Starting something counts as working on it; a same-day note still wins.
     #expect(
-      OverviewModel.continueOrder([diamond, coloring], latestNoteDates: ["fictional-project": "2026-09-04"])
+      OverviewModel.continueOrder([diamond, coloring], latestNoteDates: ["fictional-project": "2026-09-04"], noteCreated: [:])
         == [coloring, diamond])
     #expect(
-      OverviewModel.continueOrder([coloring, diamond], latestNoteDates: ["fictional-project": "2026-09-05"])
+      OverviewModel.continueOrder([coloring, diamond], latestNoteDates: ["fictional-project": "2026-09-05"], noteCreated: [:])
         == [diamond, coloring])
   }
 

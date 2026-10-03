@@ -54,21 +54,21 @@ final class OverviewModel {
       }
       let dates = latest.mapValues(\.date)
       let created = latest.mapValues(\.created)
+      let active =
+        projects.filter { $0.status == "progress" }.map(LibraryItem.diamond)
+        + pages.filter { $0.status == "in_progress" }.map(LibraryItem.page)
       // Up to ten of each craft, so hiding either one never empties Home.
-      let activeProjects = Self.continueOrder(
-        projects.filter { $0.status == "progress" }.map(LibraryItem.diamond),
-        latestNoteDates: dates, noteCreated: created
-      ).prefix(10)
-      let activePages = Self.continueOrder(
-        pages.filter { $0.status == "in_progress" }.map(LibraryItem.page),
-        latestNoteDates: dates, noteCreated: created
-      ).prefix(10)
+      var perCraft: [LibrarySection: Int] = [:]
+      let ordered = Self.continueOrder(active, latestNoteDates: dates, noteCreated: created)
+        .filter { item in
+          perCraft[item.section, default: 0] += 1
+          return perCraft[item.section, default: 0] <= 10
+        }
       bookPageCounts = pageCounts
       latestNoteTexts = latest.mapValues(\.content)
       withAnimation(animation) {
         latestNoteDates = dates
-        items = Self.continueOrder(
-          Array(activeProjects + activePages), latestNoteDates: dates, noteCreated: created)
+        items = ordered
       }
       hasLoaded = true
     } catch APIError.unauthenticated {
@@ -89,7 +89,7 @@ final class OverviewModel {
   /// logged today outranks a start or an edit today, and same-day notes
   /// compare by when they were created.
   static func continueOrder(
-    _ items: [LibraryItem], latestNoteDates: [String: String], noteCreated: [String: String] = [:]
+    _ items: [LibraryItem], latestNoteDates: [String: String], noteCreated: [String: String]
   ) -> [LibraryItem] {
     func key(_ item: LibraryItem) -> String {
       if let note = latestNoteDates[item.recordID] {
@@ -261,10 +261,10 @@ struct OverviewView: View {
         heroCard(hero)
         pickUpSection(
           "Diamond art", id: "diamonds",
-          others.filter { if case .diamond = $0 { true } else { false } })
+          others.filter { $0.section == .diamonds })
         pickUpSection(
           "Coloring", id: "coloring",
-          others.filter { if case .page = $0 { true } else { false } })
+          others.filter { $0.section == .pages })
       } else if model.hasLoaded {
         emptyState
       }
