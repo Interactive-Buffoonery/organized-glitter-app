@@ -57,9 +57,11 @@ dependency. Add a dependency only for a demonstrated platform gap.
 
 ## Release gates
 
-The source contract workflow proves compatibility with a pinned backend commit
-and local PocketBase version. It does not prove which revision is deployed to
-production.
+`BackendContract.json` records a pinned backend commit, PocketBase version, and
+schema hash. The current unit test checks that these fields are populated and
+have expected lengths; it does not verify the referenced source, runtime
+compatibility, or which revision is deployed to production. There is currently
+no automated source contract verification workflow in this repository.
 
 Before App Store submission, the release owner must separately verify:
 
