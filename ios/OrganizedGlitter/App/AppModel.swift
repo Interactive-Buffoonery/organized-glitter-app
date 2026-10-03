@@ -97,9 +97,7 @@ final class AppModel {
         }
         return
       }
-      if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated")
-        || OverviewFixtureProtocol.usesSampleData
-      {
+      if ProcessInfo.processInfo.arguments.contains("-ui-testing-authenticated") {
         let generation = beginSessionTransition()
         Task {
           do {
@@ -558,9 +556,6 @@ final class AppModel {
         try await library?.close(removingData: true)
         library = nil
         await RemoteArtworkLoader.shared.purgeMemoryCache()
-        #if DEBUG
-          UserDefaults.standard.removeObject(forKey: OverviewFixtureProtocol.sampleDataKey)
-        #endif
         requiresDiscardConfirmation = false
         cleanupBlocked = false
         phase = .signedOut

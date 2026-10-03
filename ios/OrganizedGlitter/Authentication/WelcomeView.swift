@@ -13,9 +13,6 @@ struct WelcomeView: View {
   @State private var path: [AccountEntryRoute] = []
   @State private var coversBackground: Bool
   @State private var methodMode: AccountMethodView.Mode = .signIn
-  #if DEBUG
-    @AppStorage(OverviewFixtureProtocol.sampleDataKey) private var useSampleData = false
-  #endif
 
   init(model: AppModel) {
     self.model = model
@@ -70,15 +67,6 @@ struct WelcomeView: View {
             .buttonStyle(AuthSecondaryButtonStyle())
             .accessibilityIdentifier("welcomeSignIn")
           }
-          #if DEBUG
-            // Hangs below the actions so Debug keeps the Release wordmark
-            // position that the launch screen image is drawn for.
-            .overlay(alignment: .bottom) {
-              Button("Use sample data") { useSampleData = true }
-                .accessibilityIdentifier("welcomeUseSampleData")
-                .alignmentGuide(.bottom) { $0[.top] }
-            }
-          #endif
           .padding(.bottom, AccountEntryLayout.actionsBottomPadding)
           .opacity(isRestoring ? 0 : 1)
           .allowsHitTesting(!isRestoring)

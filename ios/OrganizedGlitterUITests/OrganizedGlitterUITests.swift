@@ -92,7 +92,6 @@ final class OrganizedGlitterUITests: XCTestCase {
     XCTAssertTrue(app.descendants(matching: .any)["welcomeWordmark"].firstMatch.exists)
     XCTAssertFalse(app.buttons["welcomeCreateAccount"].exists)
     XCTAssertFalse(app.buttons["welcomeSignIn"].exists)
-    XCTAssertFalse(app.buttons["welcomeUseSampleData"].exists)
 
     app.terminate()
     app.launchArguments = ["-ui-testing-signed-out"]

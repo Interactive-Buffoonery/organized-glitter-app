@@ -4,9 +4,6 @@ import SwiftUI
 struct OrganizedGlitterApp: App {
   @State private var model: AppModel
   @State private var themeStore: ThemeStore
-  #if DEBUG
-    @AppStorage(OverviewFixtureProtocol.sampleDataKey) private var useSampleData = false
-  #endif
 
   init() {
     KarlaTypography.applyControlFonts()
@@ -61,11 +58,6 @@ struct OrganizedGlitterApp: App {
     WindowGroup {
       ThemedRoot(flavor: themeStore.flavor, palette: themeStore.palette) {
         RootView(model: model)
-          #if DEBUG
-            .onChange(of: useSampleData) {
-              model = Self.makeModel(themeStore: themeStore)
-            }
-          #endif
       }
       .font(.karla())
       .environment(themeStore)
