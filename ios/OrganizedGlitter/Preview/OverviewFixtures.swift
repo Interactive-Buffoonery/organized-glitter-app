@@ -330,7 +330,7 @@
           for index in pages.indices {
             pages[index]["expand"] = ["book": firstBook]
           }
-          for index in 8..<30 {
+          for index in pages.count..<30 {
             pages.append([
               "id": "design-page-\(index)", "book": "design-book-0",
               "page_number": index + 1, "status": "not_started", "photos": [],
@@ -711,9 +711,14 @@
 
     private static var designDiamonds: [[String: Any]] {
       let artists = ["Example Artist One", "Example Artist Two", "Example Artist Three", "Fictional Artist"]
-      let images = ["design-peony-garden.jpg", "design-blue-hour.jpg", "design-citrus-grove.jpg", ""]
-      let featured = zip(["Peony Garden", "Blue Hour", "Citrus Grove", "Wildflowers"],
-          ["progress", "stash", "progress", "completed"]).enumerated().map { index, pair in
+      let images = [
+        "design-summer-garden-blooms.jpg", "design-misty-mount-rainier.jpg",
+        "design-monarch-in-the-garden.jpg", "design-golden-eyed-tabby.jpg",
+      ]
+      let featured = zip(
+        ["Summer Garden Blooms", "Misty Mount Rainier", "Monarch in the Garden", "Golden-Eyed Tabby"],
+        ["progress", "stash", "progress", "completed"]
+      ).enumerated().map { index, pair in
         var project: [String: Any] = [
           "id": "design-project-\(index)", "user": "preview-user", "title": pair.0,
           "status": pair.1, "kit_category": "full", "drill_shape": "square",
@@ -733,13 +738,14 @@
         }
         if index == 0 {
           project["general_notes"] =
-            "<p>Soft pink peonies against a <strong>blush</strong> background.</p><p>Save the AB drills for the petals.</p>"
+            "<p>Bright summer blooms in every <strong>color</strong>.</p><p>Save the AB drills for the petals.</p>"
+          project["drill_shape"] = "round"
           project["total_diamonds"] = 48_200
-          project["color_count"] = 42
+          project["color_count"] = 36
           project["date_purchased"] = "2026-07-02"
           project["date_received"] = "2026-07-11"
           project["date_started"] = "2026-08-14"
-          project["source_url"] = "https://example.com/kits/peony-garden"
+          project["source_url"] = "https://unsplash.com/photos/MRjuroFzfQw"
           var expand = project["expand"] as! [String: Any]
           expand["project_tags_via_project"] = [("Gardens", "tag-gardens"), ("Florals", "tag-florals")].map {
             ["id": "pt-\($0.1)", "expand": ["tag": ["id": $0.1, "name": $0.0]]]
@@ -756,13 +762,13 @@
         return project
       }
       let extraKits = [
-        "Lavender Fields", "Moonlit Koi", "Starry Lighthouse", "Midnight Owl",
-        "Rose Garden", "Quiet Harbor", "Autumn Path", "Crystal Lake",
-      ].enumerated().map { index, title -> [String: Any] in
+        ("Mirror Lake Reflections", "purchased", "design-mirror-lake-reflections.jpg"),
+        ("San Diego Sunset", "wishlist", "design-san-diego-sunset.jpg"),
+      ].enumerated().map { index, kit -> [String: Any] in
         [
-          "id": "design-project-extra-\(index)", "user": "preview-user", "title": title,
-          "status": "stash", "kit_category": "full", "drill_shape": "round",
-          "width": 40, "height": 50, "image": "",
+          "id": "design-project-extra-\(index)", "user": "preview-user", "title": kit.0,
+          "status": kit.1, "kit_category": "full", "drill_shape": "round",
+          "width": 40, "height": 50, "image": kit.2,
           "created": "2026-08-01", "updated": "2026-08-01",
           "date_purchased": "2026-07-10", "date_received": "2026-07-20",
           "company": "example-company", "artist": "example-artist",
@@ -776,30 +782,31 @@
     }
 
     private static var designBooks: [[String: Any]] {
-      ["Garden Friends", "Family", "Woodland", "Classics"].enumerated().map { index, title in
+      [
+        ("Smithsonian Libraries Coloring Pages, Volume 2", "in_progress", 11, "Smithsonian Libraries"),
+        ("Exoplanet Travel Bureau Coloring Book", "in_stash", 6, "NASA/JPL-Caltech"),
+        ("Our Very Own Star: The Sun", "in_stash", 9, "NASA Goddard Space Flight Center"),
+        ("NASA's Field Guide to Black Holes Coloring Book", "in_progress", 3, "NASA"),
+      ].enumerated().map { index, book in
         [
-          "id": "design-book-\(index)", "user": "preview-user", "title": title,
-          "status": "in_progress", "total_pages": 8, "completed_pages": 1,
-          "completion_percentage": 12.5, "cover_image": "design-book-\(index).jpg",
-          "publisher": "design-publisher", "illustrator": "design-illustrator",
+          "id": "design-book-\(index)", "user": "preview-user", "title": book.0,
+          "status": book.1, "total_pages": book.2, "completed_pages": index == 0 ? 1 : 0,
+          "completion_percentage": index == 0 ? 100.0 / Double(book.2) : 0,
+          "cover_image": "design-book-\(index).jpg", "publisher": "design-publisher-\(index)",
           "created": "2026-09-01",
           "updated": "2026-09-19 10:00:00",
-          "expand": [
-            "publisher": ["id": "design-publisher", "name": "Example Press"],
-            "illustrator": ["id": "design-illustrator", "name": "Example Illustrator"],
-          ],
+          "expand": ["publisher": ["id": "design-publisher-\(index)", "name": book.3]],
         ]
       }
     }
 
     private static var designPages: [[String: Any]] {
-      let titles = ["Hedgehog", "Fox", "Heron", "Badger"]
-      let images = ["hedgehog", "fox", "heron", "badger"]
-      return (0..<8).map { index in
+      let titles = ["Passionflowers", "Garden Lady", "Ornament Panels", "Poppy Maiden"]
+      return (0..<11).map { index in
         var page: [String: Any] = [
           "id": "design-page-\(index)", "book": "design-book-0", "page_number": index + 1,
           "status": index == 0 ? "in_progress" : index == 1 ? "completed" : "not_started",
-          "photos": index < 4 ? ["design-page-\(images[index]).jpg"] : [],
+          "photos": ["design-page-\(index + 1).jpg"],
           "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
           "expand": ["book": designBooks[0]],
         ]
@@ -825,7 +832,7 @@
         [
           "id": "design-note-1", "project": "design-project-0",
           "content": "The flowers are starting to take shape.", "date": designNoteDate(daysAgo: 1),
-          "image": "design-peony-garden.jpg", "created": "2026-09-18 16:00:00",
+          "image": "design-summer-garden-blooms.jpg", "created": "2026-09-18 16:00:00",
           "updated": "2026-09-18 16:00:00",
         ],
         [
@@ -835,13 +842,13 @@
         ],
         [
           "id": "design-note-3", "project": "design-project-0",
-          "content": "", "date": designNoteDate(daysAgo: 3), "image": "design-peony-garden.jpg",
+          "content": "", "date": designNoteDate(daysAgo: 3), "image": "design-summer-garden-blooms.jpg",
           "created": "2026-09-08 16:00:00", "updated": "2026-09-08 16:00:00",
         ],
         [
           "id": "design-note-4", "project": "design-project-0",
           "content": "Started in the top corner.", "date": designNoteDate(daysAgo: 4),
-          "image": "design-peony-garden.jpg",
+          "image": "design-summer-garden-blooms.jpg",
           "created": "2026-08-14 16:00:00", "updated": "2026-08-14 16:00:00",
         ],
       ]
@@ -852,7 +859,7 @@
         [
           "id": "design-page-note-1", "user": "preview-user", "page": "design-page-0",
           "content": "The first **colors** are in place.", "date": designNoteDate(daysAgo: 0),
-          "image": "design-page-hedgehog.jpg", "created": "2026-09-19 15:00:00",
+          "image": "design-page-1.jpg", "created": "2026-09-19 15:00:00",
           "updated": "2026-09-19 15:00:00",
         ],
         [
@@ -863,8 +870,13 @@
       ]
     }
 
-    /// Flat, drawn stand-in artwork so fixtures never bundle licensed images.
+    /// Serves the example account's openly licensed artwork, or a drawn stand-in for other files.
     private static func artwork(filename: String) -> Data {
+      if let image = UIImage(named: (filename as NSString).deletingPathExtension),
+        let data = image.jpegData(compressionQuality: 0.9)
+      {
+        return data
+      }
       let seed = filename.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
       let hue = CGFloat(seed % 360) / 360
       let size = CGSize(width: 600, height: 750)

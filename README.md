@@ -111,8 +111,9 @@ even if their opt-in flag is set. Those integration tests require a separate run
 against an isolated backend with disposable test accounts and private local
 configuration. Never use production accounts or commit test credentials.
 
-Fixtures use fictional records and drawn artwork, and the app has no
-sample-data mode. To review the app with real content, sign in to the shared
+The `design` fixture mirrors the openly licensed content in the example account
+(credits in `ios/docs/design-previews/native-refinement/README.md`), and the
+app has no sample-data mode. To review the app with real content, sign in to the shared
 `example@organizedglitter.app` account. Its password is shared privately; never
 commit it.
 
