@@ -343,14 +343,17 @@ struct OverviewView: View {
       let specifications = LibraryItemMetadata(item: item).specifications.nonEmpty
       return [maker, specifications].compactMap { $0 }
     case .page(let page):
-      let total = model.bookPageCounts[page.book].map { " of \($0)" } ?? ""
-      return [
-        [page.expand?.book?.title.nonEmpty, "page \(page.pageNumber)\(total)"]
-          .compactMap { $0 }.joined(separator: " · ")
-      ]
+      return [bookAndPage(page, withTotal: true)]
     case .book:
       return []
     }
+  }
+
+  /// "Princesses · page 4", or "Princesses · page 4 of 30" with the book's total.
+  private func bookAndPage(_ page: ColoringPageRecord, withTotal: Bool = false) -> String {
+    let total = withTotal ? model.bookPageCounts[page.book].map { " of \($0)" } ?? "" : ""
+    return [page.expand?.book?.title.nonEmpty, "page \(page.pageNumber)\(total)"]
+      .compactMap { $0 }.joined(separator: " · ")
   }
 
   private func heroNote(_ item: LibraryItem) -> AttributedString? {
@@ -450,7 +453,7 @@ struct OverviewView: View {
             ?? project.dateStarted.flatMap { DetailDateOnly.formatted($0) }.map { "Started \($0)" },
         ]
       case .page(let page):
-        [page.expand?.book?.title.nonEmpty, "page \(page.pageNumber)", loggedCaption(item)]
+        [bookAndPage(page), loggedCaption(item)]
       case .book:
         []
       }
