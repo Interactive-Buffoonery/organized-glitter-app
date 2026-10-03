@@ -4,16 +4,7 @@
 
 ## Verification
 
-<!-- List the build, tests, and manual checks you ran. -->
-
-## AI Assistance
-
-<!-- If an AI agent drafts this PR, ask the person opening the PR to choose the assistance level after they review and revise the work. -->
-
-- Assistance level: <!-- person opening the PR chooses: none / light / moderate / substantial -->
-- Tool(s), if substantial: <!-- e.g. Codex, Claude Code, Cursor, Copilot, other -->
-- What I personally verified: <!-- commands, manual checks, or code paths you reviewed yourself -->
-- Extra reviewer attention needed: <!-- unclear areas, generated sections, or "None" -->
+<!-- List the build, tests, and manual checks you ran. For UI changes, include local iPhone and iPad simulator results, including skipped checks. UI tests run on the contributor's computer. -->
 
 ## Checklist
 
