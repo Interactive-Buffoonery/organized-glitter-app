@@ -70,14 +70,20 @@ inspection, and Dynamic Type captures do not substitute for that pass.
 
 ## Reproduction
 
-Run `cd ios && xcodegen generate`, then `./ios/script/pre-pr.sh` from the repo
-root. Set `DESTINATION` to the intended iOS 26 simulator when necessary.
+Run `./ios/script/pre-pr.sh` from the repo root; it regenerates the Xcode project
+and runs unit tests on an iPhone plus fixture UI tests on both iPhone and iPad.
+To select specific iOS 26 simulators, set `IPHONE_SIMULATOR_ID` and
+`IPAD_SIMULATOR_ID` using IDs from `xcrun simctl list devices available`.
+Each override is optional and must match the device family and iOS 26 runtime.
+See [the local test guide](../../README.md#tests) for an example and saved results.
+
 Capture tests accept `TEST_RUNNER_SCREENSHOT_DIR`; the six-screen test also
 accepts `TEST_RUNNER_SCREENSHOT_ORIENTATION=landscape`. Accessibility detail
 capture is opt-in with `TEST_RUNNER_RUN_REFINEMENT_AX_CAPTURE=1` and requires
 setting the simulator's text size first. Native photo selection is opt-in with
 `TEST_RUNNER_RUN_PHOTO_PICKER_UPLOAD=1` after seeding synthetic media.
 
-Seeded backend tests require an isolated instance and explicit test credentials
-through the documented test environment variables. Never use customer accounts
-or commit a local backend override or test credentials.
+Seeded backend tests run separately from the routine gate and require an
+isolated instance and explicit test credentials through the documented test
+environment variables. Never use customer accounts or commit a local backend
+override or test credentials.
