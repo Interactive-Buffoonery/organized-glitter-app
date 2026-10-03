@@ -827,27 +827,32 @@
       }
     }
 
+    private static func designNoteDate(daysAgo: Int) -> String {
+      let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
+      return DetailDateOnly.string(from: date)
+    }
+
     private static var designProgressNotes: [[String: Any]] {
       [
         [
           "id": "design-note-1", "project": "design-project-0",
-          "content": "The flowers are starting to take shape.", "date": "2026-09-18",
+          "content": "The flowers are starting to take shape.", "date": designNoteDate(daysAgo: 1),
           "image": "design-yorkie-roses.jpg", "created": "2026-09-18 16:00:00",
           "updated": "2026-09-18 16:00:00",
         ],
         [
           "id": "design-note-2", "project": "design-project-0",
-          "content": "Finished the first color family.", "date": "2026-09-15",
+          "content": "Finished the first color family.", "date": designNoteDate(daysAgo: 2),
           "created": "2026-09-15 16:00:00", "updated": "2026-09-15 16:00:00",
         ],
         [
           "id": "design-note-3", "project": "design-project-0",
-          "content": "", "date": "2026-09-08", "image": "design-yorkie-roses.jpg",
+          "content": "", "date": designNoteDate(daysAgo: 3), "image": "design-yorkie-roses.jpg",
           "created": "2026-09-08 16:00:00", "updated": "2026-09-08 16:00:00",
         ],
         [
           "id": "design-note-4", "project": "design-project-0",
-          "content": "Started in the top corner.", "date": "2026-08-14",
+          "content": "Started in the top corner.", "date": designNoteDate(daysAgo: 4),
           "image": "design-yorkie-roses.jpg",
           "created": "2026-08-14 16:00:00", "updated": "2026-08-14 16:00:00",
         ],
@@ -858,7 +863,7 @@
       [
         [
           "id": "design-page-note-1", "user": "preview-user", "page": "design-page-0",
-          "content": "The first **colors** are in place.", "date": "2026-09-19",
+          "content": "The first **colors** are in place.", "date": designNoteDate(daysAgo: 0),
           "image": "design-princesses-rapunzel.jpg", "created": "2026-09-19 15:00:00",
           "updated": "2026-09-19 15:00:00",
         ],
