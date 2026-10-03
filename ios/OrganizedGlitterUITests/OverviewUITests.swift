@@ -31,16 +31,20 @@ final class OverviewUITests: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments = [
       "-ui-testing-authenticated", "-overview-fixture", "design",
-      "-show-crafting-streak.preview-user", "NO",
     ]
     app.launch()
     XCTAssertTrue(app.buttons["account.open"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.buttons["home.craftingStreak"].exists)
     app.buttons["account.open"].tap()
     let toggle = app.switches["account.showCraftingStreak"]
-    for _ in 0..<5 where !toggle.isHittable { app.swipeUp() }
+    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
     XCTAssertTrue(toggle.isHittable)
-    toggle.tap()
+    if toggle.value as? String == "1" { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
+    app.buttons["Done"].tap()
+    XCTAssertFalse(app.buttons["home.craftingStreak"].exists)
+    app.buttons["account.open"].tap()
+    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+    XCTAssertEqual(toggle.value as? String, "1")
     app.buttons["Done"].tap()
     let streak = app.buttons["home.craftingStreak"]
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
@@ -53,8 +57,8 @@ final class OverviewUITests: XCTestCase {
     app.launch()
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
     app.buttons["account.open"].tap()
-    for _ in 0..<5 where !toggle.isHittable { app.swipeUp() }
-    toggle.tap()
+    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
     app.buttons["Done"].tap()
     XCTAssertTrue(streak.waitForNonExistence(timeout: 5))
   }
