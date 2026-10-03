@@ -350,7 +350,7 @@ struct OverviewView: View {
     }
   }
 
-  /// "Princesses · page 4", or "Princesses · page 4 of 30" with the book's total.
+  /// "Garden Friends · page 4", or "Garden Friends · page 4 of 30" with the book's total.
   private func bookAndPage(_ page: ColoringPageRecord, withTotal: Bool = false) -> String {
     let total = withTotal ? model.bookPageCounts[page.book].map { " of \($0)" } ?? "" : ""
     return [page.expand?.book?.title.nonEmpty, "page \(page.pageNumber)\(total)"]

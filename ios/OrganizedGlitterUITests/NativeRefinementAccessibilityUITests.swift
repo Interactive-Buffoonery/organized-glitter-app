@@ -5,7 +5,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   func testDrawerPreservesInlineTitleDraftAndDisablesBackgroundEdits() {
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Yorkie & Roses", in: app)
+    openCard(named: "Peony Garden", in: app)
     let title = button("detail.title", in: app)
     makeHittable(title, in: app)
     title.tap()
@@ -13,12 +13,12 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
     XCTAssertTrue(draft.waitForExistence(timeout: 5))
     draft.typeText(" draft")
     let updatedTitle = XCTNSPredicateExpectation(
-      predicate: NSPredicate(format: "value == %@", "Yorkie & Roses draft"),
+      predicate: NSPredicate(format: "value == %@", "Peony Garden draft"),
       object: draft
     )
     XCTAssertEqual(XCTWaiter.wait(for: [updatedTitle], timeout: 5), .completed)
     let pendingTitle = draft.value as? String
-    XCTAssertEqual(pendingTitle, "Yorkie & Roses draft")
+    XCTAssertEqual(pendingTitle, "Peony Garden draft")
 
     button("detail.edit", in: app).tap()
     let editor = app.navigationBars["Edit Project"]
@@ -42,7 +42,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   func testDrawerDisablesDateChangesUntilDismissed() {
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Yorkie & Roses", in: app)
+    openCard(named: "Peony Garden", in: app)
     let changeDate = app.buttons["Change started date"]
     makeHittable(changeDate, in: app)
     XCTAssertTrue(changeDate.isEnabled)
@@ -64,7 +64,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
     let app = launchFixture()
     openLibrary(app)
     selectCraft("Coloring", in: app)
-    openCard(named: "Princesses", in: app)
+    openCard(named: "Garden Friends", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 
     let editPageCount = button("detail.book.editPageCount", in: app)
@@ -95,7 +95,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
   func testProgressNoteDrawerPreservesDetailAndReleasesPresentation() {
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Yorkie & Roses", in: app)
+    openCard(named: "Peony Garden", in: app)
     let addNote = button("detail.progress.addNote", in: app)
     makeHittable(addNote, in: app)
     addNote.tap()
@@ -125,7 +125,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
 
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Yorkie & Roses", in: app)
+    openCard(named: "Peony Garden", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
     let addProgressPhoto = button("detail.progress.addNote", in: app)
@@ -142,7 +142,7 @@ final class NativeRefinementAccessibilityUITests: XCTestCase {
 
     app.navigationBars.buttons.element(boundBy: 0).tap()
     selectCraft("Coloring", in: app)
-    openCard(named: "Princesses", in: app)
+    openCard(named: "Garden Friends", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 
     let editPageCount = button("detail.book.editPageCount", in: app)

@@ -5,18 +5,7 @@
   /// Isolated, fictional responses for Overview runtime review. Never contacts a server.
   final class OverviewFixtureProtocol: URLProtocol, @unchecked Sendable {
     private static let store = FixtureStore()
-    static let sampleDataKey = "use-sample-data"
     static let offlineAfterSeedArgument = "-fixture-offline-after-seed"
-
-    /// The sample-data switch, ignored by unit tests (hosted in the app) and
-    /// UI test launches, so a simulator left in sample mode can't change them.
-    static var usesSampleData: Bool {
-      let process = ProcessInfo.processInfo
-      let isTestLaunch =
-        process.environment["XCTestConfigurationFilePath"] != nil
-        || process.arguments.contains { $0 == "-overview-fixture" || $0.hasPrefix("-ui-testing") }
-      return !isTestLaunch && UserDefaults.standard.bool(forKey: sampleDataKey)
-    }
 
     static var offlineAfterSeed: Bool {
       scenario != nil && ProcessInfo.processInfo.arguments.contains(offlineAfterSeedArgument)
@@ -31,8 +20,7 @@
       guard let index = arguments.firstIndex(of: "-overview-fixture"),
         arguments.indices.contains(index + 1)
       else {
-        if arguments.contains("-ui-testing-authenticated") { return "populated" }
-        return usesSampleData ? "design" : nil
+        return arguments.contains("-ui-testing-authenticated") ? "populated" : nil
       }
       return arguments[index + 1]
     }
@@ -722,9 +710,9 @@
     }
 
     private static var designDiamonds: [[String: Any]] {
-      let artists = ["Maryline Cazenave", "Thomas Kinkade Studios", "Margaret Morales", "Fictional Artist"]
-      let images = ["design-yorkie-roses.jpg", "design-beachside-gathering.jpg", "design-divine-descent.jpg", ""]
-      let featured = zip(["Yorkie & Roses", "Beachside Gathering", "Divine Descent", "Wildflowers"],
+      let artists = ["Example Artist One", "Example Artist Two", "Example Artist Three", "Fictional Artist"]
+      let images = ["design-peony-garden.jpg", "design-blue-hour.jpg", "design-citrus-grove.jpg", ""]
+      let featured = zip(["Peony Garden", "Blue Hour", "Citrus Grove", "Wildflowers"],
           ["progress", "stash", "progress", "completed"]).enumerated().map { index, pair in
         var project: [String: Any] = [
           "id": "design-project-\(index)", "user": "preview-user", "title": pair.0,
@@ -734,7 +722,7 @@
           "image": images[index],
           "created": "2026-09-01", "updated": "2026-09-19 12:0\(9 - index * 2):00",
           "expand": [
-            "company": ["id": "design-company", "name": "Diamond Art Club"],
+            "company": ["id": "design-company", "name": "Example Atelier"],
             "artist": ["id": "design-artist-\(index)", "name": artists[index]],
           ],
         ]
@@ -745,15 +733,15 @@
         }
         if index == 0 {
           project["general_notes"] =
-            "<p>Soft pink roses against a <strong>blush</strong> background.</p><p>Save the AB drills for the bow.</p>"
+            "<p>Soft pink peonies against a <strong>blush</strong> background.</p><p>Save the AB drills for the petals.</p>"
           project["total_diamonds"] = 48_200
           project["color_count"] = 42
           project["date_purchased"] = "2026-07-02"
           project["date_received"] = "2026-07-11"
           project["date_started"] = "2026-08-14"
-          project["source_url"] = "https://www.diamondartclub.com/products/yorkie-roses"
+          project["source_url"] = "https://example.com/kits/peony-garden"
           var expand = project["expand"] as! [String: Any]
-          expand["project_tags_via_project"] = [("Dogs", "tag-dogs"), ("Florals", "tag-florals")].map {
+          expand["project_tags_via_project"] = [("Gardens", "tag-gardens"), ("Florals", "tag-florals")].map {
             ["id": "pt-\($0.1)", "expand": ["tag": ["id": $0.1, "name": $0.0]]]
           }
           project["expand"] = expand
@@ -788,7 +776,7 @@
     }
 
     private static var designBooks: [[String: Any]] {
-      ["Princesses", "Family", "Pixar", "Classics"].enumerated().map { index, title in
+      ["Garden Friends", "Family", "Woodland", "Classics"].enumerated().map { index, title in
         [
           "id": "design-book-\(index)", "user": "preview-user", "title": title,
           "status": "in_progress", "total_pages": 8, "completed_pages": 1,
@@ -797,21 +785,21 @@
           "created": "2026-09-01",
           "updated": "2026-09-19 10:00:00",
           "expand": [
-            "publisher": ["id": "design-publisher", "name": "Hachette Heroes"],
-            "illustrator": ["id": "design-illustrator", "name": "Disney"],
+            "publisher": ["id": "design-publisher", "name": "Example Press"],
+            "illustrator": ["id": "design-illustrator", "name": "Example Illustrator"],
           ],
         ]
       }
     }
 
     private static var designPages: [[String: Any]] {
-      let titles = ["Rapunzel", "Snow White", "Ariel", "Mulan"]
-      let images = ["rapunzel", "snow-white", "ariel", "mulan"]
+      let titles = ["Hedgehog", "Fox", "Heron", "Badger"]
+      let images = ["hedgehog", "fox", "heron", "badger"]
       return (0..<8).map { index in
         var page: [String: Any] = [
           "id": "design-page-\(index)", "book": "design-book-0", "page_number": index + 1,
           "status": index == 0 ? "in_progress" : index == 1 ? "completed" : "not_started",
-          "photos": index < 4 ? ["design-princesses-\(images[index]).jpg"] : [],
+          "photos": index < 4 ? ["design-page-\(images[index]).jpg"] : [],
           "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
           "expand": ["book": designBooks[0]],
         ]
@@ -837,7 +825,7 @@
         [
           "id": "design-note-1", "project": "design-project-0",
           "content": "The flowers are starting to take shape.", "date": designNoteDate(daysAgo: 1),
-          "image": "design-yorkie-roses.jpg", "created": "2026-09-18 16:00:00",
+          "image": "design-peony-garden.jpg", "created": "2026-09-18 16:00:00",
           "updated": "2026-09-18 16:00:00",
         ],
         [
@@ -847,13 +835,13 @@
         ],
         [
           "id": "design-note-3", "project": "design-project-0",
-          "content": "", "date": designNoteDate(daysAgo: 3), "image": "design-yorkie-roses.jpg",
+          "content": "", "date": designNoteDate(daysAgo: 3), "image": "design-peony-garden.jpg",
           "created": "2026-09-08 16:00:00", "updated": "2026-09-08 16:00:00",
         ],
         [
           "id": "design-note-4", "project": "design-project-0",
           "content": "Started in the top corner.", "date": designNoteDate(daysAgo: 4),
-          "image": "design-yorkie-roses.jpg",
+          "image": "design-peony-garden.jpg",
           "created": "2026-08-14 16:00:00", "updated": "2026-08-14 16:00:00",
         ],
       ]
@@ -864,33 +852,30 @@
         [
           "id": "design-page-note-1", "user": "preview-user", "page": "design-page-0",
           "content": "The first **colors** are in place.", "date": designNoteDate(daysAgo: 0),
-          "image": "design-princesses-rapunzel.jpg", "created": "2026-09-19 15:00:00",
+          "image": "design-page-hedgehog.jpg", "created": "2026-09-19 15:00:00",
           "updated": "2026-09-19 15:00:00",
         ],
         [
           "id": "design-page-note-2", "user": "preview-user", "page": "design-page-0",
-          "content": "Started with the hair and flowers.", "date": "2026-08-20",
+          "content": "Started with the leaves and flowers.", "date": "2026-08-20",
           "created": "2026-08-20 15:00:00", "updated": "2026-08-20 15:00:00",
         ],
       ]
     }
 
+    /// Flat, drawn stand-in artwork so fixtures never bundle licensed images.
     private static func artwork(filename: String) -> Data {
-      if let image = UIImage(named: (filename as NSString).deletingPathExtension),
-        let data = image.jpegData(compressionQuality: 0.9)
-      {
-        return data
+      let seed = filename.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
+      let hue = CGFloat(seed % 360) / 360
+      let size = CGSize(width: 600, height: 750)
+      let image = UIGraphicsImageRenderer(size: size).image { context in
+        UIColor(hue: hue, saturation: 0.35, brightness: 0.85, alpha: 1).setFill()
+        context.fill(CGRect(origin: .zero, size: size))
+        UIColor(hue: (hue + 0.5).truncatingRemainder(dividingBy: 1), saturation: 0.45, brightness: 0.95, alpha: 1)
+          .setFill()
+        context.cgContext.fillEllipse(in: CGRect(x: 150, y: 225, width: 300, height: 300))
       }
-      let asset: String
-      switch filename {
-      case "fictional-cover.png":
-        asset = "design-book-0"
-      case "fictional-page.png":
-        asset = "design-princesses-rapunzel"
-      default:
-        asset = "design-yorkie-roses"
-      }
-      return UIImage(named: asset)?.jpegData(compressionQuality: 0.9) ?? Data()
+      return image.jpegData(compressionQuality: 0.9) ?? Data()
     }
   }
 #endif

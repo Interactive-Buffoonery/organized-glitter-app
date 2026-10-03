@@ -63,7 +63,7 @@ final class ScreenshotCaptureTests: XCTestCase {
       app.launch()
       XCTAssertTrue(app.buttons["account.open"].waitForExistence(timeout: 10))
       XCTAssertTrue(app.buttons.matching(
-        NSPredicate(format: "label CONTAINS %@", "Rapunzel")).firstMatch
+        NSPredicate(format: "label CONTAINS %@", "Hedgehog")).firstMatch
         .waitForExistence(timeout: 10))
       try save(app.screenshot(), to: "\(prefix)-home.png")
       app.swipeUp()
@@ -78,7 +78,7 @@ final class ScreenshotCaptureTests: XCTestCase {
 
       XCTAssertTrue(app.openLibrary())
       let card = app.buttons.matching(
-        NSPredicate(format: "label CONTAINS %@", "Yorkie & Roses")).firstMatch
+        NSPredicate(format: "label CONTAINS %@", "Peony Garden")).firstMatch
       XCTAssertTrue(card.waitForExistence(timeout: 10))
       try save(app.screenshot(), to: "\(prefix)-library.png")
       card.tap()

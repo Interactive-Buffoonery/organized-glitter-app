@@ -66,8 +66,8 @@ struct DetailDateOnlyTests {
 
   @Test
   func webRichTextNotesBecomePlainText() {
-    let html = "<p>Soft <strong>pink</strong> roses</p><p>Tom &amp; Jerry&nbsp;&lt;3</p><ul><li>AB drills</li></ul>"
-    #expect(html.plainTextFromHTML == "Soft pink roses\nTom & Jerry <3\n• AB drills")
+    let html = "<p>Soft <strong>pink</strong> roses</p><p>Salt &amp; Pepper&nbsp;&lt;3</p><ul><li>AB drills</li></ul>"
+    #expect(html.plainTextFromHTML == "Soft pink roses\nSalt & Pepper <3\n• AB drills")
     #expect("Plain & simple".plainTextFromHTML == "Plain & simple")
     #expect("1 < 2 and 3 > 1".plainTextFromHTML == "1 < 2 and 3 > 1")
     #expect("Use a < b and c > d".plainTextFromHTML == "Use a < b and c > d")

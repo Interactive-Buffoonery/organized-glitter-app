@@ -34,7 +34,7 @@ enum NotesCraft: String, CaseIterable, Identifiable, Sendable {
 struct NotesFeedEntry: Identifiable, Hashable, Sendable {
   let note: ProgressNoteItem
   let target: LibraryItem
-  /// "Yorkie & Roses", or "Princesses · Page 3".
+  /// "Peony Garden", or "Garden Friends · Page 3".
   let contextTitle: String
 
   var id: String { note.id }

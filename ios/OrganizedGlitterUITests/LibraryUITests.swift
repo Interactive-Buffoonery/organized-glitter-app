@@ -111,7 +111,7 @@ final class LibraryUITests: XCTestCase {
     openLibrary(app)
     XCTAssertTrue(modes.buttons["List"].waitForExistence(timeout: 5))
     XCTAssertTrue(modes.buttons["List"].isSelected)
-    let card = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Yorkie & Roses,")).firstMatch
+    let card = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Peony Garden,")).firstMatch
     XCTAssertTrue(card.waitForExistence(timeout: 5))
     XCTAssertTrue(card.label.contains("40×50"))
     XCTAssertTrue(card.label.contains("Started"))
@@ -219,7 +219,7 @@ final class LibraryUITests: XCTestCase {
   func testSearchStatusAndSortUseServerBackedControls() throws {
     let app = launch("design")
     openLibrary(app)
-    XCTAssertTrue(app.staticTexts["Yorkie & Roses"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Peony Garden"].waitForExistence(timeout: 5))
 
     let status = app.buttons["library.status"]
     XCTAssertEqual(status.value as? String, "All, 12")
@@ -234,7 +234,7 @@ final class LibraryUITests: XCTestCase {
     }
     completed.tap()
     XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
+    XCTAssertFalse(app.staticTexts["Peony Garden"].exists)
     XCTAssertEqual(status.value as? String, "Completed, 1")
     try capture(app, "library-status-filtered")
 
@@ -249,14 +249,14 @@ final class LibraryUITests: XCTestCase {
     // All groups covers into status shelves; sort orders each shelf.
     XCTAssertTrue(
       app.descendants(matching: .any)["library.shelf.progress"].waitForExistence(timeout: 5))
-    let divine = app.staticTexts["Divine Descent"]
-    let yorkie = app.staticTexts["Yorkie & Roses"]
-    XCTAssertTrue(divine.waitForExistence(timeout: 5))
-    XCTAssertTrue(yorkie.exists)
+    let citrus = app.staticTexts["Citrus Grove"]
+    let peony = app.staticTexts["Peony Garden"]
+    XCTAssertTrue(citrus.waitForExistence(timeout: 5))
+    XCTAssertTrue(peony.exists)
     XCTAssertTrue(
-      divine.frame.minY < yorkie.frame.minY
-        || (divine.frame.minY == yorkie.frame.minY
-          && divine.frame.minX < yorkie.frame.minX)
+      citrus.frame.minY < peony.frame.minY
+        || (citrus.frame.minY == peony.frame.minY
+          && citrus.frame.minX < peony.frame.minX)
     )
 
     XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
@@ -268,9 +268,9 @@ final class LibraryUITests: XCTestCase {
     }
     XCTAssertTrue(search.waitForExistence(timeout: 5))
     search.tap()
-    search.typeText("Divine\n")
-    XCTAssertTrue(app.staticTexts["Divine Descent"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Beachside Gathering"].exists)
+    search.typeText("Citrus\n")
+    XCTAssertTrue(app.staticTexts["Citrus Grove"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Blue Hour"].exists)
     try capture(app, "library-search")
   }
 }
