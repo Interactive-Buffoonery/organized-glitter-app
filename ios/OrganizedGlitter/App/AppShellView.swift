@@ -16,6 +16,8 @@ struct AppShellView: View {
   let user: UserRecord
   let library: LibrarySession
 
+  @AppStorage private var showCraftingStreak: Bool
+
   @Environment(\.scenePhase) private var scenePhase
 
   @Environment(\.horizontalSizeClass) private var sizeClass
@@ -41,6 +43,8 @@ struct AppShellView: View {
     self.client = client
     self.user = user
     self.library = library
+    _showCraftingStreak = AppStorage(
+      wrappedValue: false, CraftingStreak.preferenceKey(userID: user.id))
     _protectedFiles = State(initialValue: ProtectedFileAccess(client: client))
     _accountPreferences = State(
       initialValue: AccountPreferencesModel(
@@ -74,6 +78,16 @@ struct AppShellView: View {
                 isShowingAccount = true
               }
               .accessibilityIdentifier("account.open")
+            }
+            if showCraftingStreak {
+              ToolbarSpacer(.fixed, placement: .topBarLeading)
+              ToolbarItem(placement: .topBarLeading) {
+                CraftingStreakButton(
+                  library: library,
+                  timeZone: accountPreferences.user.timezone.flatMap { TimeZone(identifier: $0) }
+                    ?? .current,
+                  onNotesRequest: { selectedTab = .notes })
+              }
             }
             ToolbarItem(placement: .topBarTrailing) {
               CreateMenu(
@@ -180,7 +194,9 @@ struct AppShellView: View {
     .task { await connectivity.monitor() }
     .sheet(isPresented: $isShowingAccount) {
       NavigationStack {
-        AccountView(appModel: model, client: client, preferences: accountPreferences)
+        AccountView(
+          appModel: model, client: client, preferences: accountPreferences,
+          showCraftingStreak: $showCraftingStreak)
           .toolbar {
             ToolbarItem(placement: .confirmationAction) {
               Button("Done") { isShowingAccount = false }

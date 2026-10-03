@@ -27,6 +27,42 @@ final class OverviewUITests: XCTestCase {
     element.exists && !element.frame.isEmpty && app.frame.contains(element.frame)
   }
 
+  func testCraftingStreakTogglePersistsAndOpensNotes() throws {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-ui-testing-authenticated", "-overview-fixture", "design",
+    ]
+    app.launch()
+    XCTAssertTrue(app.buttons["account.open"].waitForExistence(timeout: 5))
+    app.buttons["account.open"].tap()
+    let toggle = app.switches["account.showCraftingStreak"]
+    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
+    XCTAssertTrue(toggle.isHittable)
+    if toggle.value as? String == "1" { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
+    app.buttons["Done"].tap()
+    XCTAssertFalse(app.buttons["home.craftingStreak"].exists)
+    app.buttons["account.open"].tap()
+    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+    XCTAssertEqual(toggle.value as? String, "1")
+    app.buttons["Done"].tap()
+    let streak = app.buttons["home.craftingStreak"]
+    XCTAssertTrue(streak.waitForExistence(timeout: 5))
+    XCTAssertEqual(streak.label, "5-day crafting streak")
+    XCTAssertTrue(isOnScreen(streak, in: app))
+    streak.tap()
+    XCTAssertTrue(app.buttons["notes.add"].waitForExistence(timeout: 5))
+    app.terminate()
+    app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design"]
+    app.launch()
+    XCTAssertTrue(streak.waitForExistence(timeout: 5))
+    app.buttons["account.open"].tap()
+    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+    app.buttons["Done"].tap()
+    XCTAssertTrue(streak.waitForNonExistence(timeout: 5))
+  }
+
   func testNotesTabSharesNewLogsAndKeepsItsOwnDetailStack() throws {
     let app = launch("design")
     XCTAssertTrue(app.buttons["account.open"].waitForExistence(timeout: 5))

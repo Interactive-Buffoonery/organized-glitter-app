@@ -9,6 +9,7 @@ struct AccountView: View {
   let appModel: AppModel
   let client: PocketBaseClient
   @Bindable var preferences: AccountPreferencesModel
+  @Binding var showCraftingStreak: Bool
 
   var body: some View {
     List {
@@ -101,6 +102,12 @@ struct AccountView: View {
           Text("Crafts")
         } footer: {
           Text("At least one craft stays enabled. Turning one off hides its Library and Create choices without deleting anything.")
+        }
+
+        Section("Home") {
+          Toggle("Show crafting streak", isOn: $showCraftingStreak)
+            .accessibilityLabel("Show crafting streak")
+            .accessibilityIdentifier("account.showCraftingStreak")
         }
 
         Section("Help and legal") {
