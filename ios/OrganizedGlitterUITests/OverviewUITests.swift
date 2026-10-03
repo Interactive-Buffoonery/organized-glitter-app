@@ -74,9 +74,7 @@ final class OverviewUITests: XCTestCase {
     home.tap()
     let log = app.buttons["overview.log.design-project-0"]
     XCTAssertTrue(log.waitForExistence(timeout: 5))
-    let shelf = app.scrollViews["overview.continue.shelf"]
-    for _ in 0..<6 where !isOnScreen(log, in: app) { shelf.swipeLeft() }
-    XCTAssertTrue(isOnScreen(log, in: app))
+    for _ in 0..<5 where !log.isHittable { app.swipeUp() }
     log.tap()
     let caption = app.descendants(matching: .any)
       .matching(NSPredicate(format: "placeholderValue == %@", "Caption (optional)")).firstMatch
@@ -90,28 +88,29 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Logged from Home"].waitForExistence(timeout: 5))
   }
 
-  func testContinueOpensDetailAndLogsProgress() throws {
+  func testPickUpOpensDetailAndLogsProgress() throws {
     let app = launch("populated")
+    XCTAssertTrue(app.staticTexts["Welcome back"].waitForExistence(timeout: 5))
+    let hero = app.buttons["overview.hero"]
+    XCTAssertTrue(hero.waitForExistence(timeout: 5))
+    XCTAssertTrue(hero.label.contains("Garden of stars"))
+    XCTAssertTrue(hero.label.contains("Finished the first section."))
     let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden"))
       .firstMatch
-    XCTAssertTrue(page.waitForExistence(timeout: 5))
-    XCTAssertTrue(
-      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Logged"))
-        .firstMatch.waitForExistence(timeout: 5))
+    XCTAssertTrue(page.exists)
+    XCTAssertFalse(app.staticTexts["Wishlist garden"].exists)
     try capture(app, "overview-top")
 
     let log = app.buttons["overview.log.fictional-project-1"]
-    XCTAssertTrue(log.exists)
     XCTAssertEqual(log.label, "Log progress for Garden of stars")
     log.tap()
     XCTAssertTrue(app.descendants(matching: .any)["detail.progress.noteEditor"].waitForExistence(timeout: 5))
     try capture(app, "overview-log-sheet")
     app.buttons["Cancel"].tap()
 
-    let shelf = app.scrollViews["overview.continue.shelf"]
-    let logLast = app.buttons["overview.log.fictional-project-2"]
-    for _ in 0..<6 where !isOnScreen(logLast, in: app) { shelf.swipeLeft() }
-    logLast.tap()
+    let logRow = app.buttons["overview.log.fictional-project-2"]
+    for _ in 0..<5 where !logRow.isHittable { app.swipeUp() }
+    logRow.tap()
     let caption = app.descendants(matching: .any)
       .matching(NSPredicate(format: "placeholderValue == %@", "Caption (optional)")).firstMatch
     XCTAssertTrue(caption.waitForExistence(timeout: 5))
@@ -119,47 +118,24 @@ final class OverviewUITests: XCTestCase {
     caption.typeText("Filled the corner")
     app.buttons["detail.progress.noteSubmit"].tap()
     XCTAssertTrue(app.descendants(matching: .any)["detail.progress.noteEditor"].waitForNonExistence(timeout: 5))
-    let moved = XCTNSPredicateExpectation(
-      predicate: NSPredicate { _, _ in
-        self.isOnScreen(logLast, in: app) && logLast.frame.minX < log.frame.minX
-      }, object: nil)
-    XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 5), .completed)
-    XCTAssertTrue(
-      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Logged today"))
-        .firstMatch.exists)
+    let promoted = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "label CONTAINS %@", "Filled the corner"), object: hero)
+    XCTAssertEqual(XCTWaiter.wait(for: [promoted], timeout: 5), .completed)
+    XCTAssertTrue(hero.label.contains("chapter 2"))
 
+    for _ in 0..<5 where !page.isHittable { app.swipeUp() }
     page.tap()
     XCTAssertTrue(
       app.navigationBars["A moonlit garden with a very long, winding path"]
         .waitForExistence(timeout: 3))
   }
 
-  func testUpNextOpensTheStashFilter() throws {
-    let app = launch("design")
-    let upNext = app.buttons["overview.upNext"]
-    XCTAssertTrue(upNext.waitForExistence(timeout: 5))
-    XCTAssertTrue(
-      app.buttons.matching(NSPredicate(format: "label == %@", "Beachside Gathering, In stash"))
-        .firstMatch.exists)
-    try capture(app, "overview-bottom")
-    upNext.tap()
-    app.buttons["In stash"].tap()
+  func testEmptyHomeOpensTheStash() throws {
+    let app = launch("empty")
+    let stash = app.buttons["overview.stash"]
+    XCTAssertTrue(stash.waitForExistence(timeout: 5))
+    stash.tap()
     assertOpenedShelf("In stash", in: app)
-    XCTAssertTrue(app.staticTexts["Beachside Gathering"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
-  }
-
-  func testCompletedShortcutOpensTheSelectedLibraryFilter() throws {
-    let app = launch("design")
-    let finished = app.buttons["overview.finished"]
-    XCTAssertTrue(finished.waitForExistence(timeout: 5))
-    for _ in 0..<5 where !finished.isHittable { app.swipeUp() }
-    finished.tap()
-    app.buttons["Completed diamond art"].tap()
-
-    assertOpenedShelf("Completed", in: app)
-    XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Yorkie & Roses"].exists)
   }
 
   /// iPad opens the shelf's own sidebar row; iPhone selects its status.
@@ -236,7 +212,7 @@ final class OverviewUITests: XCTestCase {
   func testLoadingEmptyAndErrorStates() throws {
     for (scenario, label) in [
       ("loading", "Loading your overview"),
-      ("empty", "No work in progress"),
+      ("empty", "Nothing in progress"),
       ("error", "Couldn’t load your overview"),
     ] {
       let app = launch(scenario)

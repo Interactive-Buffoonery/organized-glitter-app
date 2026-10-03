@@ -94,25 +94,6 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(app.navigationBars["A moonlit garden with a very long, winding path"].waitForExistence(timeout: 5))
   }
 
-  func testHomePageShortcutDoesNotReplaceColoringBooks() throws {
-    try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone tab handoff.")
-    let app = launch("populated")
-    openLibrary(app)
-    XCTAssertTrue(app.openCraft("Coloring"))
-    XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
-    app.tabBars.buttons["Home"].tap()
-    app.buttons["overview.continue"].tap()
-    app.buttons["Coloring pages in progress"].tap()
-    XCTAssertTrue(app.navigationBars["Search"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden")).firstMatch.waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Coloring pages: In progress"].exists)
-    app.buttons["library.clearPageSearchFilter"].tap()
-    XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
-    openLibrary(app)
-    XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["A moonlit garden with a very long, winding path"].exists)
-  }
-
   func testViewModesRememberEachCraftAndOpenDetails() throws {
     let app = launch("design")
     openLibrary(app)
