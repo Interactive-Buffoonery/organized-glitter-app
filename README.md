@@ -6,13 +6,17 @@ repository contains the source code for its native apps.
 The SwiftUI client for iPhone and iPad
 lives in `ios/`. Other platforms may be added alongside it in the future.
 
-At this time, this project is very, very much a work in progress. This README will be updated as the app progresses. You can access the web version of the app at https://organizedglitter.app.
+At this time, this project is very, very much a work in progress. This README will be updated as the app progresses. You can access the web version of the app at [https://organizedglitter.app](https://organizedglitter.app), and you can find updates on the progress of both the web and mobile apps at [https://organizedglitter.app/updates/](https://organizedglitter.app/updates/).
 
 ## Requirements
 
 - Xcode 26 or newer
 - XcodeGen 2.46 or newer
 - iOS or iPadOS 26.0 or newer
+
+Local tests also require Python 3 and an installed iOS 26 simulator runtime
+with at least one iPhone and one iPad simulator. Select the full Xcode developer
+directory with `xcode-select`; Command Line Tools alone cannot run these tests.
 
 Routine builds, tests, and interface review use iOS and iPadOS 26 simulators.
 APIs newer than iOS 26 must stay behind availability checks.
@@ -65,14 +69,54 @@ cp Config/Debug.local.xcconfig.example Config/Debug.local.xcconfig
 
 ## Tests
 
-Run the local preflight check from the repository root:
+Run the local pre-PR check from the repository root:
 
 ```sh
 ./ios/script/pre-pr.sh
 ```
 
-Most tests run without a backend. Seeded PocketBase tests are opt-in and read
-their URL and test credentials from environment variables.
+This runs on your Mac, without using GitHub Actions. The script checks whitespace
+with `git diff --check`, regenerates the Xcode project, then runs three suites
+sequentially:
+
+1. Unit tests on an iPhone simulator.
+2. Fixture UI tests on an iPhone simulator.
+3. Fixture UI tests on an iPad simulator.
+
+The script selects available iOS 26 simulators and prints their names, runtime
+versions, and IDs. To use specific simulators, get their IDs with
+`xcrun simctl list devices available` and pass both overrides:
+
+```sh
+IPHONE_SIMULATOR_ID='<iPhone simulator UUID>' \
+IPAD_SIMULATOR_ID='<iPad simulator UUID>' \
+./ios/script/pre-pr.sh
+```
+
+Each override is optional, but must identify an available device of the matching
+family running iOS 26. The earlier `DESTINATION` override is replaced by these
+device-specific variables. Use simulators that other test runs are not using.
+
+Each run saves separate logs and `.xcresult` bundles under
+`ios/.derived-data/pre-pr/run.*`. UI suites can take several minutes; use
+`tail -f` on the printed log path to watch progress. The command prints passed,
+failed, and skipped test counts for each suite, plus skipped UI test names from
+the logs. Open a result bundle in Xcode for details. A failed suite does not
+prevent the remaining suites from running; the command exits unsuccessfully if
+any suite fails or has
+no passing tests. Missing prerequisites stop the command before testing.
+
+The routine gate uses local fixtures and excludes the seeded PocketBase tests,
+even if their opt-in flag is set. Those integration tests require a separate run
+against an isolated backend with disposable test accounts and private local
+configuration. Never use production accounts or commit test credentials.
+
+Dedicated screenshot captures, system Reduce Motion checks, accessibility
+detail captures, and seeded photo-picker checks remain opt-in. Device-specific
+tests also skip on the other device family. A passing routine run does not mean
+these skipped checks passed. Record the local suite results and relevant skips
+in the PR's Verification section. For UI changes, also review iPhone and iPad
+layouts, Dynamic Type, and accessibility, and attach relevant screenshots.
 
 ## Project boundaries
 
