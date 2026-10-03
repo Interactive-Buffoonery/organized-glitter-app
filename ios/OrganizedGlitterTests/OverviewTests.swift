@@ -4,56 +4,6 @@ import Testing
 @testable import OrganizedGlitter
 
 @MainActor
-@Suite("Overview month boundary")
-struct OverviewTests {
-  /// A timestamp just after midnight UTC on the first of the month. Before the
-  /// fix the boundary was built from the local calendar but serialized as UTC,
-  /// so in any negative-offset zone this instant fell outside "this month".
-  @Test("month start is the first of the month as a PocketBase date")
-  func monthStartIsFirstOfMonth() throws {
-    let july = try #require(
-      ISO8601DateFormatter().date(from: "2026-07-15T12:00:00Z")
-    )
-
-    #expect(OverviewModel.startOfMonth(containing: july, timeZone: .gmt) == "2026-07-01")
-  }
-
-  @Test("month end is the exclusive first day of the next month")
-  func monthEndIsExclusive() throws {
-    let july = try #require(
-      ISO8601DateFormatter().date(from: "2026-07-15T12:00:00Z")
-    )
-
-    #expect(OverviewModel.startOfNextMonth(containing: july, timeZone: .gmt) == "2026-08-01")
-  }
-
-  @Test("boundary rolls to the correct month across a year boundary")
-  func januaryBoundary() throws {
-    let december = try #require(
-      ISO8601DateFormatter().date(from: "2026-12-05T08:00:00Z")
-    )
-
-    #expect(OverviewModel.startOfMonth(containing: december, timeZone: .gmt) == "2026-12-01")
-    #expect(OverviewModel.startOfNextMonth(containing: december, timeZone: .gmt) == "2027-01-01")
-  }
-
-  @Test("this month uses the local calendar, not the UTC month")
-  func localEveningStaysInTheLocalMonth() throws {
-    let timeZone = try #require(TimeZone(identifier: "America/Los_Angeles"))
-    var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = timeZone
-    let localEvening = try #require(
-      calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 20))
-    )
-
-    #expect(OverviewModel.startOfMonth(containing: localEvening, timeZone: timeZone) == "2026-10-01")
-    #expect(
-      OverviewModel.startOfNextMonth(containing: localEvening, timeZone: timeZone) == "2026-11-01")
-    #expect(OverviewModel.startOfMonth(containing: localEvening, timeZone: .gmt) == "2026-11-01")
-  }
-}
-
-@MainActor
 @Suite("Overview presentation behavior")
 struct OverviewPresentationTests {
   private func client() -> PocketBaseClient {
@@ -63,23 +13,23 @@ struct OverviewPresentationTests {
     )
   }
 
-  private func project(image: String? = nil) -> LibraryItem {
+  private func project(image: String? = nil, started: String? = nil) -> LibraryItem {
     .diamond(
       DiamondProjectRecord(
         id: "fictional-project", title: "Garden of stars", user: "fictional-user",
         company: nil, artist: nil, status: "progress", kitCategory: "full",
         drillShape: nil, generalNotes: nil, width: nil, height: nil, image: image,
-        dateStarted: nil, dateCompleted: nil, created: "2026-09-01", updated: "2026-09-07",
+        dateStarted: started, dateCompleted: nil, created: "2026-09-01", updated: "2026-09-07",
         expand: nil
       ))
   }
 
-  private func page(photos: [String] = []) -> LibraryItem {
+  private func page(photos: [String] = [], started: String? = nil) -> LibraryItem {
     .page(
       ColoringPageRecord(
         id: "fictional-page", book: "fictional-book", pageNumber: 12,
         status: "in_progress", photos: photos, revealedSubject: "A moonlit garden",
-        completedAt: nil, startedAt: nil, created: "2026-09-01", updated: "2026-09-06",
+        completedAt: nil, startedAt: started, created: "2026-09-01", updated: "2026-09-06",
         expand: nil
       ))
   }
@@ -95,6 +45,35 @@ struct OverviewPresentationTests {
     #expect(
       OverviewModel.continueOrder([noted, recent], latestNoteDates: ["fictional-page": "2026-09-01"])
         == [noted, recent])
+  }
+
+  @Test func heroIsTheLatestNoteAcrossCrafts() {
+    let diamond = project()
+    let coloring = page()
+    #expect(
+      OverviewModel.continueOrder(
+        [diamond, coloring],
+        latestNoteDates: ["fictional-project": "2026-09-18", "fictional-page": "2026-09-19"]
+      ).first == coloring)
+    #expect(
+      OverviewModel.continueOrder(
+        [coloring, diamond],
+        latestNoteDates: ["fictional-project": "2026-09-20 00:00:00.000Z", "fictional-page": "2026-09-19"]
+      ).first == diamond)
+  }
+
+  @Test func heroFallsBackToTheMostRecentlyStartedItem() {
+    // The project was edited more recently, but the page was started later.
+    let diamond = project(started: "2026-09-03")
+    let coloring = page(started: "2026-09-05 11:00:00.000Z")
+    #expect(OverviewModel.continueOrder([diamond, coloring], latestNoteDates: [:]) == [coloring, diamond])
+    // Starting something counts as working on it; a same-day note still wins.
+    #expect(
+      OverviewModel.continueOrder([diamond, coloring], latestNoteDates: ["fictional-project": "2026-09-04"])
+        == [coloring, diamond])
+    #expect(
+      OverviewModel.continueOrder([coloring, diamond], latestNoteDates: ["fictional-project": "2026-09-05"])
+        == [diamond, coloring])
   }
 
   @Test func loggedCaptionIsRelativeForAWeek() throws {
@@ -143,8 +122,39 @@ struct OverviewLoadingTests {
     await model.load()
     #expect(model.hasLoaded)
     #expect(model.items.map(\.recordID) == ["active"])
-    #expect(model.upNext.map(\.recordID) == ["kitted"])
     #expect(model.errorMessage == nil)
+  }
+
+  @Test func heroTakesTheLatestNoteAndItsText() async throws {
+    let snapshot = try JSONDecoder().decode(LocalFullSnapshot.self, from: Data(#"""
+    {
+      "version":1,
+      "projects":[
+        {"id":"kit","title":"Kit","user":"feature-user","status":"progress","kit_category":"full","created":"2026-09-01","updated":"2026-09-30"}
+      ],
+      "coloringBooks":[
+        {"id":"book","user":"feature-user","title":"Quiet Pages","status":"in_progress","total_pages":8,"created":"2026-09-01","updated":"2026-09-01"}
+      ],
+      "coloringPages":[
+        {"id":"page","book":"book","page_number":3,"status":"in_progress","photos":[],"created":"2026-09-01","updated":"2026-09-01"}
+      ],
+      "progressNotes":[
+        {"id":"kit-note","project":"kit","content":"Corner done","date":"2026-09-18","created":"2026-09-18","updated":"2026-09-18"}
+      ],
+      "coloringPageProgressNotes":[
+        {"id":"page-early","user":"feature-user","page":"page","content":"Earlier","date":"2026-09-19","created":"2026-09-19 08:00:00","updated":"2026-09-19"},
+        {"id":"page-late","user":"feature-user","page":"page","content":"Sky blended","date":"2026-09-19","created":"2026-09-19 20:00:00","updated":"2026-09-19"}
+      ]
+    }
+    """#.utf8))
+    let library = try localFeatureLibrary()
+    try await library.store.ingestSnapshot(snapshot, scope: library.scope)
+    let model = OverviewModel(library: library)
+    await model.load()
+    #expect(model.items.map(\.recordID) == ["page", "kit"])
+    #expect(model.latestNoteTexts["page"] == "Sky blended")
+    #expect(model.latestNoteTexts["kit"] == "Corner done")
+    #expect(model.bookPageCounts["book"] == 8)
   }
 
   @Test func continueKeepsLatestNoteAndBothCraftQuotas() async throws {
@@ -190,6 +200,5 @@ struct OverviewLoadingTests {
       scope: library.scope)
     await model.load()
     #expect(model.items.isEmpty)
-    #expect(model.upNext.map(\.recordID) == ["project"])
   }
 }

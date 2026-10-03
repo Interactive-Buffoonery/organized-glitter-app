@@ -54,13 +54,17 @@ screen backgrounds. The Shelf redesign (Option B in
   opens the editor. In regular width a Caveat heading repeats the
   navigation title (the craft or shelf), since iPadOS 26 hides a tab root's navigation title when the
   tab bar is at the top.
-- **Home.** A Continue carousel of in-progress covers, most recently logged
-  first within the fetched records (`/api/notes/latest`, falling back to
-  `updated`), each diamond cover
-  carrying a glass Log button. "Up next from your stash" shows Kitted up then
-  In stash covers. A single "N finished this month" row opens Completed.
-  Section titles open the matching Library filter; a menu picks the craft when
-  both are enabled. Notes lives in its own tab and iPad sidebar destination.
+- **Home.** "Pick up": the date and a Caveat "Welcome back" scroll with the
+  content (the bar title is hidden, since iPadOS 26 hides it at a tab root
+  anyway). A hero card shows the in-progress item worked on most recently
+  across both crafts: latest progress note first, then latest start date,
+  then `updated`. It shows the cover, credits or "Book · page N of M", size
+  and drill, the latest note, and a full-width Log progress button. Below it,
+  "Also in progress" lists the other diamond kits and coloring pages in
+  separate per-craft sections with a circular log button per row. Home shows
+  no stats or counts; on hold, stash, and finished work live in Library. With
+  nothing in progress, an empty state opens the stash shelf.
+  Notes lives in its own tab and iPad sidebar destination.
 - **Notes.** Group progress notes by month, newest first, with craft and year
   filters. Each entry identifies its diamond project or coloring page above the
   shared photo, date, and caption. Home and Create can open the Notes target
