@@ -53,18 +53,22 @@ final class OverviewModel {
         keep(note.page, date: note.date, created: note.created, content: note.content)
       }
       let dates = latest.mapValues(\.date)
+      let created = latest.mapValues(\.created)
       // Up to ten of each craft, so hiding either one never empties Home.
       let activeProjects = Self.continueOrder(
-        projects.filter { $0.status == "progress" }.map(LibraryItem.diamond), latestNoteDates: dates
+        projects.filter { $0.status == "progress" }.map(LibraryItem.diamond),
+        latestNoteDates: dates, noteCreated: created
       ).prefix(10)
       let activePages = Self.continueOrder(
-        pages.filter { $0.status == "in_progress" }.map(LibraryItem.page), latestNoteDates: dates
+        pages.filter { $0.status == "in_progress" }.map(LibraryItem.page),
+        latestNoteDates: dates, noteCreated: created
       ).prefix(10)
       bookPageCounts = pageCounts
       latestNoteTexts = latest.mapValues(\.content)
       withAnimation(animation) {
         latestNoteDates = dates
-        items = Self.continueOrder(Array(activeProjects + activePages), latestNoteDates: dates)
+        items = Self.continueOrder(
+          Array(activeProjects + activePages), latestNoteDates: dates, noteCreated: created)
       }
       hasLoaded = true
     } catch APIError.unauthenticated {
@@ -82,12 +86,15 @@ final class OverviewModel {
 
   /// Most recently logged first, then most recently started; records with
   /// neither fall back to `updated`. Note dates are date-only, so a note
-  /// logged today outranks a start or an edit today.
-  static func continueOrder(_ items: [LibraryItem], latestNoteDates: [String: String])
-    -> [LibraryItem]
-  {
+  /// logged today outranks a start or an edit today, and same-day notes
+  /// compare by when they were created.
+  static func continueOrder(
+    _ items: [LibraryItem], latestNoteDates: [String: String], noteCreated: [String: String] = [:]
+  ) -> [LibraryItem] {
     func key(_ item: LibraryItem) -> String {
-      if let note = latestNoteDates[item.recordID] { return String(note.prefix(10)) + "~" }
+      if let note = latestNoteDates[item.recordID] {
+        return String(note.prefix(10)) + "~" + (noteCreated[item.recordID] ?? "")
+      }
       let started: String? =
         switch item {
         case .diamond(let project): project.dateStarted
