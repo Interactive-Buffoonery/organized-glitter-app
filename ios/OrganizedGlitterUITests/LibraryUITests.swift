@@ -192,6 +192,26 @@ final class LibraryUITests: XCTestCase {
     try capture(app, "library-ipad-books")
   }
 
+  func testLargestAccessibilityCraftMenuChangesSelection() throws {
+    try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "Compact-width craft menu.")
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-ui-testing-authenticated", "-overview-fixture", "populated",
+      "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+    ]
+    app.launch()
+    openLibrary(app)
+    let craft = app.buttons["library.craft"]
+    XCTAssertTrue(craft.waitForExistence(timeout: 5))
+    XCTAssertEqual(craft.value as? String, "Diamond art")
+    XCTAssertTrue(craft.frame.maxX <= app.frame.maxX)
+    craft.tap()
+    app.buttons["Coloring"].firstMatch.tap()
+    XCTAssertTrue(app.staticTexts["Moonlit meadows"].waitForExistence(timeout: 5))
+    XCTAssertEqual(craft.value as? String, "Coloring")
+    try capture(app, "library-largest-accessibility-craft")
+  }
+
   func testAccessibleCraftMenuAndRotation() throws {
     try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone craft menu.")
     let app = launch("populated")
