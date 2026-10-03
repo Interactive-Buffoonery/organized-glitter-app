@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import OrganizedGlitter
 
@@ -122,5 +123,69 @@ struct LibraryItemMetadataTests {
     #expect(value.specifications.isEmpty)
     #expect(value.detailLine.isEmpty)
     #expect(value.accessibilityLabel(for: .diamond(empty)) == "Empty, Wishlist")
+  }
+}
+
+struct LibraryViewModeColumnTests {
+  @Test func compactWidthKeepsFixedCounts() {
+    #expect(LibraryViewMode.covers.columns(regularWidth: false, dynamicTypeSize: .large).count == 2)
+    #expect(LibraryViewMode.compact.columns(regularWidth: false, dynamicTypeSize: .large).count == 3)
+    #expect(LibraryViewMode.list.columns(regularWidth: false, dynamicTypeSize: .large).count == 1)
+    for size in [DynamicTypeSize.accessibility1, .accessibility2, .accessibility3, .accessibility4, .accessibility5] {
+      for mode in LibraryViewMode.allCases {
+        #expect(mode.columns(regularWidth: false, dynamicTypeSize: size).count == 1)
+      }
+    }
+  }
+
+  @Test(arguments: [
+    (LibraryViewMode.covers, CGFloat(160), CGFloat(220)),
+    (.compact, 100, 140),
+    (.list, 360, 530),
+  ])
+  func regularWidthSizesColumnsByWidth(mode: LibraryViewMode, minimum: CGFloat, maximum: CGFloat) {
+    #expect(mode.columns(regularWidth: true, dynamicTypeSize: .large)
+      == [GridItem(.adaptive(minimum: minimum, maximum: maximum), spacing: 14, alignment: .top)])
+  }
+
+  @Test func regularWidthFitsTwoListRowsButNeverThree() {
+    let columns = LibraryViewMode.list.columns(regularWidth: true, dynamicTypeSize: .large)
+    guard case .adaptive(let minimum, _) = columns.first?.size, let spacing = columns.first?.spacing
+    else { Issue.record("List should be adaptive in regular width"); return }
+    #expect(minimum * 3 + spacing * 2 > LibraryViewMode.regularMaxWidth)
+    // An 11-inch iPad in portrait, less the 20-point margins.
+    #expect(minimum * 2 + spacing <= 834 - 40)
+  }
+
+  @Test func accessibilityColumnsGrowWithTextAndKeepListWider() {
+    var previousMinimum: CGFloat = 0
+    for size in [DynamicTypeSize.accessibility1, .accessibility2, .accessibility3, .accessibility4] {
+      let covers = LibraryViewMode.covers.columns(regularWidth: true, dynamicTypeSize: size)
+      let list = LibraryViewMode.list.columns(regularWidth: true, dynamicTypeSize: size)
+      guard case .adaptive(let minimum, _) = covers[0].size,
+        case .adaptive(let listMinimum, _) = list[0].size
+      else { Issue.record("Accessibility columns should adapt to available width"); return }
+      #expect(minimum > previousMinimum)
+      #expect(listMinimum >= 360)
+      #expect(listMinimum > minimum)
+      #expect(LibraryViewMode.compact.columns(regularWidth: true, dynamicTypeSize: size) == covers)
+      previousMinimum = minimum
+    }
+  }
+
+  @Test func narrowRegularWidthUsesOneColumnWithoutOverflow() {
+    for size in [DynamicTypeSize.accessibility1, .accessibility2, .accessibility3, .accessibility4] {
+      for mode in LibraryViewMode.allCases {
+        #expect(mode.columns(regularWidth: true, dynamicTypeSize: size, availableWidth: 280)
+          == [GridItem(.flexible(), spacing: 14, alignment: .top)])
+      }
+    }
+  }
+
+  @Test func largestAccessibilitySizeUsesOneFullWidthColumn() {
+    for mode in LibraryViewMode.allCases {
+      #expect(mode.columns(regularWidth: true, dynamicTypeSize: .accessibility5)
+        == [GridItem(.flexible(), spacing: 14, alignment: .top)])
+    }
   }
 }

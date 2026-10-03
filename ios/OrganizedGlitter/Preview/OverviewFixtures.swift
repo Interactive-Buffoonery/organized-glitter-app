@@ -758,6 +758,13 @@
           }
           project["expand"] = expand
         }
+        if ProcessInfo.processInfo.arguments.contains("-fixture-long-library-text") {
+          project["title"] = "A Garden of Wildflowers Beneath the Moon and Stars"
+          var expand = project["expand"] as! [String: Any]
+          expand["company"] = ["id": "design-company", "name": "The Example Diamond Painting Company"]
+          expand["artist"] = ["id": "design-artist-\(index)", "name": "Alexandra Example and the Garden Illustration Studio"]
+          project["expand"] = expand
+        }
         return project
       }
       let extraKits = [

@@ -108,6 +108,73 @@ final class ScreenshotCaptureTests: XCTestCase {
     }
   }
 
+  /// Library density on iPad: every view mode in portrait and landscape. Set
+  /// the simulator appearance from the host and pass it as
+  /// `LIBRARY_DENSITY_APPEARANCE` to name the files.
+  func testCaptureLibraryDensity() throws {
+    guard let dir = ProcessInfo.processInfo.environment["LIBRARY_DENSITY_DIR"] else {
+      throw XCTSkip("Library density capture is opt-in; set LIBRARY_DENSITY_DIR.")
+    }
+    try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+    let appearance = ProcessInfo.processInfo.environment["LIBRARY_DENSITY_APPEARANCE"] ?? "light"
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-selectedThemeFlavor", "system", "-ui-testing-authenticated", "-overview-fixture", "design",
+    ]
+    XCUIDevice.shared.orientation = .portrait
+    app.launch()
+    XCTAssertTrue(app.openLibrary())
+    let modes = app.segmentedControls["library.viewMode"]
+    XCTAssertTrue(modes.waitForExistence(timeout: 10))
+    for (orientation, name) in [
+      (UIDeviceOrientation.portrait, "portrait"), (.landscapeLeft, "landscape"),
+    ] {
+      XCUIDevice.shared.orientation = orientation
+      Thread.sleep(forTimeInterval: 2)
+      for mode in ["Covers", "Compact", "List"] {
+        modes.buttons[mode].tap()
+        Thread.sleep(forTimeInterval: 1.5)
+        try save(XCUIScreen.main.screenshot(), to: "\(dir)/\(name)-\(appearance)-\(mode.lowercased()).png")
+      }
+    }
+    modes.buttons["Covers"].tap()
+    let sidebarToggle = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS[c] %@", "sidebar")).allElementsBoundByIndex
+      .first { $0.isHittable }
+    if let sidebarToggle {
+      sidebarToggle.tap()
+      Thread.sleep(forTimeInterval: 1.5)
+      try save(XCUIScreen.main.screenshot(), to: "\(dir)/landscape-collapsed-\(appearance)-covers.png")
+      sidebarToggle.tap()
+    }
+    XCUIDevice.shared.orientation = .portrait
+    app.terminate()
+
+    let baseArguments = app.launchArguments + ["-fixture-long-library-text"]
+    for (size, category) in [
+      ("ax1", "UICTContentSizeCategoryAccessibilityM"),
+      ("ax3", "UICTContentSizeCategoryAccessibilityXL"),
+      ("ax5", "UICTContentSizeCategoryAccessibilityXXXL"),
+    ] {
+      app.launchArguments = baseArguments + ["-UIPreferredContentSizeCategoryName", category]
+      app.launch()
+      XCTAssertTrue(app.openLibrary())
+      XCTAssertTrue(modes.waitForExistence(timeout: 10))
+      for (orientation, name) in [
+        (UIDeviceOrientation.portrait, "portrait"), (.landscapeLeft, "landscape"),
+      ] {
+        XCUIDevice.shared.orientation = orientation
+        for mode in ["Covers", "Compact", "List"] {
+          modes.buttons[mode].tap()
+          XCTAssertTrue(modes.buttons[mode].isSelected)
+          try save(XCUIScreen.main.screenshot(), to: "\(dir)/\(name)-\(size)-\(appearance)-\(mode.lowercased()).png")
+        }
+      }
+      app.terminate()
+    }
+    XCUIDevice.shared.orientation = .portrait
+  }
+
   private func captureAccountEntry(into dir: String) throws {
     let signedOut = XCUIApplication()
     signedOut.launchArguments += ["-ui-testing-signed-out", "-ui-testing-social-providers"]
