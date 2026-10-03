@@ -26,20 +26,20 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("refinement-01-overview")
 
     openLibrary(app)
-    XCTAssertTrue(app.staticTexts["Peony Garden"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Summer Garden Blooms"].waitForExistence(timeout: 5))
     try capture("refinement-02-diamond-gallery")
 
-    openCard(named: "Peony Garden", in: app)
+    openCard(named: "Summer Garden Blooms", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     assertArtworkLoaded("Project artwork", in: app)
     try capture("refinement-03-diamond-detail")
 
     app.navigationBars.buttons.element(boundBy: 0).tap()
     selectCraft("Coloring", in: app)
-    XCTAssertTrue(app.staticTexts["Garden Friends"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Smithsonian Libraries Coloring Pages, Volume 2"].waitForExistence(timeout: 5))
     try capture("refinement-04-book-gallery")
 
-    openCard(named: "Garden Friends", in: app)
+    openCard(named: "Smithsonian Libraries Coloring Pages, Volume 2", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(element("detail.book.pages", in: app).waitForExistence(timeout: 5))
     assertArtworkLoaded("Book cover", in: app)
@@ -95,22 +95,22 @@ final class NativeRefinementUITests: XCTestCase {
   func testDiamondEditCancelSaveAndDeleteRemainStateful() {
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Peony Garden", in: app)
+    openCard(named: "Summer Garden Blooms", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
     button("detail.edit", in: app).tap()
     XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
     app.buttons["Cancel"].tap()
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Peony Garden"].exists)
+    XCTAssertTrue(app.staticTexts["Summer Garden Blooms"].exists)
 
     button("detail.edit", in: app).tap()
     let title = app.textFields["Title"]
     XCTAssertTrue(title.waitForExistence(timeout: 5))
-    replaceText(in: title, with: "Peony Garden updated", app: app)
+    replaceText(in: title, with: "Summer Garden Blooms updated", app: app)
     app.buttons["Save"].tap()
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
-    XCTAssertTrue(app.staticTexts["Peony Garden updated"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Summer Garden Blooms updated"].waitForExistence(timeout: 5))
 
     button("detail.more", in: app).tap()
     button("detail.delete", in: app).tap()
@@ -119,13 +119,13 @@ final class NativeRefinementUITests: XCTestCase {
       confirmation.tap()
     }
     XCTAssertFalse(element("detail.diamond", in: app).waitForExistence(timeout: 3))
-    XCTAssertFalse(app.staticTexts["Peony Garden updated"].exists)
+    XCTAssertFalse(app.staticTexts["Summer Garden Blooms updated"].exists)
   }
 
   func testDiamondDetailShowsSpecsDetailsAndChangesStatus() throws {
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Peony Garden", in: app)
+    openCard(named: "Summer Garden Blooms", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(element("detail.specs", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(button("detail.progress.addNote", in: app).exists)
@@ -156,7 +156,7 @@ final class NativeRefinementUITests: XCTestCase {
       app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Florals and Gardens"))
         .firstMatch.exists)
     XCTAssertTrue(
-      app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Soft pink peonies"))
+      app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Bright summer blooms"))
         .firstMatch.exists)
     try capture("detail-diamond-lower")
   }
@@ -164,7 +164,7 @@ final class NativeRefinementUITests: XCTestCase {
   func testPhotoViewerOpensCoverAndPagesProgressPhotos() {
     let app = launchFixture()
     openLibrary(app)
-    openCard(named: "Peony Garden", in: app)
+    openCard(named: "Summer Garden Blooms", in: app)
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
 
     let cover = element("detail.hero", in: app)
@@ -217,7 +217,7 @@ final class NativeRefinementUITests: XCTestCase {
     let app = launchFixture(scenario: "many-pages")
     openLibrary(app)
     selectCraft("Coloring", in: app)
-    openCard(named: "Garden Friends", in: app)
+    openCard(named: "Smithsonian Libraries Coloring Pages, Volume 2", in: app)
     XCTAssertTrue(element("detail.book", in: app).waitForExistence(timeout: 5))
 
     let loadMore = element("detail.book.loadMore", in: app)
@@ -266,7 +266,7 @@ final class NativeRefinementUITests: XCTestCase {
     confirm.tap()
 
     let uploadedPhoto = app.descendants(matching: .any).matching(
-      NSPredicate(format: "label == %@", "Page photo 2: Hedgehog")
+      NSPredicate(format: "label == %@", "Page photo 2: Passionflowers")
     ).firstMatch
     XCTAssertTrue(uploadedPhoto.waitForExistence(timeout: 10))
     XCTAssertTrue(element("detail.page", in: app).exists)
@@ -298,7 +298,7 @@ final class NativeRefinementUITests: XCTestCase {
   private func openFirstDesignPage(in app: XCUIApplication) {
     openLibrary(app)
     selectCraft("Coloring", in: app)
-    openCard(named: "Garden Friends", in: app)
+    openCard(named: "Smithsonian Libraries Coloring Pages, Volume 2", in: app)
     let page = element("detail.book.page.design-page-0", in: app)
     makeHittable(page, in: app)
     page.tap()
