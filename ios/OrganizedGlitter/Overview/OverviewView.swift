@@ -175,6 +175,7 @@ struct OverviewView: View {
       }
       .padding(.horizontal, 20)
       .frame(maxWidth: 760, alignment: .leading)
+      .padding(.top, 8)
       .padding(.bottom, 32)
       .frame(maxWidth: .infinity)
     }
