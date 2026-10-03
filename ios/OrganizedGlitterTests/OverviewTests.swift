@@ -62,6 +62,22 @@ struct OverviewPresentationTests {
       ).first == diamond)
   }
 
+  @Test func heroBreaksSameDayNotesByCreation() {
+    let diamond = project()
+    let coloring = page()
+    let dates = ["fictional-project": "2026-09-19", "fictional-page": "2026-09-19"]
+    #expect(
+      OverviewModel.continueOrder(
+        [diamond, coloring], latestNoteDates: dates,
+        noteCreated: ["fictional-project": "2026-09-19 09:00:00.000Z", "fictional-page": "2026-09-19 15:00:00.000Z"]
+      ).first == coloring)
+    #expect(
+      OverviewModel.continueOrder(
+        [coloring, diamond], latestNoteDates: dates,
+        noteCreated: ["fictional-project": "2026-09-19 18:00:00.000Z", "fictional-page": "2026-09-19 15:00:00.000Z"]
+      ).first == diamond)
+  }
+
   @Test func heroFallsBackToTheMostRecentlyStartedItem() {
     // The project was edited more recently, but the page was started later.
     let diamond = project(started: "2026-09-03")
