@@ -7,12 +7,13 @@ struct CraftingStreakButton: View {
 
   @Environment(\.theme) private var theme
   var body: some View {
+    let noteDates = NotesFeed.entries(
+      items: library.items, diamondNotes: library.progressNotes,
+      coloringNotes: library.coloringPageProgressNotes
+    ).map { $0.note.date }
     TimelineView(.periodic(from: .now, by: 60)) { context in
-      let entries = NotesFeed.entries(
-        items: library.items, diamondNotes: library.progressNotes,
-        coloringNotes: library.coloringPageProgressNotes)
       let count = CraftingStreak.count(
-        noteDates: entries.map { $0.note.date }, now: context.date, timeZone: timeZone)
+        noteDates: noteDates, now: context.date, timeZone: timeZone)
       pill(count: count)
     }
   }
