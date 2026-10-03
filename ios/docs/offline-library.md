@@ -86,11 +86,16 @@ native build. The native contract pins verified backend source and schema; it
 does not establish deployment status. No production deployment is part of this
 change. Backend and native PRs must be reviewed together before release.
 
-Run `./ios/script/pre-pr.sh` with the iOS 26 simulator destination. Relevant
-coverage includes durable restart, account isolation, follow-up edits, conflict
-resolution, snapshot failure, local search and sorting, session expiration,
-sign-out confirmation, and cache-only artwork requests. Backend tests run
-against a disposable PocketBase instance with the production hooks loaded,
+Run `./ios/script/pre-pr.sh` for unit tests and fixture UI tests on available
+iOS 26 iPhone and iPad simulators. To select specific devices, set
+`IPHONE_SIMULATOR_ID` and `IPAD_SIMULATOR_ID` using IDs from
+`xcrun simctl list devices available`. Each override is optional and must match
+the device family and iOS 26 runtime; see
+[the local test guide](../../README.md#tests). Relevant coverage includes durable
+restart, account isolation, follow-up edits, conflict resolution, snapshot
+failure, local search and sorting, session expiration, sign-out confirmation,
+and cache-only artwork requests. Backend tests run separately against a
+disposable PocketBase instance with the production hooks loaded,
 including unauthorized access, relation ownership, conflicts, replay, and
 schema migration behavior. iOS and iPadOS 26 remain the deployment minimum.
 

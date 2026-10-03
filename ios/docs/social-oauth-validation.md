@@ -84,6 +84,9 @@ project-file conflict. Review fixes are in `95b23fb`:
   case. Callback state validation remains in place. Provider names and symbols
   now come from one `SocialProvider` mapping.
 - `DESTINATION='platform=iOS Simulator,id=C3F25292-F37D-4B34-BBA7-7955D3883C06' ./ios/script/pre-pr.sh` passed on a dedicated iOS 26.5 simulator: 173 unit tests in 27 suites and the full UI suite, including provider buttons. Device-specific and opt-in checks were skipped where their prerequisites were absent.
+  This recorded command used the earlier pre-PR script. Current runs use
+  `IPHONE_SIMULATOR_ID` and `IPAD_SIMULATOR_ID`; see
+  [the local test guide](../../README.md#tests).
 - The Release simulator build passed with signing disabled.
 
 The first full preflight on the shared iPhone simulator ended with two runner
