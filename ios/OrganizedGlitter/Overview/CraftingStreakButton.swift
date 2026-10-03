@@ -30,11 +30,7 @@ struct CraftingStreakButton: View {
         .font(.karla(.body))
         .fontWeight(.semibold)
         .fixedSize()
-        .padding(.horizontal, 10)
-        .frame(minHeight: 44)
       }
-      .buttonStyle(.plain)
-      .glassEffect(.regular.interactive(), in: .capsule)
       .accessibilityLabel("\(count)-day crafting streak")
       .accessibilityHint("Opens Notes")
       .accessibilityIdentifier("home.craftingStreak")

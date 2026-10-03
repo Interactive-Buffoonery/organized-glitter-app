@@ -73,12 +73,15 @@ struct AppShellView: View {
             onSessionExpired: { await model.expireSession() }
           )
           .toolbar {
-            ToolbarItemGroup(placement: .topBarLeading) {
+            ToolbarItem(placement: .topBarLeading) {
               Button("Account", systemImage: "person.crop.circle") {
                 isShowingAccount = true
               }
               .accessibilityIdentifier("account.open")
-              if showCraftingStreak {
+            }
+            if showCraftingStreak {
+              ToolbarSpacer(.fixed, placement: .topBarLeading)
+              ToolbarItem(placement: .topBarLeading) {
                 CraftingStreakButton(
                   library: library,
                   timeZone: accountPreferences.user.timezone.flatMap { TimeZone(identifier: $0) }
