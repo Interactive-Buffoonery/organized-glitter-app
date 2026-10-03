@@ -199,9 +199,11 @@ struct OverviewLoadingTests {
     let model = OverviewModel(library: library)
     await model.load()
     #expect(model.items.count == 20)
-    #expect(model.items.filter { if case .diamond = $0 { true } else { false } }.count == 10)
-    #expect(model.items.filter { if case .page = $0 { true } else { false } }.count == 10)
+    #expect(model.items.filter { $0.section == .diamonds }.count == 10)
+    #expect(model.items.filter { $0.section == .pages }.count == 10)
     #expect(model.items.first?.recordID == "project-0")
+    // The two least recently updated kits fall past the cap.
+    #expect(!model.items.contains { ["project-1", "project-2"].contains($0.recordID) })
   }
 
   @Test func reloadReflectsLocalRecordChanges() async throws {
