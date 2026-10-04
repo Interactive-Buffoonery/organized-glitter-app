@@ -195,7 +195,7 @@ struct AppShellView: View {
     .sheet(isPresented: $isShowingAccount) {
       NavigationStack {
         AccountView(
-          appModel: model, client: client, preferences: accountPreferences,
+          appModel: model, library: library, client: client, preferences: accountPreferences,
           showCraftingStreak: $showCraftingStreak)
           .toolbar {
             ToolbarItem(placement: .confirmationAction) {
