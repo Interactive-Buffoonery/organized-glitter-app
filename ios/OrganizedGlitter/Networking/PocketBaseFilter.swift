@@ -20,10 +20,21 @@ enum PocketBaseFilter {
     case pageNumber = "page_number"
     case dateCompleted = "date_completed"
     case completedAt = "completed_at"
+    case company
+    case artist
+    case tag
+    case publisher
+    case illustrator
+    case mediumID = "mediums.id"
   }
 
   static func equals(_ field: Field, _ value: String) -> String {
     "\(field.rawValue) = \"\(escape(value))\""
+  }
+
+  /// Matches when any value of a multiple relation equals `value`.
+  static func anyEquals(_ field: Field, _ value: String) -> String {
+    "\(field.rawValue) ?= \"\(escape(value))\""
   }
 
   static func contains(_ field: Field, _ value: String) -> String {
