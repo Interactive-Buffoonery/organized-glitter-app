@@ -62,6 +62,7 @@
 		520A66E850A6A166302AD55A /* NotesFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = D397B85343078096890EF556 /* NotesFeed.swift */; };
 		57B719A3A6D4E0E88F59BA9D /* PrivateArtworkStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55DA63A04D6C14AE2EF96802 /* PrivateArtworkStoreTests.swift */; };
 		5984DF19440D36F48EB42089 /* DetailDateOnly.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4598F11155765ABCC33C5CA7 /* DetailDateOnly.swift */; };
+		5A4E170398BB3BFCDA4FBE6A /* EntryOnlineWriteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02B4F977702D4E0BDEBE834D /* EntryOnlineWriteTests.swift */; };
 		5A7005B358D623FE511A003B /* BackendContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E0AAB8943F1B2ACAA6F424 /* BackendContract.swift */; };
 		5B4A728313D360C5608A8E04 /* CraftingStreak.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668AF67B52F69DCF227F26B0 /* CraftingStreak.swift */; };
 		677C36F16CDE821DB69B2174 /* CoverUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD3D05754AEB5E4718E7BD7 /* CoverUpload.swift */; };
@@ -162,6 +163,7 @@
 
 /* Begin PBXFileReference section */
 		0181086A3E70834F1F03899E /* DiamondProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiamondProjectDetailView.swift; sourceTree = "<group>"; };
+		02B4F977702D4E0BDEBE834D /* EntryOnlineWriteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryOnlineWriteTests.swift; sourceTree = "<group>"; };
 		0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomizerView.swift; sourceTree = "<group>"; };
 		07901506737CEE3AEB38D49A /* ColoringPageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringPageDetailView.swift; sourceTree = "<group>"; };
 		07EBA56EF84054FB531D0614 /* PocketBaseMultipartTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseMultipartTests.swift; sourceTree = "<group>"; };
@@ -552,6 +554,7 @@
 				2A4A440302CEFD156DEABCDC /* DetailPhotoProcessorTests.swift */,
 				6BD7BDF23879C0D2F6038DA2 /* DiamondProjectEditorTests.swift */,
 				CB2D9D83C502889A70BE1CD7 /* DiamondProjectWriteTests.swift */,
+				02B4F977702D4E0BDEBE834D /* EntryOnlineWriteTests.swift */,
 				4DE8DE8513CA782576A89296 /* KarlaTypographyTests.swift */,
 				E8B9784FB12A1B3910B9397C /* KeychainSessionStoreTests.swift */,
 				DA27606235E3389778F8BBEA /* LibraryItemDetailModelTests.swift */,
@@ -750,6 +753,7 @@
 				D0EA450F4C08A4646E1ED527 /* DetailPhotoProcessorTests.swift in Sources */,
 				93395587CBC8A8386023D152 /* DiamondProjectEditorTests.swift in Sources */,
 				E446C2D725742D28F1775107 /* DiamondProjectWriteTests.swift in Sources */,
+				5A4E170398BB3BFCDA4FBE6A /* EntryOnlineWriteTests.swift in Sources */,
 				E82803F4ABA37726B3AEDBDC /* KarlaTypographyTests.swift in Sources */,
 				0B146CB8F788DA26C94E17F5 /* KeychainSessionStoreTests.swift in Sources */,
 				68D419A8B6B9C39F6E59D0BA /* LibraryItemDetailModelTests.swift in Sources */,

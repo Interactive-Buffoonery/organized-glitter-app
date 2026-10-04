@@ -10,7 +10,9 @@ struct DiamondProjectWriteTests {
     return try #require(object as? [String: Any])
   }
 
-  private var baseline: DiamondProjectDraft {
+  private var baseline: DiamondProjectDraft { makeBaseline() }
+
+  private func makeBaseline(generalNotes: String? = nil) -> DiamondProjectDraft {
     DiamondProjectDraft(
       project: DiamondProjectRecord(
         id: "project-1",
@@ -21,7 +23,7 @@ struct DiamondProjectWriteTests {
         status: "progress",
         kitCategory: "full",
         drillShape: "round",
-        generalNotes: nil,
+        generalNotes: generalNotes,
         width: nil,
         height: nil,
         image: nil,
@@ -36,6 +38,7 @@ struct DiamondProjectWriteTests {
 
   @Test
   func updateWriteIncludesOnlyChangedFields() throws {
+    let baseline = makeBaseline(generalNotes: "<p><strong>Original HTML notes</strong></p>")
     var draft = baseline
     draft.title = "Moon Garden"
 
@@ -47,6 +50,7 @@ struct DiamondProjectWriteTests {
     )
     let object = try encodedObject(write)
 
+    #expect(Set(object.keys) == ["title"])
     #expect(object["title"] as? String == "Moon Garden")
     #expect(object["status"] == nil)
     #expect(object["kit_category"] == nil)

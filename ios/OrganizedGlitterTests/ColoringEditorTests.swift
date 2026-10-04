@@ -194,6 +194,7 @@ struct ColoringEditorTests {
     )
     let object = try encodedObject(write)
 
+    #expect(Set(object.keys) == ["title"])
     #expect(object["title"] as? String == "Secret Garden")
     #expect(object["user"] == nil)
     #expect(object["series"] == nil)
