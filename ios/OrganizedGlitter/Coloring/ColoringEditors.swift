@@ -693,10 +693,6 @@ struct ColoringPageEditor: View {
             }
 
             TextField("Revealed subject", text: $draft.revealedSubject)
-
-            Text("Changing status sets these dates. You can also change them on the page.")
-              .font(.karla(.footnote))
-              .foregroundStyle(theme.mutedForeground)
           }
 
           if let errorMessage {
@@ -758,9 +754,9 @@ struct ColoringPageEditor: View {
 }
 
 // Never includes `user` or `book` keys: pages are created by the server when a
-// book's total changes, and ownership flows through the book relation. The
-// server hook manages `started_at`/`completed_at` from status transitions, so
-// the client only ever writes status and the revealed subject. Unchanged
+// book's total changes, and ownership flows through the book relation. Like
+// the web app, a status change leaves `started_at`/`completed_at` alone; those
+// dates are set from the page detail view. Unchanged
 // fields are nil so the encoder omits the key and PATCH leaves them alone;
 // clearing the subject sends `""`.
 struct ColoringPageWrite: Encodable, Sendable {
