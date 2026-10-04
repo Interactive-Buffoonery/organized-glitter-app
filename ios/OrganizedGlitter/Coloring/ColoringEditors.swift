@@ -51,6 +51,16 @@ struct ColoringBookEditor: View {
   @State private var isSaving = false
   @State private var errorMessage: String?
 
+  @State private var coverChange: CoverChange = .unchanged
+  @State private var savedBook: ColoringBookRecord?
+
+  private var currentCoverURL: URL? {
+    guard let book = savedBook ?? book, let cover = book.coverImage?.nonEmpty else { return nil }
+    return protectedFiles?.url(
+      collection: "coloring_books", recordID: book.id,
+      filename: cover, thumb: ArtworkThumb.gallery)
+  }
+
   init(
     library: LibrarySession,
     book: ColoringBookRecord? = nil,
@@ -70,37 +80,11 @@ struct ColoringBookEditor: View {
     NavigationStack {
       Form {
         Group {
-          if let book, let cover = book.coverImage?.nonEmpty {
-            Section {
-              RemoteArtwork(
-                url: protectedFiles?.url(
-                  collection: "coloring_books",
-                  recordID: book.id,
-                  filename: cover,
-                  thumb: ArtworkThumb.gallery
-                ),
-                maxPixelDimension: 480
-              ) { phase in
-                if case .success(let image) = phase {
-                  image.resizable().scaledToFill()
-                } else {
-                  RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                    .fill(theme.muted)
-                    .overlay {
-                      Image(systemName: "book.closed")
-                        .foregroundStyle(theme.mutedForeground)
-                    }
-                }
-              }
-              .frame(width: 160, height: 220)
-              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
-              .accessibilityLabel("Book cover")
-
-              Text("Cover upload is coming soon.")
-                .font(.karla(.footnote))
-                .foregroundStyle(theme.mutedForeground)
-            }
-          }
+          CoverImageSection(
+            currentCoverURL: currentCoverURL,
+            placeholderSystemImage: "book.closed",
+            accessibilityNoun: "Book cover", change: $coverChange)
+            .disabled(isSaving)
 
           Section("Book") {
             TextField("Title", text: $draft.title)
@@ -115,6 +99,8 @@ struct ColoringBookEditor: View {
             TextField("Total pages", value: $draft.totalPages, format: .number)
               .keyboardType(.numberPad)
           }
+
+          .disabled(savedBook != nil || isSaving)
 
           Section("Credits") {
             ListPicker(
@@ -133,7 +119,9 @@ struct ColoringBookEditor: View {
             )
           }
 
-          if book == nil || draft.totalPages != baseline.totalPages {
+          .disabled(savedBook != nil || isSaving)
+
+          if book == nil || draft.totalPages != baseline.totalPages || coverChange != .unchanged {
             Section { NeedsConnectionHint() }
           }
 
@@ -195,7 +183,9 @@ struct ColoringBookEditor: View {
 
     do {
       let saved: ColoringBookRecord
-      if let book {
+      if let savedBook {
+        saved = savedBook
+      } else if let book {
         if draft.totalPages != baseline.totalPages {
           saved = try await library.updateOnline(
             collection: "coloring_books", id: book.id, body: write)
@@ -206,8 +196,29 @@ struct ColoringBookEditor: View {
       } else {
         saved = try await library.create(collection: "coloring_books", body: write)
       }
-      onSaved(saved)
+      savedBook = saved
+      if coverChange != .unchanged {
+        do {
+          let covered: ColoringBookRecord = try await CoverUpload.apply(
+            coverChange, collection: "coloring_books", recordID: saved.id,
+            field: "cover_image", library: library)
+          onSaved(covered)
+        } catch APIError.cancelled {
+          return
+        } catch is CancellationError {
+          return
+        } catch {
+          errorMessage = "The book was saved, but the cover could not be uploaded. Try again."
+          return
+        }
+      } else {
+        onSaved(saved)
+      }
       dismiss()
+    } catch APIError.cancelled {
+      return
+    } catch is CancellationError {
+      return
     } catch {
       errorMessage = error.userMessage(
         permission: "Your account does not have permission to save this book.",
