@@ -20,6 +20,9 @@ struct ColoringPageDetailView: View {
   @State private var photoErrorMessage: String?
 
   var body: some View {
+    let startedDate = page.startedAt.flatMap { DetailDateOnly.date($0) }
+    let completedDate = page.completedAt.flatMap { DetailDateOnly.date($0) }
+    let today = Date.now
     ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 18) {
@@ -160,21 +163,26 @@ struct ColoringPageDetailView: View {
               .foregroundStyle(theme.foreground)
               .accessibilityAddTraits(.isHeader)
             DetailMetadataCard {
-              ForEach(dateFields, id: \.field) { row in
-                DetailDateRow(
-                  label: row.label,
-                  value: row.value,
-                  isDisabled: model.isMutating || model.unresolvedWriteState != nil,
-                  minimumDate: row.field == "completed_at"
-                    ? page.startedAt.flatMap { DetailDateOnly.date($0) } : nil,
-                  maximumDate: row.field == "started_at"
-                    ? min(page.completedAt.flatMap { DetailDateOnly.date($0) } ?? .now, .now)
-                    : .now
-                ) { date in
-                  saveDetailChange(
-                    { await model.setDate(row.field, to: date) },
-                    onCollectionChanged: onCollectionChanged)
-                }
+              DetailDateRow(
+                label: "Started",
+                value: page.startedAt,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                maximumDate: min(completedDate ?? today, today)
+              ) { date in
+                saveDetailChange(
+                  { await model.setDate("started_at", to: date) },
+                  onCollectionChanged: onCollectionChanged)
+              }
+              DetailDateRow(
+                label: "Completed",
+                value: page.completedAt,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                minimumDate: startedDate,
+                maximumDate: today
+              ) { date in
+                saveDetailChange(
+                  { await model.setDate("completed_at", to: date) },
+                  onCollectionChanged: onCollectionChanged)
               }
             }
           }
@@ -229,13 +237,6 @@ struct ColoringPageDetailView: View {
       id: "page-cover", url: url, fullSizeURL: url,
       accessibilityLabel: "Page artwork"
     )
-  }
-
-  private var dateFields: [(field: String, label: String, value: String?)] {
-    [
-      ("started_at", "Started", page.startedAt),
-      ("completed_at", "Completed", page.completedAt),
-    ]
   }
 
   private var photoHeader: some View {

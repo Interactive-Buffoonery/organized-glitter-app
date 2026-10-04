@@ -72,9 +72,7 @@ struct DetailDateRow: View {
           Button("Cancel") { isEditingDate = false }
           Spacer()
           Button("Save") {
-            guard !formDrawer.isPresenting, !isDisabled,
-              draftDate >= lowerBound, draftDate <= upperBound
-            else { return }
+            guard !formDrawer.isPresenting, !isDisabled else { return }
             isEditingDate = false
             if storedDateString
               != DetailDateOnly.string(from: draftDate)
@@ -82,7 +80,6 @@ struct DetailDateRow: View {
               onChange(draftDate)
             }
           }
-          .disabled(draftDate < lowerBound || draftDate > upperBound)
           .buttonStyle(.borderedProminent)
           .disabledWhileFormPresented(formDrawer, or: isDisabled)
         }
