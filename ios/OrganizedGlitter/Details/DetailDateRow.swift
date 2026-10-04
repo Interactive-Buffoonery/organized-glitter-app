@@ -14,13 +14,15 @@ struct DetailDateRow: View {
 
   var body: some View {
     let storedDate = value.flatMap { DetailDateOnly.date($0) }
+    let formattedDate = storedDate.map { DetailDateOnly.formatted($0) }
+    let storedDateString = storedDate.map { DetailDateOnly.string(from: $0) }
     DetailMetadataRow(label: label, combinesChildren: false) {
       HStack(spacing: 0) {
         Button {
           draftDate = storedDate ?? .now
           isEditingDate = true
         } label: {
-          if let value, let formatted = DetailDateOnly.formatted(value) {
+          if let formatted = formattedDate {
             Text(formatted)
               .frame(minHeight: 44)
               .contentShape(.rect)
@@ -34,7 +36,7 @@ struct DetailDateRow: View {
         .foregroundStyle(theme.pageAction)
         .accessibilityLabel(storedDate == nil
           ? "Add \(label.lowercased()) date" : "Change \(label.lowercased()) date")
-        .accessibilityValue(value.flatMap { DetailDateOnly.formatted($0) } ?? "No date")
+        .accessibilityValue(formattedDate ?? "No date")
         if storedDate != nil {
           Button {
             onChange(nil)
@@ -67,7 +69,7 @@ struct DetailDateRow: View {
           Button("Save") {
             guard !formDrawer.isPresenting, !isDisabled else { return }
             isEditingDate = false
-            if storedDate.map({ DetailDateOnly.string(from: $0) })
+            if storedDateString
               != DetailDateOnly.string(from: draftDate)
             {
               onChange(draftDate)
