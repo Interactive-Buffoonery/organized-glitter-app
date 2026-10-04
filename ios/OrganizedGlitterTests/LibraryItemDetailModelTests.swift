@@ -52,6 +52,31 @@ struct LibraryItemDetailModelTests {
     try await library.close(removingData: false)
   }
 
+  @Test(arguments: ["started_at", "completed_at"])
+  func pageDateEditsQueueOnlyTheDateField(field: String) async throws {
+    let library = try localFeatureLibrary()
+    let page = featurePage("page", book: "book", number: 3)
+    try await library.store.ingest(.book(featureBook("book", title: "Quiet Pages")), scope: library.scope)
+    try await library.store.ingest(.page(page), scope: library.scope)
+    let model = LibraryItemDetailModel(item: .page(page), library: library)
+    let day = try #require(DetailDateOnly.date("2026-09-17"))
+
+    #expect(await model.setDate(field, to: day))
+    guard case .page(let saved) = model.item else { Issue.record("Expected page"); return }
+    #expect((field == "started_at" ? saved.startedAt : saved.completedAt)?.hasPrefix("2026-09-17") == true)
+    let first = try #require(await library.store.pendingOperations(scope: library.scope).first)
+    #expect(first.patch == [field: .string("2026-09-17")])
+
+    #expect(await model.setDate(field, to: nil))
+    guard case .page(let cleared) = model.item else { Issue.record("Expected page"); return }
+    #expect((field == "started_at" ? cleared.startedAt : cleared.completedAt)?.nonEmpty == nil)
+    _ = try await library.store.acknowledge(
+      scope: library.scope, operationID: first.id, record: .page(saved))
+    let patch = try #require(await library.store.pendingOperations(scope: library.scope).first?.patch)
+    #expect(patch == [field: .string("")])
+    try await library.close(removingData: false)
+  }
+
   @Test func inlineDateEditsQueueDateOnlyStringsAndClear() async throws {
     let library = try localFeatureLibrary()
     let project = featureProject(

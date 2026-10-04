@@ -20,9 +20,6 @@ struct ColoringPageDetailView: View {
   @State private var photoErrorMessage: String?
 
   var body: some View {
-    let startedDate = formattedDate(page.startedAt)
-    let completedDate = formattedDate(page.completedAt)
-
     ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 18) {
@@ -157,18 +154,21 @@ struct ColoringPageDetailView: View {
             logEditor: $logEditor,
             onReveal: { proxy.scrollTo($0, anchor: .center) })
 
-          if startedDate != nil || completedDate != nil {
-            VStack(alignment: .leading, spacing: 12) {
-              Text("Page details")
-                .font(.karla(.title3).weight(.semibold))
-                .foregroundStyle(theme.foreground)
-                .accessibilityAddTraits(.isHeader)
-              DetailMetadataCard {
-                if let startedAt = startedDate {
-                  DetailMetadataRow(label: "Started", value: startedAt)
-                }
-                if let completedAt = completedDate {
-                  DetailMetadataRow(label: "Completed", value: completedAt)
+          VStack(alignment: .leading, spacing: 12) {
+            Text("Page details")
+              .font(.karla(.title3).weight(.semibold))
+              .foregroundStyle(theme.foreground)
+              .accessibilityAddTraits(.isHeader)
+            DetailMetadataCard {
+              ForEach(dateFields, id: \.field) { row in
+                DetailDateRow(
+                  label: row.label,
+                  value: row.value,
+                  isDisabled: model.isMutating || model.unresolvedWriteState != nil
+                ) { date in
+                  saveDetailChange(
+                    { await model.setDate(row.field, to: date) },
+                    onCollectionChanged: onCollectionChanged)
                 }
               }
             }
@@ -226,9 +226,11 @@ struct ColoringPageDetailView: View {
     )
   }
 
-  private func formattedDate(_ value: String?) -> String? {
-    guard let value = value?.nonEmpty else { return nil }
-    return DetailDateOnly.formatted(value)
+  private var dateFields: [(field: String, label: String, value: String?)] {
+    [
+      ("started_at", "Started", page.startedAt),
+      ("completed_at", "Completed", page.completedAt),
+    ]
   }
 
   private var photoHeader: some View {
