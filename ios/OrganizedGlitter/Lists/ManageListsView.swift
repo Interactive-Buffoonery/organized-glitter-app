@@ -28,7 +28,6 @@ struct ManageListsView: View {
       } label: {
         Label(kind.title, systemImage: kind.systemImage)
       }
-      .accessibilityLabel(kind.title)
       .listRowBackground(theme.card)
     }
   }
@@ -61,7 +60,7 @@ struct ListEntriesView: View {
           if entries.isEmpty {
             ContentUnavailableView(
               "No \(kind.title.lowercased())", systemImage: kind.systemImage,
-              description: Text("Add one here or while editing a project."))
+              description: Text("Add one here or while editing a record."))
           }
           ForEach(entries, id: \.id) { entry in
             Text(entry.name)
@@ -80,9 +79,11 @@ struct ListEntriesView: View {
       if let errorMessage {
         Section {
           AccessibleErrorLabel(message: errorMessage)
-          Button("Try Again") { Task { await load() } }
-            .accessibilityLabel("Try loading \(kind.title.lowercased()) again")
-            .disabled(busy)
+          if entries == nil {
+            Button("Try Again") { Task { await load() } }
+              .accessibilityLabel("Try loading \(kind.title.lowercased()) again")
+              .disabled(busy)
+          }
         }
         .listRowBackground(theme.card)
       }
@@ -97,7 +98,6 @@ struct ListEntriesView: View {
           name = ""
           showNameAlert = true
         }
-        .accessibilityLabel("Add \(kind.singular.lowercased())")
         .disabled(!canWrite)
       }
     }
@@ -204,7 +204,6 @@ struct ListEntriesView: View {
       var updated = (entries ?? []).filter { $0.id != saved.id }
       updated.append(saved)
       entries = updated.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-      try? await library.refresh(force: true)
     } catch APIError.cancelled {
     } catch {
       errorMessage = message(error, action: "Saving")
@@ -256,7 +255,6 @@ struct ListEntriesView: View {
     do {
       try await library.delete(collection: kind.collection, id: entry.id)
       entries?.removeAll { $0.id == entry.id }
-      try? await library.refresh(force: true)
     } catch APIError.cancelled {
     } catch APIError.validation(let detail) where detail.localizedCaseInsensitiveContains("still in use") {
       usage = ListUsagePresentation(name: entry.name, titles: [], total: 0)

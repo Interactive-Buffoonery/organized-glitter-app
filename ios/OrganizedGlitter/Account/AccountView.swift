@@ -113,7 +113,6 @@ struct AccountView: View {
           } label: {
             Label("Manage lists", systemImage: "list.bullet")
           }
-          .accessibilityLabel("Manage lists")
         }
 
         Section("Home") {
