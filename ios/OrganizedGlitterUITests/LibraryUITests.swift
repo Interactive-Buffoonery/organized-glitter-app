@@ -111,7 +111,7 @@ final class LibraryUITests: XCTestCase {
     openLibrary(app)
     XCTAssertTrue(modes.buttons["List"].waitForExistence(timeout: 5))
     XCTAssertTrue(modes.buttons["List"].isSelected)
-    let card = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Peony Garden,")).firstMatch
+    let card = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Summer Garden Blooms,")).firstMatch
     XCTAssertTrue(card.waitForExistence(timeout: 5))
     XCTAssertTrue(card.label.contains("40×50"))
     XCTAssertTrue(card.label.contains("Started"))
@@ -219,10 +219,10 @@ final class LibraryUITests: XCTestCase {
   func testSearchStatusAndSortUseServerBackedControls() throws {
     let app = launch("design")
     openLibrary(app)
-    XCTAssertTrue(app.staticTexts["Peony Garden"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["Summer Garden Blooms"].waitForExistence(timeout: 5))
 
     let status = app.buttons["library.status"]
-    XCTAssertEqual(status.value as? String, "All, 12")
+    XCTAssertEqual(status.value as? String, "All, 6")
     XCTAssertTrue(status.frame.maxX <= app.frame.maxX)
     XCTAssertTrue(app.buttons["library.sort"].frame.maxX <= app.frame.maxX)
     status.tap()
@@ -233,13 +233,13 @@ final class LibraryUITests: XCTestCase {
       app.collectionViews.firstMatch.swipeUp()
     }
     completed.tap()
-    XCTAssertTrue(app.staticTexts["Wildflowers"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Peony Garden"].exists)
+    XCTAssertTrue(app.staticTexts["Golden-Eyed Tabby"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Summer Garden Blooms"].exists)
     XCTAssertEqual(status.value as? String, "Completed, 1")
     try capture(app, "library-status-filtered")
 
     status.tap()
-    let all = app.buttons["All 12"]
+    let all = app.buttons["All 6"]
     for _ in 0..<6 where !all.exists || !all.isHittable {
       app.collectionViews.firstMatch.swipeDown()
     }
@@ -249,14 +249,14 @@ final class LibraryUITests: XCTestCase {
     // All groups covers into status shelves; sort orders each shelf.
     XCTAssertTrue(
       app.descendants(matching: .any)["library.shelf.progress"].waitForExistence(timeout: 5))
-    let citrus = app.staticTexts["Citrus Grove"]
-    let peony = app.staticTexts["Peony Garden"]
-    XCTAssertTrue(citrus.waitForExistence(timeout: 5))
-    XCTAssertTrue(peony.exists)
+    let monarch = app.staticTexts["Monarch in the Garden"]
+    let summer = app.staticTexts["Summer Garden Blooms"]
+    XCTAssertTrue(monarch.waitForExistence(timeout: 5))
+    XCTAssertTrue(summer.exists)
     XCTAssertTrue(
-      citrus.frame.minY < peony.frame.minY
-        || (citrus.frame.minY == peony.frame.minY
-          && citrus.frame.minX < peony.frame.minX)
+      monarch.frame.minY < summer.frame.minY
+        || (monarch.frame.minY == summer.frame.minY
+          && monarch.frame.minX < summer.frame.minX)
     )
 
     XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
@@ -268,9 +268,9 @@ final class LibraryUITests: XCTestCase {
     }
     XCTAssertTrue(search.waitForExistence(timeout: 5))
     search.tap()
-    search.typeText("Citrus\n")
-    XCTAssertTrue(app.staticTexts["Citrus Grove"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["Blue Hour"].exists)
+    search.typeText("Monarch\n")
+    XCTAssertTrue(app.staticTexts["Monarch in the Garden"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Misty Mount Rainier"].exists)
     try capture(app, "library-search")
   }
 }

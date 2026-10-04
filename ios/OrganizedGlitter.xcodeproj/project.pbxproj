@@ -94,6 +94,7 @@
 		9E113B58D90C3FAA2B37DAE5 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F029D79800F22CE6C8BCB60 /* AppShellView.swift */; };
 		9EE4833CB34FDEB0917AD529 /* AppleAuthorizationOutcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97725269D3AC4CF8523DD4C6 /* AppleAuthorizationOutcome.swift */; };
 		A5B239C543296F1A22FD8141 /* VerificationRequestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84804F12B2E01DD51C4BD891 /* VerificationRequestView.swift */; };
+		A63DF636F85B4FFAD55BF0E7 /* FixtureAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A772994E0DBA96147D63D3F8 /* FixtureAssets.xcassets */; };
 		A7365172AB35A101E89E30AD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C8130E21AA27F12F629A9523 /* PrivacyInfo.xcprivacy */; };
 		A82DBD7DC926114CF5579738 /* LibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6492B3FA9E99979892346890 /* LibraryModel.swift */; };
 		B487C0A1F2EF4330C3511E7E /* PocketBaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BDB7B08969A705D31411B4 /* PocketBaseModels.swift */; };
@@ -238,6 +239,7 @@
 		A0EFEA0FDF0D2A4FD5A59E4B /* OfflineSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineSessionTests.swift; sourceTree = "<group>"; };
 		A1A062DF60CF1608957A45F7 /* Karla-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Karla-OFL.txt"; sourceTree = "<group>"; };
 		A3277359BD8C95E73E0D0287 /* NumberSectionPickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberSectionPickerTests.swift; sourceTree = "<group>"; };
+		A772994E0DBA96147D63D3F8 /* FixtureAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = FixtureAssets.xcassets; sourceTree = "<group>"; };
 		A9E0AAB8943F1B2ACAA6F424 /* BackendContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendContract.swift; sourceTree = "<group>"; };
 		ABD86FAEE4E3F2BEF344FBC2 /* PasswordResetLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetLinkTests.swift; sourceTree = "<group>"; };
 		B9624B3D8D244CB1E218CDCD /* NativeRefinementAccessibilityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRefinementAccessibilityUITests.swift; sourceTree = "<group>"; };
@@ -332,6 +334,7 @@
 		1DE3B9E7E9288F3DC5A1976F /* Preview */ = {
 			isa = PBXGroup;
 			children = (
+				A772994E0DBA96147D63D3F8 /* FixtureAssets.xcassets */,
 				5FA902DB3B6AA8EFE35CDD98 /* OverviewFixtures.swift */,
 			);
 			path = Preview;
@@ -685,6 +688,7 @@
 				989735742582B75F9F402B94 /* Assets.xcassets in Resources */,
 				EB3F5E51F262CFE28DFBD02A /* BackendContract.json in Resources */,
 				3D6BFE41A3B50BDD4E82CCC5 /* Caveat.ttf in Resources */,
+				A63DF636F85B4FFAD55BF0E7 /* FixtureAssets.xcassets in Resources */,
 				811A66F3A567403D3397B0DF /* Karla-OFL.txt in Resources */,
 				683FBC24FC7949EB597728A4 /* Karla.ttf in Resources */,
 				4FB1DD8A2539C2339DCA1E43 /* OFL.txt in Resources */,
@@ -941,6 +945,8 @@
 				CODE_SIGN_ENTITLEMENTS = OrganizedGlitter/OrganizedGlitter.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = OrganizedGlitter/Preview/FixtureAssets.xcassets;
+				EXCLUDED_SOURCE_FILE_NAMES = "$(inherited) FixtureAssets.xcassets";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OrganizedGlitter/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -980,6 +986,7 @@
 				CODE_SIGN_ENTITLEMENTS = OrganizedGlitter/OrganizedGlitter.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = OrganizedGlitter/Preview/FixtureAssets.xcassets;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = OrganizedGlitter/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
