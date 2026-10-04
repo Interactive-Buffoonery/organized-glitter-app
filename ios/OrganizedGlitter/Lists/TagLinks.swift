@@ -9,13 +9,12 @@ enum TagLinks {
     library: LibrarySession
   ) async throws {
     precondition(kind.isTag)
-    guard old != new else { return }
     let parent: PocketBaseFilter.Field = kind == .diamondTag ? .project : .book
     let links: [Link] = try await library.client.allRecords(
       collection: kind.usageCollection,
       filter: PocketBaseFilter.equals(parent, recordID))
     let existingTags = Set(links.map(\.tag))
-    for tag in new.subtracting(old).subtracting(existingTags).sorted() {
+    for tag in new.subtracting(existingTags).sorted() {
       let _: Link = try await library.create(
         collection: kind.usageCollection, body: [parent.rawValue: recordID, "tag": tag])
     }

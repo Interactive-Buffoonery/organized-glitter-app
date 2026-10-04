@@ -117,7 +117,8 @@ struct DiamondProjectEditor: View {
   @Environment(\.protectedFiles) private var protectedFiles
   @State private var draft: DiamondProjectDraft
   @State private var coverChange: CoverChange = .unchanged
-  @State private var attemptedTagIDs: Set<String> = []
+  @State private var triedTagIDs: Set<String> = []
+  @State private var confirmedTagIDs: Set<String>
   @State private var savedRecord: DiamondProjectRecord?
   @State private var savedDraft: DiamondProjectDraft?
   @State private var isSaving = false
@@ -136,6 +137,7 @@ struct DiamondProjectEditor: View {
     let initialDraft = DiamondProjectDraft(project: project)
     baseline = initialDraft
     _draft = State(initialValue: initialDraft)
+    _confirmedTagIDs = State(initialValue: initialDraft.tagIDs)
   }
 
   private var currentCoverURL: URL? {
@@ -288,10 +290,15 @@ struct DiamondProjectEditor: View {
       savedRecord = saved
       savedDraft = submittedDraft
       do {
-        let previousTags = baseline.tagIDs.union(attemptedTagIDs)
-        attemptedTagIDs.formUnion(submittedDraft.tagIDs)
-        try await TagLinks.sync(kind: .diamondTag, recordID: saved.id,
-          from: previousTags, to: submittedDraft.tagIDs, library: library)
+        if submittedDraft.tagIDs != confirmedTagIDs {
+          let submittedTags = submittedDraft.tagIDs
+          let previousTags = baseline.tagIDs.union(triedTagIDs)
+          triedTagIDs.formUnion(submittedTags)
+          try await TagLinks.sync(
+            kind: .diamondTag, recordID: saved.id,
+            from: previousTags, to: submittedTags, library: library)
+          confirmedTagIDs = submittedTags
+        }
       } catch APIError.cancelled {
         return
       } catch is CancellationError {

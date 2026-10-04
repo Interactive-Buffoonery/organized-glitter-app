@@ -99,6 +99,8 @@ struct ColoringBookEditor: View {
   @State private var errorMessage: String?
 
   @State private var coverChange: CoverChange = .unchanged
+  @State private var triedTagIDs: Set<String> = []
+  @State private var confirmedTagIDs: Set<String>
   @State private var savedBook: ColoringBookRecord?
 
   private var currentCoverURL: URL? {
@@ -121,6 +123,7 @@ struct ColoringBookEditor: View {
     let initialDraft = ColoringBookDraft(book: book)
     baseline = initialDraft
     _draft = State(initialValue: initialDraft)
+    _confirmedTagIDs = State(initialValue: initialDraft.tags)
   }
 
   var body: some View {
@@ -339,9 +342,15 @@ struct ColoringBookEditor: View {
       }
       savedBook = saved
       do {
-        try await TagLinks.sync(
-          kind: .coloringTag, recordID: saved.id, from: baseline.tags,
-          to: draft.tags, library: library)
+        if draft.tags != confirmedTagIDs {
+          let submittedTags = draft.tags
+          let previousTags = baseline.tags.union(triedTagIDs)
+          triedTagIDs.formUnion(submittedTags)
+          try await TagLinks.sync(
+            kind: .coloringTag, recordID: saved.id,
+            from: previousTags, to: submittedTags, library: library)
+          confirmedTagIDs = submittedTags
+        }
       } catch APIError.cancelled {
         return
       } catch is CancellationError {

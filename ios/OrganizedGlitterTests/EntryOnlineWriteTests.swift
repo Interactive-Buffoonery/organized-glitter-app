@@ -35,10 +35,19 @@ struct EntryOnlineWriteTests {
     #expect(try await library.store.pendingCount(scope: library.scope) == 0)
   }
 
-  @Test func unchangedTagsMakeNoRequest() async throws {
-    let library = try localFeatureLibrary()
+  @Test(arguments: [ListKind.diamondTag, .coloringTag])
+  func failedMissingTagRetriesEvenWhenOldEqualsNew(kind: ListKind) async throws {
+    let library = try await makeLibrary()
+    defer { library.pauseWrites() }
+    EntryWriteProtocol.failWrite = true
+    await #expect(throws: APIError.server) {
+      try await TagLinks.sync(
+        kind: kind, recordID: "parent", from: [], to: ["missing"], library: library)
+    }
+    EntryWriteProtocol.failWrite = false
     try await TagLinks.sync(
-      kind: .diamondTag, recordID: "project", from: ["tag"], to: ["tag"], library: library)
+      kind: kind, recordID: "parent", from: ["missing"], to: ["missing"], library: library)
+    #expect(EntryWriteProtocol.writes.map(\.request.httpMethod) == ["POST", "POST"])
   }
 
   @Test(arguments: [ListKind.diamondTag, .coloringTag])
