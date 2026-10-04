@@ -7,6 +7,7 @@ struct AccountView: View {
   @Environment(\.connectionAvailable) private var connectionAvailable
 
   let appModel: AppModel
+  let library: LibrarySession
   let client: PocketBaseClient
   @Bindable var preferences: AccountPreferencesModel
   @Binding var showCraftingStreak: Bool
@@ -102,6 +103,16 @@ struct AccountView: View {
           Text("Crafts")
         } footer: {
           Text("At least one craft stays enabled. Turning one off hides its Library and Create choices without deleting anything.")
+        }
+
+        Section {
+          NavigationLink {
+            ManageListsView(
+              library: library, userID: preferences.user.id,
+              verticals: preferences.verticals)
+          } label: {
+            Label("Manage lists", systemImage: "list.bullet")
+          }
         }
 
         Section("Home") {

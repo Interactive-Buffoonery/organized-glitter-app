@@ -114,9 +114,21 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
   let illustrator: String?
   let created: String
   let updated: String
-  let expand: ColoringBookExpand?
+  var expand: ColoringBookExpand?
   var dateStarted: String? = nil
   var dateCompleted: String? = nil
+
+  var notes: String? = nil
+  var isMystery: Bool? = nil
+  var isbn: String? = nil
+  var bookFormat: String? = nil
+  var edition: String? = nil
+  var publicationYear: Int? = nil
+  var language: String? = nil
+  var theme: String? = nil
+  var sourceURL: String? = nil
+  var datePurchased: String? = nil
+  var dateReceived: String? = nil
 
   enum CodingKeys: String, CodingKey {
     case id, user, title, series, status, publisher, illustrator, created, updated, expand
@@ -124,24 +136,29 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
     case completedPages = "completed_pages"
     case completionPercentage = "completion_percentage"
     case coverImage = "cover_image"
+    case notes = "notes"
+    case isMystery = "is_mystery"
+    case isbn = "isbn"
+    case bookFormat = "book_format"
+    case edition = "edition"
+    case publicationYear = "publication_year"
+    case language = "language"
+    case theme = "theme"
+    case sourceURL = "source_url"
+    case datePurchased = "date_purchased"
+    case dateReceived = "date_received"
     case dateStarted = "date_started"
     case dateCompleted = "date_completed"
   }
 
-  func withExpand(_ expand: ColoringBookExpand?) -> ColoringBookRecord {
-    ColoringBookRecord(
-      id: id, user: user, title: title, series: series, status: status,
-      totalPages: totalPages, completedPages: completedPages,
-      completionPercentage: completionPercentage, coverImage: coverImage,
-      publisher: publisher, illustrator: illustrator, created: created,
-      updated: updated, expand: expand)
-      .withDates(dateStarted: dateStarted, dateCompleted: dateCompleted)
+  var tags: [TagRecord] {
+    (expand?.bookTags ?? []).compactMap(\.expand?.tag)
+      .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
   }
 
-  private func withDates(dateStarted: String?, dateCompleted: String?) -> ColoringBookRecord {
+  func withExpand(_ expand: ColoringBookExpand?) -> ColoringBookRecord {
     var copy = self
-    copy.dateStarted = dateStarted
-    copy.dateCompleted = dateCompleted
+    copy.expand = expand
     return copy
   }
 }

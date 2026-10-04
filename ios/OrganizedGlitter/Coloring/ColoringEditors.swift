@@ -7,6 +7,20 @@ struct ColoringBookDraft: Equatable {
   var totalPages: Int
   var publisher: String
   var illustrator: String
+  var notes: String
+  var isMystery: Bool
+  var isbn: String
+  var bookFormat: String
+  var edition: String
+  var publicationYear: Int?
+  var language: String
+  var theme: String
+  var sourceURL: String
+  var tags: Set<String>
+  var datePurchased: Date?
+  var dateReceived: Date?
+  var dateStarted: Date?
+  var dateCompleted: Date?
 
   init(book: ColoringBookRecord? = nil) {
     title = book?.title ?? ""
@@ -15,10 +29,30 @@ struct ColoringBookDraft: Equatable {
     totalPages = book?.totalPages ?? 1
     publisher = book?.publisher ?? ""
     illustrator = book?.illustrator ?? ""
+    notes = book?.notes ?? ""
+    isMystery = book?.isMystery ?? false
+    isbn = book?.isbn ?? ""
+    bookFormat = book?.bookFormat ?? ""
+    edition = book?.edition ?? ""
+    publicationYear = book?.publicationYear.flatMap { $0 == 0 ? nil : $0 }
+    language = book?.language ?? ""
+    theme = book?.theme ?? ""
+    sourceURL = book?.sourceURL ?? ""
+    tags = Set(book?.tags.map(\.id) ?? [])
+    datePurchased = book?.datePurchased.flatMap { DetailDateOnly.date($0) }
+    dateReceived = book?.dateReceived.flatMap { DetailDateOnly.date($0) }
+    dateStarted = book?.dateStarted.flatMap { DetailDateOnly.date($0) }
+    dateCompleted = book?.dateCompleted.flatMap { DetailDateOnly.date($0) }
+  }
+
+  var sourceValidationMessage: String? {
+    DiamondProjectDraft.normalizedSourceURL(sourceURL) == nil
+      ? "Enter a valid http or https link, or leave it empty." : nil
   }
 
   var isValid: Bool {
     !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && totalPages >= 1
+      && sourceValidationMessage == nil
   }
 
   /// Deliberately ignores server-computed fields (`completedPages`,
@@ -31,6 +65,19 @@ struct ColoringBookDraft: Equatable {
       && totalPages == record.totalPages
       && publisher == (record.publisher ?? "")
       && illustrator == (record.illustrator ?? "")
+      && notes == (record.notes ?? "")
+      && isMystery == (record.isMystery ?? false)
+      && isbn == (record.isbn ?? "")
+      && bookFormat == (record.bookFormat ?? "")
+      && edition == (record.edition ?? "")
+      && publicationYear == record.publicationYear.flatMap { $0 == 0 ? nil : $0 }
+      && language == (record.language ?? "")
+      && theme == (record.theme ?? "")
+      && sourceURL == (record.sourceURL ?? "")
+      && datePurchased == record.datePurchased.flatMap { DetailDateOnly.date($0) }
+      && dateReceived == record.dateReceived.flatMap { DetailDateOnly.date($0) }
+      && dateStarted == record.dateStarted.flatMap { DetailDateOnly.date($0) }
+      && dateCompleted == record.dateCompleted.flatMap { DetailDateOnly.date($0) }
   }
 }
 
@@ -51,6 +98,18 @@ struct ColoringBookEditor: View {
   @State private var isSaving = false
   @State private var errorMessage: String?
 
+  @State private var coverChange: CoverChange = .unchanged
+  @State private var triedTagIDs: Set<String> = []
+  @State private var confirmedTagIDs: Set<String>
+  @State private var savedBook: ColoringBookRecord?
+
+  private var currentCoverURL: URL? {
+    guard let book = savedBook ?? book, let cover = book.coverImage?.nonEmpty else { return nil }
+    return protectedFiles?.url(
+      collection: "coloring_books", recordID: book.id,
+      filename: cover)
+  }
+
   init(
     library: LibrarySession,
     book: ColoringBookRecord? = nil,
@@ -64,43 +123,18 @@ struct ColoringBookEditor: View {
     let initialDraft = ColoringBookDraft(book: book)
     baseline = initialDraft
     _draft = State(initialValue: initialDraft)
+    _confirmedTagIDs = State(initialValue: initialDraft.tags)
   }
 
   var body: some View {
     NavigationStack {
       Form {
         Group {
-          if let book, let cover = book.coverImage?.nonEmpty {
-            Section {
-              RemoteArtwork(
-                url: protectedFiles?.url(
-                  collection: "coloring_books",
-                  recordID: book.id,
-                  filename: cover,
-                  thumb: ArtworkThumb.gallery
-                ),
-                maxPixelDimension: 480
-              ) { phase in
-                if case .success(let image) = phase {
-                  image.resizable().scaledToFill()
-                } else {
-                  RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                    .fill(theme.muted)
-                    .overlay {
-                      Image(systemName: "book.closed")
-                        .foregroundStyle(theme.mutedForeground)
-                    }
-                }
-              }
-              .frame(width: 160, height: 220)
-              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium))
-              .accessibilityLabel("Book cover")
-
-              Text("Cover upload is coming soon.")
-                .font(.karla(.footnote))
-                .foregroundStyle(theme.mutedForeground)
-            }
-          }
+          CoverImageSection(
+            currentCoverURL: currentCoverURL,
+            placeholderSystemImage: "book.closed",
+            accessibilityNoun: "Book cover", change: $coverChange)
+            .disabled(isSaving)
 
           Section("Book") {
             TextField("Title", text: $draft.title)
@@ -112,30 +146,95 @@ struct ColoringBookEditor: View {
               }
             }
 
-            TextField("Total pages", value: $draft.totalPages, format: .number)
-              .keyboardType(.numberPad)
+            LabeledContent("Total pages") {
+              TextField("Total pages", value: $draft.totalPages, format: .number)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+            }
+
+            Toggle("Mystery book", isOn: $draft.isMystery)
           }
+          .disabled(savedBook != nil || isSaving)
 
           Section("Credits") {
-            TaxonomyPicker(
+            ListPicker(
               library: library,
               userID: userID,
-              collection: "book_publishers",
-              label: "Publisher",
+              kind: .publisher,
               initialName: book?.expand?.publisher?.name,
               selection: $draft.publisher
             )
-            TaxonomyPicker(
+            ListPicker(
               library: library,
               userID: userID,
-              collection: "book_illustrators",
-              label: "Illustrator",
+              kind: .illustrator,
               initialName: book?.expand?.illustrator?.name,
               selection: $draft.illustrator
             )
+            TagPicker(library: library, userID: userID, kind: .coloringTag, selection: $draft.tags)
           }
+          .disabled(savedBook != nil || isSaving)
 
-          if book == nil || draft.totalPages != baseline.totalPages {
+          Section {
+            textRow("ISBN", text: $draft.isbn)
+            Picker("Format", selection: $draft.bookFormat) {
+              Text("Not set").tag("")
+              Text("Paperback").tag("paperback")
+              Text("Hardcover").tag("hardcover")
+              Text("PDF").tag("pdf")
+              Text("Printable pages").tag("printable_pages")
+              Text("Magazine").tag("magazine")
+              Text("Other").tag("other")
+            }
+            textRow("Edition", text: $draft.edition)
+            LabeledContent("Year") {
+              TextField("Not set", value: Binding(
+                get: { draft.publicationYear },
+                set: { draft.publicationYear = $0 == 0 ? nil : $0 }),
+                format: .number.grouping(.never))
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .accessibilityLabel("Publication year")
+            }
+            Picker("Language", selection: $draft.language) {
+              Text("Not set").tag("")
+              Text("English").tag("english")
+              Text("Spanish").tag("spanish")
+              Text("French").tag("french")
+              Text("German").tag("german")
+              Text("Japanese").tag("japanese")
+              Text("Other").tag("other")
+              Text("Unknown").tag("unknown")
+            }
+            textRow("Theme", text: $draft.theme)
+            TextField("Source link", text: $draft.sourceURL)
+              .keyboardType(.URL)
+              .autocorrectionDisabled()
+              .textInputAutocapitalization(.never)
+          } header: {
+            Text("Bibliography")
+          } footer: {
+            if let message = draft.sourceValidationMessage {
+              AccessibleErrorLabel(message: message)
+            }
+          }
+          .disabled(savedBook != nil || isSaving)
+
+          Section("Dates") {
+            dateRow("Purchased", selection: $draft.datePurchased)
+            dateRow("Received", selection: $draft.dateReceived)
+            dateRow("Started", selection: $draft.dateStarted)
+            dateRow("Completed", selection: $draft.dateCompleted)
+          }
+          .disabled(savedBook != nil || isSaving)
+
+          Section("Notes") {
+            TextField("Notes", text: $draft.notes, axis: .vertical)
+              .lineLimit(3...8)
+          }
+          .disabled(savedBook != nil || isSaving)
+
+          if book == nil || draft.totalPages != baseline.totalPages || coverChange != .unchanged || draft.tags != baseline.tags {
             Section { NeedsConnectionHint() }
           }
 
@@ -179,6 +278,37 @@ struct ColoringBookEditor: View {
     }
   }
 
+  private func textRow(_ label: String, text: Binding<String>) -> some View {
+    LabeledContent(label) {
+      TextField("Not set", text: text)
+        .multilineTextAlignment(.trailing)
+        .accessibilityLabel(label)
+    }
+  }
+
+  @ViewBuilder
+  private func dateRow(_ label: String, selection: Binding<Date?>) -> some View {
+    if let date = selection.wrappedValue {
+      HStack {
+        DatePicker(label, selection: Binding(
+          get: { selection.wrappedValue ?? date },
+          set: { selection.wrappedValue = $0 }), displayedComponents: .date)
+        Button("Clear \(label.lowercased()) date", systemImage: "xmark.circle.fill") {
+          selection.wrappedValue = nil
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .foregroundStyle(.secondary)
+      }
+    } else {
+      LabeledContent(label) {
+        Button("Add") { selection.wrappedValue = Date() }
+          .foregroundStyle(theme.primary)
+          .accessibilityLabel("Add \(label.lowercased()) date")
+      }
+    }
+  }
+
   private func save() async {
     guard draft.isValid, !isSaving else {
       return
@@ -197,7 +327,9 @@ struct ColoringBookEditor: View {
 
     do {
       let saved: ColoringBookRecord
-      if let book {
+      if let savedBook {
+        saved = savedBook
+      } else if let book {
         if draft.totalPages != baseline.totalPages {
           saved = try await library.updateOnline(
             collection: "coloring_books", id: book.id, body: write)
@@ -208,8 +340,47 @@ struct ColoringBookEditor: View {
       } else {
         saved = try await library.create(collection: "coloring_books", body: write)
       }
-      onSaved(saved)
+      savedBook = saved
+      do {
+        if draft.tags != confirmedTagIDs {
+          let submittedTags = draft.tags
+          let previousTags = baseline.tags.union(triedTagIDs)
+          triedTagIDs.formUnion(submittedTags)
+          try await TagLinks.sync(
+            kind: .coloringTag, recordID: saved.id,
+            from: previousTags, to: submittedTags, library: library)
+          confirmedTagIDs = submittedTags
+        }
+      } catch APIError.cancelled {
+        return
+      } catch is CancellationError {
+        return
+      } catch {
+        errorMessage = "The book was saved, but the tags could not be updated. Connect and try again."
+        return
+      }
+      if coverChange != .unchanged {
+        do {
+          let covered: ColoringBookRecord = try await CoverUpload.apply(
+            coverChange, collection: "coloring_books", recordID: saved.id,
+            field: "cover_image", library: library)
+          onSaved(covered)
+        } catch APIError.cancelled {
+          return
+        } catch is CancellationError {
+          return
+        } catch {
+          errorMessage = "The book was saved, but the cover could not be uploaded. Try again."
+          return
+        }
+      } else {
+        onSaved(saved)
+      }
       dismiss()
+    } catch APIError.cancelled {
+      return
+    } catch is CancellationError {
+      return
     } catch {
       errorMessage = error.userMessage(
         permission: "Your account does not have permission to save this book.",
@@ -341,9 +512,35 @@ struct ColoringBookWrite: Encodable, Sendable {
   let totalPages: Int?
   let publisher: String?
   let illustrator: String?
+  let notes: String?
+  let isMystery: Bool?
+  let isbn: String?
+  let bookFormat: String?
+  let edition: String?
+  let publicationYear: Int?
+  let language: String?
+  let theme: String?
+  let sourceURL: String?
+  let datePurchased: String?
+  let dateReceived: String?
+  let dateStarted: String?
+  let dateCompleted: String?
 
   enum CodingKeys: String, CodingKey {
     case user, title, series, status, publisher, illustrator
+    case notes = "notes"
+    case isMystery = "is_mystery"
+    case isbn = "isbn"
+    case bookFormat = "book_format"
+    case edition = "edition"
+    case publicationYear = "publication_year"
+    case language = "language"
+    case theme = "theme"
+    case sourceURL = "source_url"
+    case datePurchased = "date_purchased"
+    case dateReceived = "date_received"
+    case dateStarted = "date_started"
+    case dateCompleted = "date_completed"
     case totalPages = "total_pages"
   }
 
@@ -355,6 +552,7 @@ struct ColoringBookWrite: Encodable, Sendable {
   ) -> ColoringBookWrite {
     let trimmedTitle = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
     let trimmedSeries = draft.series.trimmingCharacters(in: .whitespacesAndNewlines)
+    let sourceURL = DiamondProjectDraft.normalizedSourceURL(draft.sourceURL) ?? draft.sourceURL
     if isCreate {
       return ColoringBookWrite(
         user: userID,
@@ -363,7 +561,20 @@ struct ColoringBookWrite: Encodable, Sendable {
         status: draft.status,
         totalPages: draft.totalPages,
         publisher: draft.publisher,
-        illustrator: draft.illustrator
+        illustrator: draft.illustrator,
+        notes: draft.notes,
+        isMystery: draft.isMystery,
+        isbn: draft.isbn,
+        bookFormat: draft.bookFormat,
+        edition: draft.edition,
+        publicationYear: draft.publicationYear ?? 0,
+        language: draft.language,
+        theme: draft.theme,
+        sourceURL: sourceURL,
+        datePurchased: draft.datePurchased.map { DetailDateOnly.string(from: $0) } ?? "",
+        dateReceived: draft.dateReceived.map { DetailDateOnly.string(from: $0) } ?? "",
+        dateStarted: draft.dateStarted.map { DetailDateOnly.string(from: $0) } ?? "",
+        dateCompleted: draft.dateCompleted.map { DetailDateOnly.string(from: $0) } ?? ""
       )
     }
 
@@ -375,7 +586,21 @@ struct ColoringBookWrite: Encodable, Sendable {
       status: draft.status != baseline.status ? draft.status : nil,
       totalPages: draft.totalPages != baseline.totalPages ? draft.totalPages : nil,
       publisher: draft.publisher != baseline.publisher ? draft.publisher : nil,
-      illustrator: draft.illustrator != baseline.illustrator ? draft.illustrator : nil
+      illustrator: draft.illustrator != baseline.illustrator ? draft.illustrator : nil,
+      notes: draft.notes != baseline.notes ? draft.notes : nil,
+      isMystery: draft.isMystery != baseline.isMystery ? draft.isMystery : nil,
+      isbn: draft.isbn != baseline.isbn ? draft.isbn : nil,
+      bookFormat: draft.bookFormat != baseline.bookFormat ? draft.bookFormat : nil,
+      edition: draft.edition != baseline.edition ? draft.edition : nil,
+      publicationYear: draft.publicationYear != baseline.publicationYear ? (draft.publicationYear ?? 0) : nil,
+      language: draft.language != baseline.language ? draft.language : nil,
+      theme: draft.theme != baseline.theme ? draft.theme : nil,
+      sourceURL: sourceURL != DiamondProjectDraft.normalizedSourceURL(baseline.sourceURL)
+        ? sourceURL : nil,
+      datePurchased: draft.datePurchased != baseline.datePurchased ? (draft.datePurchased.map { DetailDateOnly.string(from: $0) } ?? "") : nil,
+      dateReceived: draft.dateReceived != baseline.dateReceived ? (draft.dateReceived.map { DetailDateOnly.string(from: $0) } ?? "") : nil,
+      dateStarted: draft.dateStarted != baseline.dateStarted ? (draft.dateStarted.map { DetailDateOnly.string(from: $0) } ?? "") : nil,
+      dateCompleted: draft.dateCompleted != baseline.dateCompleted ? (draft.dateCompleted.map { DetailDateOnly.string(from: $0) } ?? "") : nil
     )
   }
 }

@@ -139,4 +139,46 @@ struct DiamondProjectEditorTests {
     #expect(clearedDraft.matchesSavedRecord(nilDrillShape))
     #expect(!draft.matchesSavedRecord(nilDrillShape))
   }
+
+  @Test
+  func validatesAndNormalizesSourceLinks() {
+    #expect(DiamondProjectDraft.normalizedSourceURL("example.com/x") == "https://example.com/x")
+    #expect(DiamondProjectDraft.normalizedSourceURL(" http://example.com/x ") == "http://example.com/x")
+    #expect(DiamondProjectDraft.normalizedSourceURL("") == "")
+    for invalid in ["https://", "ftp://example.com", "not a link", "javascript:alert(1)"] {
+      #expect(DiamondProjectDraft.normalizedSourceURL(invalid) == nil)
+    }
+  }
+
+  @Test
+  func validatesMeasurementBoundsAndWholeCounts() {
+    var draft = DiamondProjectDraft()
+    draft.title = "Kit"
+    for invalid in ["-1", "1001", "nan", "infinity", "abc"] {
+      draft.width = invalid
+      #expect(!draft.isValid)
+    }
+    draft.width = "40.5"
+    draft.height = "1000"
+    draft.totalDiamonds = "2000000"
+    draft.colorCount = "1000"
+    #expect(draft.isValid)
+    draft.totalDiamonds = "1.5"
+    #expect(!draft.isValid)
+    draft.totalDiamonds = "2000001"
+    #expect(!draft.isValid)
+    draft.totalDiamonds = ""
+    draft.colorCount = "1001"
+    #expect(!draft.isValid)
+    #expect(DiamondProjectDraft.numberText(0).isEmpty)
+  }
+
+  @Test
+  func notesEscapeHTMLAndRoundTripParagraphs() {
+    let text = "A & B <tag> \"quoted\"\nNext line\n\nSecond paragraph"
+    let html = DiamondProjectDraft.notesHTML(text)
+    #expect(html == "<p>A &amp; B &lt;tag&gt; &quot;quoted&quot;<br>Next line</p>\n<p>Second paragraph</p>")
+    #expect(html.plainTextFromHTML == text)
+    #expect(DiamondProjectDraft.notesHTML("") == "")
+  }
 }

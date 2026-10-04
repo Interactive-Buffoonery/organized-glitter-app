@@ -638,6 +638,8 @@ actor LocalLibraryStore: ModelActor {
     .book: [
       "title", "series", "status", "date_started", "date_completed",
       "publisher", "illustrator",
+      "notes", "is_mystery", "isbn", "book_format", "edition", "publication_year",
+      "language", "theme", "source_url", "date_purchased", "date_received",
     ],
     .page: ["status", "revealed_subject", "started_at", "completed_at"],
   ]

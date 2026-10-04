@@ -10,7 +10,9 @@ struct DiamondProjectWriteTests {
     return try #require(object as? [String: Any])
   }
 
-  private var baseline: DiamondProjectDraft {
+  private var baseline: DiamondProjectDraft { makeBaseline() }
+
+  private func makeBaseline(generalNotes: String? = nil) -> DiamondProjectDraft {
     DiamondProjectDraft(
       project: DiamondProjectRecord(
         id: "project-1",
@@ -21,7 +23,7 @@ struct DiamondProjectWriteTests {
         status: "progress",
         kitCategory: "full",
         drillShape: "round",
-        generalNotes: nil,
+        generalNotes: generalNotes,
         width: nil,
         height: nil,
         image: nil,
@@ -36,6 +38,7 @@ struct DiamondProjectWriteTests {
 
   @Test
   func updateWriteIncludesOnlyChangedFields() throws {
+    let baseline = makeBaseline(generalNotes: "<p><strong>Original HTML notes</strong></p>")
     var draft = baseline
     draft.title = "Moon Garden"
 
@@ -47,6 +50,7 @@ struct DiamondProjectWriteTests {
     )
     let object = try encodedObject(write)
 
+    #expect(Set(object.keys) == ["title"])
     #expect(object["title"] as? String == "Moon Garden")
     #expect(object["status"] == nil)
     #expect(object["kit_category"] == nil)
@@ -125,5 +129,48 @@ struct DiamondProjectWriteTests {
     #expect(object["status"] as? String == "wishlist")
     #expect(object["kit_category"] as? String == "mini")
     #expect(object["drill_shape"] as? String == "square")
+  }
+
+  @Test
+  func metadataPartialWritesAndClears() throws {
+    var original = baseline
+    original.company = "company-1"
+    original.artist = "artist-1"
+    original.width = "40"
+    original.height = "50"
+    original.totalDiamonds = "10000"
+    original.colorCount = "30"
+    original.sourceURL = "https://example.com"
+    original.generalNotes = "<p><strong>Notes</strong></p>".plainTextFromHTML
+    #expect(try encodedObject(DiamondProjectWrite.make(
+      userID: "user-1", baseline: original, draft: original, isCreate: false)).isEmpty)
+    var cleared = baseline
+    cleared.tagIDs = ["tag-1"]
+    let object = try encodedObject(DiamondProjectWrite.make(
+      userID: "user-1", baseline: original, draft: cleared, isCreate: false))
+    for field in ["company", "artist", "source_url", "general_notes"] {
+      #expect(object[field] as? String == "")
+    }
+    for field in ["width", "height", "total_diamonds", "color_count"] {
+      #expect(object[field] as? Double == 0)
+    }
+    #expect(object["user"] == nil)
+    #expect(object["tags"] == nil)
+    var edited = original
+    edited.title = "Changed"
+    #expect(try encodedObject(DiamondProjectWrite.make(
+      userID: "user-1", baseline: original, draft: edited, isCreate: false))["general_notes"] == nil)
+  }
+
+  @Test
+  func createIncludesAllMetadata() throws {
+    var draft = baseline
+    draft.sourceURL = "example.com/x"
+    let object = try encodedObject(DiamondProjectWrite.make(
+      userID: "user-1", baseline: baseline, draft: draft, isCreate: true))
+    #expect(object.count == 13)
+    #expect(object["source_url"] as? String == "https://example.com/x")
+    #expect(object["general_notes"] as? String == "")
+    #expect(object["width"] as? Double == 0)
   }
 }

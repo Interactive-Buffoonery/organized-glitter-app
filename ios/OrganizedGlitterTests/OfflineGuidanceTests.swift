@@ -25,12 +25,12 @@ struct OfflineGuidanceTests {
         illustrator: nil))
     let items: [LibraryItem] = [.book(book), .book(book), .book(otherAccountBook)]
 
-    #expect(TaxonomyOptions.fromDownloadedBooks(
-      items, collection: "book_publishers", userID: "feature-user") == [publisher])
-    #expect(TaxonomyOptions.fromDownloadedBooks(
-      items, collection: "book_illustrators", userID: "feature-user") == [illustrator])
-    #expect(TaxonomyOptions.fromDownloadedBooks(
-      items, collection: "unsupported", userID: "feature-user").isEmpty)
+    #expect(ListOptions.fromDownloadedLibrary(
+      items, kind: .publisher, userID: "feature-user") == [publisher])
+    #expect(ListOptions.fromDownloadedLibrary(
+      items, kind: .illustrator, userID: "feature-user") == [illustrator])
+    #expect(ListOptions.fromDownloadedLibrary(
+      items, kind: .company, userID: "feature-user").isEmpty)
   }
 
   @Test

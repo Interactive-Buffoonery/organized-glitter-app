@@ -194,6 +194,7 @@ struct ColoringEditorTests {
     )
     let object = try encodedObject(write)
 
+    #expect(Set(object.keys) == ["title"])
     #expect(object["title"] as? String == "Secret Garden")
     #expect(object["user"] == nil)
     #expect(object["series"] == nil)
@@ -228,6 +229,72 @@ struct ColoringEditorTests {
     #expect(object["title"] == nil)
     #expect(object["status"] == nil)
     #expect(object["total_pages"] == nil)
+  }
+
+  @Test
+  func bookMetadataPartialUpdatesAndClears() throws {
+    var book = makeBook()
+    book.notes = "Example notes"
+    book.isMystery = true
+    book.isbn = "Example ISBN"
+    book.bookFormat = "paperback"
+    book.edition = "First"
+    book.publicationYear = 2026
+    book.language = "english"
+    book.theme = "Nature"
+    book.sourceURL = "https://example.test"
+    book.datePurchased = "2026-01-01"
+    book.dateReceived = "2026-01-02"
+    book.dateStarted = "2026-01-03"
+    book.dateCompleted = "2026-01-04"
+    let baseline = ColoringBookDraft(book: book)
+    #expect(baseline.matchesSavedRecord(book.withExpand(nil)))
+    #expect(try encodedObject(ColoringBookWrite.make(
+      userID: "user-1", baseline: baseline, draft: baseline, isCreate: false)).isEmpty)
+    let draft = ColoringBookDraft()
+    let cleared = try encodedObject(ColoringBookWrite.make(
+      userID: "user-1", baseline: baseline, draft: draft, isCreate: false))
+    for key in ["notes", "isbn", "book_format", "edition", "language", "theme",
+      "source_url", "date_purchased", "date_received", "date_started", "date_completed"] {
+      #expect(cleared[key] as? String == "")
+    }
+    #expect(cleared["is_mystery"] as? Bool == false)
+    #expect(cleared["publication_year"] as? Int == 0)
+    #expect(cleared["user"] == nil)
+    book.publicationYear = 0
+    #expect(ColoringBookDraft(book: book).publicationYear == nil)
+  }
+
+  @Test
+  func bookMetadataCanBeQueuedOffline() async throws {
+    let store = try LocalLibraryStore.inMemory()
+    let scope = LocalAccountScope(
+      backendURL: URL(string: "https://example.test")!, userID: "user-1")
+    let book = makeBook()
+    try await store.ingestSnapshot(LocalFullSnapshot(
+      version: 1, projects: [], coloringBooks: [book], coloringPages: [],
+      progressNotes: [], coloringPageProgressNotes: []), scope: scope)
+    let patch: [String: LocalJSONValue] = [
+      "notes": .string("Example notes"), "is_mystery": .bool(true),
+      "isbn": .string("Example ISBN"), "book_format": .string("pdf"),
+      "edition": .string("Second"), "publication_year": .number(0),
+      "language": .string("english"), "theme": .string("Nature"),
+      "source_url": .string("https://example.test"),
+      "date_purchased": .string("2026-01-01"), "date_received": .string(""),
+    ]
+    _ = try await store.queueEdit(
+      scope: scope, key: LibraryItem.book(book).localRecordKey, patch: patch)
+    let entry = try #require(await store.entry(
+      scope: scope, key: LibraryItem.book(book).localRecordKey))
+    guard case .book(let saved) = entry.item else {
+      Issue.record("Expected book")
+      return
+    }
+    #expect(saved.notes == "Example notes")
+    #expect(saved.isMystery == true)
+    #expect(saved.publicationYear == 0)
+    #expect(saved.dateReceived == "")
+    #expect(try await store.pendingOperations(scope: scope).count == 1)
   }
 
   @Test
