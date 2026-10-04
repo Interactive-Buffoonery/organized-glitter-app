@@ -99,7 +99,6 @@ struct ColoringBookEditor: View {
             TextField("Total pages", value: $draft.totalPages, format: .number)
               .keyboardType(.numberPad)
           }
-
           .disabled(savedBook != nil || isSaving)
 
           Section("Credits") {
@@ -118,7 +117,6 @@ struct ColoringBookEditor: View {
               selection: $draft.illustrator
             )
           }
-
           .disabled(savedBook != nil || isSaving)
 
           if book == nil || draft.totalPages != baseline.totalPages || coverChange != .unchanged {
