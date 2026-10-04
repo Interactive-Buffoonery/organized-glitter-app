@@ -18,6 +18,19 @@ struct DetailDateOnlyTests {
     #expect(formatted == "Sep 19, 2026")
   }
 
+  @Test(arguments: ["2026-09-18 11:00:00.000Z", "2026-09-18 23:30:00.000Z"])
+  func pocketBaseDatetimeKeepsItsLocalCalendarDay(_ value: String) throws {
+    for identifier in ["America/Los_Angeles", "Asia/Tokyo"] {
+      let timeZone = try #require(TimeZone(identifier: identifier))
+      let date = try #require(DetailDateOnly.date(value, timeZone: timeZone))
+      #expect(DetailDateOnly.string(from: date, timeZone: timeZone) == "2026-09-18")
+      #expect(
+        DetailDateOnly.formatted(
+          value, locale: Locale(identifier: "en_US"), timeZone: timeZone
+        ) == "Sep 18, 2026")
+    }
+  }
+
   @Test
   func rejectsInvalidLeadingCalendarDate() {
     let formatted = DetailDateOnly.formatted(
