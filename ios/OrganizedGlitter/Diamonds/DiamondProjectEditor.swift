@@ -114,7 +114,9 @@ struct DiamondProjectEditor: View {
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
+  @Environment(\.protectedFiles) private var protectedFiles
   @State private var draft: DiamondProjectDraft
+  @State private var coverChange: CoverChange = .unchanged
   @State private var attemptedTagIDs: Set<String> = []
   @State private var savedRecord: DiamondProjectRecord?
   @State private var savedDraft: DiamondProjectDraft?
@@ -136,10 +138,33 @@ struct DiamondProjectEditor: View {
     _draft = State(initialValue: initialDraft)
   }
 
+  private var currentCoverURL: URL? {
+    guard let project = savedRecord ?? project, let image = project.image?.nonEmpty else {
+      return nil
+    }
+    return protectedFiles?.url(collection: "projects", recordID: project.id, filename: image)
+  }
+
+  private func numberField(
+    _ label: String, unit: String? = nil, text: Binding<String>, keyboard: UIKeyboardType
+  ) -> some View {
+    LabeledContent(label) {
+      TextField(unit ?? "Not set", text: text)
+        .keyboardType(keyboard)
+        .multilineTextAlignment(.trailing)
+        .accessibilityLabel(unit == nil ? label : "\(label) in centimeters")
+    }
+  }
+
   var body: some View {
     NavigationStack {
       Form {
         Group {
+          CoverImageSection(
+            currentCoverURL: currentCoverURL,
+            placeholderSystemImage: "photo",
+            accessibilityNoun: "Project photo", change: $coverChange)
+
           Section("Project") {
             TextField("Title", text: $draft.title)
 
@@ -170,22 +195,16 @@ struct DiamondProjectEditor: View {
           }
 
           Section {
-            TextField("Width (cm)", text: $draft.width)
-              .keyboardType(.decimalPad)
-              .accessibilityLabel("Width in centimeters")
-            TextField("Height (cm)", text: $draft.height)
-              .keyboardType(.decimalPad)
-              .accessibilityLabel("Height in centimeters")
-            TextField("Diamond count", text: $draft.totalDiamonds)
-              .keyboardType(.numberPad)
-            TextField("Color count", text: $draft.colorCount)
-              .keyboardType(.numberPad)
+            numberField("Width", unit: "cm", text: $draft.width, keyboard: .decimalPad)
+            numberField("Height", unit: "cm", text: $draft.height, keyboard: .decimalPad)
+            numberField("Diamonds", text: $draft.totalDiamonds, keyboard: .numberPad)
+            numberField("Colors", text: $draft.colorCount, keyboard: .numberPad)
           } header: {
             Text("Size")
           } footer: {
-            Text(draft.sizeValidationMessage ?? "Leave measurements and counts empty if unknown.")
-              .font(.karla(.footnote))
-              .foregroundStyle(theme.mutedForeground)
+            if let message = draft.sizeValidationMessage {
+              AccessibleErrorLabel(message: message)
+            }
           }
 
           Section {
@@ -193,12 +212,10 @@ struct DiamondProjectEditor: View {
               .keyboardType(.URL)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
-          } header: {
-            Text("Source")
           } footer: {
-            Text(draft.sourceValidationMessage ?? "Links without a scheme will use https.")
-              .font(.karla(.footnote))
-              .foregroundStyle(theme.mutedForeground)
+            if let message = draft.sourceValidationMessage {
+              AccessibleErrorLabel(message: message)
+            }
           }
 
           Section("Notes") {
@@ -206,7 +223,7 @@ struct DiamondProjectEditor: View {
               .lineLimit(4...12)
           }
 
-          if project == nil || draft.tagIDs != baseline.tagIDs {
+          if project == nil || draft.tagIDs != baseline.tagIDs || coverChange != .unchanged {
             Section { NeedsConnectionHint() }
           }
 
@@ -283,12 +300,26 @@ struct DiamondProjectEditor: View {
         errorMessage = "The project was saved, but tags could not be saved. Check your connection and try again."
         return
       }
-      await onLibraryRefresh()
+      if coverChange != .unchanged {
+        do {
+          savedRecord = try await CoverUpload.apply(
+            coverChange, collection: "projects", recordID: saved.id,
+            field: "image", library: library)
+          coverChange = .unchanged
+        } catch APIError.cancelled {
+          return
+        } catch is CancellationError {
+          return
+        } catch {
+          errorMessage = "The project was saved, but the photo could not be uploaded. Try again."
+          return
+        }
+      }
       let refreshed = library.items.compactMap { item -> DiamondProjectRecord? in
         guard case .diamond(let record) = item, record.id == saved.id else { return nil }
         return record
       }.first
-      onSaved(refreshed ?? saved)
+      onSaved(refreshed ?? savedRecord ?? saved)
       dismiss()
     } catch APIError.cancelled {
       return
