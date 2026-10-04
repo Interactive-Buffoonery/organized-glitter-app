@@ -70,10 +70,15 @@ struct TagPicker: View {
     } label: {
       LabeledContent("Tags", value: Self.summary(
         selection: selection,
-        options: options ?? ListOptions.fromDownloadedLibrary(
-          library.items, kind: kind, userID: userID)))
+        options: options ?? []))
     }
     .accessibilityIdentifier("tagPicker")
+    .task {
+      if options == nil {
+        options = ListOptions.fromDownloadedLibrary(
+          library.items, kind: kind, userID: userID)
+      }
+    }
   }
 
   static func summary(selection: Set<String>, options: [NamedRelationRecord]) -> String {
