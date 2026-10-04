@@ -128,6 +128,11 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
     case dateCompleted = "date_completed"
   }
 
+  var tags: [TagRecord] {
+    (expand?.bookTags ?? []).compactMap(\.expand?.tag)
+      .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+  }
+
   func withExpand(_ expand: ColoringBookExpand?) -> ColoringBookRecord {
     ColoringBookRecord(
       id: id, user: user, title: title, series: series, status: status,

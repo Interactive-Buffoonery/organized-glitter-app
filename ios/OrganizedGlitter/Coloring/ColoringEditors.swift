@@ -117,19 +117,17 @@ struct ColoringBookEditor: View {
           }
 
           Section("Credits") {
-            TaxonomyPicker(
+            ListPicker(
               library: library,
               userID: userID,
-              collection: "book_publishers",
-              label: "Publisher",
+              kind: .publisher,
               initialName: book?.expand?.publisher?.name,
               selection: $draft.publisher
             )
-            TaxonomyPicker(
+            ListPicker(
               library: library,
               userID: userID,
-              collection: "book_illustrators",
-              label: "Illustrator",
+              kind: .illustrator,
               initialName: book?.expand?.illustrator?.name,
               selection: $draft.illustrator
             )
