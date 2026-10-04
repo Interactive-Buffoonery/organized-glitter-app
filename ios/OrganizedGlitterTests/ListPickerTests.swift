@@ -35,9 +35,9 @@ struct ListPickerTests {
     case .diamondTag: expected = .init(id: diamondTag.id, name: diamondTag.name)
     case .coloringTag: expected = .init(id: coloringTag.id, name: coloringTag.name)
     }
-    #expect(TaxonomyOptions.fromDownloadedLibrary(
+    #expect(ListOptions.fromDownloadedLibrary(
       items + items, kind: kind, userID: "feature-user") == [expected])
-    #expect(TaxonomyOptions.fromDownloadedLibrary(
+    #expect(ListOptions.fromDownloadedLibrary(
       items, kind: kind, userID: "another-user").isEmpty)
   }
 
@@ -47,7 +47,7 @@ struct ListPickerTests {
       DiamondProjectExpand(company: .init(id: "z", name: "Zinnia"), artist: nil))
     let second = featureProject("second", title: "Second").withExpand(
       DiamondProjectExpand(company: .init(id: "a", name: "Aster"), artist: nil))
-    #expect(TaxonomyOptions.fromDownloadedLibrary(
+    #expect(ListOptions.fromDownloadedLibrary(
       [.diamond(first), .diamond(second)], kind: .company, userID: "feature-user")
       .map(\.name) == ["Aster", "Zinnia"])
   }

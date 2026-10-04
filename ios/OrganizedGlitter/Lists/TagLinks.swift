@@ -1,5 +1,7 @@
 import Foundation
 
+/// Tag links are join records, so changes are online-only. The session
+/// refreshes the library after each write.
 enum TagLinks {
   @MainActor
   static func sync(
@@ -13,23 +15,13 @@ enum TagLinks {
       collection: kind.usageCollection,
       filter: PocketBaseFilter.equals(parent, recordID))
     let existingTags = Set(links.map(\.tag))
-    var changed = false
-    do {
-      for tag in new.subtracting(old).subtracting(existingTags).sorted() {
-        let _: Link = try await library.create(
-          collection: kind.usageCollection,
-          body: [parent.rawValue: recordID, "tag": tag])
-        changed = true
-      }
-      for link in links where old.subtracting(new).contains(link.tag) {
-        try await library.delete(collection: kind.usageCollection, id: link.id)
-        changed = true
-      }
-    } catch {
-      if changed { try? await library.refresh(force: true) }
-      throw error
+    for tag in new.subtracting(old).subtracting(existingTags).sorted() {
+      let _: Link = try await library.create(
+        collection: kind.usageCollection, body: [parent.rawValue: recordID, "tag": tag])
     }
-    if changed { try? await library.refresh(force: true) }
+    for link in links where old.subtracting(new).contains(link.tag) {
+      try await library.delete(collection: kind.usageCollection, id: link.id)
+    }
   }
 
   private struct Link: Decodable, Sendable {

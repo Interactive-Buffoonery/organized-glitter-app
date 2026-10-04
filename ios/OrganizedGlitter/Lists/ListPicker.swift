@@ -70,7 +70,7 @@ struct TagPicker: View {
     } label: {
       LabeledContent("Tags", value: Self.summary(
         selection: selection,
-        options: options ?? TaxonomyOptions.fromDownloadedLibrary(
+        options: options ?? ListOptions.fromDownloadedLibrary(
           library.items, kind: kind, userID: userID)))
     }
     .accessibilityIdentifier("tagPicker")
@@ -190,7 +190,7 @@ private struct ListOptionList: View {
         Text(name)
           .foregroundStyle(theme.cardForeground)
         Spacer()
-        if (id.isEmpty ? selection.isEmpty : selection.contains(id)) {
+        if isSelected(id) {
           Image(systemName: "checkmark")
             .foregroundStyle(theme.primary)
             .accessibilityHidden(true)
@@ -199,13 +199,17 @@ private struct ListOptionList: View {
     }
     .frame(minHeight: 44)
     .accessibilityLabel(name)
-    .accessibilityAddTraits((id.isEmpty ? selection.isEmpty : selection.contains(id)) ? .isSelected : [])
+    .accessibilityAddTraits(isSelected(id) ? .isSelected : [])
+  }
+
+  private func isSelected(_ id: String) -> Bool {
+    id.isEmpty ? selection.isEmpty : selection.contains(id)
   }
 
   private func load() async {
     errorMessage = nil
     if options == nil {
-      options = TaxonomyOptions.fromDownloadedLibrary(
+      options = ListOptions.fromDownloadedLibrary(
         library.items, kind: kind, userID: userID)
     }
     do {
@@ -279,7 +283,7 @@ private struct ListOptionList: View {
   }
 }
 
-enum TaxonomyOptions {
+enum ListOptions {
   static func fromDownloadedLibrary(
     _ items: [LibraryItem], kind: ListKind, userID: String
   ) -> [NamedRelationRecord] {
