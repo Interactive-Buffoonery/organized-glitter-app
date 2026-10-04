@@ -49,24 +49,35 @@ struct CoverImageSection: View {
           .accessibilityLabel(accessibilityNoun)
         Spacer(minLength: 0)
       }
+      // A modifier on the Section repeats on every row, so the task and cover
+      // live on this one row instead.
+      .task(id: selectedItem) { await prepareSelection() }
+      .fullScreenCover(item: $cropPhoto) { selection in
+        CoverCropView(photo: selection.photo) { photo in
+          change = .replace(photo)
+        }
+      }
       PhotosPicker(selection: $selectedItem, matching: .images) {
         Label(hasCover ? "Replace Photo" : "Choose Photo", systemImage: "photo")
           .frame(minHeight: 44)
+          .foregroundStyle(theme.primary)
       }
       .accessibilityLabel("\(hasCover ? "Replace" : "Choose") \(accessibilityNoun)")
       .disabled(isProcessing)
       if hasCover {
         Button("Crop", systemImage: "crop") { Task { await crop() } }
           .frame(minHeight: 44)
+          .foregroundStyle(theme.primary)
           .accessibilityLabel("Crop \(accessibilityNoun)")
           .disabled(isProcessing)
       }
       if hasCover {
-        Button("Remove Photo", role: .destructive) {
+        Button("Remove Photo", systemImage: "trash", role: .destructive) {
           change = currentCoverURL == nil ? .unchanged : .remove
           selectedItem = nil
         }
         .frame(minHeight: 44)
+        .foregroundStyle(theme.destructive)
         .accessibilityLabel("Remove \(accessibilityNoun)")
       }
       if isProcessing { ProgressView("Preparing photo") }
@@ -75,12 +86,6 @@ struct CoverImageSection: View {
       Text(accessibilityNoun)
     }
     .listRowBackground(theme.card)
-    .task(id: selectedItem) { await prepareSelection() }
-    .fullScreenCover(item: $cropPhoto) { selection in
-      CoverCropView(photo: selection.photo) { photo in
-        change = .replace(photo)
-      }
-    }
   }
 
   private var placeholder: some View {
