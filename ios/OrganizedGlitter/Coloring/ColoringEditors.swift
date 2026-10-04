@@ -45,8 +45,14 @@ struct ColoringBookDraft: Equatable {
     dateCompleted = book?.dateCompleted.flatMap { DetailDateOnly.date($0) }
   }
 
+  var sourceValidationMessage: String? {
+    DiamondProjectDraft.normalizedSourceURL(sourceURL) == nil
+      ? "Enter a valid http or https link, or leave it empty." : nil
+  }
+
   var isValid: Bool {
     !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && totalPages >= 1
+      && sourceValidationMessage == nil
   }
 
   /// Deliberately ignores server-computed fields (`completedPages`,
@@ -139,6 +145,8 @@ struct ColoringBookEditor: View {
 
             TextField("Total pages", value: $draft.totalPages, format: .number)
               .keyboardType(.numberPad)
+
+            Toggle("Mystery book", isOn: $draft.isMystery)
           }
           .disabled(savedBook != nil || isSaving)
 
@@ -157,13 +165,14 @@ struct ColoringBookEditor: View {
               initialName: book?.expand?.illustrator?.name,
               selection: $draft.illustrator
             )
+            TagPicker(library: library, userID: userID, kind: .coloringTag, selection: $draft.tags)
           }
           .disabled(savedBook != nil || isSaving)
 
-          Section("Bibliography") {
-            LabeledContent("ISBN") { TextField("ISBN", text: $draft.isbn) }
-            Picker("Book format", selection: $draft.bookFormat) {
-              Text("None").tag("")
+          Section {
+            textRow("ISBN", text: $draft.isbn)
+            Picker("Format", selection: $draft.bookFormat) {
+              Text("Not set").tag("")
               Text("Paperback").tag("paperback")
               Text("Hardcover").tag("hardcover")
               Text("PDF").tag("pdf")
@@ -171,16 +180,18 @@ struct ColoringBookEditor: View {
               Text("Magazine").tag("magazine")
               Text("Other").tag("other")
             }
-            LabeledContent("Edition") { TextField("Edition", text: $draft.edition) }
-            LabeledContent("Publication year") {
-              TextField("Publication year", value: Binding(
+            textRow("Edition", text: $draft.edition)
+            LabeledContent("Year") {
+              TextField("Not set", value: Binding(
                 get: { draft.publicationYear },
                 set: { draft.publicationYear = $0 == 0 ? nil : $0 }),
                 format: .number.grouping(.never))
                 .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .accessibilityLabel("Publication year")
             }
             Picker("Language", selection: $draft.language) {
-              Text("None").tag("")
+              Text("Not set").tag("")
               Text("English").tag("english")
               Text("Spanish").tag("spanish")
               Text("French").tag("french")
@@ -189,27 +200,25 @@ struct ColoringBookEditor: View {
               Text("Other").tag("other")
               Text("Unknown").tag("unknown")
             }
-            LabeledContent("Theme") { TextField("Theme", text: $draft.theme) }
-            LabeledContent("Source URL") {
-              TextField("Source URL", text: $draft.sourceURL)
-                .keyboardType(.URL)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
+            textRow("Theme", text: $draft.theme)
+            TextField("Source link", text: $draft.sourceURL)
+              .keyboardType(.URL)
+              .autocorrectionDisabled()
+              .textInputAutocapitalization(.never)
+          } header: {
+            Text("Bibliography")
+          } footer: {
+            if let message = draft.sourceValidationMessage {
+              AccessibleErrorLabel(message: message)
             }
-            Toggle("Mystery book", isOn: $draft.isMystery)
           }
           .disabled(savedBook != nil || isSaving)
 
           Section("Dates") {
-            dateRow("Date purchased", selection: $draft.datePurchased)
-            dateRow("Date received", selection: $draft.dateReceived)
-            dateRow("Date started", selection: $draft.dateStarted)
-            dateRow("Date completed", selection: $draft.dateCompleted)
-          }
-          .disabled(savedBook != nil || isSaving)
-
-          Section("Tags") {
-            TagPicker(library: library, userID: userID, kind: .coloringTag, selection: $draft.tags)
+            dateRow("Purchased", selection: $draft.datePurchased)
+            dateRow("Received", selection: $draft.dateReceived)
+            dateRow("Started", selection: $draft.dateStarted)
+            dateRow("Completed", selection: $draft.dateCompleted)
           }
           .disabled(savedBook != nil || isSaving)
 
@@ -263,6 +272,14 @@ struct ColoringBookEditor: View {
     }
   }
 
+  private func textRow(_ label: String, text: Binding<String>) -> some View {
+    LabeledContent(label) {
+      TextField("Not set", text: text)
+        .multilineTextAlignment(.trailing)
+        .accessibilityLabel(label)
+    }
+  }
+
   @ViewBuilder
   private func dateRow(_ label: String, selection: Binding<Date?>) -> some View {
     if let date = selection.wrappedValue {
@@ -270,16 +287,18 @@ struct ColoringBookEditor: View {
         DatePicker(label, selection: Binding(
           get: { selection.wrappedValue ?? date },
           set: { selection.wrappedValue = $0 }), displayedComponents: .date)
-        Button {
+        Button("Clear \(label.lowercased()) date", systemImage: "xmark.circle.fill") {
           selection.wrappedValue = nil
-        } label: {
-          Image(systemName: "xmark.circle.fill")
         }
+        .labelStyle(.iconOnly)
         .buttonStyle(.borderless)
-        .accessibilityLabel("Clear \(label.lowercased())")
+        .foregroundStyle(.secondary)
       }
     } else {
-      Button("Add \(label.lowercased())") { selection.wrappedValue = Date() }
+      LabeledContent(label) {
+        Button("Add") { selection.wrappedValue = Date() }
+          .accessibilityLabel("Add \(label.lowercased()) date")
+      }
     }
   }
 
@@ -520,6 +539,7 @@ struct ColoringBookWrite: Encodable, Sendable {
   ) -> ColoringBookWrite {
     let trimmedTitle = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
     let trimmedSeries = draft.series.trimmingCharacters(in: .whitespacesAndNewlines)
+    let sourceURL = DiamondProjectDraft.normalizedSourceURL(draft.sourceURL) ?? draft.sourceURL
     if isCreate {
       return ColoringBookWrite(
         user: userID,
@@ -537,7 +557,7 @@ struct ColoringBookWrite: Encodable, Sendable {
         publicationYear: draft.publicationYear ?? 0,
         language: draft.language,
         theme: draft.theme,
-        sourceURL: draft.sourceURL,
+        sourceURL: sourceURL,
         datePurchased: draft.datePurchased.map { DetailDateOnly.string(from: $0) } ?? "",
         dateReceived: draft.dateReceived.map { DetailDateOnly.string(from: $0) } ?? "",
         dateStarted: draft.dateStarted.map { DetailDateOnly.string(from: $0) } ?? "",
@@ -562,7 +582,8 @@ struct ColoringBookWrite: Encodable, Sendable {
       publicationYear: draft.publicationYear != baseline.publicationYear ? (draft.publicationYear ?? 0) : nil,
       language: draft.language != baseline.language ? draft.language : nil,
       theme: draft.theme != baseline.theme ? draft.theme : nil,
-      sourceURL: draft.sourceURL != baseline.sourceURL ? draft.sourceURL : nil,
+      sourceURL: sourceURL != DiamondProjectDraft.normalizedSourceURL(baseline.sourceURL)
+        ? sourceURL : nil,
       datePurchased: draft.datePurchased != baseline.datePurchased ? (draft.datePurchased.map { DetailDateOnly.string(from: $0) } ?? "") : nil,
       dateReceived: draft.dateReceived != baseline.dateReceived ? (draft.dateReceived.map { DetailDateOnly.string(from: $0) } ?? "") : nil,
       dateStarted: draft.dateStarted != baseline.dateStarted ? (draft.dateStarted.map { DetailDateOnly.string(from: $0) } ?? "") : nil,
