@@ -14,6 +14,10 @@ struct DiamondProjectDetailView: View {
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   var body: some View {
+    let purchasedDate = project.datePurchased.flatMap { DetailDateOnly.date($0) }
+    let startedDate = project.dateStarted.flatMap { DetailDateOnly.date($0) }
+    let completedDate = project.dateCompleted.flatMap { DetailDateOnly.date($0) }
+    let today = Date.now
     ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
@@ -39,14 +43,39 @@ struct DiamondProjectDetailView: View {
                 DetailMetadataRow(label: "Artist", value: artist)
               }
               DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
-              ForEach(dateFields, id: \.field) { row in
-                DetailDateRow(
-                  label: row.label,
-                  value: row.value,
-                  isDisabled: model.isMutating || model.unresolvedWriteState != nil
-                ) { date in
-                  save { await model.setDate(row.field, to: date) }
-                }
+              DetailDateRow(
+                label: "Purchased",
+                value: project.datePurchased,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                maximumDate: min(startedDate ?? today, today)
+              ) { date in
+                save { await model.setDate("date_purchased", to: date) }
+              }
+              DetailDateRow(
+                label: "Received",
+                value: project.dateReceived,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                maximumDate: today
+              ) { date in
+                save { await model.setDate("date_received", to: date) }
+              }
+              DetailDateRow(
+                label: "Started",
+                value: project.dateStarted,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                minimumDate: purchasedDate,
+                maximumDate: min(completedDate ?? today, today)
+              ) { date in
+                save { await model.setDate("date_started", to: date) }
+              }
+              DetailDateRow(
+                label: "Completed",
+                value: project.dateCompleted,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                minimumDate: startedDate,
+                maximumDate: today
+              ) { date in
+                save { await model.setDate("date_completed", to: date) }
               }
               if !project.tags.isEmpty {
                 DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
@@ -184,15 +213,6 @@ struct DiamondProjectDetailView: View {
           accessibilityValue: [day, elapsed].compactMap { $0 }.joined(separator: ", ")))
     }
     return specs
-  }
-
-  private var dateFields: [(field: String, label: String, value: String?)] {
-    [
-      ("date_purchased", "Purchased", project.datePurchased),
-      ("date_received", "Received", project.dateReceived),
-      ("date_started", "Started", project.dateStarted),
-      ("date_completed", "Completed", project.dateCompleted),
-    ]
   }
 
   private func save(_ write: @escaping @MainActor () async -> Bool) {
