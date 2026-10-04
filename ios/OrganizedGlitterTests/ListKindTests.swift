@@ -19,6 +19,21 @@ struct ListKindTests {
     #expect(ListKind.slug(for: "Café & Co.") == "caf-co")
   }
 
+  @Test(arguments: [ListKind.diamondTag, .coloringTag])
+  func tagNamesRequireSlugCharacters(kind: ListKind) {
+    for name in ["✨", "!!!", " -- ", "é"] {
+      #expect(kind.nameValidationMessage(name) == "Use at least one letter or number.")
+    }
+    for name in ["", "  ", "Café", "123", "Flowers ✨"] {
+      #expect(kind.nameValidationMessage(name) == nil)
+    }
+  }
+
+  @Test(arguments: [ListKind.company, .artist, .publisher, .illustrator, .medium])
+  func otherListNamesDoNotRequireSlugs(kind: ListKind) {
+    #expect(kind.nameValidationMessage("✨") == nil)
+  }
+
   @Test func tagsAndMediumsCarryRequiredFields() {
     let tag = ListKind.coloringTag.createBody(name: "Mandalas", userID: "u1")
     #expect(tag["slug"] == "mandalas")

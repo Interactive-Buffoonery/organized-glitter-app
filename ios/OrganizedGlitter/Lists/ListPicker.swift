@@ -140,10 +140,13 @@ private struct ListOptionList: View {
                 .buttonStyle(.borderless)
                 .frame(minWidth: 44, minHeight: 44)
                 .foregroundStyle(theme.primary)
-                .disabled(trimmedNewName.isEmpty)
+                .disabled(trimmedNewName.isEmpty || kind.nameValidationMessage(newName) != nil)
                 .accessibilityLabel("Add \(kind.singular.lowercased())")
                 .accessibilityIdentifier("taxonomy.add")
               }
+            }
+            if let validation = kind.nameValidationMessage(newName) {
+              AccessibleErrorLabel(message: validation)
             }
           } footer: {
             NeedsConnectionHint()
@@ -238,7 +241,7 @@ private struct ListOptionList: View {
 
   private func create() async {
     let name = trimmedNewName
-    guard !name.isEmpty, !isCreating else {
+    guard !name.isEmpty, kind.nameValidationMessage(name) == nil, !isCreating else {
       return
     }
 

@@ -109,7 +109,12 @@ struct ListEntriesView: View {
         .accessibilityLabel("\(kind.singular) name")
       Button("Cancel", role: .cancel) {}
       Button("Save") { Task { await save() } }
-        .disabled(!canWrite || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .disabled(!canWrite || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+          || kind.nameValidationMessage(name) != nil)
+    } message: {
+      if let validation = kind.nameValidationMessage(name) {
+        Text(validation)
+      }
     }
     .confirmationDialog(
       "Delete “\(deletion?.name ?? "")”?", isPresented: $showDeleteConfirmation,
@@ -183,7 +188,7 @@ struct ListEntriesView: View {
   private func save() async {
     guard canWrite else { return }
     let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-    if let validation = ListEntryNames.validation(
+    if let validation = kind.nameValidationMessage(trimmed) ?? ListEntryNames.validation(
       trimmed, entries: entries ?? [], excluding: editing?.id
     ) {
       errorMessage = validation

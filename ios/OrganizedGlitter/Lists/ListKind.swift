@@ -99,6 +99,12 @@ enum ListKind: String, CaseIterable, Identifiable, Sendable {
     isTag ? ["name": name, "slug": ListKind.slug(for: name)] : ["name": name]
   }
 
+  func nameValidationMessage(_ name: String) -> String? {
+    guard isTag, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      Self.slug(for: name).isEmpty else { return nil }
+    return "Use at least one letter or number."
+  }
+
   /// Matches the web app's `generateSlug`.
   static func slug(for name: String) -> String {
     name.lowercased()
