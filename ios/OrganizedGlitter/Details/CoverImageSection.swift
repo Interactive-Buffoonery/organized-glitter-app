@@ -1,8 +1,10 @@
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct CoverImageSection: View {
   @Environment(\.theme) private var theme
+  @Environment(\.pocketBaseClient) private var client
   let currentCoverURL: URL?
   let placeholderSystemImage: String
   let accessibilityNoun: String
@@ -53,10 +55,11 @@ struct CoverImageSection: View {
       }
       .accessibilityLabel("\(hasCover ? "Replace" : "Choose") \(accessibilityNoun)")
       .disabled(isProcessing)
-      if case .replace(let photo) = change {
-        Button("Crop", systemImage: "crop") { cropPhoto = CropPhoto(photo: photo) }
+      if hasCover {
+        Button("Crop", systemImage: "crop") { Task { await crop() } }
           .frame(minHeight: 44)
           .accessibilityLabel("Crop \(accessibilityNoun)")
+          .disabled(isProcessing)
       }
       if hasCover {
         Button("Remove Photo", role: .destructive) {
@@ -90,22 +93,54 @@ struct CoverImageSection: View {
 
   private func prepareSelection() async {
     guard let selectedItem else { return }
+    defer { self.selectedItem = nil }
+    await prepare { try await DetailPhotoProcessor.process(item: selectedItem) }
+  }
+
+  private func crop() async {
+    if case .replace(let photo) = change {
+      cropPhoto = CropPhoto(photo: photo)
+    } else if let currentCoverURL {
+      await prepare(failure: "The current photo could not be loaded. Try again.") {
+        try await Self.uploadedPhoto(at: currentCoverURL, client: client)
+      }
+    }
+  }
+
+  /// Recropping starts from the uploaded file at full processing size, not
+  /// the preview, so the new crop keeps as much detail as the original.
+  private static func uploadedPhoto(
+    at url: URL, client: PocketBaseClient?
+  ) async throws -> ProcessedDetailPhoto {
+    let artwork = try await RemoteArtworkLoader.shared.load(
+      from: url, maxPixelDimension: CGFloat(DetailPhotoProcessor.maximumPixelDimension),
+      client: client, cachesDecodedImage: false)
+    guard let data = UIImage(cgImage: artwork.cgImage).jpegData(compressionQuality: 0.95) else {
+      throw DetailPhotoProcessingError.unsupportedImage
+    }
+    return try await DetailPhotoProcessor.process(
+      data: data, contentTypeIdentifier: UTType.jpeg.identifier)
+  }
+
+  private func prepare(
+    failure: String = "That photo could not be prepared. Try another image.",
+    _ work: () async throws -> ProcessedDetailPhoto
+  ) async {
     isProcessing = true
     errorMessage = nil
-    defer {
-      isProcessing = false
-      self.selectedItem = nil
-    }
+    defer { isProcessing = false }
     do {
-      let photo = try await DetailPhotoProcessor.process(item: selectedItem)
+      let photo = try await work()
       try Task.checkCancellation()
       cropPhoto = CropPhoto(photo: photo)
     } catch is CancellationError {
       return
+    } catch APIError.cancelled {
+      return
     } catch let error as DetailPhotoProcessingError {
       errorMessage = error.message
     } catch {
-      errorMessage = "That photo could not be prepared. Try another image."
+      errorMessage = failure
     }
   }
 }

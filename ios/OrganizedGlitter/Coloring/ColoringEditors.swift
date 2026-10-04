@@ -58,7 +58,7 @@ struct ColoringBookEditor: View {
     guard let book = savedBook ?? book, let cover = book.coverImage?.nonEmpty else { return nil }
     return protectedFiles?.url(
       collection: "coloring_books", recordID: book.id,
-      filename: cover, thumb: ArtworkThumb.gallery)
+      filename: cover)
   }
 
   init(
