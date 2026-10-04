@@ -143,8 +143,11 @@ struct ColoringBookEditor: View {
               }
             }
 
-            TextField("Total pages", value: $draft.totalPages, format: .number)
-              .keyboardType(.numberPad)
+            LabeledContent("Total pages") {
+              TextField("Total pages", value: $draft.totalPages, format: .number)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+            }
 
             Toggle("Mystery book", isOn: $draft.isMystery)
           }
@@ -297,6 +300,7 @@ struct ColoringBookEditor: View {
     } else {
       LabeledContent(label) {
         Button("Add") { selection.wrappedValue = Date() }
+          .foregroundStyle(theme.primary)
           .accessibilityLabel("Add \(label.lowercased()) date")
       }
     }

@@ -148,8 +148,8 @@ struct DiamondProjectEditor: View {
   private func numberField(
     _ label: String, unit: String? = nil, text: Binding<String>, keyboard: UIKeyboardType
   ) -> some View {
-    LabeledContent(label) {
-      TextField(unit ?? "Not set", text: text)
+    LabeledContent(unit.map { "\(label) (\($0))" } ?? label) {
+      TextField("Not set", text: text)
         .keyboardType(keyboard)
         .multilineTextAlignment(.trailing)
         .accessibilityLabel(unit == nil ? label : "\(label) in centimeters")
