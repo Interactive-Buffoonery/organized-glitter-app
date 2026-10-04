@@ -119,6 +119,7 @@
 		CCD03CD3345C5BDCCCEAEA0F /* PrivateArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0CD4E065759D3DC0D45CF73 /* PrivateArtworkStore.swift */; };
 		CFF526347C455E25AFB053F2 /* LibraryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4C3D5F5234F13224CA4205 /* LibraryRefresh.swift */; };
 		D0EA450F4C08A4646E1ED527 /* DetailPhotoProcessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A4A440302CEFD156DEABCDC /* DetailPhotoProcessorTests.swift */; };
+		D21EE0837EF1B6B5228149B2 /* DetailDateRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A230307AF5CE4CF4C42C185 /* DetailDateRow.swift */; };
 		D5555964E37F1FEC95AAB780 /* NativeRefinementAccessibilityUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9624B3D8D244CB1E218CDCD /* NativeRefinementAccessibilityUITests.swift */; };
 		D5AD7758FFB77DC9C2723A7F /* BackendContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9293732657D92D51736C184B /* BackendContractTests.swift */; };
 		D70EF76F6D36839D40C69B70 /* RecordStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAA23B01F0FE65881519282 /* RecordStatus.swift */; };
@@ -239,6 +240,7 @@
 		84804F12B2E01DD51C4BD891 /* VerificationRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationRequestView.swift; sourceTree = "<group>"; };
 		851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetailModel.swift; sourceTree = "<group>"; };
 		87432C7595D56F6A212DA34D /* OrganizedGlitterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizedGlitterApp.swift; sourceTree = "<group>"; };
+		8A230307AF5CE4CF4C42C185 /* DetailDateRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailDateRow.swift; sourceTree = "<group>"; };
 		8A44F8DED9DD837DCCC00FAF /* ProgressNoteEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressNoteEntry.swift; sourceTree = "<group>"; };
 		8A9F90C2F0DE0D5DA98324C8 /* ScreenshotCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotCaptureTests.swift; sourceTree = "<group>"; };
 		8B1313198DCA44E2E027F7EB /* LibraryGalleryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryGalleryCard.swift; sourceTree = "<group>"; };
@@ -601,6 +603,7 @@
 				BC53A77B8E88AC5C89B750FB /* CoverImageSection.swift */,
 				DCD3D05754AEB5E4718E7BD7 /* CoverUpload.swift */,
 				4598F11155765ABCC33C5CA7 /* DetailDateOnly.swift */,
+				8A230307AF5CE4CF4C42C185 /* DetailDateRow.swift */,
 				CD03178006CC4D181EC25E88 /* DetailHeader.swift */,
 				CF6D23DFA92798FB254E1CF8 /* DetailPhoto.swift */,
 				851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */,
@@ -813,6 +816,7 @@
 				2BB798BE9323EDD3C37778BF /* CraftingStreakButton.swift in Sources */,
 				7294FB2A6664672A48BA860A /* CreateMenu.swift in Sources */,
 				5984DF19440D36F48EB42089 /* DetailDateOnly.swift in Sources */,
+				D21EE0837EF1B6B5228149B2 /* DetailDateRow.swift in Sources */,
 				7B77225BDD6B7888A3C1A0D3 /* DetailHeader.swift in Sources */,
 				2645F8D58F528DFEFAFDBB6B /* DetailPhoto.swift in Sources */,
 				0BA2A83653B1989DD20BFCA2 /* DiamondProjectDetailView.swift in Sources */,

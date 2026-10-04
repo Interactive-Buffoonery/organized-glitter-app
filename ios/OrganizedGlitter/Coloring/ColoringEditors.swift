@@ -694,7 +694,7 @@ struct ColoringPageEditor: View {
 
             TextField("Revealed subject", text: $draft.revealedSubject)
 
-            Text("Started and completed dates are set automatically from status.")
+            Text("Changing status sets these dates. You can also change them on the page.")
               .font(.karla(.footnote))
               .foregroundStyle(theme.mutedForeground)
           }

@@ -263,7 +263,11 @@ final class LibraryItemDetailModel {
   /// `nil` clears the date. PocketBase stores these as `yyyy-MM-dd`.
   @discardableResult
   func setDate(_ field: String, to date: Date?) async -> Bool {
-    await updateFields([field: date.map { DetailDateOnly.string(from: $0) } ?? ""])
+    var patch = [field: date.map { DetailDateOnly.string(from: $0) } ?? ""]
+    if case .page = item, field == "completed_at", date != nil {
+      patch["status"] = "completed"
+    }
+    return await updateFields(patch)
   }
 
   private func saveLocally(_ patch: [String: String]) async throws -> LibraryItem {

@@ -20,9 +20,9 @@ struct ColoringPageDetailView: View {
   @State private var photoErrorMessage: String?
 
   var body: some View {
-    let startedDate = formattedDate(page.startedAt)
-    let completedDate = formattedDate(page.completedAt)
-
+    let startedDate = page.startedAt.flatMap { DetailDateOnly.date($0) }
+    let completedDate = page.completedAt.flatMap { DetailDateOnly.date($0) }
+    let today = Date.now
     ScrollViewReader { proxy in
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 18) {
@@ -157,19 +157,32 @@ struct ColoringPageDetailView: View {
             logEditor: $logEditor,
             onReveal: { proxy.scrollTo($0, anchor: .center) })
 
-          if startedDate != nil || completedDate != nil {
-            VStack(alignment: .leading, spacing: 12) {
-              Text("Page details")
-                .font(.karla(.title3).weight(.semibold))
-                .foregroundStyle(theme.foreground)
-                .accessibilityAddTraits(.isHeader)
-              DetailMetadataCard {
-                if let startedAt = startedDate {
-                  DetailMetadataRow(label: "Started", value: startedAt)
-                }
-                if let completedAt = completedDate {
-                  DetailMetadataRow(label: "Completed", value: completedAt)
-                }
+          VStack(alignment: .leading, spacing: 12) {
+            Text("Page details")
+              .font(.karla(.title3).weight(.semibold))
+              .foregroundStyle(theme.foreground)
+              .accessibilityAddTraits(.isHeader)
+            DetailMetadataCard {
+              DetailDateRow(
+                label: "Started",
+                value: page.startedAt,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                maximumDate: min(completedDate ?? today, today)
+              ) { date in
+                saveDetailChange(
+                  { await model.setDate("started_at", to: date) },
+                  onCollectionChanged: onCollectionChanged)
+              }
+              DetailDateRow(
+                label: "Completed",
+                value: page.completedAt,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                minimumDate: startedDate,
+                maximumDate: today
+              ) { date in
+                saveDetailChange(
+                  { await model.setDate("completed_at", to: date) },
+                  onCollectionChanged: onCollectionChanged)
               }
             }
           }
@@ -224,11 +237,6 @@ struct ColoringPageDetailView: View {
       id: "page-cover", url: url, fullSizeURL: url,
       accessibilityLabel: "Page artwork"
     )
-  }
-
-  private func formattedDate(_ value: String?) -> String? {
-    guard let value = value?.nonEmpty else { return nil }
-    return DetailDateOnly.formatted(value)
   }
 
   private var photoHeader: some View {

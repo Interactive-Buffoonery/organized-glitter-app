@@ -14,6 +14,10 @@ struct DiamondProjectDetailView: View {
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   var body: some View {
+    let purchasedDate = project.datePurchased.flatMap { DetailDateOnly.date($0) }
+    let startedDate = project.dateStarted.flatMap { DetailDateOnly.date($0) }
+    let completedDate = project.dateCompleted.flatMap { DetailDateOnly.date($0) }
+    let today = Date.now
     ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
@@ -39,14 +43,39 @@ struct DiamondProjectDetailView: View {
                 DetailMetadataRow(label: "Artist", value: artist)
               }
               DetailMetadataRow(label: "Kit", value: project.kitCategory.capitalized)
-              ForEach(dateFields, id: \.field) { row in
-                DetailDateRow(
-                  label: row.label,
-                  value: row.value,
-                  isDisabled: model.isMutating || model.unresolvedWriteState != nil
-                ) { date in
-                  save { await model.setDate(row.field, to: date) }
-                }
+              DetailDateRow(
+                label: "Purchased",
+                value: project.datePurchased,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                maximumDate: min(startedDate ?? today, today)
+              ) { date in
+                save { await model.setDate("date_purchased", to: date) }
+              }
+              DetailDateRow(
+                label: "Received",
+                value: project.dateReceived,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                maximumDate: today
+              ) { date in
+                save { await model.setDate("date_received", to: date) }
+              }
+              DetailDateRow(
+                label: "Started",
+                value: project.dateStarted,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                minimumDate: purchasedDate,
+                maximumDate: min(completedDate ?? today, today)
+              ) { date in
+                save { await model.setDate("date_started", to: date) }
+              }
+              DetailDateRow(
+                label: "Completed",
+                value: project.dateCompleted,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                minimumDate: startedDate,
+                maximumDate: today
+              ) { date in
+                save { await model.setDate("date_completed", to: date) }
               }
               if !project.tags.isEmpty {
                 DetailMetadataRow(label: "Tags", value: project.tags.map(\.name).formatted(.list(type: .and)))
@@ -186,15 +215,6 @@ struct DiamondProjectDetailView: View {
     return specs
   }
 
-  private var dateFields: [(field: String, label: String, value: String?)] {
-    [
-      ("date_purchased", "Purchased", project.datePurchased),
-      ("date_received", "Received", project.dateReceived),
-      ("date_started", "Started", project.dateStarted),
-      ("date_completed", "Completed", project.dateCompleted),
-    ]
-  }
-
   private func save(_ write: @escaping @MainActor () async -> Bool) {
     saveDetailChange(write, onCollectionChanged: onCollectionChanged)
   }
@@ -227,94 +247,6 @@ struct DiamondProjectDetailView: View {
     VStack(alignment: .leading, spacing: 12) {
       sectionTitle(title)
       content()
-    }
-  }
-}
-
-
-/// A date-only field edited in place, committed only after the picker closes.
-private struct DetailDateRow: View {
-  @Environment(FormDrawer.self) private var formDrawer
-  @Environment(\.theme) private var theme
-  @State private var isEditingDate = false
-  @State private var draftDate = Date.now
-
-  let label: String
-  let value: String?
-  let isDisabled: Bool
-  let onChange: (Date?) -> Void
-
-  var body: some View {
-    let storedDate = value.flatMap { DetailDateOnly.date($0) }
-    DetailMetadataRow(label: label, combinesChildren: false) {
-      HStack(spacing: 0) {
-        Button {
-          draftDate = storedDate ?? .now
-          isEditingDate = true
-        } label: {
-          if let value, let formatted = DetailDateOnly.formatted(value) {
-            Text(formatted)
-              .frame(minHeight: 44)
-              .contentShape(.rect)
-          } else {
-            Label("Add date", systemImage: "plus")
-              .frame(minHeight: 44)
-              .contentShape(.rect)
-          }
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(theme.pageAction)
-        .accessibilityLabel(storedDate == nil
-          ? "Add \(label.lowercased()) date" : "Change \(label.lowercased()) date")
-        .accessibilityValue(value.flatMap { DetailDateOnly.formatted($0) } ?? "No date")
-        if storedDate != nil {
-          Button {
-            onChange(nil)
-          } label: {
-            Image(systemName: "xmark.circle.fill")
-              .foregroundStyle(theme.pageSecondaryForeground)
-              .frame(width: 44, height: 44)
-              .contentShape(.rect)
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel("Clear \(label.lowercased()) date")
-        }
-      }
-    }
-    .disabledWhileFormPresented(formDrawer, or: isDisabled)
-    .accessibilityIdentifier("detail.date.\(label.lowercased())")
-    .onChange(of: formDrawer.isPresenting) { _, isPresenting in
-      if isPresenting { isEditingDate = false }
-    }
-    .popover(isPresented: $isEditingDate) {
-      VStack(alignment: .leading, spacing: 16) {
-        Text("\(storedDate == nil ? "Add" : "Change") \(label.lowercased()) date")
-          .font(.karla(.headline))
-          .foregroundStyle(theme.foreground)
-        DatePicker(label, selection: $draftDate, displayedComponents: .date)
-          .datePickerStyle(.graphical)
-        HStack {
-          Button("Cancel") { isEditingDate = false }
-          Spacer()
-          Button("Save") {
-            guard !formDrawer.isPresenting, !isDisabled else { return }
-            isEditingDate = false
-            if storedDate.map({ DetailDateOnly.string(from: $0) })
-              != DetailDateOnly.string(from: draftDate)
-            {
-              onChange(draftDate)
-            }
-          }
-          .buttonStyle(.borderedProminent)
-          .disabledWhileFormPresented(formDrawer, or: isDisabled)
-        }
-      }
-      .padding()
-      .frame(maxWidth: 380)
-      .background(theme.card)
-      .presentationCompactAdaptation(.sheet)
-      .presentationDetents([.medium, .large])
-      .presentationDragIndicator(.visible)
     }
   }
 }

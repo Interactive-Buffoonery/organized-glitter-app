@@ -31,6 +31,14 @@ enum DetailDateOnly {
     timeZone: TimeZone = .current
   ) -> String? {
     guard let date = date(value, timeZone: timeZone) else { return nil }
+    return formatted(date, locale: locale, timeZone: timeZone)
+  }
+
+  static func formatted(
+    _ date: Date,
+    locale: Locale = .current,
+    timeZone: TimeZone = .current
+  ) -> String {
     let formatter = DateFormatter()
     formatter.calendar = Calendar(identifier: .gregorian)
     formatter.locale = locale
