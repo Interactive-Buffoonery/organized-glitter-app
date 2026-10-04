@@ -10,16 +10,21 @@ struct DetailDateRow: View {
   let label: String
   let value: String?
   let isDisabled: Bool
+  var minimumDate: Date? = nil
+  var maximumDate: Date? = nil
   let onChange: (Date?) -> Void
 
   var body: some View {
     let storedDate = value.flatMap { DetailDateOnly.date($0) }
     let formattedDate = storedDate.map { DetailDateOnly.formatted($0) }
     let storedDateString = storedDate.map { DetailDateOnly.string(from: $0) }
+    let upperBound = maximumDate ?? .distantFuture
+    let lowerBound = minimumDate ?? .distantPast
+    let pickerRange = min(lowerBound, upperBound)...upperBound
     DetailMetadataRow(label: label, combinesChildren: false) {
       HStack(spacing: 0) {
         Button {
-          draftDate = storedDate ?? .now
+          draftDate = min(max(storedDate ?? .now, pickerRange.lowerBound), pickerRange.upperBound)
           isEditingDate = true
         } label: {
           if let formatted = formattedDate {
@@ -61,13 +66,15 @@ struct DetailDateRow: View {
         Text("\(storedDate == nil ? "Add" : "Change") \(label.lowercased()) date")
           .font(.karla(.headline))
           .foregroundStyle(theme.foreground)
-        DatePicker(label, selection: $draftDate, displayedComponents: .date)
+        DatePicker(label, selection: $draftDate, in: pickerRange, displayedComponents: .date)
           .datePickerStyle(.graphical)
         HStack {
           Button("Cancel") { isEditingDate = false }
           Spacer()
           Button("Save") {
-            guard !formDrawer.isPresenting, !isDisabled else { return }
+            guard !formDrawer.isPresenting, !isDisabled,
+              draftDate >= lowerBound, draftDate <= upperBound
+            else { return }
             isEditingDate = false
             if storedDateString
               != DetailDateOnly.string(from: draftDate)
@@ -75,6 +82,7 @@ struct DetailDateRow: View {
               onChange(draftDate)
             }
           }
+          .disabled(draftDate < lowerBound || draftDate > upperBound)
           .buttonStyle(.borderedProminent)
           .disabledWhileFormPresented(formDrawer, or: isDisabled)
         }

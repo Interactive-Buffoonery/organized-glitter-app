@@ -164,7 +164,12 @@ struct ColoringPageDetailView: View {
                 DetailDateRow(
                   label: row.label,
                   value: row.value,
-                  isDisabled: model.isMutating || model.unresolvedWriteState != nil
+                  isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                  minimumDate: row.field == "completed_at"
+                    ? page.startedAt.flatMap { DetailDateOnly.date($0) } : nil,
+                  maximumDate: row.field == "started_at"
+                    ? min(page.completedAt.flatMap { DetailDateOnly.date($0) } ?? .now, .now)
+                    : .now
                 ) { date in
                   saveDetailChange(
                     { await model.setDate(row.field, to: date) },
