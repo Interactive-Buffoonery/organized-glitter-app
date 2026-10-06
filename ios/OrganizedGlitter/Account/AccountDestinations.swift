@@ -23,7 +23,7 @@ struct ProfileNameView: View {
         }
       }
       .disabled(
-        preferences.isSaving
+        preferences.isBusy
           || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
       .accessibilityLabel("Save profile name")
     }

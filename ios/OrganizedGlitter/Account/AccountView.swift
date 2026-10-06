@@ -47,7 +47,7 @@ struct AccountView: View {
               Text(flavor.label).tag(flavor)
             }
           }
-          .disabled(preferences.isSaving)
+          .disabled(preferences.isBusy)
           .accessibilityLabel("Account theme")
 
           AccountAppearancePicker(
@@ -62,7 +62,7 @@ struct AccountView: View {
               Text(palette.label).tag(palette)
             }
           }
-          .disabled(preferences.isSaving)
+          .disabled(preferences.isBusy)
           .accessibilityLabel("Account background")
 
           if dynamicTypeSize.isAccessibilitySize {
@@ -79,7 +79,7 @@ struct AccountView: View {
             }
             .accessibilityLabel("Account time zone")
             .accessibilityValue(selectedTimezone)
-            .disabled(preferences.isSaving)
+            .disabled(preferences.isBusy)
           } else {
             timezonePicker
           }
@@ -90,14 +90,14 @@ struct AccountView: View {
             "Diamond painting",
             isOn: verticalBinding(\.diamondPainting)
           )
-          .disabled(preferences.isSaving || (preferences.verticals.diamondPainting && !preferences.verticals.coloringBooks))
+          .disabled(preferences.isBusy || (preferences.verticals.diamondPainting && !preferences.verticals.coloringBooks))
           .accessibilityLabel("Enable diamond painting")
 
           Toggle(
             "Coloring",
             isOn: verticalBinding(\.coloringBooks)
           )
-          .disabled(preferences.isSaving || (preferences.verticals.coloringBooks && !preferences.verticals.diamondPainting))
+          .disabled(preferences.isBusy || (preferences.verticals.coloringBooks && !preferences.verticals.diamondPainting))
           .accessibilityLabel("Enable coloring")
         } header: {
           Text("Crafts")
@@ -125,15 +125,20 @@ struct AccountView: View {
           Toggle(
             "Share usage analytics",
             isOn: Binding(
-              get: { appModel.analytics.isEnabled },
-              set: { appModel.analytics.setEnabled($0) }
+              get: { preferences.user.analyticsOptOut.map { !$0 } ?? false },
+              set: { enabled in
+                Task { _ = await preferences.updateAnalyticsEnabled(enabled) }
+              }
             )
           )
+          .disabled(
+            preferences.isBusy
+              || preferences.user.analyticsOptOut == nil || !connectionAvailable)
           .accessibilityIdentifier("account.usageAnalytics")
         } header: {
           Text("Privacy")
         } footer: {
-          Text("Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Turning this off stops new collection on this device. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity.")
+          Text("Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Your choice applies anywhere you sign in. Turning this off stops new collection here right away. Other open apps and browsers will pick up the change after they refresh your account. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity.")
             .fixedSize(horizontal: false, vertical: true)
         }
 
@@ -226,7 +231,7 @@ struct AccountView: View {
         Text(identifier.replacingOccurrences(of: "_", with: " ")).tag(identifier)
       }
     }
-    .disabled(preferences.isSaving)
+    .disabled(preferences.isBusy)
     .accessibilityLabel("Account time zone")
   }
 

@@ -5,7 +5,7 @@ Status: implementation requirements for native analytics. The
 identity handling and limited initial event coverage. Integration and release
 evidence remain open until verified against the shipped configuration.
 
-This contract extends the web [analytics rules](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/analytics/posthog.md)
+This contract extends the web [analytics rules](https://github.com/Interactive-Buffoonery/organized-glitter-web/blob/dev/docs/analytics/posthog.md)
 and the [native product rules](architecture.md#free-native-app).
 Recheck SDK behavior when selecting or upgrading versions.
 
@@ -70,11 +70,14 @@ Do not treat the original web-derived list as a smaller approved native scope.
   report a pending/conflicted edit as accepted by the server or double-count
   its user action when synchronization retries. For uncertain online writes,
   refresh before reporting success.
-- Store the device analytics preference independently of PocketBase and load
-  it before SDK initialization. Opt-out must immediately prevent new captures,
-  including automatic events. Do not identify an account while opted out.
-- Before sign-in, permitted entry events may use the SDK-generated identity.
-  After successful sign-in/restoration, identify using the opaque account ID.
+- Store the analytics preference on the PocketBase user record so the same
+  choice applies to web and native clients. Keep collection disabled until a
+  fresh authenticated response confirms the account preference. Cached offline
+  account data must not enable analytics. Opt-out must immediately prevent new
+  captures, including automatic events. Do not identify an account while opted
+  out.
+- Do not capture before sign-in. After successful sign-in or online restoration,
+  identify using the opaque account ID.
   Reset identity before another account's activity on sign-out, invalid session,
   deletion or switch. No email or display name is supplied to the analytics SDK.
 - Account wording must explain that opt-out stops new usage collection. The

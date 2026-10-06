@@ -294,7 +294,8 @@
             [
               "id": "preview-user", "verified": true, "username": "Fictional crafter",
               "name": "Fictional crafter", "timezone": "America/New_York",
-              "theme_preference": "system", "created": "2026-09-01 10:00:00",
+              "theme_preference": "system", "analytics_opt_out": false,
+              "created": "2026-09-01 10:00:00",
               "updated": "2026-09-19 10:00:00",
             ]
           ],

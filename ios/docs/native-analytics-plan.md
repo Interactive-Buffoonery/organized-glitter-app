@@ -9,8 +9,8 @@ events are outside this work.
 
 The first PR adds the pinned PostHog package, `NativeAnalytics`, a typed event
 registry, a final payload allowlist, an Account preference and session identity
-handling. It captures `app_opened` once when a process reaches a usable signed-in
-or signed-out state. Restoration is not a new login.
+handling. It captures `app_opened` once after the signed-in account and its
+analytics preference have been freshly verified. Restoration is not a new login.
 
 `AppModel` supplies the opaque PocketBase account ID. Before switching an
 identified account, or during sign-out, expiration and local cleanup, the
@@ -20,8 +20,10 @@ New capture and batch requests stay suspended during restoration, sign-out
 and cleanup. Cancelling a sign-out with pending edits restores the active
 account identity.
 
-The device preference defaults on and is stored independently of PocketBase.
-It is loaded before SDK setup. When off, no new events or identification are
+The preference is stored on the PocketBase user record and defaults on. The same
+choice applies on web and native clients. Native collection stays off until a
+fresh authenticated response verifies the preference, so an offline cached
+session never starts analytics. When off, no new events or identification are
 collected. The SDK is not initialized at an opted-out launch. Requests already
 in flight may finish. Previously collected events can remain in a bounded
 100-event queue and may be delivered when analytics is re-enabled. Reset and
@@ -86,8 +88,9 @@ and live vendor processing before production enablement or submission.
 ## Verification and failure paths
 
 - Missing configuration or vendor failure leaves product flows available.
-- Opt-out prevents capture, identify and new batch requests. Relaunch retains
-  the preference. Opting back in uses the active account identity.
+- Opt-out prevents capture, identify and new batch requests. Reloading the
+  account refreshes the shared preference. Opting back in uses the active
+  account identity.
 - Offline queued events retain their original identity through account changes.
   The queue has a count bound; delivery does not block product actions.
 - Automatic requests and redirects cannot bypass the endpoint gate. Test the
@@ -95,7 +98,7 @@ and live vendor processing before production enablement or submission.
 - Actual serialized batches contain only registered events and allowed keys.
   SDK-added fields, person properties and free text are checked at this boundary.
 - Run the local pre-PR gate on isolated iPhone and iPad iOS 26 simulators.
-  Review the Account toggle, persistence and Dynamic Type on both families.
+  Review the Account toggle, server persistence and Dynamic Type on both families.
 - Use live nonproduction ingestion to confirm server enrichment and dashboard
   behavior separately from the isolated wire tests. Simulator tests do not
   establish vendor retention, deletion, physical-device or App Store evidence.

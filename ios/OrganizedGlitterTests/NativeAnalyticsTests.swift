@@ -7,18 +7,34 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct NativeAnalyticsTests {
-  @Test func preferenceDefaultsOnAndPersistsWithoutConfiguration() {
-    let name = "analytics.tests.\(UUID().uuidString)"
-    let defaults = UserDefaults(suiteName: name)!
-    defer { defaults.removePersistentDomain(forName: name) }
-    let analytics = NativeAnalytics(defaults: defaults)
-    #expect(analytics.isEnabled)
-    analytics.setEnabled(false)
-    analytics.setSession(accountID: "account-a", isActive: true)
+  @Test func accountConsentMustBeFreshlyVerifiedBeforeCapture() {
+    let analytics = NativeAnalytics()
+    #expect(!analytics.isEnabled)
+    analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: nil)
     analytics.capture(.appOpened)
-    #expect(!NativeAnalytics(defaults: defaults).isEnabled)
-    analytics.setEnabled(true)
-    #expect(NativeAnalytics(defaults: defaults).isEnabled)
+    #expect(!analytics.isEnabled)
+    analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
+    #expect(analytics.isEnabled)
+    analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: false)
+    #expect(!analytics.isEnabled)
+  }
+
+  @Test func freshAccountWithoutAnalyticsFieldRemainsDisabled() async throws {
+    let fixture = makeFixture()
+    defer { fixture.close() }
+    let user = try JSONDecoder().decode(
+      UserRecord.self,
+      from: Data(#"{"id":"account-a","verified":true}"#.utf8))
+    let store = KeychainSessionStore(service: "analytics.missing-field.tests.\(UUID().uuidString)")
+    defer { try? store.clear() }
+    let client = PocketBaseClient(baseURL: URL(string: "https://example.test")!, sessionStore: store)
+    let model = AppModel(
+      client: client, sessionStore: store, themeStore: ThemeStore(), analytics: fixture.analytics)
+    while model.phase == .restoring { await Task.yield() }
+    model.phase = .signedIn(user)
+    model.replaceSignedInUser(user)
+
+    #expect(!fixture.analytics.isEnabled)
   }
 
   @Test func configurationRejectsProductionDebugAndInvalidDestinations() {
@@ -38,7 +54,7 @@ struct NativeAnalyticsTests {
   @Test func batchesContainOnlyAllowedPropertiesAndOpaqueIdentity() async throws {
     let fixture = makeFixture()
     defer { fixture.close() }
-    fixture.analytics.setSession(accountID: "account-a", isActive: true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
     fixture.sdk.capture("app_opened", properties: [
       "title": "Private title", "email": "private@example.test", "search": "Private query",
@@ -73,13 +89,13 @@ struct NativeAnalyticsTests {
   @Test func optOutStopsCaptureAndNetworkUntilReenabled() async throws {
     let fixture = makeFixture()
     defer { fixture.close() }
-    fixture.analytics.setSession(accountID: "account-a", isActive: true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
-    fixture.analytics.setEnabled(false)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: false)
     #expect(fixture.sdk.isOptOut())
     fixture.analytics.capture(.appOpened)
     fixture.sdk.capture("app_opened")
-    fixture.analytics.setEnabled(true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
     #expect(!fixture.sdk.isOptOut())
     fixture.sdk.flush()
     let batch = try await waitForBatch(token: fixture.token)
@@ -91,14 +107,14 @@ struct NativeAnalyticsTests {
   @Test func queuedEventsKeepTheirOriginalIdentityAcrossAccounts() async throws {
     let fixture = makeFixture()
     defer { fixture.close() }
-    fixture.analytics.setSession(accountID: "account-a", isActive: true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
-    fixture.analytics.setEnabled(false)
-    fixture.analytics.setSession(accountID: nil, isActive: true)
-    fixture.analytics.setSession(accountID: "account-b", isActive: true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: false)
+    fixture.analytics.setSession(accountID: nil, isActive: false, analyticsEnabled: nil)
+    fixture.analytics.setSession(accountID: "account-b", isActive: true, analyticsEnabled: false)
     fixture.analytics.capture(.appOpened)
     #expect(fixture.sdk.isOptOut())
-    fixture.analytics.setEnabled(true)
+    fixture.analytics.setSession(accountID: "account-b", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
     fixture.sdk.flush()
     let batch = try await waitForBatch(token: fixture.token)
@@ -113,10 +129,10 @@ struct NativeAnalyticsTests {
     #expect(!anonymousIDs.contains("account-a"))
   }
 
-  @Test func disabledStartupNeverInitializesOrIdentifiesTheSDK() {
-    let fixture = makeFixture(initiallyEnabled: false)
+  @Test func unknownConsentNeverInitializesOrIdentifiesTheSDK() {
+    let fixture = makeFixture()
     defer { fixture.close() }
-    fixture.analytics.setSession(accountID: "account-a", isActive: true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: nil)
     fixture.analytics.capture(.appOpened)
     #expect(fixture.sdk.isOptOut())
     #expect(AnalyticsWireProtocol.requests.isEmpty)
@@ -125,15 +141,15 @@ struct NativeAnalyticsTests {
   @Test func inactiveSessionDropsNewActionsUntilTheNextAccountIsReady() async throws {
     let fixture = makeFixture()
     defer { fixture.close() }
-    fixture.analytics.setSession(accountID: "account-a", isActive: true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
-    fixture.analytics.setSession(accountID: nil, isActive: false)
+    fixture.analytics.setSession(accountID: nil, isActive: false, analyticsEnabled: nil)
     fixture.analytics.capture(.appOpened)
     fixture.sdk.capture("app_opened")
-    fixture.analytics.setEnabled(false)
-    fixture.analytics.setEnabled(true)
+    fixture.analytics.setSession(accountID: "account-a", isActive: false, analyticsEnabled: false)
+    fixture.analytics.setSession(accountID: "account-a", isActive: false, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
-    fixture.analytics.setSession(accountID: "account-b", isActive: true)
+    fixture.analytics.setSession(accountID: "account-b", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
     fixture.sdk.flush()
     let batch = try await waitForBatch(token: fixture.token)
@@ -151,8 +167,13 @@ struct NativeAnalyticsTests {
     let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(), analytics: fixture.analytics)
     while model.phase == .restoring { await Task.yield() }
     model.phase = .signedIn(.preview)
-    #expect(fixture.sdk.getDistinctId() == UserRecord.preview.id)
+    #expect(fixture.sdk.getDistinctId() != UserRecord.preview.id)
     model.replaceSignedInUser(.preview)
+    #expect(fixture.sdk.getDistinctId() == UserRecord.preview.id)
+    model.pauseAnalyticsUntilAccountRefresh()
+    #expect(fixture.sdk.isOptOut())
+    model.replaceSignedInUser(.preview)
+    #expect(!fixture.sdk.isOptOut())
     fixture.sdk.flush()
     let batch = try await waitForBatch(token: fixture.token)
     let events = try #require(batch["batch"] as? [[String: Any]])
@@ -161,7 +182,7 @@ struct NativeAnalyticsTests {
     #expect(events.filter { $0["event"] as? String == "$identify" }.count == 1)
     await model.expireSession()
     #expect(model.phase == .signedOut)
-    #expect(!fixture.sdk.isOptOut())
+    #expect(fixture.sdk.isOptOut())
     #expect(fixture.sdk.getDistinctId() != UserRecord.preview.id)
   }
 
@@ -204,16 +225,15 @@ struct NativeAnalyticsTests {
     AnalyticsConfiguration.parse(projectToken: token, host: host, environment: environment, appVersion: "0.1.0", isDebug: isDebug)
   }
 
-  private func makeFixture(initiallyEnabled: Bool = true) -> AnalyticsFixture {
+  private func makeFixture() -> AnalyticsFixture {
     AnalyticsWireProtocol.reset()
     let token = "phc_test_\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: token)!
-    if !initiallyEnabled { defaults.set(false, forKey: "analytics.usageEnabled") }
     let session = URLSessionConfiguration.ephemeral
     session.protocolClasses = [AnalyticsWireProtocol.self]
     let sdk = PostHogSDK.shared
     let analytics = NativeAnalytics(
-      configuration: configuration(token: token), defaults: defaults, sdk: sdk,
+      configuration: configuration(token: token), sdk: sdk,
       sessionConfiguration: session, compression: .none
     )
     return AnalyticsFixture(token: token, defaults: defaults, sdk: sdk, analytics: analytics)

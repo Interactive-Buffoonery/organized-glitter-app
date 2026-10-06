@@ -50,7 +50,8 @@ struct AppShellView: View {
       initialValue: AccountPreferencesModel(
         client: client,
         user: user,
-        onUserRefresh: model.replaceSignedInUser
+        onUserRefresh: model.replaceSignedInUser,
+        onAnalyticsConsentUnknown: model.pauseAnalyticsUntilAccountRefresh
       ))
   }
 
@@ -181,7 +182,12 @@ struct AppShellView: View {
       }
     }
     .onChange(of: scenePhase) { _, phase in
-      if phase == .active { Task { try? await library.refresh(force: true) } }
+      if phase == .active {
+        Task {
+          await accountPreferences.refreshAnalyticsPreference()
+          try? await library.refresh(force: true)
+        }
+      }
     }
     .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
     .environment(\.pocketBaseClient, client)
@@ -189,6 +195,18 @@ struct AppShellView: View {
     .environment(\.connectionAvailable, connectivity.connectionAvailable)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
+    .task(id: scenePhase) {
+      guard scenePhase == .active else { return }
+      while !Task.isCancelled {
+        do {
+          try await Task.sleep(for: .seconds(30))
+        } catch {
+          return
+        }
+        guard !Task.isCancelled else { return }
+        await accountPreferences.refreshAnalyticsPreference()
+      }
+    }
     .task { try? await library.refresh() }
     .task { await library.monitorConnectivity() }
     .task { await connectivity.monitor() }

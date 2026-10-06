@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor
 final class AnalyticsPreferenceUITests: XCTestCase {
-  func testAnalyticsPreferencePersistsAcrossRelaunch() {
+  func testAnalyticsPreferenceSavesToTheAccount() {
     let app = launchFixture()
     let toggle = openPrivacy(app)
     let initialValue = toggle.value as? String
@@ -12,14 +12,14 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
     let changedValue = toggle.value as? String
     XCTAssertNotEqual(changedValue, initialValue)
-    app.terminate()
-    app.launch()
-    let restored = openPrivacy(app)
-    XCTAssertEqual(restored.value as? String, changedValue)
-    toggleControl(restored).tap()
-    let reset = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", initialValue ?? ""), object: restored)
+    let saved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", changedValue ?? ""), object: toggle)
+    XCTAssertEqual(XCTWaiter.wait(for: [saved], timeout: 5), .completed)
+    let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: toggle)
+    XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
+    toggleControl(toggle).tap()
+    let reset = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", initialValue ?? ""), object: toggle)
     XCTAssertEqual(XCTWaiter.wait(for: [reset], timeout: 5), .completed)
-    XCTAssertEqual(restored.value as? String, initialValue)
+    XCTAssertEqual(toggle.value as? String, initialValue)
   }
 
   func testPrivacyPreferenceIsReachableAtLargestDynamicType() {
@@ -28,7 +28,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     XCTAssertTrue(toggleControl(toggle).isHittable)
     XCTAssertEqual(toggle.label, "Share usage analytics")
     let disclosure = app.descendants(matching: .any).matching(
-      NSPredicate(format: "label CONTAINS %@", "Turning this off stops new collection on this device")
+      NSPredicate(format: "label CONTAINS %@", "applies anywhere you sign in")
     ).firstMatch
     for _ in 0..<4 {
       if disclosure.exists { break }

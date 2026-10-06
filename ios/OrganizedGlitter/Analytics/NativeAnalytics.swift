@@ -5,53 +5,43 @@ import PostHog
 @MainActor
 @Observable
 final class NativeAnalytics {
-  private static let preferenceKey = "analytics.usageEnabled"
-  private let defaults: UserDefaults
   @ObservationIgnored private let configuration: AnalyticsConfiguration?
   @ObservationIgnored private let sdk: PostHogSDK
   @ObservationIgnored private let gate: AnalyticsNetworkGate?
   @ObservationIgnored private let compression: PostHogCompression
   @ObservationIgnored private var started = false
   @ObservationIgnored private var accountID: String?
+  @ObservationIgnored private var identifiedAccountID: String?
   @ObservationIgnored private var sessionActive = false
-  private(set) var isEnabled: Bool
+  private(set) var isEnabled = false
 
   init(
     configuration: AnalyticsConfiguration? = nil,
-    defaults: UserDefaults = .standard,
     sdk: PostHogSDK = .shared,
     sessionConfiguration: URLSessionConfiguration = .ephemeral,
     compression: PostHogCompression = .gzip
   ) {
     self.configuration = configuration
-    self.defaults = defaults
     self.sdk = sdk
     self.compression = compression
-    isEnabled = defaults.object(forKey: Self.preferenceKey) as? Bool ?? true
     gate = configuration.map { AnalyticsNetworkGate(host: $0.host, sessionConfiguration: sessionConfiguration) }
   }
 
-  func setEnabled(_ enabled: Bool) {
-    guard enabled != isEnabled else { return }
-    if !enabled {
+  func setSession(accountID id: String?, isActive: Bool, analyticsEnabled: Bool?) {
+    let enabled = id != nil && isActive && analyticsEnabled == true
+    guard accountID != id || sessionActive != isActive || isEnabled != enabled else { return }
+    if !enabled || accountID != id {
       gate?.setEnabled(false)
       if started { sdk.optOut() }
     }
-    defaults.set(enabled, forKey: Self.preferenceKey)
-    isEnabled = enabled
-    if enabled { activate() }
-  }
-
-  func setSession(accountID id: String?, isActive: Bool) {
-    guard accountID != id || sessionActive != isActive else { return }
-    gate?.setEnabled(false)
-    if started, !isActive { sdk.optOut() }
     if started, accountID != id {
       sdk.reset()
-      if !isEnabled { sdk.optOut() }
+      identifiedAccountID = nil
+      if !enabled { sdk.optOut() }
     }
     accountID = id
     sessionActive = isActive
+    isEnabled = enabled
     activate()
   }
 
@@ -102,10 +92,14 @@ final class NativeAnalytics {
       AnalyticsRequestProtocol.register(gate)
       sdk.setup(config)
       sdk.reset()
+      identifiedAccountID = nil
       started = true
     }
     sdk.optIn()
-    if let accountID { sdk.identify(accountID) }
+    if let accountID, identifiedAccountID != accountID {
+      sdk.identify(accountID)
+      identifiedAccountID = accountID
+    }
     gate.setEnabled(true)
   }
 }

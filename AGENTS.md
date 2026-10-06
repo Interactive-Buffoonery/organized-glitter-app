@@ -29,7 +29,7 @@ craft-project library and files are private. Read `README.md` and
   URLs, email addresses, or other PII.
 - Do not copy TypeScript, PocketBase hooks, migrations, or schema ownership into
   this repository.
-- Backend changes must land in `Interactive-Buffoonery/organized-glitter` first
+- Backend changes must land in `Interactive-Buffoonery/organized-glitter-web` first
   and remain compatible with the web application and older iOS releases.
 - Do not edit `ios/BackendContract.json` until the referenced backend revision has
   been verified.

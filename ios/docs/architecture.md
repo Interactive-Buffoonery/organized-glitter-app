@@ -15,7 +15,7 @@ after iOS 26 require availability checks.
   validation.
 
 The application does not own backend schema or server behavior. Those remain in
-`Interactive-Buffoonery/organized-glitter`.
+`Interactive-Buffoonery/organized-glitter-web`.
 
 ## Data policy
 

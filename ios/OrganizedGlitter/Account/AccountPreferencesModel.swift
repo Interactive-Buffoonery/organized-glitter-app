@@ -30,43 +30,87 @@ struct DashboardSettingsRecord: Decodable, Sendable {
 @MainActor
 @Observable
 final class AccountPreferencesModel {
+  private static let analyticsRefreshError = "Analytics will stay off until your account reloads."
+  private static let analyticsConfirmationError =
+    "The analytics choice could not be confirmed. Analytics will stay off until your account reloads."
   private let client: PocketBaseClient
   private let userID: String
   private let onUserRefresh: (UserRecord) -> Void
+  private let onAnalyticsConsentUnknown: () -> Void
+  private var userRequestGeneration = 0
 
   private(set) var user: UserRecord
   private(set) var verticals = VerticalPreferences.defaultValue
   private(set) var settingsID: String?
   private(set) var isLoading = false
+  private(set) var isRefreshingAnalytics = false
   private(set) var isSaving = false
   var errorMessage: String?
+
+  var isBusy: Bool {
+    isLoading || isSaving || isRefreshingAnalytics
+  }
 
   init(
     client: PocketBaseClient,
     user: UserRecord,
-    onUserRefresh: @escaping (UserRecord) -> Void = { _ in }
+    onUserRefresh: @escaping (UserRecord) -> Void = { _ in },
+    onAnalyticsConsentUnknown: @escaping () -> Void = {}
   ) {
     self.client = client
     userID = user.id
     self.user = user
     self.onUserRefresh = onUserRefresh
+    self.onAnalyticsConsentUnknown = onAnalyticsConsentUnknown
   }
 
   func load() async {
+    guard !isLoading, !isSaving, !isRefreshingAnalytics else { return }
+    onAnalyticsConsentUnknown()
+    let generation = nextUserRequestGeneration()
     isLoading = true
     errorMessage = nil
     defer { isLoading = false }
 
     do {
-      async let refreshedUser: UserRecord = client.get(collection: "users", id: userID)
-      async let loadedSettings = loadSettings()
-      let (user, settings) = try await (refreshedUser, loadedSettings)
+      let user: UserRecord = try await client.get(collection: "users", id: userID)
+      guard generation == userRequestGeneration else { return }
       apply(user)
-      apply(settings)
     } catch APIError.cancelled {
       return
     } catch {
       errorMessage = error.accountMessage
+      return
+    }
+
+    do {
+      apply(try await loadSettings())
+    } catch APIError.cancelled {
+      return
+    } catch {
+      errorMessage = error.accountMessage
+    }
+  }
+
+  func refreshAnalyticsPreference() async {
+    guard !isLoading, !isSaving, !isRefreshingAnalytics else { return }
+    onAnalyticsConsentUnknown()
+    let generation = nextUserRequestGeneration()
+    isRefreshingAnalytics = true
+    defer { isRefreshingAnalytics = false }
+
+    do {
+      let refreshed: UserRecord = try await client.get(collection: "users", id: userID)
+      guard generation == userRequestGeneration else { return }
+      apply(refreshed)
+      if errorMessage == Self.analyticsRefreshError
+        || errorMessage == Self.analyticsConfirmationError {
+        errorMessage = nil
+      }
+    } catch APIError.cancelled {
+      return
+    } catch {
+      errorMessage = Self.analyticsRefreshError
     }
   }
 
@@ -95,12 +139,43 @@ final class AccountPreferencesModel {
     return await updateUser(TimezoneUpdate(timezone: identifier))
   }
 
+  func updateAnalyticsEnabled(_ enabled: Bool) async -> Bool {
+    guard !isSaving, !isLoading, !isRefreshingAnalytics else {
+      return false
+    }
+    onAnalyticsConsentUnknown()
+    let generation = nextUserRequestGeneration()
+    let expectedOptOut = !enabled
+    isSaving = true
+    errorMessage = nil
+    defer { isSaving = false }
+
+    do {
+      let updated: UserRecord = try await client.update(
+        collection: "users", id: userID,
+        body: AnalyticsUpdate(analyticsOptOut: expectedOptOut))
+      guard generation == userRequestGeneration else { return false }
+      guard updated.analyticsOptOut == expectedOptOut else {
+        return await reconcileAnalyticsPreference(
+          expectedOptOut: expectedOptOut, generation: generation)
+      }
+      apply(updated)
+      await refreshUserAfterWrite(generation: generation)
+      return true
+    } catch APIError.cancelled {
+      return false
+    } catch {
+      return await reconcileAnalyticsPreference(
+        expectedOptOut: expectedOptOut, generation: generation)
+    }
+  }
+
   func updateVerticals(_ next: VerticalPreferences) async -> Bool {
     guard next.hasEnabledVertical else {
       errorMessage = "Keep at least one craft enabled."
       return false
     }
-    guard !isSaving else {
+    guard !isSaving, !isLoading, !isRefreshingAnalytics else {
       return false
     }
 
@@ -134,9 +209,10 @@ final class AccountPreferencesModel {
   }
 
   private func updateUser<Body: Encodable & Sendable>(_ body: Body) async -> Bool {
-    guard !isSaving else {
+    guard !isSaving, !isLoading, !isRefreshingAnalytics else {
       return false
     }
+    let generation = nextUserRequestGeneration()
     isSaving = true
     errorMessage = nil
     defer { isSaving = false }
@@ -144,8 +220,9 @@ final class AccountPreferencesModel {
     do {
       let updated: UserRecord = try await client.update(
         collection: "users", id: userID, body: body)
+      guard generation == userRequestGeneration else { return false }
       apply(updated)
-      await refreshUserAfterWrite()
+      await refreshUserAfterWrite(generation: generation)
       return true
     } catch APIError.cancelled {
       return false
@@ -164,15 +241,38 @@ final class AccountPreferencesModel {
     return result.items.first
   }
 
-  private func refreshUserAfterWrite() async {
+  private func refreshUserAfterWrite(generation: Int) async {
     do {
       let refreshed: UserRecord = try await client.get(collection: "users", id: userID)
+      guard generation == userRequestGeneration else { return }
       apply(refreshed)
     } catch APIError.cancelled {
       return
     } catch {
       errorMessage = "Saved, but the latest account details could not be reloaded."
     }
+  }
+
+  private func reconcileAnalyticsPreference(expectedOptOut: Bool, generation: Int) async -> Bool {
+    do {
+      let refreshed: UserRecord = try await client.get(collection: "users", id: userID)
+      guard generation == userRequestGeneration else { return false }
+      apply(refreshed)
+      guard refreshed.analyticsOptOut == expectedOptOut else {
+        errorMessage = "The analytics choice could not be saved. Your current account choice was reloaded."
+        return false
+      }
+      errorMessage = nil
+      return true
+    } catch {
+      errorMessage = Self.analyticsConfirmationError
+      return false
+    }
+  }
+
+  private func nextUserRequestGeneration() -> Int {
+    userRequestGeneration &+= 1
+    return userRequestGeneration
   }
 
   private func refreshSettingsAfterWrite() async {
@@ -186,7 +286,7 @@ final class AccountPreferencesModel {
   }
 
   private func apply(_ user: UserRecord) {
-    self.user = user
+    if self.user != user { self.user = user }
     onUserRefresh(user)
   }
 
@@ -225,6 +325,14 @@ private struct PaletteUpdate: Encodable, Sendable {
 
 private struct TimezoneUpdate: Encodable, Sendable {
   let timezone: String
+}
+
+private struct AnalyticsUpdate: Encodable, Sendable {
+  let analyticsOptOut: Bool
+
+  enum CodingKeys: String, CodingKey {
+    case analyticsOptOut = "analytics_opt_out"
+  }
 }
 
 private struct VerticalUpdate: Encodable, Sendable {
