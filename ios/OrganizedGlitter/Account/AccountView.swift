@@ -135,10 +135,27 @@ struct AccountView: View {
             preferences.isBusy
               || preferences.user.analyticsOptOut == nil || !connectionAvailable)
           .accessibilityIdentifier("account.usageAnalytics")
+
+          if preferences.isAnalyticsLocallyPaused {
+            Text("Analytics is paused on this device for this session. Connect to resume collection or turn sharing off for your account.")
+              .accessibilityIdentifier("account.analyticsPaused")
+            if preferences.user.analyticsOptOut == false {
+              Button("Resume analytics on this device") {
+                Task { _ = await preferences.updateAnalyticsEnabled(true) }
+              }
+              .disabled(preferences.isBusy || !connectionAvailable)
+              .accessibilityIdentifier("account.resumeAnalytics")
+            }
+          } else {
+            Button("Pause analytics on this device") {
+              preferences.pauseAnalyticsLocally()
+            }
+            .accessibilityIdentifier("account.pauseAnalytics")
+          }
         } header: {
           Text("Privacy")
         } footer: {
-          Text("Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Your choice applies anywhere you sign in. Turning this off stops new collection here right away. Other open apps and browsers will pick up the change after they refresh your account. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity.")
+          Text("Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Your account choice applies anywhere you sign in and requires a connection to save. Turning this off stops new collection here right away. You can also pause collection on this device for this session, even offline. Other open apps and browsers will pick up the change after they refresh your account. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity.")
             .fixedSize(horizontal: false, vertical: true)
         }
 

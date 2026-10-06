@@ -37,11 +37,14 @@ final class AccountPreferencesModel {
   private let userID: String
   private let onUserRefresh: (UserRecord) -> Void
   private let onAnalyticsConsentUnknown: () -> Void
+  private let onAnalyticsLocalPauseChanged: (Bool) -> Void
   private var userRequestGeneration = 0
+  private var analyticsPauseGeneration = 0
 
   private(set) var user: UserRecord
   private(set) var verticals = VerticalPreferences.defaultValue
   private(set) var settingsID: String?
+  private(set) var isAnalyticsLocallyPaused = false
   private(set) var isLoading = false
   private(set) var isRefreshingAnalytics = false
   private(set) var isSaving = false
@@ -55,13 +58,15 @@ final class AccountPreferencesModel {
     client: PocketBaseClient,
     user: UserRecord,
     onUserRefresh: @escaping (UserRecord) -> Void = { _ in },
-    onAnalyticsConsentUnknown: @escaping () -> Void = {}
+    onAnalyticsConsentUnknown: @escaping () -> Void = {},
+    onAnalyticsLocalPauseChanged: @escaping (Bool) -> Void = { _ in }
   ) {
     self.client = client
     userID = user.id
     self.user = user
     self.onUserRefresh = onUserRefresh
     self.onAnalyticsConsentUnknown = onAnalyticsConsentUnknown
+    self.onAnalyticsLocalPauseChanged = onAnalyticsLocalPauseChanged
   }
 
   func load() async {
@@ -90,6 +95,12 @@ final class AccountPreferencesModel {
     } catch {
       errorMessage = error.accountMessage
     }
+  }
+
+  func pauseAnalyticsLocally() {
+    analyticsPauseGeneration &+= 1
+    isAnalyticsLocallyPaused = true
+    onAnalyticsLocalPauseChanged(true)
   }
 
   func refreshAnalyticsPreference() async {
@@ -146,6 +157,7 @@ final class AccountPreferencesModel {
     onAnalyticsConsentUnknown()
     let generation = nextUserRequestGeneration()
     let expectedOptOut = !enabled
+    let pauseGeneration = analyticsPauseGeneration
     isSaving = true
     errorMessage = nil
     defer { isSaving = false }
@@ -157,8 +169,9 @@ final class AccountPreferencesModel {
       guard generation == userRequestGeneration else { return false }
       guard updated.analyticsOptOut == expectedOptOut else {
         return await reconcileAnalyticsPreference(
-          expectedOptOut: expectedOptOut, generation: generation)
+          expectedOptOut: expectedOptOut, generation: generation, pauseGeneration: pauseGeneration)
       }
+      confirmAnalyticsSave(pauseGeneration: pauseGeneration)
       apply(updated)
       await refreshUserAfterWrite(generation: generation)
       return true
@@ -166,7 +179,7 @@ final class AccountPreferencesModel {
       return false
     } catch {
       return await reconcileAnalyticsPreference(
-        expectedOptOut: expectedOptOut, generation: generation)
+        expectedOptOut: expectedOptOut, generation: generation, pauseGeneration: pauseGeneration)
     }
   }
 
@@ -253,7 +266,9 @@ final class AccountPreferencesModel {
     }
   }
 
-  private func reconcileAnalyticsPreference(expectedOptOut: Bool, generation: Int) async -> Bool {
+  private func reconcileAnalyticsPreference(
+    expectedOptOut: Bool, generation: Int, pauseGeneration: Int
+  ) async -> Bool {
     do {
       let refreshed: UserRecord = try await client.get(collection: "users", id: userID)
       guard generation == userRequestGeneration else { return false }
@@ -262,12 +277,19 @@ final class AccountPreferencesModel {
         errorMessage = "The analytics choice could not be saved. Your current account choice was reloaded."
         return false
       }
+      confirmAnalyticsSave(pauseGeneration: pauseGeneration)
       errorMessage = nil
       return true
     } catch {
       errorMessage = Self.analyticsConfirmationError
       return false
     }
+  }
+
+  private func confirmAnalyticsSave(pauseGeneration: Int) {
+    guard pauseGeneration == analyticsPauseGeneration else { return }
+    isAnalyticsLocallyPaused = false
+    onAnalyticsLocalPauseChanged(false)
   }
 
   private func nextUserRequestGeneration() -> Int {

@@ -40,6 +40,7 @@ final class AppModel {
   let analytics: NativeAnalytics
   private var hasCapturedAppOpen = false
   private var analyticsConsentAccountID: String?
+  private var analyticsLocallyPausedAccountID: String?
   private let sessionStore: KeychainSessionStore?
   private let themeStore: ThemeStore?
   @ObservationIgnored private var sessionGeneration = 0
@@ -147,6 +148,7 @@ final class AppModel {
     switch phase {
     case .signedIn(let user) where !isSigningOut:
       let enabled = analyticsConsentAccountID == user.id
+        && analyticsLocallyPausedAccountID != user.id
         ? user.analyticsOptOut.map { !$0 }
         : nil
       analytics.setSession(accountID: user.id, isActive: true, analyticsEnabled: enabled)
@@ -672,6 +674,12 @@ final class AppModel {
     }
   }
 
+  func setAnalyticsLocallyPaused(_ paused: Bool, accountID: String) {
+    guard case .signedIn(let user) = phase, user.id == accountID else { return }
+    analyticsLocallyPausedAccountID = paused ? user.id : nil
+    updateAnalyticsSession()
+  }
+
   func pauseAnalyticsUntilAccountRefresh() {
     analyticsConsentAccountID = nil
     updateAnalyticsSession()
@@ -712,6 +720,7 @@ final class AppModel {
     appleTask = nil
     appleAttempt = nil
     analyticsConsentAccountID = nil
+    analyticsLocallyPausedAccountID = nil
     updateAnalyticsSession()
     sessionGeneration &+= 1
     return sessionGeneration

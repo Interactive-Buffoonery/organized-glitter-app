@@ -51,7 +51,8 @@ struct AppShellView: View {
         client: client,
         user: user,
         onUserRefresh: model.replaceSignedInUser,
-        onAnalyticsConsentUnknown: model.pauseAnalyticsUntilAccountRefresh
+        onAnalyticsConsentUnknown: model.pauseAnalyticsUntilAccountRefresh,
+        onAnalyticsLocalPauseChanged: { model.setAnalyticsLocallyPaused($0, accountID: user.id) }
       ))
   }
 
@@ -221,6 +222,7 @@ struct AppShellView: View {
             }
           }
       }
+      .environment(\.connectionAvailable, connectivity.connectionAvailable)
     }
   }
 

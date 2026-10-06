@@ -245,6 +245,80 @@ struct AccountPreferencesTests {
     #expect(model.verticals == VerticalPreferences(diamondPainting: false, coloringBooks: true))
   }
 
+  @Test
+  func localPauseDoesNotWriteOrChangeTheAccountChoice() {
+    let client = makeClient()
+    var paused = false
+    let model = AccountPreferencesModel(
+      client: client, user: .preview,
+      onAnalyticsLocalPauseChanged: { paused = $0 })
+
+    model.pauseAnalyticsLocally()
+
+    #expect(paused)
+    #expect(model.isAnalyticsLocallyPaused)
+    #expect(model.user.analyticsOptOut == false)
+    #expect(AccountPreferencesURLProtocol.requests.isEmpty)
+  }
+
+  @Test
+  func refreshPreservesLocalPauseAndConfirmedSaveClearsIt() async throws {
+    let client = makeClient(responses: [
+      (200, #"{"token":"token","record":{"id":"preview-user","verified":true}}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":false}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":false}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":false}"#),
+    ])
+    _ = try await client.signIn(identity: "sarah@example.test", password: "password")
+    var pauses: [Bool] = []
+    let model = AccountPreferencesModel(
+      client: client, user: .preview,
+      onAnalyticsLocalPauseChanged: { pauses.append($0) })
+    model.pauseAnalyticsLocally()
+    await model.refreshAnalyticsPreference()
+    #expect(model.isAnalyticsLocallyPaused)
+    #expect(pauses == [true])
+
+    #expect(await model.updateAnalyticsEnabled(true))
+    #expect(!model.isAnalyticsLocallyPaused)
+    #expect(pauses == [true, false])
+  }
+
+  @Test
+  func failedAnalyticsSaveCannotClearLocalPause() async throws {
+    let client = makeClient(responses: [
+      (200, #"{"token":"token","record":{"id":"preview-user","verified":true}}"#),
+      (503, #"{}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":false}"#),
+    ])
+    _ = try await client.signIn(identity: "sarah@example.test", password: "password")
+    var pauses: [Bool] = []
+    let model = AccountPreferencesModel(
+      client: client, user: .preview,
+      onAnalyticsLocalPauseChanged: { pauses.append($0) })
+    model.pauseAnalyticsLocally()
+    #expect(!(await model.updateAnalyticsEnabled(false)))
+    #expect(model.isAnalyticsLocallyPaused)
+    #expect(pauses == [true])
+  }
+
+  @Test
+  func localPauseDuringSaveWinsOverTheOlderSave() async throws {
+    let client = makeClient(responses: [
+      (200, #"{"token":"token","record":{"id":"preview-user","verified":true}}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":false}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":false}"#),
+    ])
+    _ = try await client.signIn(identity: "sarah@example.test", password: "password")
+    AccountPreferencesURLProtocol.responseDelay = 0.1
+    let model = AccountPreferencesModel(client: client, user: .preview)
+    let save = Task { await model.updateAnalyticsEnabled(true) }
+    while AccountPreferencesURLProtocol.requests.count < 2 { await Task.yield() }
+    model.pauseAnalyticsLocally()
+    #expect(await save.value)
+    #expect(model.isAnalyticsLocallyPaused)
+  }
+
   private func makeClient(responses: [(Int, String)] = []) -> PocketBaseClient {
     AccountPreferencesURLProtocol.requests = []
     AccountPreferencesURLProtocol.requestBodies = []

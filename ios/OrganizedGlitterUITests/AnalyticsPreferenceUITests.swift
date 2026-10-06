@@ -22,6 +22,38 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     XCTAssertEqual(toggle.value as? String, initialValue)
   }
 
+  func testLocalPauseShowsSeparateStatusAndKeepsAccountChoice() {
+    let app = launchFixture()
+    let toggle = openPrivacy(app)
+    let initialValue = toggle.value as? String
+    let pause = app.buttons["account.pauseAnalytics"]
+    for _ in 0..<4 {
+      if pause.exists && pause.isHittable { break }
+      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+    }
+    XCTAssertTrue(pause.isHittable)
+    pause.tap()
+    XCTAssertTrue(app.staticTexts["account.analyticsPaused"].waitForExistence(timeout: 5))
+    XCTAssertEqual(toggle.value as? String, initialValue)
+  }
+
+  func testOfflineLocalPauseIsAvailableWhileAccountWritesAreDisabled() {
+    let app = launchFixture(offline: true)
+    let toggle = openPrivacy(app)
+    let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"), object: toggle)
+    XCTAssertEqual(XCTWaiter.wait(for: [disabled], timeout: 5), .completed)
+    let pause = app.buttons["account.pauseAnalytics"]
+    for _ in 0..<4 {
+      if pause.exists && pause.isHittable { break }
+      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+    }
+    XCTAssertTrue(pause.isEnabled)
+    pause.tap()
+    XCTAssertTrue(app.staticTexts["account.analyticsPaused"].waitForExistence(timeout: 5))
+    let resume = app.buttons["account.resumeAnalytics"]
+    if resume.exists { XCTAssertFalse(resume.isEnabled) }
+  }
+
   func testPrivacyPreferenceIsReachableAtLargestDynamicType() {
     let app = launchFixture(largeText: true)
     let toggle = openPrivacy(app)
@@ -41,12 +73,13 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     add(attachment)
   }
 
-  private func launchFixture(largeText: Bool = false) -> XCUIApplication {
+  private func launchFixture(largeText: Bool = false, offline: Bool = false) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design"]
     if largeText {
       app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
     }
+    if offline { app.launchArguments += ["-fixture-offline-after-account-load"] }
     app.launch()
     return app
   }

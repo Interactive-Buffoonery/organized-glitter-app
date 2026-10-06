@@ -49,6 +49,16 @@ The application does not own backend schema or server behavior. Those remain in
 
 See [the offline library contract](offline-library.md) for rollout and tests.
 
+## Analytics consent
+
+The shared `users.analytics_opt_out` account setting remains online-only. A
+separate device-local pause stops collection and new batch requests immediately,
+even offline, without changing or queuing the account setting. This pause lasts
+for the signed-in app session; account refreshes cannot clear it. A confirmed
+online analytics save can clear it, unless the user paused again during that save.
+Restarting the app or signing out ends the session pause. Previously collected
+events are not deleted, and requests already in flight may finish.
+
 ## Free native app
 
 All native features are free. Voluntary website support grants no app features,

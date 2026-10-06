@@ -6,13 +6,17 @@
   final class OverviewFixtureProtocol: URLProtocol, @unchecked Sendable {
     private static let store = FixtureStore()
     static let offlineAfterSeedArgument = "-fixture-offline-after-seed"
+    static let offlineAfterAccountLoadArgument = "-fixture-offline-after-account-load"
 
     static var offlineAfterSeed: Bool {
-      scenario != nil && ProcessInfo.processInfo.arguments.contains(offlineAfterSeedArgument)
+      scenario != nil && (ProcessInfo.processInfo.arguments.contains(offlineAfterSeedArgument)
+        || ProcessInfo.processInfo.arguments.contains(offlineAfterAccountLoadArgument))
     }
 
     static var offlineSeedCompleted: Bool {
-      offlineAfterSeed && store.hasCompletedOfflineSeed
+      offlineAfterSeed && (store.hasCompletedOfflineSeed
+        || (ProcessInfo.processInfo.arguments.contains(offlineAfterAccountLoadArgument)
+          && store.hasCompletedAccountSeed))
     }
 
     static var scenario: String? {
@@ -215,6 +219,12 @@
       private var servedSnapshot = false
       private var servedUser = false
       private var servedSettings = false
+
+      var hasCompletedAccountSeed: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return servedUser && servedSettings
+      }
 
       var hasCompletedOfflineSeed: Bool {
         lock.lock()
