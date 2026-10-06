@@ -15,6 +15,7 @@ struct NativeAnalyticsTests {
     #expect(!analytics.isEnabled)
     analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
     #expect(analytics.isEnabled)
+    #expect(!analytics.isCollecting)
     analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: false)
     #expect(!analytics.isEnabled)
   }

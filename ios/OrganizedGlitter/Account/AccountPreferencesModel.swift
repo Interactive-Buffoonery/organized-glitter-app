@@ -103,9 +103,19 @@ final class AccountPreferencesModel {
     onAnalyticsLocalPauseChanged(true)
   }
 
+  func pollAnalyticsPreference(
+    while shouldContinue: () -> Bool,
+    wait: () async throws -> Void = { try await Task.sleep(for: .seconds(30)) }
+  ) async {
+    while !Task.isCancelled, shouldContinue() {
+      do { try await wait() } catch { return }
+      guard !Task.isCancelled, shouldContinue() else { return }
+      await refreshAnalyticsPreference()
+    }
+  }
+
   func refreshAnalyticsPreference() async {
     guard !isLoading, !isSaving, !isRefreshingAnalytics else { return }
-    onAnalyticsConsentUnknown()
     let generation = nextUserRequestGeneration()
     isRefreshingAnalytics = true
     defer { isRefreshingAnalytics = false }
@@ -119,8 +129,10 @@ final class AccountPreferencesModel {
         errorMessage = nil
       }
     } catch APIError.cancelled {
+      onAnalyticsConsentUnknown()
       return
     } catch {
+      onAnalyticsConsentUnknown()
       errorMessage = Self.analyticsRefreshError
     }
   }

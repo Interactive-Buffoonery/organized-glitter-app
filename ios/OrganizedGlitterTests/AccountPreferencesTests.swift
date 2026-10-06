@@ -319,6 +319,53 @@ struct AccountPreferencesTests {
     #expect(model.isAnalyticsLocallyPaused)
   }
 
+  @Test
+  func pollingKeepsConsentSteadyAndStopsAfterRemoteOptOut() async throws {
+    let client = makeClient(responses: [
+      (200, #"{"token":"token","record":{"id":"preview-user","verified":true}}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":false}"#),
+      (200, #"{"id":"preview-user","analytics_opt_out":true}"#),
+    ])
+    _ = try await client.signIn(identity: "sarah@example.test", password: "password")
+    var unknownCount = 0
+    var choices: [Bool?] = []
+    let model = AccountPreferencesModel(
+      client: client, user: .preview,
+      onUserRefresh: { choices.append($0.analyticsOptOut) },
+      onAnalyticsConsentUnknown: { unknownCount += 1 })
+    await model.pollAnalyticsPreference(
+      while: { model.user.analyticsOptOut == false }, wait: {})
+    #expect(choices == [false, true])
+    #expect(unknownCount == 0)
+    #expect(AccountPreferencesURLProtocol.requests.map(\.httpMethod) == ["POST", "GET", "GET"])
+  }
+
+  @Test
+  func pollingFailurePausesAndStopsCollection() async throws {
+    let client = makeClient(responses: [
+      (200, #"{"token":"token","record":{"id":"preview-user","verified":true}}"#),
+      (503, #"{}"#),
+    ])
+    _ = try await client.signIn(identity: "sarah@example.test", password: "password")
+    var sharing = true
+    let model = AccountPreferencesModel(
+      client: client, user: .preview,
+      onAnalyticsConsentUnknown: { sharing = false })
+    await model.pollAnalyticsPreference(while: { sharing }, wait: {})
+    #expect(!sharing)
+    #expect(model.errorMessage != nil)
+    #expect(AccountPreferencesURLProtocol.requests.count == 2)
+  }
+
+  @Test
+  func pollingDoesNotRefreshAfterItsConditionChangesDuringWait() async {
+    let client = makeClient()
+    let model = AccountPreferencesModel(client: client, user: .preview)
+    var active = true
+    await model.pollAnalyticsPreference(while: { active }, wait: { active = false })
+    #expect(AccountPreferencesURLProtocol.requests.isEmpty)
+  }
+
   private func makeClient(responses: [(Int, String)] = []) -> PocketBaseClient {
     AccountPreferencesURLProtocol.requests = []
     AccountPreferencesURLProtocol.requestBodies = []

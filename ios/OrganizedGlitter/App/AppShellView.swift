@@ -56,6 +56,10 @@ struct AppShellView: View {
       ))
   }
 
+  private var shouldPollAnalyticsPreference: Bool {
+    scenePhase == .active && connectivity.connectionAvailable && model.analytics.isCollecting
+  }
+
   var body: some View {
     TabView(selection: $selectedTab) {
       Tab("Home", systemImage: "house", value: .home) {
@@ -190,23 +194,20 @@ struct AppShellView: View {
         }
       }
     }
+    .onChange(of: connectivity.connectionAvailable) { _, available in
+      if available, scenePhase == .active {
+        Task { await accountPreferences.refreshAnalyticsPreference() }
+      }
+    }
     .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
     .environment(\.connectionAvailable, connectivity.connectionAvailable)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
-    .task(id: scenePhase) {
-      guard scenePhase == .active else { return }
-      while !Task.isCancelled {
-        do {
-          try await Task.sleep(for: .seconds(30))
-        } catch {
-          return
-        }
-        guard !Task.isCancelled else { return }
-        await accountPreferences.refreshAnalyticsPreference()
-      }
+    .task(id: shouldPollAnalyticsPreference) {
+      guard shouldPollAnalyticsPreference else { return }
+      await accountPreferences.pollAnalyticsPreference(while: { shouldPollAnalyticsPreference })
     }
     .task { try? await library.refresh() }
     .task { await library.monitorConnectivity() }

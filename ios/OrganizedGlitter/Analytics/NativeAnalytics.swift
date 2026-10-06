@@ -15,6 +15,10 @@ final class NativeAnalytics {
   @ObservationIgnored private var sessionActive = false
   private(set) var isEnabled = false
 
+  var isCollecting: Bool {
+    isEnabled && configuration != nil
+  }
+
   init(
     configuration: AnalyticsConfiguration? = nil,
     sdk: PostHogSDK = .shared,

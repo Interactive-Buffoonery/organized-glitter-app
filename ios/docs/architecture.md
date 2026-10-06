@@ -59,6 +59,14 @@ online analytics save can clear it, unless the user paused again during that sav
 Restarting the app or signing out ends the session pause. Previously collected
 events are not deleted, and requests already in flight may finish.
 
+Connected foreground clients with configured, enabled collection refresh consent
+every 30 seconds so opt-outs from another device propagate while the app stays
+open. Successful refreshes apply the server choice without first cycling SDK
+consent. Failed or unreadable refreshes pause collection. Paused, opted-out,
+unconfigured, offline, and inactive clients do not poll. Scene activation,
+reconnection, Account refresh, and preference writes still reload account state;
+remote opt-in is picked up at those refresh points.
+
 ## Free native app
 
 All native features are free. Voluntary website support grants no app features,
