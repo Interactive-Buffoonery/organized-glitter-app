@@ -51,10 +51,9 @@ See [the offline library contract](offline-library.md) for rollout and tests.
 
 ## Free native app
 
-All native features are free. Keep payment processing, contribution prompts,
-and payment-dependent access out of the app. Website support is independent
-of the native account and grants no features, content, or privileges.
-See [the free native app policy](free-app-policy.md) for release requirements.
+All native features are free. Voluntary website support grants no app features,
+content, or account privileges. The app contains no payment processing,
+contribution prompts, checkout links, or payment-dependent access.
 
 ## Dependency policy
 
@@ -71,6 +70,8 @@ compatibility, or which revision is deployed to production. There is currently
 no automated source contract verification workflow in this repository.
 
 Before App Store submission, the release owner must separately verify:
+
+- The app price is free and submitted metadata matches the free product.
 
 - The submitted build, App Store compatibility metadata, and release notes all
   state iOS and iPadOS 26.0 as the minimum.

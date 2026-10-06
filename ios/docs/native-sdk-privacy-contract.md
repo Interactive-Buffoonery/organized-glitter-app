@@ -5,11 +5,8 @@ No SDK is installed by this document. Integration and release evidence remain
 open until verified against the selected packages and shipped configuration.
 
 This contract extends the web [analytics rules](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/analytics/posthog.md)
-and the [free native app policy](free-app-policy.md).
-Dated SDK research and planning handoffs live in Sarah's vault at
-`Coding Projects/OrganizedGlitter/Planning/Research/2026-09-27-native-sdk-source-audit.md`.
-The requirements below are self-contained; the vault is not needed to implement
-them. Recheck upstream behavior when selecting or upgrading SDK versions.
+and the [native product rules](architecture.md#free-native-app).
+Recheck SDK behavior when selecting or upgrading versions.
 
 ## Product and identity rules
 
