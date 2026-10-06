@@ -47,8 +47,14 @@ struct OrganizedGlitterApp: App {
       #else
         localStore = try LocalLibraryStore(databaseURL: databaseURL)
       #endif
+      #if DEBUG
+        let analyticsConfiguration = AnalyticsConfiguration.load(isDebug: true)
+      #else
+        let analyticsConfiguration = AnalyticsConfiguration.load(isDebug: false)
+      #endif
       return AppModel(
-        client: client, sessionStore: sessionStore, themeStore: themeStore, localStore: localStore)
+        client: client, sessionStore: sessionStore, themeStore: themeStore, localStore: localStore,
+        analytics: NativeAnalytics(configuration: analyticsConfiguration))
     } catch {
       return AppModel(configurationError: error, themeStore: themeStore)
     }

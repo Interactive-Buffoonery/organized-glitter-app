@@ -27,6 +27,12 @@
 	</dict>
 	<key>PocketBaseBaseURL</key>
 	<string>$(POCKETBASE_BASE_URL)</string>
+	<key>PostHogProjectToken</key>
+	<string>$(POSTHOG_PROJECT_TOKEN)</string>
+	<key>PostHogHost</key>
+	<string>$(POSTHOG_HOST)</string>
+	<key>AnalyticsEnvironment</key>
+	<string>$(ANALYTICS_ENVIRONMENT)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

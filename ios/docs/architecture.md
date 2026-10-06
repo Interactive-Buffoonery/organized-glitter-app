@@ -15,7 +15,7 @@ after iOS 26 require availability checks.
   validation.
 
 The application does not own backend schema or server behavior. Those remain in
-`Interactive-Buffoonery/organized-glitter`.
+`Interactive-Buffoonery/organized-glitter-web`.
 
 ## Data policy
 
@@ -48,6 +48,24 @@ The application does not own backend schema or server behavior. Those remain in
   prune files no longer referenced by the accessible library.
 
 See [the offline library contract](offline-library.md) for rollout and tests.
+
+## Analytics consent
+
+The shared `users.analytics_opt_out` account setting remains online-only. A
+separate device-local pause stops collection and new batch requests immediately,
+even offline, without changing or queuing the account setting. This pause lasts
+for the signed-in app session; account refreshes cannot clear it. A confirmed
+online analytics save can clear it, unless the user paused again during that save.
+Restarting the app or signing out ends the session pause. Previously collected
+events are not deleted, and requests already in flight may finish.
+
+Connected foreground clients with configured, enabled collection refresh consent
+every 30 seconds so opt-outs from another device propagate while the app stays
+open. Successful refreshes apply the server choice without first cycling SDK
+consent. Failed or unreadable refreshes pause collection. Paused, opted-out,
+unconfigured, offline, and inactive clients do not poll. Scene activation,
+reconnection, Account refresh, and preference writes still reload account state;
+remote opt-in is picked up at those refresh points.
 
 ## Free native app
 

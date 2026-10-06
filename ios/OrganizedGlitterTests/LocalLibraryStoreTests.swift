@@ -53,7 +53,8 @@ struct LocalLibraryStoreTests {
       try await reopened.saveUser(
         UserRecord(
           id: scope.userID, email: nil, verified: true, username: nil, name: nil,
-          avatar: nil, timezone: nil, themePreference: nil, themePalette: nil, created: nil,
+          avatar: nil, timezone: nil, themePreference: nil, themePalette: nil,
+          analyticsOptOut: nil, created: nil,
           updated: nil),
         scope: scope)
       Issue.record("Expected removal marker to reject a stale account save")

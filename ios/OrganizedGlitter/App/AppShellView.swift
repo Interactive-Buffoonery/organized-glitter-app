@@ -50,8 +50,14 @@ struct AppShellView: View {
       initialValue: AccountPreferencesModel(
         client: client,
         user: user,
-        onUserRefresh: model.replaceSignedInUser
+        onUserRefresh: model.replaceSignedInUser,
+        onAnalyticsConsentUnknown: model.pauseAnalyticsUntilAccountRefresh,
+        onAnalyticsLocalPauseChanged: { model.setAnalyticsLocallyPaused($0, accountID: user.id) }
       ))
+  }
+
+  private var shouldPollAnalyticsPreference: Bool {
+    scenePhase == .active && connectivity.connectionAvailable && model.analytics.isCollecting
   }
 
   var body: some View {
@@ -181,7 +187,17 @@ struct AppShellView: View {
       }
     }
     .onChange(of: scenePhase) { _, phase in
-      if phase == .active { Task { try? await library.refresh(force: true) } }
+      if phase == .active {
+        Task {
+          await accountPreferences.refreshAnalyticsPreference()
+          try? await library.refresh(force: true)
+        }
+      }
+    }
+    .onChange(of: connectivity.connectionAvailable) { _, available in
+      if available, scenePhase == .active {
+        Task { await accountPreferences.refreshAnalyticsPreference() }
+      }
     }
     .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
     .environment(\.pocketBaseClient, client)
@@ -189,6 +205,10 @@ struct AppShellView: View {
     .environment(\.connectionAvailable, connectivity.connectionAvailable)
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
+    .task(id: shouldPollAnalyticsPreference) {
+      guard shouldPollAnalyticsPreference else { return }
+      await accountPreferences.pollAnalyticsPreference(while: { shouldPollAnalyticsPreference })
+    }
     .task { try? await library.refresh() }
     .task { await library.monitorConnectivity() }
     .task { await connectivity.monitor() }
@@ -203,6 +223,7 @@ struct AppShellView: View {
             }
           }
       }
+      .environment(\.connectionAvailable, connectivity.connectionAvailable)
     }
   }
 

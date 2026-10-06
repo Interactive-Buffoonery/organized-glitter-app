@@ -6,13 +6,17 @@
   final class OverviewFixtureProtocol: URLProtocol, @unchecked Sendable {
     private static let store = FixtureStore()
     static let offlineAfterSeedArgument = "-fixture-offline-after-seed"
+    static let offlineAfterAccountLoadArgument = "-fixture-offline-after-account-load"
 
     static var offlineAfterSeed: Bool {
-      scenario != nil && ProcessInfo.processInfo.arguments.contains(offlineAfterSeedArgument)
+      scenario != nil && (ProcessInfo.processInfo.arguments.contains(offlineAfterSeedArgument)
+        || ProcessInfo.processInfo.arguments.contains(offlineAfterAccountLoadArgument))
     }
 
     static var offlineSeedCompleted: Bool {
-      offlineAfterSeed && store.hasCompletedOfflineSeed
+      offlineAfterSeed && (store.hasCompletedOfflineSeed
+        || (ProcessInfo.processInfo.arguments.contains(offlineAfterAccountLoadArgument)
+          && store.hasCompletedAccountSeed))
     }
 
     static var scenario: String? {
@@ -216,6 +220,12 @@
       private var servedUser = false
       private var servedSettings = false
 
+      var hasCompletedAccountSeed: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return servedUser && servedSettings
+      }
+
       var hasCompletedOfflineSeed: Bool {
         lock.lock()
         defer { lock.unlock() }
@@ -294,7 +304,8 @@
             [
               "id": "preview-user", "verified": true, "username": "Fictional crafter",
               "name": "Fictional crafter", "timezone": "America/New_York",
-              "theme_preference": "system", "created": "2026-09-01 10:00:00",
+              "theme_preference": "system", "analytics_opt_out": false,
+              "created": "2026-09-01 10:00:00",
               "updated": "2026-09-19 10:00:00",
             ]
           ],

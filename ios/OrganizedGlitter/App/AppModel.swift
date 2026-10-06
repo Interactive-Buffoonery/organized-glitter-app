@@ -37,6 +37,10 @@ final class AppModel {
   )
 
   @ObservationIgnored let client: PocketBaseClient?
+  let analytics: NativeAnalytics
+  private var hasCapturedAppOpen = false
+  private var analyticsConsentAccountID: String?
+  private var analyticsLocallyPausedAccountID: String?
   private let sessionStore: KeychainSessionStore?
   private let themeStore: ThemeStore?
   @ObservationIgnored private var sessionGeneration = 0
@@ -44,7 +48,9 @@ final class AppModel {
   private(set) var library: LibrarySession?
   var requiresDiscardConfirmation = false
   private(set) var sessionError: String?
-  private(set) var isSigningOut = false
+  private(set) var isSigningOut = false {
+    didSet { updateAnalyticsSession() }
+  }
   private var userSaveTask: Task<Void, Never>?
   private var cleanupBlocked = false
   @ObservationIgnored private var oauthAttemptID: UUID?
@@ -58,6 +64,7 @@ final class AppModel {
 
   var phase: Phase {
     didSet {
+      updateAnalyticsSession()
       routePendingPasswordReset()
     }
   }
@@ -73,11 +80,12 @@ final class AppModel {
 
   init(
     client: PocketBaseClient, sessionStore: KeychainSessionStore, themeStore: ThemeStore,
-    localStore: LocalLibraryStore? = nil
+    localStore: LocalLibraryStore? = nil, analytics: NativeAnalytics? = nil
   ) {
     self.client = client
     self.sessionStore = sessionStore
     self.themeStore = themeStore
+    self.analytics = analytics ?? NativeAnalytics()
     phase = .restoring
     do {
       self.localStore = try localStore ?? LocalLibraryStore.inMemory()
@@ -105,7 +113,7 @@ final class AppModel {
             guard generation == sessionGeneration else { return }
             try await openLibrary(for: session.user, generation: generation)
             guard generation == sessionGeneration else { return }
-            phase = .signedIn(session.user)
+            setSignedInUser(session.user, analyticsConsentVerified: true)
             if ProcessInfo.processInfo.arguments.contains("-ui-testing-password-reset") {
               open(
                 URL(
@@ -130,9 +138,26 @@ final class AppModel {
 
   init(configurationError: Error, themeStore: ThemeStore) {
     client = nil
+    analytics = NativeAnalytics()
     sessionStore = nil
     self.themeStore = themeStore
     phase = .configurationError(configurationError.localizedDescription)
+  }
+
+  private func updateAnalyticsSession() {
+    switch phase {
+    case .signedIn(let user) where !isSigningOut:
+      let enabled = analyticsConsentAccountID == user.id
+        && analyticsLocallyPausedAccountID != user.id
+        ? user.analyticsOptOut.map { !$0 }
+        : nil
+      analytics.setSession(accountID: user.id, isActive: true, analyticsEnabled: enabled)
+    default:
+      analytics.setSession(accountID: nil, isActive: false, analyticsEnabled: nil)
+    }
+    guard !hasCapturedAppOpen, !isSigningOut, analytics.isEnabled else { return }
+    hasCapturedAppOpen = true
+    analytics.capture(.appOpened)
   }
 
   func restoreSession() async {
@@ -161,14 +186,14 @@ final class AppModel {
         guard generation == sessionGeneration else { return }
         try await openLibrary(for: user, generation: generation)
         guard generation == sessionGeneration else { return }
-        phase = .signedIn(user)
+        setSignedInUser(user, analyticsConsentVerified: false)
         applyThemePreference(from: user)
       }
       let session = try await client.restore(stored)
       guard generation == sessionGeneration else { return }
       try await openLibrary(for: session.user, generation: generation)
       guard generation == sessionGeneration else { return }
-      phase = .signedIn(session.user)
+      setSignedInUser(session.user, analyticsConsentVerified: true)
       applyThemePreference(from: session.user)
     } catch APIError.cancelled {
       return
@@ -244,7 +269,7 @@ final class AppModel {
       guard generation == sessionGeneration else { return }
       try await openLibrary(for: session.user, generation: generation)
       guard generation == sessionGeneration else { return }
-      phase = .signedIn(session.user)
+      setSignedInUser(session.user, analyticsConsentVerified: true)
       applyThemePreference(from: session.user)
     } catch APIError.cancelled {
       return
@@ -377,7 +402,7 @@ final class AppModel {
           guard attempt.generation == sessionGeneration else { return }
           try await openLibrary(for: session.user, generation: attempt.generation)
           guard attempt.generation == sessionGeneration else { return }
-          phase = .signedIn(session.user)
+          setSignedInUser(session.user, analyticsConsentVerified: true)
           applyThemePreference(from: session.user)
         } catch is CancellationError {
           return
@@ -468,7 +493,7 @@ final class AppModel {
         guard generation == sessionGeneration else { return }
         try await openLibrary(for: session.user, generation: generation)
         guard generation == sessionGeneration else { return }
-        phase = .signedIn(session.user)
+        setSignedInUser(session.user, analyticsConsentVerified: true)
         applyThemePreference(from: session.user)
       } catch is CancellationError {
         return
@@ -626,6 +651,11 @@ final class AppModel {
   func replaceSignedInUser(_ user: UserRecord) {
     guard !isSigningOut, !cleanupBlocked, case .signedIn(let current) = phase,
       current.id == user.id else { return }
+    analyticsConsentAccountID = user.id
+    if current == user {
+      updateAnalyticsSession()
+      return
+    }
     phase = .signedIn(user)
     applyThemePreference(from: user)
     if let library, let localStore {
@@ -642,6 +672,17 @@ final class AppModel {
         }
       }
     }
+  }
+
+  func setAnalyticsLocallyPaused(_ paused: Bool, accountID: String) {
+    guard case .signedIn(let user) = phase, user.id == accountID else { return }
+    analyticsLocallyPausedAccountID = paused ? user.id : nil
+    updateAnalyticsSession()
+  }
+
+  func pauseAnalyticsUntilAccountRefresh() {
+    analyticsConsentAccountID = nil
+    updateAnalyticsSession()
   }
 
   /// Seeds the device-local theme from the signed-in account's preference. The
@@ -678,8 +719,16 @@ final class AppModel {
     appleTask?.cancel()
     appleTask = nil
     appleAttempt = nil
+    analyticsConsentAccountID = nil
+    analyticsLocallyPausedAccountID = nil
+    updateAnalyticsSession()
     sessionGeneration &+= 1
     return sessionGeneration
+  }
+
+  private func setSignedInUser(_ user: UserRecord, analyticsConsentVerified: Bool) {
+    analyticsConsentAccountID = analyticsConsentVerified ? user.id : nil
+    phase = .signedIn(user)
   }
 }
 

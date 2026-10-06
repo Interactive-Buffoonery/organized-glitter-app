@@ -10,6 +10,7 @@ struct UserRecord: Codable, Equatable, Sendable {
   let timezone: String?
   let themePreference: String?
   let themePalette: String?
+  let analyticsOptOut: Bool?
   let created: String?
   let updated: String?
 
@@ -17,6 +18,7 @@ struct UserRecord: Codable, Equatable, Sendable {
     case id, email, verified, username, name, avatar, timezone, created, updated
     case themePreference = "theme_preference"
     case themePalette = "theme_palette"
+    case analyticsOptOut = "analytics_opt_out"
   }
 
   static let preview = UserRecord(
@@ -29,6 +31,7 @@ struct UserRecord: Codable, Equatable, Sendable {
     timezone: nil,
     themePreference: nil,
     themePalette: nil,
+    analyticsOptOut: false,
     created: nil,
     updated: nil
   )

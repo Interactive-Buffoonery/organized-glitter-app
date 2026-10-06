@@ -7,7 +7,7 @@ struct BackendContractTests {
   func bundledContractIsComplete() throws {
     let contract = try BackendContract.bundled()
 
-    #expect(contract.backendRepository == "Interactive-Buffoonery/organized-glitter")
+    #expect(contract.backendRepository == "Interactive-Buffoonery/organized-glitter-web")
     #expect(contract.backendCommit.count == 40)
     #expect(contract.schemaSha256.count == 64)
     #expect(!contract.pocketBaseVersion.isEmpty)
