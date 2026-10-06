@@ -49,6 +49,13 @@ The application does not own backend schema or server behavior. Those remain in
 
 See [the offline library contract](offline-library.md) for rollout and tests.
 
+## Free native app
+
+All native features are free. Keep payment processing, contribution prompts,
+and payment-dependent access out of the app. Website support is independent
+of the native account and grants no features, content, or privileges.
+See [the free native app policy](free-app-policy.md) for release requirements.
+
 ## Dependency policy
 
 Use SwiftUI, Observation, URLSession, AuthenticationServices, Keychain

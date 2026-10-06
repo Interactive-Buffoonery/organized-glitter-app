@@ -8,6 +8,16 @@ lives in `ios/`. Other platforms may be added alongside it in the future.
 
 At this time, this project is very, very much a work in progress. This README will be updated as the app progresses. You can access the web version of the app at [https://organizedglitter.app](https://organizedglitter.app), and you can find updates on the progress of both the web and mobile apps at [https://organizedglitter.app/updates/](https://organizedglitter.app/updates/).
 
+## Free app
+
+Organized Glitter is free to download and use. All native features are available
+without payment. Voluntary support is accepted only on the website and grants
+no app features, content, or account privileges. The app contains no payment
+flow or prompts to contribute.
+
+See [the free native app policy](ios/docs/free-app-policy.md) for implementation
+and App Store release requirements.
+
 ## Requirements
 
 - Xcode 26 or newer
