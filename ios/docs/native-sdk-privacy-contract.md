@@ -1,8 +1,9 @@
 # Native SDK privacy contract (INT-1155)
 
-Status: implementation requirements for native analytics.
-No SDK is installed by this document. Integration and release evidence remain
-open until verified against the selected packages and shipped configuration.
+Status: implementation requirements for native analytics. The
+[foundation plan](native-analytics-plan.md) describes the adapter, preference,
+identity handling and limited initial event coverage. Integration and release
+evidence remain open until verified against the shipped configuration.
 
 This contract extends the web [analytics rules](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/analytics/posthog.md)
 and the [native product rules](architecture.md#free-native-app).

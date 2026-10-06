@@ -37,6 +37,8 @@ final class AppModel {
   )
 
   @ObservationIgnored let client: PocketBaseClient?
+  let analytics: NativeAnalytics
+  private var hasCapturedAppOpen = false
   private let sessionStore: KeychainSessionStore?
   private let themeStore: ThemeStore?
   @ObservationIgnored private var sessionGeneration = 0
@@ -44,7 +46,9 @@ final class AppModel {
   private(set) var library: LibrarySession?
   var requiresDiscardConfirmation = false
   private(set) var sessionError: String?
-  private(set) var isSigningOut = false
+  private(set) var isSigningOut = false {
+    didSet { updateAnalyticsSession() }
+  }
   private var userSaveTask: Task<Void, Never>?
   private var cleanupBlocked = false
   @ObservationIgnored private var oauthAttemptID: UUID?
@@ -58,6 +62,7 @@ final class AppModel {
 
   var phase: Phase {
     didSet {
+      updateAnalyticsSession()
       routePendingPasswordReset()
     }
   }
@@ -73,11 +78,12 @@ final class AppModel {
 
   init(
     client: PocketBaseClient, sessionStore: KeychainSessionStore, themeStore: ThemeStore,
-    localStore: LocalLibraryStore? = nil
+    localStore: LocalLibraryStore? = nil, analytics: NativeAnalytics? = nil
   ) {
     self.client = client
     self.sessionStore = sessionStore
     self.themeStore = themeStore
+    self.analytics = analytics ?? NativeAnalytics()
     phase = .restoring
     do {
       self.localStore = try localStore ?? LocalLibraryStore.inMemory()
@@ -130,9 +136,29 @@ final class AppModel {
 
   init(configurationError: Error, themeStore: ThemeStore) {
     client = nil
+    analytics = NativeAnalytics()
     sessionStore = nil
     self.themeStore = themeStore
     phase = .configurationError(configurationError.localizedDescription)
+  }
+
+  private func updateAnalyticsSession() {
+    switch phase {
+    case .signedIn(let user) where !isSigningOut:
+      analytics.setSession(accountID: user.id, isActive: true)
+    case .signedOut where !isSigningOut:
+      analytics.setSession(accountID: nil, isActive: true)
+    default:
+      analytics.setSession(accountID: nil, isActive: false)
+    }
+    guard !hasCapturedAppOpen, !isSigningOut else { return }
+    switch phase {
+    case .signedOut, .signedIn:
+      hasCapturedAppOpen = true
+      analytics.capture(.appOpened)
+    default:
+      break
+    }
   }
 
   func restoreSession() async {

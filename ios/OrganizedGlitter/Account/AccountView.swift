@@ -121,6 +121,22 @@ struct AccountView: View {
             .accessibilityIdentifier("account.showCraftingStreak")
         }
 
+        Section {
+          Toggle(
+            "Share usage analytics",
+            isOn: Binding(
+              get: { appModel.analytics.isEnabled },
+              set: { appModel.analytics.setEnabled($0) }
+            )
+          )
+          .accessibilityIdentifier("account.usageAnalytics")
+        } header: {
+          Text("Privacy")
+        } footer: {
+          Text("Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Turning this off stops new collection on this device. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity.")
+            .fixedSize(horizontal: false, vertical: true)
+        }
+
         Section("Help and legal") {
           Link("Support", destination: AccountLinks.support)
             .accessibilityLabel("Email Organized Glitter support")

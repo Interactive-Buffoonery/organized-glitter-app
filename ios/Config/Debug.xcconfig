@@ -1,2 +1,5 @@
 POCKETBASE_BASE_URL = https:/$()/data.organizedglitter.app
+POSTHOG_PROJECT_TOKEN =
+POSTHOG_HOST =
+ANALYTICS_ENVIRONMENT = preview
 #include? "Debug.local.xcconfig"

@@ -10,6 +10,11 @@ configs:
   Debug: debug
   Release: release
 
+packages:
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios.git
+    version: 3.90.1
+
 settings:
   base:
     CURRENT_PROJECT_VERSION: 1
@@ -21,6 +26,8 @@ targets:
   OrganizedGlitter:
     type: application
     platform: iOS
+    dependencies:
+      - package: PostHog
     sources:
       - path: OrganizedGlitter
       - path: BackendContract.json
