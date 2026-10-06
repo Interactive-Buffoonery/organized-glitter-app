@@ -64,9 +64,9 @@ use the same production project as web, after public disclosures and the
 remaining release requirements are verified. Use the same opaque account ID
 on both clients and add explicit `platform=web` where needed in the web app.
 
-## Follow-up coverage
+## Coverage policy
 
-INT-1158 adds the rest of the meaningful reachable actions: authentication,
+INT-1158 covers meaningful reachable actions: authentication,
 navigation, search/filter/sort, record changes, notes/photos, Account choices,
 sync and conflict decisions. Add each typed name, trigger and property schema
 before wiring it. Reuse web names only for matching meanings. Captures must
@@ -102,3 +102,72 @@ and live vendor processing before production enablement or submission.
 - Use live nonproduction ingestion to confirm server enrichment and dashboard
   behavior separately from the isolated wire tests. Simulator tests do not
   establish vendor retention, deletion, physical-device or App Store evidence.
+
+## Reachable action coverage
+
+`AnalyticsEvent.propertyKeys` defines the schema for each event. The adapter and
+SDK `beforeSend` apply the same value filter: enumerated strings, booleans, and
+integer counts from 0 through 10,000. No record IDs, operation IDs, titles,
+queries, notes, filenames, URLs, dates, profile names, timezone identifiers,
+raw errors, or person properties are included. Account identity remains the
+opaque PocketBase ID supplied by the verified session.
+
+- Authentication: `auth_login_succeeded` follows a successful password, Apple,
+  Google, or Discord login and local session setup. It reuses web's
+  `auth_method`, `auth_provider`, and `auth_entrypoint` properties. Restoration
+  never counts as login. `auth_logout_requested` records the explicit request
+  before collection pauses, once across the pending-edit confirmation.
+  Registration, reset, verification requests, unsuccessful sign-in, and
+  signed-out screens have no verified account consent and are not collected.
+- Navigation: `screen_viewed` uses fixed Home, Library, shelf, Notes, Search,
+  and Account values. Diamond detail entry reuses `dashboard_project_opened`;
+  book and page entry use `library_record_opened`. Detail refreshes do not emit
+  another entry event for the same destination.
+- Discovery: committed search uses `dashboard_search_performed` or
+  `coloring_books_search_performed` with a bounded result count, never query
+  text. Typing, pagination, and reloads do not emit searches. Sort, status
+  filter, and craft selection reuse matching dashboard/book event names.
+  Page sorting and filtering have explicit `coloring_pages_*` names.
+  Presentation changes reset filters and sorting without recording those
+  resets as additional user choices.
+- Existing-record edits: `library_record_saved_locally` follows the durable
+  SwiftData commit, with record type, patch field count, and whether the visible status
+  changed. This event does not claim server acceptance.
+- Online creation, deletion, note changes, and photo writes: matching web
+  `project_*`, `coloring_book_*`, `coloring_page_progress_note_*`, and
+  `progress_note_added` events follow accepted server responses. Native-only
+  diamond note edits/deletes and generic photo additions/removals have their
+  own names. Note creation includes only `has_photo`. Page photo uploads reuse
+  `coloring_page_photo_added`. Generic record update and photo events describe
+  separate outcomes of the same accepted upload; do not sum them as two edits.
+- Lists and tag links: accepted online writes reuse matching company, artist,
+  tag, publisher, illustrator, and medium names from web. Other list outcomes
+  use `library_list_entry_*` with a fixed list kind. Accepted relationship
+  changes use `record_tag_added` / `record_tag_removed`. No list names, tags,
+  relation IDs, or record IDs are sent.
+- Synchronization: `library_sync_accepted` follows local acknowledgement of an
+  accepted operation, then the matching web update/status events. Status is
+  counted only when it differs from the operation baseline. A retry after
+  acknowledgement finds no operation and emits nothing. Conflicts and
+  rejection emit `library_sync_conflict` / `library_sync_rejected` after durable
+  storage, without an accepted update. Delayed work checks its account before
+  capture. Local acknowledgement failure leaves the operation retryable and
+  does not emit acceptance.
+- Sync controls: `library_sync_requested` records the manual action.
+  `library_sync_completed` means the refresh/sync cycle completed, including
+  any conflicts; its remaining pending count does not promise all edits were
+  accepted. `library_sync_failed` describes failed cycles with pending edits.
+  Empty background refreshes emit neither event. Conflict review and durable
+  resolution use `library_conflict_review_opened` and
+  `library_conflict_resolved`; `keep_local` queues another operation, and
+  `use_server` discards the local edit. Neither decision is server acceptance.
+- Account: successful preference writes emit `account_preferences_updated`
+  with the setting category, and `vertical_preferences_updated` with the
+  accepted craft booleans. Analytics opt-out itself immediately closes the
+  gate and is not captured. No preference values or profile content are sent.
+
+First-ever and activation milestones remain deferred until there is a shared
+cross-client deduplication contract. `app_opened` remains once per app process
+when a verified, consenting account becomes usable. The currently unlinked
+Randomizer view has no reachable action to instrument. No payment/support
+activity or vendor dashboard changes are part of this native coverage change.

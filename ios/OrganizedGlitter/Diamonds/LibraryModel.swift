@@ -224,8 +224,20 @@ final class LibraryModel {
   var section = LibrarySection.diamonds
   var searchText = ""
   private(set) var committedSearch = ""
-  var statusFilter: String?
-  var sort = LibrarySort.recentlyUpdated
+  var statusFilter: String? {
+    didSet {
+      guard hasLoaded, !adjustingListing, oldValue != statusFilter else { return }
+      library.captureAnalytics(section.filterAnalyticsEvent,
+        properties: ["record_type": section.analyticsCollection, "filter_active": statusFilter != nil])
+    }
+  }
+  var sort = LibrarySort.recentlyUpdated {
+    didSet {
+      guard hasLoaded, !adjustingListing, oldValue != sort else { return }
+      library.captureAnalytics(section.sortAnalyticsEvent,
+        properties: ["record_type": section.analyticsCollection, "sort": sort.rawValue])
+    }
+  }
   var isLoading = false
   var hasLoaded = false
   var errorMessage: String?
@@ -238,6 +250,7 @@ final class LibraryModel {
   private var totalPages = 0
   private var generation = 0
   private var listingEpoch = 0
+  private var adjustingListing = false
   var onSessionExpired: (@MainActor @Sendable () async -> Void)?
 
   init(library: LibrarySession, searchesColoringPages: Bool = false) {
@@ -281,6 +294,9 @@ final class LibraryModel {
   }
 
   func apply(_ request: LibraryRequest) {
+    let previousAdjustment = adjustingListing
+    adjustingListing = true
+    defer { adjustingListing = previousAdjustment }
     select(request.section)
     searchText = ""
     committedSearch = ""
@@ -290,10 +306,14 @@ final class LibraryModel {
   }
 
   func select(_ section: LibrarySection) {
+    let previousAdjustment = adjustingListing
+    adjustingListing = true
+    defer { adjustingListing = previousAdjustment }
     guard self.section != section else {
       return
     }
     self.section = section
+    library.captureAnalytics(.craftChanged, properties: ["record_type": section.analyticsCollection])
     searchText = ""
     committedSearch = ""
     statusFilter = nil
@@ -301,12 +321,19 @@ final class LibraryModel {
   }
 
   func submitSearch() async {
+    let previousAdjustment = adjustingListing
+    adjustingListing = true
     if section == .pages {
       section = .books
       sort = .recentlyUpdated
     }
     statusFilter = nil
+    adjustingListing = previousAdjustment
     await load()
+    guard !committedSearch.isEmpty, errorMessage == nil else { return }
+    library.captureAnalytics(section == .diamonds ? .searchPerformed : .booksSearchPerformed,
+      properties: ["record_type": section.analyticsCollection,
+        "result_count": min(10_000, shelfCounts.values.reduce(0, +))])
   }
 
   func clearSearch() async {
@@ -554,6 +581,32 @@ extension Error {
       "Your session has expired. Sign in again."
     default:
       "Your library is unavailable right now. Try again shortly."
+    }
+  }
+}
+
+extension LibrarySection {
+  var filterAnalyticsEvent: AnalyticsEvent {
+    switch self {
+    case .diamonds: .filterChanged
+    case .books: .booksFilterChanged
+    case .pages: .pagesFilterChanged
+    }
+  }
+
+  var sortAnalyticsEvent: AnalyticsEvent {
+    switch self {
+    case .diamonds: .sortChanged
+    case .books: .booksSortChanged
+    case .pages: .pagesSortChanged
+    }
+  }
+
+  var analyticsCollection: String {
+    switch self {
+    case .diamonds: "projects"
+    case .books: "coloring_books"
+    case .pages: "coloring_pages"
     }
   }
 }
