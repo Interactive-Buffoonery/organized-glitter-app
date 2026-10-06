@@ -27,7 +27,14 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     let toggle = openPrivacy(app)
     XCTAssertTrue(toggleControl(toggle).isHittable)
     XCTAssertEqual(toggle.label, "Share usage analytics")
-    XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Turning this off stops new collection on this device")).firstMatch.exists)
+    let disclosure = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label CONTAINS %@", "Turning this off stops new collection on this device")
+    ).firstMatch
+    for _ in 0..<4 {
+      if disclosure.exists { break }
+      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+    }
+    XCTAssertTrue(disclosure.exists)
     let attachment = XCTAttachment(screenshot: app.screenshot())
     attachment.name = "Account analytics privacy at largest Dynamic Type"
     attachment.lifetime = .keepAlways
