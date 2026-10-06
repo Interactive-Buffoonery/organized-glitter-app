@@ -1,19 +1,12 @@
 # Native SDK privacy contract (INT-1155)
 
-Status: implementation requirements for native analytics and purchase processing.
+Status: implementation requirements for native analytics.
 No SDK is installed by this document. Integration and release evidence remain
 open until verified against the selected packages and shipped configuration.
 
 This contract extends the web [analytics rules](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/analytics/posthog.md)
-and the accepted [tips-first ADR](https://github.com/Interactive-Buffoonery/organized-glitter/blob/dev/docs/adr/0022-free-catalog-and-optional-tips.md).
-Dated SDK research and planning handoffs live in Sarah's vault at
-`Coding Projects/OrganizedGlitter/Planning/Research/2026-09-27-native-sdk-source-audit.md`.
-The requirements below are self-contained; the vault is not needed to implement
-them. Recheck upstream behavior when selecting or upgrading SDK versions.
-
-RevenueCat setup is underway and awaiting Apple approvals, as reported by the
-release owner on September 30, 2026. Purchase integration is not complete.
-Track remaining provisioning under INT-1154; it does not block PostHog work.
+and the [native product rules](architecture.md#free-native-app).
+Recheck SDK behavior when selecting or upgrading versions.
 
 ## Product and identity rules
 
@@ -24,14 +17,9 @@ Track remaining provisioning under INT-1154; it does not block PostHog work.
   the stable opaque PocketBase account ID to join signed-in events across
   devices and locate vendor data for deletion. Send no email or display name.
 - PocketBase remains the only account and library backend. PostHog is not a
-  source of purchase, entitlement, or account truth.
-- Optional, repeatable one-time tips grant no feature entitlement. RevenueCat
-  purchase processing remains available when analytics is off. Analytics failure
-  must not block product flows; purchase failure must preserve retry/recovery
-  without claiming success or disabling unrelated sign-in and crafting.
-- Keep automatic RevenueCat-to-PostHog forwarding and attribution integrations
-  off. Never send receipts, transaction IDs, vendor customer IDs, payment
-  details, or subscriber email/name into analytics.
+  source of account truth. Analytics failure must not block product flows.
+- The native app is free. Website support grants no app features or content
+  and is not collected or promoted within the app.
 
 ## Event and property boundary
 
@@ -48,7 +36,6 @@ reachable actions ship; do not create placeholders or synthetic activity.
 | Coloring records | `coloring_book_created`, `coloring_book_updated`, `coloring_book_deleted`, `coloring_book_status_changed`, `coloring_page_status_changed` | Confirmed write; fixed surface, status, operation and write-state enums. |
 | Progress and photos | `progress_note_added`, `coloring_page_progress_note_added`, `coloring_page_progress_note_updated`, `coloring_page_progress_note_deleted`, `photo_added`, `coloring_page_photo_added`, `coloring_page_photo_deleted` | Confirmed note/photo action; craft/surface enums and count bucket. Diamond note edit/delete and other implemented actions must receive documented registry entries during integration. |
 | Activation | `first_project_created`, `first_coloring_book_created`, `first_progress_note_added`, `first_photo_added`, `randomizer_first_spin`, `activation_completed` | Once-only confirmed milestone; craft enum, bounded count and qualifying-action booleans. Future actions have no milestone until implemented. |
-| Support and billing | `support_screen_viewed`, `tip_purchase_outcome`, `purchase_restore_outcome` | Reachable screen or terminal purchase/recovery result; surface, public tip tier, outcome and duration bucket. |
 | Failures | `operation_failed` | Actionable user-visible failure; fixed operation and failure-category enums, never raw errors. |
 | Future or changed surfaces | `randomizer_spin`, `overview_craft_filter_changed`, `overview_sort_changed` | Only when the corresponding action exists; fixed mode/craft/sort enums. Current Home/Library/Search navigation does not imply a reachable Randomizer or Overview filter control. |
 
@@ -88,7 +75,7 @@ Do not treat the original web-derived list as a smaller approved native scope.
 - Before sign-in, permitted entry events may use the SDK-generated identity.
   After successful sign-in/restoration, identify using the opaque account ID.
   Reset identity before another account's activity on sign-out, invalid session,
-  deletion or switch. No email or display name is supplied to either SDK.
+  deletion or switch. No email or display name is supplied to the analytics SDK.
 - Account wording must explain that opt-out stops new usage collection. The
   September 27 source audit found queue preservation in PostHog 3.85.0; identity
   reset and opt-out must not be assumed to erase queued events. Verify the
@@ -96,15 +83,7 @@ Do not treat the original web-derived list as a smaller approved native scope.
   Do not promise deletion of past events or cessation of already-collected
   event delivery without wire evidence. Account erasure is a separate request.
 
-## Purchase identity and erasure
-
-Use the opaque PocketBase account ID as the RevenueCat custom App User ID for
-signed-in purchases. Verify login/logout, same-device account switching and
-purchase recovery for the selected consumable products and project settings.
-Do not merge app accounts on the client, grant tip entitlements, or describe
-recovery as restoring a consumed tip's feature access. Disable automatic
-device-identifier collection unless a documented purchase requirement proves
-it necessary; verify actual attribution and diagnostic traffic.
+## Analytics erasure
 
 Account deletion must include a backend-owned vendor-erasure handoff: identify
 the vendor data to remove, request deletion, retry failures, and define handling
@@ -123,7 +102,6 @@ claims that an SDK or vendor project is absent.
 | INT-1158 — analytics integration | Pin selected SDK version; compare source/defaults/manifests; implement typed events and final property allowlists. Cover current reachable actions and distinguish local saves from sync acceptance. |
 | INT-1158 — network validation | Isolated iOS 26 harness: fresh install, default-on/off startup, opt-out, relaunch, opt back in, offline/reconnect, logout, second-account login and failed saves. Inspect setup, automatic, queued and server-enriched fields; assert identity and no private content. |
 | INT-1157 — preference/disclosure | Verify immediate opt-out and account transitions; choose tested queue policy; match Account and public privacy copy to observed behavior. Verify analytics failure cannot block product flows. |
-| INT-1154 / INT-1156 — purchases | Verify current Apple/RevenueCat provisioning, selected SDK, project restore/attribution settings, sandbox purchase/recovery payloads and account switching. Purchase setup does not block PostHog implementation. |
 | INT-1159 — erasure | Backend vendor deletion, retry behavior, retention and unjoined pre-sign-in event handling; no claim that account deletion alone erases vendor history. |
 | INT-1160 — submission | Assembled binary privacy report and App Store labels match actual account linkage, shipped configuration and network captures. Vendor manifests alone do not determine the app's disclosures. |
 
