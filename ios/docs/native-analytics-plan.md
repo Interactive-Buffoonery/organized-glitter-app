@@ -78,6 +78,8 @@ or claim cross-device deduplication from local flags.
 
 INT-1157 also owns the public web disclosure update. INT-1159 verifies the
 backend-owned PostHog erasure handoff, retries, retention and unjoined events.
+It must also verify dormant-device queues arriving after vendor deletion:
+a successful deletion request alone does not prevent later re-ingestion.
 INT-1160 verifies the assembled binary, manifests, App Store privacy answers
 and live vendor processing before production enablement or submission.
 
