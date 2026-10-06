@@ -29,7 +29,10 @@ enum CoverUpload {
       return try await library.update(collection: collection, id: recordID, multipart: multipart)
     }
     if let body = change.removalBody(field: field) {
-      return try await library.updateOnline(collection: collection, id: recordID, body: body)
+      let saved: Record = try await library.updateOnline(collection: collection, id: recordID, body: body)
+      library.captureAnalytics(.photoDeleted,
+        properties: ["record_type": collection, "save_destination": "server"])
+      return saved
     }
     return try library.record(collection: collection, id: recordID)
   }

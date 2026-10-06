@@ -1,12 +1,14 @@
 import Foundation
 
 actor LocalSyncCoordinator {
+  private let analytics: NativeAnalytics?
   private let store: LocalLibraryStore
   private let client: PocketBaseClient
   let scope: LocalAccountScope
   private var generation = 0
 
-  init(store: LocalLibraryStore, client: PocketBaseClient, scope: LocalAccountScope) {
+  init(store: LocalLibraryStore, client: PocketBaseClient, scope: LocalAccountScope, analytics: NativeAnalytics? = nil) {
+    self.analytics = analytics
     self.store = store
     self.client = client
     self.scope = scope
@@ -47,6 +49,7 @@ actor LocalSyncCoordinator {
           throw LocalLibraryError.invalidValue
         }
         try await store.acknowledge(scope: scope, operationID: operation.id, record: record)
+        await analytics?.synchronized(operation, accountID: scope.userID)
       } catch let conflict as LocalSyncConflict {
         try checkActive(expectedGeneration)
         guard conflict.current.localRecordKey == operation.key else {
@@ -54,10 +57,16 @@ actor LocalSyncCoordinator {
         }
         try await store.recordConflict(
           scope: scope, operationID: operation.id, server: conflict.current)
+        await analytics?.capture(.syncConflict, properties: [
+          "record_type": operation.key.kind.rawValue, "field_count": operation.patch.count,
+        ], accountID: scope.userID)
       } catch APIError.validation {
         try checkActive(expectedGeneration)
         try await store.markRejected(
           scope: scope, operationID: operation.id, key: operation.key)
+        await analytics?.capture(.syncRejected, properties: [
+          "record_type": operation.key.kind.rawValue, "field_count": operation.patch.count,
+        ], accountID: scope.userID)
       }
     }
     return attempted

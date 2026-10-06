@@ -33,6 +33,7 @@ final class AccountPreferencesModel {
   private static let analyticsRefreshError = "Analytics will stay off until your account reloads."
   private static let analyticsConfirmationError =
     "The analytics choice could not be confirmed. Analytics will stay off until your account reloads."
+  private let analytics: NativeAnalytics?
   private let client: PocketBaseClient
   private let userID: String
   private let onUserRefresh: (UserRecord) -> Void
@@ -59,8 +60,10 @@ final class AccountPreferencesModel {
     user: UserRecord,
     onUserRefresh: @escaping (UserRecord) -> Void = { _ in },
     onAnalyticsConsentUnknown: @escaping () -> Void = {},
-    onAnalyticsLocalPauseChanged: @escaping (Bool) -> Void = { _ in }
+    onAnalyticsLocalPauseChanged: @escaping (Bool) -> Void = { _ in },
+    analytics: NativeAnalytics? = nil
   ) {
+    self.analytics = analytics
     self.client = client
     userID = user.id
     self.user = user
@@ -143,15 +146,15 @@ final class AccountPreferencesModel {
       errorMessage = "Enter a profile name."
       return false
     }
-    return await updateUser(ProfileUpdate(username: trimmed))
+    return await updateUser(ProfileUpdate(username: trimmed), setting: "profile")
   }
 
   func updateTheme(_ theme: ThemeFlavor) async -> Bool {
-    await updateUser(ThemeUpdate(themePreference: theme.rawValue))
+    await updateUser(ThemeUpdate(themePreference: theme.rawValue), setting: "theme")
   }
 
   func updatePalette(_ palette: ThemePalette) async -> Bool {
-    await updateUser(PaletteUpdate(themePalette: palette.rawValue))
+    await updateUser(PaletteUpdate(themePalette: palette.rawValue), setting: "palette")
   }
 
   func updateTimezone(_ identifier: String) async -> Bool {
@@ -159,7 +162,7 @@ final class AccountPreferencesModel {
       errorMessage = "Choose a valid time zone."
       return false
     }
-    return await updateUser(TimezoneUpdate(timezone: identifier))
+    return await updateUser(TimezoneUpdate(timezone: identifier), setting: "timezone")
   }
 
   func updateAnalyticsEnabled(_ enabled: Bool) async -> Bool {
@@ -223,6 +226,9 @@ final class AccountPreferencesModel {
         )
         apply(record)
       }
+      analytics?.capture(.verticalsUpdated, properties: [
+        "diamond_painting": verticals.diamondPainting, "coloring_books": verticals.coloringBooks,
+      ], accountID: userID)
       await refreshSettingsAfterWrite()
       return true
     } catch APIError.cancelled {
@@ -233,7 +239,7 @@ final class AccountPreferencesModel {
     }
   }
 
-  private func updateUser<Body: Encodable & Sendable>(_ body: Body) async -> Bool {
+  private func updateUser<Body: Encodable & Sendable>(_ body: Body, setting: String) async -> Bool {
     guard !isSaving, !isLoading, !isRefreshingAnalytics else {
       return false
     }
@@ -247,6 +253,7 @@ final class AccountPreferencesModel {
         collection: "users", id: userID, body: body)
       guard generation == userRequestGeneration else { return false }
       apply(updated)
+      analytics?.capture(.accountUpdated, properties: ["setting": setting], accountID: userID)
       await refreshUserAfterWrite(generation: generation)
       return true
     } catch APIError.cancelled {

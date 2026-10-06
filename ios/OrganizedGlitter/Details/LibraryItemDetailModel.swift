@@ -116,6 +116,7 @@ final class LibraryItemDetailModel {
   func setBookPageFilter(_ filter: BookPageFilter) async {
     guard bookPageFilter != filter else { return }
     bookPageFilter = filter
+    library.captureAnalytics(.pagesFilterChanged, properties: ["record_type": "coloring_pages", "filter_active": filter != .all])
     await reloadBookPages()
   }
 

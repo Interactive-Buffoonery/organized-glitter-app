@@ -5,6 +5,7 @@ import Network
 @MainActor
 @Observable
 final class LibrarySession {
+  let analytics: NativeAnalytics?
   let client: PocketBaseClient
   let scope: LocalAccountScope
   let store: LocalLibraryStore
@@ -38,11 +39,17 @@ final class LibrarySession {
   var userID: String { scope.userID }
   var conflicts: [LocalLibraryEntry] { entries.filter { $0.conflict != nil } }
 
-  init(client: PocketBaseClient, userID: String, store: LocalLibraryStore) {
+  init(client: PocketBaseClient, userID: String, store: LocalLibraryStore, analytics: NativeAnalytics? = nil) {
+    self.analytics = analytics
     self.client = client
     self.scope = LocalAccountScope(backendURL: client.baseURL, userID: userID)
     self.store = store
-    self.coordinator = LocalSyncCoordinator(store: store, client: client, scope: scope)
+    self.coordinator = LocalSyncCoordinator(store: store, client: client, scope: scope, analytics: analytics)
+  }
+
+  func captureAnalytics(_ event: AnalyticsEvent, properties: [String: Any] = [:]) {
+    guard active else { return }
+    analytics?.capture(event, properties: properties, accountID: userID)
   }
 
   func ownedBookTitles() -> [String: String] { bookTitles }
@@ -99,6 +106,7 @@ final class LibrarySession {
     if let syncTask { return try await syncTask.value }
     let task = Task { [weak self] in
       guard let self else { throw APIError.cancelled }
+      let pending = self.pendingCount
       self.isSyncing = true
       defer { self.isSyncing = false }
       do {
@@ -109,6 +117,10 @@ final class LibrarySession {
           items: self.entries.filter { $0.conflict != .deletedOnServer }.map(\.item),
           notes: self.progressNotes, coloringNotes: self.coloringPageProgressNotes, scope: self.scope)
         try self.checkActive()
+        if pending > 0 {
+          self.analytics?.capture(.syncCompleted,
+            properties: ["pending_count": min(10_000, self.pendingCount)], accountID: self.userID)
+        }
         self.syncMessage = nil
         self.generation &+= 1
         self.retryAttempt = 0
@@ -124,6 +136,10 @@ final class LibrarySession {
           throw error
         }
         if error as? APIError == .cancelled || error is CancellationError { throw error }
+        if pending > 0 {
+          self.analytics?.capture(.syncFailed,
+            properties: ["pending_count": min(10_000, self.pendingCount)], accountID: self.userID)
+        }
         self.syncMessage = self.hasSnapshot
           ? "Showing your downloaded library. Changes will sync when the service is available."
           : "Connect to download your library."
@@ -180,6 +196,7 @@ final class LibrarySession {
     let patch = try JSONDecoder().decode(
       [String: LocalJSONValue].self, from: JSONEncoder().encode(body))
     if patch.isEmpty { return try record(collection: collection, id: id) }
+    let previousStatus = items.first { $0.localRecordKey == key }?.status
     localWrites += 1
     defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
     let entry = try await store.queueEdit(
@@ -192,6 +209,10 @@ final class LibrarySession {
     items = entries.map(\.item)
     pendingCount = entries.filter(\.pending).count
     generation &+= 1
+    analytics?.capture(.recordSavedLocally, properties: [
+      "record_type": collection, "field_count": patch.count,
+      "status_changed": patch["status"].map { $0 != previousStatus.map(LocalJSONValue.string) } ?? false,
+    ], accountID: userID)
     scheduleSync()
     return try Self.decode(entry.item)
   }
@@ -212,6 +233,7 @@ final class LibrarySession {
     let saved: Record = try await client.create(collection: collection, body: body)
     try checkActive()
     try await acceptOnline(saved)
+    analytics?.record(.created, collection: collection, accountID: userID)
     return saved
   }
 
@@ -223,6 +245,7 @@ final class LibrarySession {
     let saved: Record = try await client.create(collection: collection, multipart: multipart)
     try checkActive()
     try await acceptOnline(saved)
+    analytics?.record(.created, collection: collection, hasPhoto: !multipart.files.isEmpty, accountID: userID)
     return saved
   }
 
@@ -233,9 +256,15 @@ final class LibrarySession {
     defer { endOnlineWrite() }
     let reserved = try await reserveOnlineRecord(collection: collection, id: id)
     defer { onlineRecords.subtract(reserved) }
+    let previousStatus = items.first { $0.localRecordKey.kind.rawValue == collection && $0.recordID == id }?.status
+    let patch = (try? JSONDecoder().decode([String: LocalJSONValue].self, from: JSONEncoder().encode(body))) ?? [:]
     let saved: Record = try await client.update(collection: collection, id: id, body: body)
     try checkActive()
     try await acceptOnline(saved)
+    analytics?.record(.updated, collection: collection, accountID: userID)
+    if case .string(let status) = patch["status"], status != previousStatus {
+      analytics?.record(.statusChanged, collection: collection, accountID: userID)
+    }
     return saved
   }
 
@@ -249,6 +278,11 @@ final class LibrarySession {
     let saved: Record = try await client.update(collection: collection, id: id, multipart: multipart)
     try checkActive()
     try await acceptOnline(saved)
+    analytics?.record(.updated, collection: collection, accountID: userID)
+    if !multipart.files.isEmpty {
+      analytics?.capture(collection == "coloring_pages" ? .pagePhotoAdded : .photoAdded,
+        properties: ["record_type": collection, "save_destination": "server"], accountID: userID)
+    }
     return saved
   }
 
@@ -259,6 +293,7 @@ final class LibrarySession {
     defer { onlineRecords.subtract(reserved) }
     try await client.delete(collection: collection, id: id)
     try checkActive()
+    analytics?.record(.deleted, collection: collection, accountID: userID)
     let noteKind: LocalNoteKind?
     switch collection {
     case "progress_notes": noteKind = .diamond
@@ -283,12 +318,18 @@ final class LibrarySession {
 
   func resolve(_ entry: LocalLibraryEntry, retainLocal: Bool) async throws {
     try checkWritable()
+    guard try await store.entry(scope: scope, key: entry.item.localRecordKey)?.conflict != nil else { return }
+    try checkWritable()
     localWrites += 1
     defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
     _ = try await store.resolveConflict(
       scope: scope, key: entry.item.localRecordKey, retainLocal: retainLocal)
     try await loadLocal()
     generation &+= 1
+    analytics?.capture(.conflictResolved, properties: [
+      "record_type": entry.item.localRecordKey.kind.rawValue,
+      "resolution": retainLocal ? "keep_local" : "use_server",
+    ], accountID: userID)
     Task { try? await refresh(force: true) }
   }
 

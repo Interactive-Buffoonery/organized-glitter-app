@@ -52,7 +52,8 @@ struct AppShellView: View {
         user: user,
         onUserRefresh: model.replaceSignedInUser,
         onAnalyticsConsentUnknown: model.pauseAnalyticsUntilAccountRefresh,
-        onAnalyticsLocalPauseChanged: { model.setAnalyticsLocallyPaused($0, accountID: user.id) }
+        onAnalyticsLocalPauseChanged: { model.setAnalyticsLocallyPaused($0, accountID: user.id) },
+        analytics: model.analytics
       ))
   }
 
@@ -162,6 +163,19 @@ struct AppShellView: View {
       }
     }
     .tabViewStyle(.sidebarAdaptable)
+    .onChange(of: selectedTab, initial: true) { _, tab in
+      let screen: String = switch tab {
+      case .home: "home"
+      case .library, .craft: "library"
+      case .shelf: "shelf"
+      case .notes: "notes"
+      case .search: "search"
+      }
+      model.analytics.capture(.screenViewed, properties: ["screen": screen])
+    }
+    .onChange(of: isShowingAccount) { _, presented in
+      if presented { model.analytics.capture(.screenViewed, properties: ["screen": "account"]) }
+    }
     .formDrawerHost(formDrawer)
     .onChange(of: sizeClass) { _, sizeClass in
       switch (sizeClass, selectedTab) {
