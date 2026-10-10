@@ -165,6 +165,24 @@ struct LibraryView: View {
       }
       if presentation != .search {
         ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            NavigationLink {
+              StatsView(library: model.library, verticals: verticals)
+            } label: {
+              Label("Stats", systemImage: "chart.bar")
+            }
+            .accessibilityIdentifier("library.stats")
+            NavigationLink {
+              RandomizerView()
+            } label: {
+              Label("Pick a section number", systemImage: "number")
+            }
+          } label: {
+            Label("More", systemImage: "ellipsis.circle")
+          }
+          .accessibilityIdentifier("library.more")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
           CreateMenu(
             library: model.library,
             verticals: verticals,

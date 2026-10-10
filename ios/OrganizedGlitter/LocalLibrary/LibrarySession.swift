@@ -68,6 +68,21 @@ final class LibrarySession {
     analytics?.capture(event, properties: properties, accountID: userID)
   }
 
+  func statsSnapshot(year: Int) async throws -> StatsSnapshot {
+    try checkActive()
+    do {
+      let snapshot = try await client.statsSnapshot(year: year, userID: userID)
+      try checkActive()
+      return snapshot
+    } catch {
+      try checkActive()
+      if error as? APIError == .unauthenticated {
+        await onAuthenticationFailure?()
+      }
+      throw error
+    }
+  }
+
   func ownedBookTitles() -> [String: String] { bookTitles }
 
   func shelfCounts(for section: LibrarySection) -> [String: Int] {

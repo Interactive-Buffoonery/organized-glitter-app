@@ -67,6 +67,31 @@
         return
       }
       let scenario = Self.scenario ?? "populated"
+      if url.path == "/api/stats/summary" || url.path == "/api/stats/coloring/summary" {
+        if scenario == "stats-offline" {
+          client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+          return
+        }
+        let year = Int(URLComponents(url: url, resolvingAgainstBaseURL: false)?
+          .queryItems?.first(where: { $0.name == "year" })?.value ?? "") ?? 2026
+        let coloring = url.path.contains("/coloring/")
+        let metrics: [String: Int] = coloring
+          ? ["totalBooks": 12, "completedPagesThisYear": 7, "activePages": 2,
+            "inStash": 4, "allTimeCompletedPages": 19, "wishlistSize": 3]
+          : ["totalKits": 24, "completedThisYear": year == 2026 ? 5 : 2,
+            "inProgress": 3, "inStash": 8, "allTimeCompleted": 11, "wishlistSize": 4]
+        var object: [String: Any] = [
+          "generatedAt": "2026-10-10T12:00:00.000Z", "year": year, "metrics": metrics,
+        ]
+        if coloring {
+          object["bookStatusBreakdown"] = [String: Int]()
+          object["pageStatusBreakdown"] = [String: Int]()
+        } else {
+          object["statusBreakdown"] = [String: Int]()
+        }
+        respond(object: object)
+        return
+      }
       if url.path == "/api/collections/users/confirm-password-reset" {
         if scenario == "reset-lost-connection" {
           client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
