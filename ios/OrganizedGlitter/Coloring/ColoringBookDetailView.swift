@@ -51,7 +51,7 @@ struct ColoringBookDetailView: View {
                   }
                 )
               } label: {
-                ColoringBookPageCard(page: page)
+                ColoringBookPageCard(page: page, isMystery: model.library.isMysteryBook(page.book))
               }
               .buttonStyle(.plain)
               .accessibilityIdentifier("detail.book.page.\(page.id)")
@@ -261,13 +261,22 @@ private struct ColoringBookPageCard: View {
   @Environment(\.colorScheme) private var colorScheme
 
   let page: ColoringPageRecord
+  let isMystery: Bool
+
+  private var presentation: MysteryPagePresentation {
+    MysteryPagePresentation(page: page, isMystery: isMystery)
+  }
 
   var body: some View {
     VStack(spacing: 4) {
-      CoverArtwork(
-        item: .page(page),
-        url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery)
-      )
+      if presentation.hidesThumbnail {
+        MysteryPagePlaceholder(pageNumber: page.pageNumber)
+      } else {
+        CoverArtwork(
+          item: .page(page),
+          url: protectedFiles?.artworkURL(for: .page(page), thumb: ArtworkThumb.gallery)
+        )
+      }
 
       Text("Page \(page.pageNumber)")
         .font(.karla(.caption).weight(.semibold))
@@ -287,7 +296,7 @@ private struct ColoringBookPageCard: View {
   private var accessibilityLabel: String {
     [
       "Page \(page.pageNumber)",
-      page.revealedSubject?.nonEmpty,
+      presentation.hidesThumbnail ? "Mystery" : page.revealedSubject?.nonEmpty,
       PageStatus.label(for: page.status),
     ].compactMap { $0 }.joined(separator: ", ")
   }

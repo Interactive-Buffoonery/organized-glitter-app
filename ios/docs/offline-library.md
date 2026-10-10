@@ -7,6 +7,13 @@ progress notes from a private SwiftData store. Existing metadata and status
 edits save locally, including while offline. PocketBase remains the only
 backend and identity system. There is no CloudKit sync or guest account.
 
+Mystery pages use their cached parent book's mystery flag. Revealing a page
+queues a trimmed answer and the current calendar day as `revealed_at`. Editing
+an answer preserves that day; hiding clears both values without changing status
+or completion. These fields share the page lifecycle conflict group. Unrevealed
+mystery pages show a page-number placeholder in book grids and Library/Search;
+the user's photos remain visible in Detail, Home, and Notes.
+
 Creation, deletion, note submission, file uploads, taxonomy changes, account
 settings, and changing a book's page count require a connection. The server
 continues to generate coloring pages and maintain derived values. Online

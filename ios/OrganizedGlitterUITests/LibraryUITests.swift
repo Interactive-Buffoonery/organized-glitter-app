@@ -27,6 +27,60 @@ final class LibraryUITests: XCTestCase {
     }
   }
 
+  func testMysteryPageRevealsEditsAndHidesAnswer() throws {
+    let app = launch("mystery")
+    openLibrary(app)
+    app.buttons["Coloring"].tap()
+    let book = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@",
+      "Moonlit meadows", "24 pages")).firstMatch
+    XCTAssertTrue(book.waitForExistence(timeout: 5))
+    book.tap()
+    let page = app.buttons["detail.book.page.fictional-page"]
+    if !page.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(page.waitForExistence(timeout: 5))
+    XCTAssertTrue(page.label.contains("Mystery"))
+    page.tap()
+    let status = app.buttons["detail.status"]
+    XCTAssertTrue(status.waitForExistence(timeout: 3))
+    let originalStatus = status.label
+    let reveal = app.buttons["detail.page.reveal"]
+    if !reveal.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(reveal.waitForExistence(timeout: 5))
+    reveal.tap()
+    let subject = app.alerts.textFields.firstMatch
+    XCTAssertTrue(subject.waitForExistence(timeout: 3))
+    subject.tap()
+    subject.typeText("Garden")
+    app.alerts.buttons["Reveal"].tap()
+    let answer = app.buttons["detail.page.answerMenu"]
+    XCTAssertTrue(answer.waitForExistence(timeout: 5))
+    XCTAssertTrue(answer.label.contains("Garden"))
+    let date = app.staticTexts["detail.page.revealedDate"]
+    XCTAssertTrue(date.waitForExistence(timeout: 3))
+    let originalDate = date.label
+    answer.tap()
+    app.buttons["Edit answer"].tap()
+    let edit = app.alerts.textFields.firstMatch
+    XCTAssertTrue(edit.waitForExistence(timeout: 3))
+    edit.tap()
+    edit.typeText(" flowers")
+    app.alerts.buttons["Save"].tap()
+    XCTAssertTrue(answer.waitForExistence(timeout: 5))
+    let edited = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Garden flowers"), object: answer)
+    XCTAssertEqual(XCTWaiter.wait(for: [edited], timeout: 5), .completed)
+    XCTAssertEqual(date.label, originalDate)
+    answer.tap()
+    app.buttons["Hide again"].tap()
+    let confirmHide = app.buttons["Hide again"].firstMatch
+    XCTAssertTrue(confirmHide.waitForExistence(timeout: 3))
+    confirmHide.tap()
+    XCTAssertTrue(reveal.waitForExistence(timeout: 5))
+    XCTAssertFalse(answer.exists)
+    XCTAssertFalse(date.exists)
+    XCTAssertEqual(status.label, originalStatus)
+    try capture(app, "mystery-hidden-again")
+  }
+
   func testIPhoneBrowsesTwoCraftsAndOpensPagesThroughBook() throws {
     try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone peer craft browsing.")
     let app = launch("populated")

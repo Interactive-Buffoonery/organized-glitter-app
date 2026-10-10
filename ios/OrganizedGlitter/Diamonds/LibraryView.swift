@@ -506,12 +506,18 @@ struct LibraryView: View {
   }
 
   private func galleryItem(_ item: LibraryItem) -> some View {
-    NavigationLink(value: item) {
+    let hidesAnswer: Bool
+    if case .page(let page) = item {
+      hidesAnswer = MysteryPagePresentation(
+        page: page, isMystery: model.library.isMysteryBook(page.book)).hidesThumbnail
+    } else { hidesAnswer = false }
+    return NavigationLink(value: item) {
       LibraryGalleryCard(
         item: item,
-        imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
+        imageURL: hidesAnswer ? nil : protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
         mode: viewMode,
-        showsStatus: !model.isShelved && model.statusFilter == nil)
+        showsStatus: !model.isShelved && model.statusFilter == nil,
+        hidesMysteryAnswer: hidesAnswer)
     }
     .buttonStyle(.plain)
     .contextMenu {
