@@ -137,7 +137,7 @@ final class LibrarySession {
   }
 
   func refreshFromServer() async throws {
-    try checkActive()
+    try checkWritable()
     guard onlineWrites == 0 else { throw LibrarySessionError.onlineWriteInProgress }
     if let syncTask { return try await syncTask.value }
     let task = Task { [weak self] in
@@ -268,6 +268,22 @@ final class LibrarySession {
     defer { endOnlineWrite(refreshLibrary: false) }
     try await client.requestEmailChange(email: email)
     try checkActive()
+  }
+
+  func changePassword(
+    oldPassword: String,
+    password: String,
+    passwordConfirmation: String
+  ) async throws {
+    try await beginOnlineWrite()
+    defer { endOnlineWrite(refreshLibrary: false) }
+    try await client.changePassword(
+      oldPassword: oldPassword,
+      password: password,
+      passwordConfirmation: passwordConfirmation
+    )
+    try checkActive()
+    pauseWrites()
   }
 
   func create<Record: Decodable & Sendable>(

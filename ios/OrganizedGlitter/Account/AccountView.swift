@@ -11,6 +11,7 @@ struct AccountView: View {
   let client: PocketBaseClient
   @Bindable var preferences: AccountPreferencesModel
   @Binding var showCraftingStreak: Bool
+  @State private var passwordAuthenticationEnabled: Bool?
 
   var body: some View {
     List {
@@ -31,7 +32,27 @@ struct AccountView: View {
           }
           .accessibilityLabel("Edit profile name")
 
-          LabeledContent("Email", value: preferences.user.email ?? "Hidden")
+          NavigationLink {
+            ChangeEmailView(
+              appModel: appModel, library: library, client: client,
+              currentEmail: preferences.user.email ?? "")
+          } label: {
+            VStack(alignment: .leading, spacing: 8) {
+              Text("Email")
+              Text(preferences.user.email ?? "Hidden")
+                .fixedSize(horizontal: false, vertical: true)
+              Label(
+                preferences.user.verified == true ? "Verified" : "Not verified",
+                systemImage: preferences.user.verified == true
+                  ? "checkmark.seal" : "exclamationmark.triangle")
+                .font(.karla(.caption))
+            }
+          }
+          .accessibilityLabel("Change email")
+          .accessibilityValue(
+            "\(preferences.user.email ?? "Hidden"), \(preferences.user.verified == true ? "Verified" : "Not verified")")
+          .accessibilityIdentifier("account.changeEmail")
+          .disabled(preferences.isBusy || appModel.isChangingPassword)
         }
 
         Section("Appearance") {
@@ -184,6 +205,15 @@ struct AccountView: View {
         }
 
         Section("Security") {
+          if passwordAuthenticationEnabled != false {
+            NavigationLink("Change password") {
+              ChangePasswordView(
+                appModel: appModel, library: library, client: client,
+                currentEmail: preferences.user.email ?? "")
+            }
+            .accessibilityIdentifier("account.changePassword")
+            .disabled(preferences.isBusy || appModel.isChangingPassword)
+          }
           NavigationLink("Reset password") {
             PasswordResetView(client: client, initialEmail: preferences.user.email ?? "")
           }
@@ -204,7 +234,7 @@ struct AccountView: View {
             appModel.signOut()
           }
           .accessibilityLabel("Sign out of Organized Glitter")
-          .disabled(appModel.isSigningOut)
+          .disabled(appModel.isSigningOut || appModel.isChangingPassword)
           if let message = appModel.sessionError { Text(message) }
         }
       }
@@ -227,6 +257,9 @@ struct AccountView: View {
       Text("Stay signed in and synchronize to keep these changes in your account.")
     }
     .refreshable { await preferences.load() }
+    .task {
+      passwordAuthenticationEnabled = try? await client.passwordAuthenticationEnabled()
+    }
     .overlay {
       if preferences.isLoading && preferences.user == .preview {
         ProgressView("Loading account")

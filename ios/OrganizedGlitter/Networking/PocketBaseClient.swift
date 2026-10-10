@@ -71,6 +71,16 @@ actor PocketBaseClient {
     return try persist(response.session)
   }
 
+  func passwordAuthenticationEnabled() async throws -> Bool {
+    struct Methods: Decodable {
+      struct Password: Decodable { let enabled: Bool }
+      let password: Password
+    }
+    let methods: Methods = try await request(
+      path: "/api/collections/users/auth-methods", includesAuthentication: false)
+    return methods.password.enabled
+  }
+
   func oauthProviders() async throws -> [OAuthProvider] {
     struct Methods: Decodable {
       struct OAuth2: Decodable {
@@ -327,6 +337,55 @@ actor PocketBaseClient {
       ),
       includesAuthentication: false
     )
+  }
+
+  func changePassword(
+    oldPassword: String,
+    password: String,
+    passwordConfirmation: String
+  ) async throws {
+    guard let authentication else { throw APIError.unauthenticated }
+    struct Body: Encodable {
+      let oldPassword: String
+      let password: String
+      let passwordConfirm: String
+    }
+
+    _ = try await send(
+      path: "/api/collections/users/records/\(authentication.user.id)",
+      method: "PATCH",
+      body: Body(
+        oldPassword: oldPassword,
+        password: password,
+        passwordConfirm: passwordConfirmation
+      ),
+      canRefreshAuthentication: false
+    )
+  }
+
+  func reauthenticateAfterPasswordChange(
+    identity: String, password: String, expectedUserID: String
+  ) async throws -> AuthenticatedSession {
+    guard authentication?.user.id == expectedUserID else { throw APIError.cancelled }
+    try sessionStore.clear()
+    authentication = nil
+    sessionGeneration &+= 1
+    let generation = sessionGeneration
+    refreshTask?.cancel()
+    refreshTask = nil
+    refreshGeneration = nil
+    struct Body: Encodable {
+      let identity: String
+      let password: String
+    }
+    let response: AuthResponse = try await request(
+      path: "/api/collections/users/auth-with-password",
+      method: "POST", body: Body(identity: identity, password: password),
+      includesAuthentication: false)
+    guard generation == sessionGeneration, !Task.isCancelled else { throw APIError.cancelled }
+    guard response.record.id == expectedUserID else { throw APIError.forbidden }
+    guard response.record.verified == true else { throw APIError.emailUnverified }
+    return try persist(response.session)
   }
 
   func restore(_ stored: StoredSession) async throws -> AuthenticatedSession {
