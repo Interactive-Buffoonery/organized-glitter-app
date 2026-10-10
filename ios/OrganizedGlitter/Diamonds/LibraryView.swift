@@ -13,6 +13,7 @@ struct LibraryView: View {
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
+  @State private var showsFilters = false
   @State private var contentWidth: CGFloat = 0
   @State private var logEditor: LibraryItemDetailModel?
   @State private var showsRandomizer = false
@@ -65,6 +66,10 @@ struct LibraryView: View {
           RandomizerView()
         }
     }
+    .sheet(isPresented: $showsFilters) {
+      LibraryFilterSheet(filters: Bindable(model).filters, section: model.section,
+        options: model.filterOptions)
+    }
     .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
       path = []
@@ -103,7 +108,7 @@ struct LibraryView: View {
     presentation != .search && model.library.hasSnapshot && model.hasLoaded
       && !model.isLoading && model.items.isEmpty
       && model.errorMessage == nil && model.statusFilter == nil
-      && model.committedSearch.isEmpty
+      && model.committedSearch.isEmpty && model.filters.isEmpty
   }
 
   /// The search tab shows a prompt until something has been searched.
@@ -129,6 +134,9 @@ struct LibraryView: View {
 
         if presentation != .search, !isEmptyLibrary {
           filterRow
+        }
+        if !model.filters.isEmpty {
+          activeFilterSummary
         }
         libraryBody
       }
@@ -279,7 +287,38 @@ struct LibraryView: View {
       statusMenu
     }
     sortMenu
+    filtersButton
     viewModePicker
+  }
+
+  private var filtersButton: some View {
+    let count = model.filters.activeFacets.count
+    return Button { showsFilters = true } label: {
+      filterLabel(count == 0 ? "Filters" : "Filters (\(count))",
+        systemImage: count == 0 ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill",
+        hue: theme.primary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .accessibilityLabel("Filters, \(count) active")
+    .accessibilityIdentifier("library.filters")
+  }
+
+  private func clearFilters() {
+    model.resetFilters()
+    AccessibilityNotification.Announcement("Filters cleared").post()
+  }
+
+  private var activeFilterSummary: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("Filtered: \(model.filters.activeFacets.joined(separator: ", "))")
+        .font(.karla(.subheadline))
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("library.filters.summary")
+      Button("Clear filters", action: clearFilters)
+        .buttonStyle(QuietActionStyle())
+        .accessibilityIdentifier("library.filters.clear")
+    }
   }
 
   private var viewMode: LibraryViewMode {
@@ -443,7 +482,17 @@ struct LibraryView: View {
 
   @ViewBuilder
   private var emptyState: some View {
-    if !model.committedSearch.isEmpty {
+    if !model.filters.isEmpty {
+      ContentUnavailableView {
+        Label("No matches", systemImage: "line.3.horizontal.decrease.circle")
+      } description: {
+        Text("Try changing or clearing your filters.")
+      } actions: {
+        Button("Clear filters", action: clearFilters)
+          .buttonStyle(QuietActionStyle())
+          .accessibilityIdentifier("library.filters.emptyClear")
+      }
+    } else if !model.committedSearch.isEmpty {
       ContentUnavailableView.search(text: model.committedSearch)
     } else if let status = model.statusFilter {
       ContentUnavailableView {

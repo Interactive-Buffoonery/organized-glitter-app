@@ -11,6 +11,18 @@ struct LibraryFilters: Equatable {
 
   var isEmpty: Bool { self == Self() }
 
+  var activeFacets: [String] {
+    var names: [String] = []
+    if companyID != nil { names.append("Company") }
+    if artistID != nil { names.append("Artist") }
+    if drillShape != nil { names.append("Drill shape") }
+    if completionYear != nil { names.append("Finished in") }
+    if !publisherIDs.isEmpty { names.append("Publisher") }
+    if !illustratorIDs.isEmpty { names.append("Illustrator") }
+    if !tagIDs.isEmpty { names.append("Tags") }
+    return names
+  }
+
   var identity: String {
     let values = [companyID ?? "", artistID ?? "", drillShape ?? "",
       completionYear.map(String.init) ?? ""]

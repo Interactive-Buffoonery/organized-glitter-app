@@ -99,6 +99,14 @@ struct LibraryFilterTests {
     #expect(model.items.isEmpty)
   }
 
+  @Test func badgeCountsFacetsInsteadOfSelectedIDs() {
+    let filters = LibraryFilters(companyID: "company", completionYear: 2026,
+      publisherIDs: ["one", "two"], tagIDs: ["one", "two"])
+    #expect(filters.activeFacets == ["Company", "Finished in", "Publisher", "Tags"])
+    #expect(filters.activeFacets.count == 4)
+    #expect(LibraryFilters().activeFacets.isEmpty)
+  }
+
   @Test func craftSwitchAndShelfHandoffResetFilters() throws {
     let model = LibraryModel(library: try localFeatureLibrary())
     model.filters.companyID = "company-a"
