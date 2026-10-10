@@ -7,6 +7,7 @@ struct ColoringPageDetailView: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
+  @Environment(\.connectionAvailable) private var connectionAvailable
 
   let page: ColoringPageRecord
   let model: LibraryItemDetailModel
@@ -18,6 +19,11 @@ struct ColoringPageDetailView: View {
   @State private var pendingPreview: UIImage?
   @State private var isPreparingPhoto = false
   @State private var photoErrorMessage: String?
+  @State private var showingMediumEditor = false
+
+  private var hasMediumRecovery: Bool {
+    model.library.mediumAttempts.contains { $0.pageID == page.id }
+  }
 
   var body: some View {
     let startedDate = page.startedAt.flatMap { DetailDateOnly.date($0) }
@@ -45,6 +51,7 @@ struct ColoringPageDetailView: View {
               allowsEmpty: true,
               model: model,
               onCollectionChanged: onCollectionChanged)
+              .disabled(hasMediumRecovery)
             Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
               .font(.karla(.body))
               .foregroundStyle(theme.pageSecondaryForeground)
@@ -52,7 +59,24 @@ struct ColoringPageDetailView: View {
 
           DetailStatusMenu<PageStatus>(
             current: page.status, model: model, onCollectionChanged: onCollectionChanged)
+            .disabled(hasMediumRecovery)
           DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
+
+          VStack(alignment: .leading, spacing: 12) {
+            Label("Mediums", systemImage: "pencil.tip")
+              .font(.karla(.headline))
+            Text(MediumNames.summary(ids: page.selectedMediumIDs, options: page.expand?.mediums ?? []))
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("detail.page.mediumNames")
+            Button(hasMediumRecovery ? "Review medium save" : page.selectedMediumIDs.isEmpty ? "Add mediums" : "Edit mediums") {
+              showingMediumEditor = true
+            }
+            .buttonStyle(.bordered)
+            .disabled(!connectionAvailable || model.isMutating || model.unresolvedWriteState != nil
+              || pendingPhoto != nil || isPreparingPhoto)
+            .accessibilityIdentifier("detail.page.mediums")
+            NeedsConnectionHint()
+          }
 
           VStack(alignment: .leading, spacing: 12) {
             photoHeader
@@ -166,7 +190,7 @@ struct ColoringPageDetailView: View {
               DetailDateRow(
                 label: "Started",
                 value: page.startedAt,
-                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil || hasMediumRecovery,
                 maximumDate: min(completedDate ?? today, today)
               ) { date in
                 saveDetailChange(
@@ -176,7 +200,7 @@ struct ColoringPageDetailView: View {
               DetailDateRow(
                 label: "Completed",
                 value: page.completedAt,
-                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil || hasMediumRecovery,
                 minimumDate: startedDate,
                 maximumDate: today
               ) { date in
@@ -209,6 +233,9 @@ struct ColoringPageDetailView: View {
       .task(id: selectedItem) {
         await prepareSelection()
       }
+    }
+    .sheet(isPresented: $showingMediumEditor) {
+      PageMediumEditor(page: page, model: model, onCollectionChanged: onCollectionChanged)
     }
   }
 
@@ -260,7 +287,7 @@ struct ColoringPageDetailView: View {
               .contentShape(.rect)
           }
           .buttonStyle(.bordered)
-          .disabled(isPreparingPhoto || model.isMutating)
+          .disabled(isPreparingPhoto || model.isMutating || hasMediumRecovery)
           .accessibilityIdentifier("detail.page.addPhoto")
           NeedsConnectionHint()
         }

@@ -362,6 +362,7 @@ struct AppShellView: View {
   }
 
   private var syncAnnouncement: String? {
+    if !library.mediumAttempts.isEmpty { return "A medium save needs review. Check its result before saving again." }
     if !library.conflicts.isEmpty { return "Some saved changes need your attention. Review." }
     if library.pendingCount > 0 { return "Saved on this device. Waiting to sync." }
     return library.syncMessage

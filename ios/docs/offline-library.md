@@ -14,6 +14,17 @@ changes pass through LibrarySession and update the local view after acceptance.
 An accepted remote write must not be retried merely because a later local
 refresh failed.
 
+Page medium attachment also requires a connection. Its online save uses the
+transactional mobile apply route with the original raw ID array and a stable
+operation ID. A private account-scoped receipt journal keeps the frozen request
+until the server confirms it. This journal does not compose or synchronize
+offline edits. Uncertain saves survive restart and must be recovered with the
+same request before another save can start. Conflicts keep the draft and offer
+explicit reapplication against the returned account version. Accepted or replayed
+records and journal removal commit together; replay uses the current account
+record. Snapshots cannot discard the journal when a page disappears. Sign-out
+includes it in pending-work warnings and account cleanup.
+
 ## Components
 
 - `LocalLibraryStore`: actor-owned SwiftData context, explicit saves, account
