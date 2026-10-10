@@ -5,6 +5,7 @@ import SwiftUI
 final class NotesFilterModel {
   private let library: LibrarySession
   private(set) var craft: NotesCraft = .all
+  private(set) var source: NotesSourceID?
   private(set) var year: Int?
 
   init(library: LibrarySession) {
@@ -14,6 +15,7 @@ final class NotesFilterModel {
   func selectCraft(_ craft: NotesCraft) {
     guard self.craft != craft else { return }
     self.craft = craft
+    source = nil
     year = nil
     library.captureAnalytics(.notesCraftFilterChanged, properties: ["craft": craft.rawValue])
   }
@@ -24,16 +26,27 @@ final class NotesFilterModel {
     library.captureAnalytics(.notesYearFilterChanged, properties: ["filter_active": year != nil])
   }
 
+  func selectSource(_ source: NotesSourceID?) {
+    self.source = source
+  }
+
   func align(to verticals: VerticalPreferences) {
     let selected = craft.resolved(for: verticals) ?? .all
     if selected != craft {
       craft = selected
+      source = nil
       year = nil
     }
   }
 
-  func reconcile(availableYears: [Int]) {
+  func reconcile(availableSources: [NotesSource], availableYears: [Int]) {
+    source = NotesFeed.resolvedSource(source, in: availableSources)
     if let year, !availableYears.contains(year) { self.year = nil }
+  }
+
+  func reset() {
+    source = nil
+    year = nil
   }
 }
 
@@ -52,6 +65,7 @@ struct NotesFeedView: View {
   let onAddNote: () -> Void
 
   @State private var filters: NotesFilterModel
+  @State private var sources: [NotesSource] = []
   @State private var loadMessage: String?
   @State private var allEntries: [NotesFeedEntry] = []
   @State private var sections: [NotesFeedSection] = []
@@ -87,6 +101,23 @@ struct NotesFeedView: View {
           } else {
             craftPicker(availableCrafts)
               .pickerStyle(.segmented)
+          }
+        }
+
+        if library.hasSnapshot, !sources.isEmpty {
+          sourcePicker
+          if let selectedSource {
+            ViewThatFits(in: .horizontal) {
+              HStack(alignment: .firstTextBaseline, spacing: 12) {
+                sourceSummary(selectedSource)
+                Spacer(minLength: 0)
+                clearSourceButton
+              }
+              VStack(alignment: .leading, spacing: 8) {
+                sourceSummary(selectedSource)
+                clearSourceButton
+              }
+            }
           }
         }
 
@@ -199,6 +230,7 @@ struct NotesFeedView: View {
       }
     }
     .onChange(of: filters.craft) { _, _ in updateVisible() }
+    .onChange(of: filters.source) { _, _ in updateVisible() }
     .onChange(of: filters.year) { _, _ in updateVisible() }
     .onChange(of: verticals) { _, _ in
       filters.align(to: verticals)
@@ -207,9 +239,17 @@ struct NotesFeedView: View {
     .onChange(of: protectedFiles?.token) { _, _ in updatePhotos() }
     .onChange(of: locale) { _, _ in updateVisible() }
     .onChange(of: timeZone) { _, _ in updatePhotos() }
-    .task(id: library.generation) {
+    .onChange(of: library.scope) { _, _ in
+      filters.reset()
+      allEntries = []
+      sources = []
+      sections = []
+      photos = []
+    }
+    .task(id: NotesFeedLoadID(scope: library.scope, generation: library.generation)) {
       do {
         try await library.loadLocal()
+        try Task.checkCancellation()
         loadMessage = nil
       } catch is CancellationError {
         return
@@ -222,6 +262,54 @@ struct NotesFeedView: View {
         coloringNotes: library.coloringPageProgressNotes)
       updateVisible()
     }
+  }
+
+  private var selectedSource: NotesSource? {
+    sources.first { $0.id == filters.source }
+  }
+
+  private var sourcePicker: some View {
+    Menu {
+      Picker("Source", selection: Binding(
+        get: { filters.source }, set: { filters.selectSource($0) }
+      )) {
+        Text("All projects and books").tag(NotesSourceID?.none)
+        ForEach(sources) { option in
+          Text(option.title).tag(NotesSourceID?.some(option.id))
+        }
+      }
+    } label: {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Text("Source: \(selectedSource?.title ?? "All projects and books")")
+          .fixedSize(horizontal: false, vertical: true)
+          .multilineTextAlignment(.leading)
+        Image(systemName: "chevron.down")
+          .accessibilityHidden(true)
+      }
+      .font(.karla(.body))
+      .frame(minHeight: 44, alignment: .leading)
+    }
+    .tint(theme.primary)
+    .accessibilityLabel("Filter notes by project or book")
+    .accessibilityValue(selectedSource?.title ?? "All projects and books")
+    .accessibilityIdentifier("notes.source")
+  }
+
+  private func sourceSummary(_ selected: NotesSource) -> some View {
+    Text("Showing notes for \(selected.title)")
+      .font(.karla(.subheadline))
+      .foregroundStyle(theme.pageSecondaryForeground)
+      .fixedSize(horizontal: false, vertical: true)
+      .accessibilityIdentifier("notes.source.summary")
+  }
+
+  private var clearSourceButton: some View {
+    Button("Clear") { filters.selectSource(nil) }
+      .font(.karla(.subheadline))
+      .frame(minHeight: 44)
+      .tint(theme.primary)
+      .accessibilityLabel("Clear source filter")
+      .accessibilityIdentifier("notes.source.clear")
   }
 
   private func craftPicker(_ crafts: [NotesCraft]) -> some View {
@@ -237,11 +325,14 @@ struct NotesFeedView: View {
   private func updateVisible() {
     let craftEntries = NotesFeed.filter(
       allEntries, craft: filters.craft, year: nil, verticals: verticals)
+    let availableSources = NotesFeed.sources(in: craftEntries, items: library.items)
+    sources = availableSources
     let availableYears = NotesFeed.years(in: craftEntries)
     years = availableYears
-    filters.reconcile(availableYears: availableYears)
-    let selectedYear = filters.year
-    let visibleEntries = craftEntries.filter { selectedYear == nil || $0.year == selectedYear }
+    filters.reconcile(availableSources: availableSources, availableYears: availableYears)
+    let visibleEntries = NotesFeed.filter(
+      craftEntries, craft: filters.craft, year: filters.year, verticals: verticals,
+      source: filters.source)
     sections = NotesFeed.months(visibleEntries).map {
       NotesFeedSection(id: $0.id, title: $0.title(locale: locale), entries: $0.entries)
     }
@@ -289,11 +380,27 @@ struct NotesFeedView: View {
     case .coloring: "Add a progress note to a coloring page, and it will show up here."
     }
     return ContentUnavailableView {
-      Label("Start logging progress", systemImage: "note.text")
+      if let selectedSource {
+        Label("No notes for \(selectedSource.title)", systemImage: "note.text")
+      } else if filters.year != nil {
+        Label("No notes this year", systemImage: "note.text")
+      } else {
+        Label("Start logging progress", systemImage: "note.text")
+      }
     } description: {
-      Text(filters.year.map { "No notes from \($0)." } ?? description)
+      Text(filters.year.map { "No notes in \($0)." } ?? description)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("notes.empty")
     } actions: {
-      if filters.year == nil, !NotesCraft.available(for: verticals).isEmpty {
+      if filters.source != nil || filters.year != nil {
+        Button("Show all notes") {
+          filters.selectSource(nil)
+          filters.selectYear(nil)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(theme.primary)
+        .accessibilityIdentifier("notes.filters.clear")
+      } else if !NotesCraft.available(for: verticals).isEmpty {
         Button("Add a progress note", action: onAddNote)
           .disabledWhileFormPresented(formDrawer)
           .buttonStyle(.borderedProminent)
@@ -301,7 +408,6 @@ struct NotesFeedView: View {
       }
     }
     .frame(maxWidth: .infinity, minHeight: 360)
-    .accessibilityIdentifier("notes.empty")
   }
 
   private func refresh() async {
@@ -324,4 +430,9 @@ private struct NotesFeedSection: Identifiable {
   let id: String
   let title: String
   let entries: [NotesFeedEntry]
+}
+
+private struct NotesFeedLoadID: Hashable {
+  let scope: LocalAccountScope
+  let generation: Int
 }

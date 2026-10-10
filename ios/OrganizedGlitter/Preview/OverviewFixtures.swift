@@ -331,6 +331,19 @@
           "coloring_page_progress_notes": hasContent && usesDesignData
             ? OverviewFixtureProtocol.designPageProgressNotes : [],
         ]
+        if ProcessInfo.processInfo.arguments.contains("-fixture-notes-source-years") {
+          collections["progress_notes"] = collections["progress_notes"]?.map { note in
+            var dated = note
+            dated["date"] = "2025-09-01"
+            return dated
+          }
+          collections["coloring_page_progress_notes"] =
+            collections["coloring_page_progress_notes"]?.map { note in
+              var dated = note
+              dated["date"] = "2026-09-01"
+              return dated
+            }
+        }
         if scenario == "many-pages", var books = collections["coloring_books"],
           var firstBook = books.first
         {
