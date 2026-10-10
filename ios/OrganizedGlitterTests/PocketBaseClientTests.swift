@@ -6,6 +6,37 @@ import Testing
 @Suite(.serialized)
 struct PocketBaseClientTests {
   @Test
+  func emailChangeRequestsConfirmationWithoutEditingUser() async throws {
+    let client = await accountClient(responses: [(204, "")])
+    try await client.requestEmailChange(email: "new@example.test")
+
+    let request = try #require(PocketBaseClientURLProtocol.requests.first)
+    #expect(request.url?.path == "/api/collections/users/request-email-change")
+    #expect(request.httpMethod == "POST")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "account-token")
+    let body = try JSONDecoder().decode(
+      [String: String].self, from: PocketBaseClientURLProtocol.requestBodies[0])
+    #expect(body == ["newEmail": "new@example.test"])
+    #expect(PocketBaseClientURLProtocol.requests.count == 1)
+  }
+
+  private func accountClient(responses: [(Int, String)]) async -> PocketBaseClient {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = responses
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(
+      StoredSession(token: "account-token", userID: "account-owner"))
+    return client
+  }
+
+  @Test
   func appleNonceUsesThirtyTwoRandomBytesAndHashesTheRawValue() throws {
     let nonce = AppleSignInNonce(bytes: [UInt8](repeating: 0, count: 32))
     #expect(nonce.raw == String(repeating: "0", count: 64))

@@ -263,6 +263,13 @@ final class LibrarySession {
     return try Self.decode(item)
   }
 
+  func requestEmailChange(email: String) async throws {
+    try await beginOnlineWrite()
+    defer { endOnlineWrite(refreshLibrary: false) }
+    try await client.requestEmailChange(email: email)
+    try checkActive()
+  }
+
   func create<Record: Decodable & Sendable>(
     collection: String, body: some Encodable & Sendable
   ) async throws -> Record {

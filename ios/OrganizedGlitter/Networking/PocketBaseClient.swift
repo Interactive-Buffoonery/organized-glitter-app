@@ -280,6 +280,19 @@ actor PocketBaseClient {
     )
   }
 
+  func requestEmailChange(email: String) async throws {
+    struct Body: Encodable {
+      let newEmail: String
+    }
+
+    _ = try await send(
+      path: "/api/collections/users/request-email-change",
+      method: "POST",
+      body: Body(newEmail: email),
+      canRefreshAuthentication: false
+    )
+  }
+
   func requestPasswordReset(email: String) async throws {
     struct Body: Encodable {
       let email: String
