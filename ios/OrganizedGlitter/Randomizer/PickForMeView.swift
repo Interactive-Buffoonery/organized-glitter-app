@@ -1,183 +1,384 @@
 import SwiftUI
+import UIKit
 
 struct PickForMeView: View {
+  @Environment(\.horizontalSizeClass) private var sizeClass
+  @Environment(\.dynamicTypeSize) private var textSize
   @Environment(\.theme) private var theme
-  @Environment(\.dismiss) private var dismiss
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var model: LibraryRandomizer
   @State private var mode: RandomizerMode
   @State private var statuses = Dictionary(uniqueKeysWithValues:
     RandomizerMode.allCases.map { ($0, $0.defaultStatuses) })
-  @State private var unavailableTarget = false
+  @State private var itemSelection = RandomizerItemSelection()
+  @State private var search = ""
+  @State private var presentedPanel: Panel?
+  @State private var openedTarget: LibraryItem?
+  @State private var logEditor: LibraryItemDetailModel?
+  @State private var isPageVisible = false
+  @State private var wheelDisplayID = UUID()
+  @State private var tickTask: Task<Void, Never>?
 
   let verticals: VerticalPreferences
-  let onOpen: (LibraryItem) -> Void
+  let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   init(
     library: LibrarySession, initialSection: LibrarySection = .diamonds,
-    verticals: VerticalPreferences, onOpen: @escaping (LibraryItem) -> Void
+    verticals: VerticalPreferences,
+    onCollectionChanged: @escaping @MainActor @Sendable () async -> Void
   ) {
     _model = State(initialValue: LibraryRandomizer(library: library))
     let requested = RandomizerMode.allCases.first { $0.section == initialSection } ?? .diamond
     _mode = State(initialValue: requested.isEnabled(for: verticals) ? requested
       : RandomizerMode.allCases.first { $0.isEnabled(for: verticals) } ?? requested)
     self.verticals = verticals
-    self.onOpen = onOpen
+    self.onCollectionChanged = onCollectionChanged
   }
 
   var body: some View {
-    let allCandidates = model.library.randomizerCandidates(mode: mode,
-      statuses: Set(mode.section.statusOptions), verticals: verticals)
-    let counts = Dictionary(grouping: allCandidates, by: { $0.item.status }).mapValues(\.count)
-    let eligibleCount = allCandidates.filter { selectedStatuses.contains($0.item.status) }.count
-    NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-          Picker("Pick from", selection: $mode) {
-            ForEach(RandomizerMode.allCases.filter { $0.isEnabled(for: verticals) }) { mode in
-              Text(mode.section.rawValue).tag(mode)
-            }
+    let candidates = eligibleCandidates
+    let selected = candidates.filter { itemSelection.ids?.contains($0.id) ?? true }
+    let wheelCandidates = model.selection?.candidates ?? selected
+    ScrollView {
+      VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+        Text(RandomizerPageCopy.introduction)
+          .font(.karla(.subheadline))
+          .foregroundStyle(theme.pageSecondaryForeground)
+          .fixedSize(horizontal: false, vertical: true)
+        Picker(RandomizerPageCopy.craft, selection: $mode) {
+          ForEach(RandomizerMode.allCases.filter { $0.isEnabled(for: verticals) }) { mode in
+            Text(RandomizerPageCopy.modeTitle(mode)).tag(mode)
           }
-          .pickerStyle(.menu)
-          .accessibilityIdentifier("pickForMe.mode")
-          .disabled(model.isSelecting)
-
-          Text("Include statuses")
-            .font(.karla(.headline))
-          ForEach(mode.section.statusOptions, id: \.self) { status in
-            Toggle(isOn: statusBinding(status)) {
-              VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Label(mode.section.statusLabel(status),
-                  systemImage: mode.section.statusSystemImage(status))
-                Text("\(counts[status, default: 0]) items")
-                  .font(.karla(.caption))
-                  .foregroundStyle(theme.pageSecondaryForeground)
-              }
-              .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(minHeight: 44)
-            .accessibilityIdentifier("pickForMe.status.\(status)")
-            .disabled(model.isSelecting)
-          }
-
-          Text("\(eligibleCount) eligible items")
-            .font(.karla(.subheadline))
-            .accessibilityIdentifier("pickForMe.count")
-          if eligibleCount == 0 {
-            Text(model.library.hasSnapshot
-              ? "Turn on a status with items."
-              : "Connect to download your library before picking.")
-              .foregroundStyle(theme.pageSecondaryForeground)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-
-          Button(action: pick) {
-            Label(model.selection == nil ? "Pick" : "Pick again", systemImage: "shuffle")
+        }
+        .pickerStyle(.menu)
+        .frame(minHeight: 44)
+        .disabled(model.isSelecting)
+        .accessibilityIdentifier("pickForMe.mode")
+        if sizeClass == .regular, !textSize.isAccessibilitySize {
+          HStack(alignment: .top, spacing: Theme.Spacing.md) {
+            selectionPanel.frame(maxWidth: .infinity)
+            wheelPanel(selected: selected, candidates: candidates, wheelCandidates: wheelCandidates)
               .frame(maxWidth: .infinity)
           }
-          .buttonStyle(QuietActionStyle())
-          .disabled(eligibleCount == 0 || model.isSelecting)
-          .accessibilityIdentifier("pickForMe.pick")
-
-          if let selection = model.selection {
-            result(selection)
-              .id(selection.id)
-              .transition(.opacity)
-          }
-          Text("Picks stay on this screen. Nothing is saved, and you can pick from your downloaded library offline.")
-            .font(.karla(.footnote))
-            .foregroundStyle(theme.pageSecondaryForeground)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .foregroundStyle(theme.foreground)
-        .padding()
-        .frame(maxWidth: 600, alignment: .leading)
-        .frame(maxWidth: .infinity)
-      }
-      .background { theme.themedBackground.ignoresSafeArea() }
-      .navigationTitle("Pick for me")
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Done") { dismiss() }
+        } else {
+          wheelPanel(selected: selected, candidates: candidates, wheelCandidates: wheelCandidates)
+          selectionPanel
         }
       }
+      .foregroundStyle(theme.foreground)
+      .padding()
+      .frame(maxWidth: 1100, alignment: .leading)
+      .frame(maxWidth: .infinity)
     }
-    .presentationSizing(.form)
-    .onChange(of: mode) { _, _ in model.reset() }
-    .onChange(of: verticals) { _, newValue in
-      model.reset()
-      if !mode.isEnabled(for: newValue),
-        let available = RandomizerMode.allCases.first(where: { $0.isEnabled(for: newValue) }) {
+    .background { theme.themedBackground.ignoresSafeArea() }
+    .navigationTitle(RandomizerPageCopy.title)
+    .navigationDestination(item: $openedTarget) { item in
+      LibraryItemDetailDestination(item: item, library: model.library,
+        logEditor: $logEditor, onCollectionChanged: onCollectionChanged,
+        onEditPageCount: { book in
+          formDrawer.presentPageCountEditor(book: book, library: model.library) { _ in
+            Task { await onCollectionChanged() }
+          }
+        })
+    }
+    .progressNoteDrawer(editor: $logEditor) { _ in await onCollectionChanged() }
+    .sheet(item: $presentedPanel) { panel in
+      NavigationStack {
+        switch panel {
+        case .key: keyPanel(wheelCandidates)
+        }
+      }
+      .presentationSizing(.form)
+    }
+    .onAppear { isPageVisible = true }
+    .onDisappear {
+      isPageVisible = false
+      if model.isSelecting { resetSelection() }
+    }
+    .onChange(of: mode) { _, _ in search = ""; itemSelection.selectAll(); resetSelection() }
+    .onChange(of: selectedStatuses) { _, _ in
+      itemSelection.reconcile(candidates: eligibleCandidates)
+      resetSelection()
+    }
+    .onChange(of: eligibleCandidates) { _, candidates in
+      guard !model.isSelecting else { return }
+      itemSelection.reconcile(candidates: candidates)
+    }
+    .onChange(of: verticals) { _, next in
+      resetSelection()
+      itemSelection.selectAll()
+      if !mode.isEnabled(for: next),
+        let available = RandomizerMode.allCases.first(where: { $0.isEnabled(for: next) }) {
         mode = available
       }
     }
-    .onDisappear { model.reset() }
-    .alert("Item unavailable", isPresented: $unavailableTarget) {
-      Button("OK", role: .cancel) {}
-    } message: {
-      Text("This item is no longer available in your library. Pick again to choose another item.")
+    .onChange(of: model.library.isActive) { _, active in
+      if !active { resetSelection(); presentedPanel = nil; openedTarget = nil }
+    }
+    .onReceive(NotificationCenter.default.publisher(for: UIAccessibility.voiceOverStatusDidChangeNotification)) { _ in
+      if UIAccessibility.isVoiceOverRunning, model.isSelecting {
+        spin()
+      }
+    }
+    .onChange(of: reduceMotion) { _, reduced in
+      if reduced, let id = model.selection?.id, model.isSelecting {
+        withAnimation(nil) {
+          wheelDisplayID = UUID()
+          finishSpin(id: id)
+        }
+      }
+    }
+  }
+
+  private func wheelPanel(selected: [RandomizerCandidate], candidates: [RandomizerCandidate],
+    wheelCandidates: [RandomizerCandidate]) -> some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+      Text(RandomizerPageCopy.wheelHeading)
+        .font(.karla(.title2))
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+      Button(action: spin) {
+        VStack(spacing: Theme.Spacing.md) {
+          ClassicRandomizerWheel(candidates: wheelCandidates, rotation: model.wheelRotation,
+            winnerIndex: model.isSelecting ? nil : model.wheelSpin?.winnerIndex)
+            .id(wheelDisplayID)
+          Text(RandomizerPageCopy.action(mode))
+            .font(.karla(.headline))
+            .foregroundStyle(theme.primaryForeground)
+            .padding(.horizontal, 24)
+            .frame(minHeight: 48)
+            .background(theme.primary, in: .capsule)
+        }
+        .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.plain)
+      .disabled((selected.isEmpty && !model.isSelecting) || !model.library.isActive)
+      .accessibilityLabel(RandomizerPageCopy.actionAccessibility(mode, count: wheelCandidates.count))
+      .accessibilityIdentifier("pickForMe.pick")
+
+      Button(RandomizerPageCopy.key, systemImage: "list.number") { presentedPanel = .key }
+        .buttonStyle(QuietActionStyle())
+        .disabled(wheelCandidates.isEmpty || model.isSelecting)
+        .accessibilityLabel("Open wheel key")
+        .accessibilityIdentifier("pickForMe.key")
+
+      if selected.isEmpty, model.library.hasSnapshot {
+        Text(candidates.isEmpty ? RandomizerPageCopy.empty(mode) : RandomizerPageCopy.noSelection(mode))
+          .fixedSize(horizontal: false, vertical: true)
+      } else if selected.count == 1 {
+        Text(RandomizerPageCopy.oneItem(mode))
+          .font(.karla(.footnote))
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      if !model.isSelecting, let selection = model.selection {
+        result(selection)
+      }
     }
   }
 
   private var selectedStatuses: Set<String> { statuses[mode] ?? mode.defaultStatuses }
 
-  private func statusBinding(_ status: String) -> Binding<Bool> {
-    Binding(get: { selectedStatuses.contains(status) }, set: { included in
-      if included { statuses[mode, default: []].insert(status) }
-      else { statuses[mode, default: []].remove(status) }
-      model.reset()
-    })
+  private var eligibleCandidates: [RandomizerCandidate] {
+    model.library.randomizerCandidates(mode: mode, statuses: selectedStatuses, verticals: verticals)
   }
 
-  private func pick() {
-    if reduceMotion {
-      if let id = model.beginSelection(mode: mode, statuses: selectedStatuses,
-        verticals: verticals) { finishSelection(id: id) }
-    } else {
-      var selectionID: UUID?
-      withAnimation(Theme.motion, completionCriteria: .logicallyComplete) {
-        selectionID = model.beginSelection(mode: mode, statuses: selectedStatuses,
-          verticals: verticals)
+  private var selectedCandidates: [RandomizerCandidate] {
+    eligibleCandidates.filter { itemSelection.ids?.contains($0.id) ?? true }
+  }
+
+  private var searchedCandidates: [RandomizerCandidate] {
+    let query = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard !query.isEmpty else { return eligibleCandidates }
+    return eligibleCandidates.filter {
+      "\($0.title) \($0.bookTitle ?? $0.item.subtitle)".lowercased().contains(query)
+    }
+  }
+
+  private func spin() {
+    if model.isSelecting, let id = model.selection?.id {
+      withAnimation(nil) {
+        wheelDisplayID = UUID()
+        finishSpin(id: id)
+      }
+      return
+    }
+    let shouldAnimate = !reduceMotion && !UIAccessibility.isVoiceOverRunning
+    let selectedCount = eligibleCandidates.filter { itemSelection.ids?.contains($0.id) ?? true }.count
+    if shouldAnimate, selectedCount > 1 {
+      var id: UUID?
+      withAnimation(Theme.randomizerSpin, completionCriteria: .logicallyComplete) {
+        id = model.beginSelection(mode: mode, statuses: selectedStatuses,
+          selectedIDs: itemSelection.ids, verticals: verticals)
       } completion: {
-        if let selectionID { finishSelection(id: selectionID) }
+        if let id { finishSpin(id: id) }
+      }
+      if let id { startTicks(id: id) }
+    } else if let id = model.beginSelection(mode: mode, statuses: selectedStatuses,
+      selectedIDs: itemSelection.ids, verticals: verticals) {
+      finishSpin(id: id)
+    }
+  }
+
+  private func finishSpin(id: UUID) {
+    guard isPageVisible, model.isSelecting, model.selection?.id == id, model.library.isActive else {
+      return
+    }
+    tickTask?.cancel()
+    tickTask = nil
+    model.finishSelection(id: id)
+    guard !model.isSelecting, let selection = model.selection, selection.id == id else { return }
+    itemSelection.reconcile(candidates: eligibleCandidates)
+    AccessibilityNotification.Announcement(RandomizerPageCopy.announcement(selection.winner)).post()
+    if UIDevice.current.userInterfaceIdiom == .phone {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+  }
+
+  private func resetSelection() {
+    tickTask?.cancel()
+    tickTask = nil
+    withAnimation(nil) {
+      wheelDisplayID = UUID()
+      model.reset()
+    }
+  }
+
+  private func startTicks(id: UUID) {
+    guard UIDevice.current.userInterfaceIdiom == .phone, let spin = model.wheelSpin else { return }
+    tickTask?.cancel()
+    tickTask = Task { @MainActor in
+      var feedback = RandomizerSpinFeedback(spin: spin)
+      let generator = UISelectionFeedbackGenerator()
+      let start = ProcessInfo.processInfo.systemUptime
+      generator.prepare()
+      while !Task.isCancelled, isPageVisible, model.isSelecting,
+        model.selection?.id == id, model.library.isActive {
+        do { try await Task.sleep(for: .milliseconds(110)) }
+        catch { feedback.cancel(); return }
+        guard !Task.isCancelled, isPageVisible, model.isSelecting,
+          model.selection?.id == id, model.library.isActive else { return }
+        if feedback.tick(at: ProcessInfo.processInfo.systemUptime - start) {
+          generator.selectionChanged()
+          generator.prepare()
+        }
       }
     }
   }
 
-  private func finishSelection(id: UUID) {
-    model.finishSelection(id: id)
-    if !model.isSelecting, let selection = model.selection, selection.id == id {
-      AccessibilityNotification.Announcement("Picked \(selection.winner.title)").post()
+  private var selectionPanel: some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+      VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+        Text(RandomizerPageCopy.statusTitle(mode)).font(.karla(.headline))
+        ForEach(mode.eligibleStatuses, id: \.self) { status in
+          Toggle(isOn: Binding(get: { selectedStatuses.contains(status) }, set: { included in
+            if included { statuses[mode, default: []].insert(status) }
+            else { statuses[mode, default: []].remove(status) }
+          })) {
+            Label(RandomizerPageCopy.status(status, mode: mode),
+              systemImage: mode.section.statusSystemImage(status))
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .accessibilityIdentifier("pickForMe.status.\(status)")
+        }
+        Button { statuses[mode] = mode.defaultStatuses } label: {
+          Text(RandomizerPageCopy.resetFilters).frame(minHeight: 44, alignment: .leading)
+        }
+      }
+      VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+        Text(RandomizerPageCopy.selectorTitle(mode)).font(.karla(.headline))
+        Text("\(selectedCandidates.count) of \(eligibleCandidates.count) selected")
+          .font(.karla(.subheadline))
+        TextField(RandomizerPageCopy.searchTitle(mode), text: $search)
+          .textFieldStyle(.roundedBorder)
+          .frame(minHeight: 44)
+          .accessibilityLabel(RandomizerPageCopy.searchTitle(mode))
+          .accessibilityIdentifier("pickForMe.search")
+        Text(RandomizerPageCopy.searchNotice).font(.karla(.footnote))
+        Button { itemSelection.selectAll(); resetSelection() } label: {
+          Text(RandomizerPageCopy.selectAll).frame(minHeight: 44, alignment: .leading)
+        }
+          .accessibilityIdentifier("pickForMe.selectAll")
+        Button { itemSelection.selectNone(); resetSelection() } label: {
+          Text(RandomizerPageCopy.selectNone).frame(minHeight: 44, alignment: .leading)
+        }
+          .accessibilityIdentifier("pickForMe.selectNone")
+        if searchedCandidates.isEmpty, !search.isEmpty {
+          Text(RandomizerPageCopy.noSearchMatches).font(.karla(.subheadline))
+        }
+        ForEach(searchedCandidates) { candidate in
+          Toggle(isOn: Binding(get: { itemSelection.ids?.contains(candidate.id) ?? true }, set: { included in
+            itemSelection.setSelected(candidate.id, selected: included, candidates: eligibleCandidates)
+            resetSelection()
+          })) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+              Text(candidate.title).font(.karla(.headline))
+              Text(candidate.bookTitle ?? candidate.item.subtitle).font(.karla(.caption))
+              Label(RandomizerPageCopy.status(candidate.item.status, mode: mode),
+                systemImage: candidate.item.statusSystemImage)
+                .font(.karla(.caption))
+            }
+            .fixedSize(horizontal: false, vertical: true)
+          }
+          .accessibilityIdentifier("pickForMe.item.\(candidate.item.id)")
+        }
+      }
+    }
+    .disabled(model.isSelecting)
+    .padding()
+    .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+  }
+
+  private func keyPanel(_ candidates: [RandomizerCandidate]) -> some View {
+    List {
+      Text(RandomizerPageCopy.keyDescription)
+      ForEach(Array(candidates.enumerated()), id: \.element.id) { index, candidate in
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+          Text("\(index + 1). \(candidate.title)").font(.karla(.headline))
+          if let bookTitle = candidate.bookTitle { Text(bookTitle).font(.karla(.subheadline)) }
+          Label(RandomizerPageCopy.status(candidate.item.status, mode: mode),
+            systemImage: candidate.item.statusSystemImage)
+            .font(.karla(.caption))
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
+      }
+    }
+    .navigationTitle(RandomizerPageCopy.keyTitle)
+    .toolbar {
+      ToolbarItem(placement: .confirmationAction) { Button("Done") { presentedPanel = nil } }
     }
   }
 
   private func result(_ selection: RandomizerSelection) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-      Text("Your pick").font(.karla(.headline))
+      Text(RandomizerPageCopy.selectedTitle(selection.mode)).font(.karla(.headline))
       LibraryGalleryCard(item: selection.winner.item,
         imageURL: protectedFiles?.artworkURL(for: selection.winner.item, thumb: ArtworkThumb.gallery),
-        mode: .list)
+        mode: .covers, showsStatus: false)
         .accessibilityIdentifier("pickForMe.result")
-      if let bookTitle = selection.winner.bookTitle {
-        Text(bookTitle)
-          .font(.karla(.subheadline))
-          .foregroundStyle(theme.pageSecondaryForeground)
-          .fixedSize(horizontal: false, vertical: true)
-      }
+      if let bookTitle = selection.winner.bookTitle { Text(bookTitle).font(.karla(.subheadline)) }
+      Label(RandomizerPageCopy.status(selection.winner.item.status, mode: selection.mode),
+        systemImage: selection.winner.item.statusSystemImage)
+        .fixedSize(horizontal: false, vertical: true)
       Button {
-        guard let item = model.currentWinner(verticals: verticals) else {
-          unavailableTarget = true
-          return
-        }
-        onOpen(item)
-        dismiss()
+        if let item = model.currentWinner(verticals: verticals) { openedTarget = item }
       } label: {
-        Label("Open", systemImage: "arrow.right.circle")
+        Label(RandomizerPageCopy.viewAction(selection.mode), systemImage: "arrow.right.circle")
       }
       .buttonStyle(QuietActionStyle())
-      .disabled(model.isSelecting)
+      .disabled(model.currentWinner(verticals: verticals) == nil)
       .accessibilityIdentifier("pickForMe.open")
+      Button { resetSelection() } label: {
+        Text(RandomizerPageCopy.clearResult).frame(minHeight: 44, alignment: .leading)
+      }
+        .foregroundStyle(theme.pageAction)
     }
+  }
+
+  private enum Panel: String, Identifiable {
+    case key
+    var id: Self { self }
   }
 }

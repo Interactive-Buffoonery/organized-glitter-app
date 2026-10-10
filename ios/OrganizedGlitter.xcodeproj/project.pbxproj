@@ -31,6 +31,7 @@
 		1F44219391316C4F080670A6 /* CoverImageSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC53A77B8E88AC5C89B750FB /* CoverImageSection.swift */; };
 		226A1A17DC4FCD75B9662AE1 /* LibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0847DB73C9A0DD9296BC4729 /* LibraryUITests.swift */; };
 		231E18A07A8460FFF70BE63B /* PasswordResetConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 190EF4B42B1FBBEE517D2F54 /* PasswordResetConfirmationView.swift */; };
+		242C8D60B227DB5155D5400A /* RandomizerWheelGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09FCB6C70D0A1B0D1F0FFCF0 /* RandomizerWheelGeometryTests.swift */; };
 		2451759A45C0C63D2D15E6CF /* LocalFeatureFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78CA823F6822F1CC0582249F /* LocalFeatureFixtures.swift */; };
 		246049B9E2B31509278713C2 /* NoteTargetPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C95200946F9A7EDC3E14EEB0 /* NoteTargetPicker.swift */; };
 		2645F8D58F528DFEFAFDBB6B /* DetailPhoto.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6D23DFA92798FB254E1CF8 /* DetailPhoto.swift */; };
@@ -93,6 +94,8 @@
 		81A535F58978295A957C45AE /* ColoringBookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2B4F3D4BDDCE126CECB107 /* ColoringBookDetailView.swift */; };
 		81B74D4319E12928F38EE396 /* OrganizedGlitterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87432C7595D56F6A212DA34D /* OrganizedGlitterApp.swift */; };
 		82E7FA3D4B49FA1DF95E4B3C /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9AF6A3CC8D0561397DBC098 /* AccountView.swift */; };
+		836193DDE95F6BE516E22F5A /* ClassicRandomizerWheel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D7C8FC51942E966623D897F /* ClassicRandomizerWheel.swift */; };
+		83E6080858EFAB474AF89515 /* RandomizerPageCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CEB18C3DD30C4185010E09D /* RandomizerPageCopy.swift */; };
 		8550BA81AF0ADB18FF6EF1BF /* Connectivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BCADE99E4C9E7A968F900C5 /* Connectivity.swift */; };
 		86A3987AD8A99D6D11B976DA /* NumberSectionPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC8FEDDF7DDA92FB7C38D8E1 /* NumberSectionPicker.swift */; };
 		897DEC9F1C8657788DC16C6E /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E841D3F9B09655375C7BFEEB /* AppModel.swift */; };
@@ -123,6 +126,7 @@
 		C2AA32251932FEF032C8070E /* Theme+Flavors.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC31CDA7FA9313AFA620C102 /* Theme+Flavors.swift */; };
 		C2F7D24BC0886BA6EA933E66 /* TagLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA77B55686AE62CD1C40E083 /* TagLinks.swift */; };
 		C5B48D3377B606FB1E94D862 /* CoverArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB439CF518C859A6EDDB5B2 /* CoverArtwork.swift */; };
+		C93F28926FD1011A8FB076B1 /* RandomizerWheelGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 756B8DA3F1F396F75068D75A /* RandomizerWheelGeometry.swift */; };
 		CA869E6660B8FA3671B0C112 /* AccountPreferencesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D37503C19C43867510A924 /* AccountPreferencesTests.swift */; };
 		CCD03CD3345C5BDCCCEAEA0F /* PrivateArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0CD4E065759D3DC0D45CF73 /* PrivateArtworkStore.swift */; };
 		CFF526347C455E25AFB053F2 /* LibraryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4C3D5F5234F13224CA4205 /* LibraryRefresh.swift */; };
@@ -180,6 +184,7 @@
 		07901506737CEE3AEB38D49A /* ColoringPageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringPageDetailView.swift; sourceTree = "<group>"; };
 		07EBA56EF84054FB531D0614 /* PocketBaseMultipartTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseMultipartTests.swift; sourceTree = "<group>"; };
 		0847DB73C9A0DD9296BC4729 /* LibraryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryUITests.swift; sourceTree = "<group>"; };
+		09FCB6C70D0A1B0D1F0FFCF0 /* RandomizerWheelGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomizerWheelGeometryTests.swift; sourceTree = "<group>"; };
 		0C6940EAB60F12991E1C4E15 /* CoverImageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImageTests.swift; sourceTree = "<group>"; };
 		0E89DA838AA385CE7F6B8903 /* BrandWordmarkArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandWordmarkArt.swift; sourceTree = "<group>"; };
 		13C4B9656060CFE9B5E72A69 /* KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStore.swift; sourceTree = "<group>"; };
@@ -228,6 +233,7 @@
 		5C4A85568F9F1FF6F2A63C40 /* ListKindTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListKindTests.swift; sourceTree = "<group>"; };
 		5C8FD32FA9733C6C54C75F0D /* LibraryItemDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetail.swift; sourceTree = "<group>"; };
 		5D3DB50E4F57B385875B6FF1 /* AccountDestinations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDestinations.swift; sourceTree = "<group>"; };
+		5D7C8FC51942E966623D897F /* ClassicRandomizerWheel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassicRandomizerWheel.swift; sourceTree = "<group>"; };
 		5D9C4E6FD2A3DBB49CDA8FAC /* RegistrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegistrationView.swift; sourceTree = "<group>"; };
 		5FA902DB3B6AA8EFE35CDD98 /* OverviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewFixtures.swift; sourceTree = "<group>"; };
 		63076BFAC078AAEE6B474418 /* Caveat.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Caveat.ttf; sourceTree = "<group>"; };
@@ -239,10 +245,12 @@
 		6B46006AAEF4C7C3CA3FF881 /* LocalLibraryTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLibraryTypes.swift; sourceTree = "<group>"; };
 		6BD7BDF23879C0D2F6038DA2 /* DiamondProjectEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiamondProjectEditorTests.swift; sourceTree = "<group>"; };
 		6C50EC0F0E446D63E719ED45 /* BackendContract.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = BackendContract.json; sourceTree = "<group>"; };
+		6CEB18C3DD30C4185010E09D /* RandomizerPageCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomizerPageCopy.swift; sourceTree = "<group>"; };
 		6DBA3A97EB4A2243C50C449B /* ColoringEditors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringEditors.swift; sourceTree = "<group>"; };
 		6EB627700AE4A6346043C16F /* OverviewUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewUITests.swift; sourceTree = "<group>"; };
 		6FCC5D630FB65A58EB27EDEC /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		728912BD866D6E64A64A1156 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		756B8DA3F1F396F75068D75A /* RandomizerWheelGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RandomizerWheelGeometry.swift; sourceTree = "<group>"; };
 		77D37503C19C43867510A924 /* AccountPreferencesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPreferencesTests.swift; sourceTree = "<group>"; };
 		78CA823F6822F1CC0582249F /* LocalFeatureFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFeatureFixtures.swift; sourceTree = "<group>"; };
 		7BCADE99E4C9E7A968F900C5 /* Connectivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connectivity.swift; sourceTree = "<group>"; };
@@ -627,6 +635,7 @@
 				07EBA56EF84054FB531D0614 /* PocketBaseMultipartTests.swift */,
 				55DA63A04D6C14AE2EF96802 /* PrivateArtworkStoreTests.swift */,
 				E05CD6F576A55CBFC96BBDE7 /* ProtectedFileAccessTests.swift */,
+				09FCB6C70D0A1B0D1F0FFCF0 /* RandomizerWheelGeometryTests.swift */,
 				E7EA344F5E1133CC94BAC6DB /* RecordStatusTests.swift */,
 				54D26744B389FC6CAD1C8367 /* RemoteArtworkTests.swift */,
 				446118EA1C4EE132BA9E157A /* ThemeTests.swift */,
@@ -637,10 +646,13 @@
 		E90FB2C6B975F27B1A9FF207 /* Randomizer */ = {
 			isa = PBXGroup;
 			children = (
+				5D7C8FC51942E966623D897F /* ClassicRandomizerWheel.swift */,
 				858F1DFE67AC3AA30A81010A /* LibraryRandomizer.swift */,
 				FC8FEDDF7DDA92FB7C38D8E1 /* NumberSectionPicker.swift */,
 				9526832EDC7F29E6FBF67167 /* PickForMeView.swift */,
+				6CEB18C3DD30C4185010E09D /* RandomizerPageCopy.swift */,
 				0738DAA0A6CEEAEEAE0C8068 /* RandomizerView.swift */,
+				756B8DA3F1F396F75068D75A /* RandomizerWheelGeometry.swift */,
 			);
 			path = Randomizer;
 			sourceTree = "<group>";
@@ -838,6 +850,7 @@
 				B5BB4EFCD8538737F4DD4D65 /* PocketBaseMultipartTests.swift in Sources */,
 				57B719A3A6D4E0E88F59BA9D /* PrivateArtworkStoreTests.swift in Sources */,
 				04AACF892E6DAB35BDE4B427 /* ProtectedFileAccessTests.swift in Sources */,
+				242C8D60B227DB5155D5400A /* RandomizerWheelGeometryTests.swift in Sources */,
 				303E37656A20EF88EB7F8E7E /* RecordStatusTests.swift in Sources */,
 				1AE39E32015803B4674450AE /* RemoteArtworkTests.swift in Sources */,
 				BFB8A3D020A12F6D4AAF4DFA /* ThemeTests.swift in Sources */,
@@ -865,6 +878,7 @@
 				DD668F2CEE5B98E2302D60C2 /* AuthChrome.swift in Sources */,
 				5A7005B358D623FE511A003B /* BackendContract.swift in Sources */,
 				D7B876020FE9F555417363F7 /* BrandWordmarkArt.swift in Sources */,
+				836193DDE95F6BE516E22F5A /* ClassicRandomizerWheel.swift in Sources */,
 				81A535F58978295A957C45AE /* ColoringBookDetailView.swift in Sources */,
 				94E216D13A5F3BCDD2447A3B /* ColoringEditors.swift in Sources */,
 				100BE9E76C3F8F819393FE4E /* ColoringPageDetailView.swift in Sources */,
@@ -924,7 +938,9 @@
 				CCD03CD3345C5BDCCCEAEA0F /* PrivateArtworkStore.swift in Sources */,
 				F5850FD6A7A6108CC90776F7 /* ProgressNoteEntry.swift in Sources */,
 				7597BB520C596F016BB189A1 /* ProtectedFileAccess.swift in Sources */,
+				83E6080858EFAB474AF89515 /* RandomizerPageCopy.swift in Sources */,
 				F277C24138276FB3FD62A7E0 /* RandomizerView.swift in Sources */,
+				C93F28926FD1011A8FB076B1 /* RandomizerWheelGeometry.swift in Sources */,
 				D70EF76F6D36839D40C69B70 /* RecordStatus.swift in Sources */,
 				2B08EFD3E1C235B8594CC292 /* RegistrationView.swift in Sources */,
 				FD47E1CEADB3F3BA9B3A74C1 /* RemoteArtwork.swift in Sources */,

@@ -22,6 +22,14 @@ enum RandomizerMode: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
+  var eligibleStatuses: [String] {
+    switch self {
+    case .diamond: [DiamondStatus.progress, .kitted, .onhold].map(\.rawValue)
+    case .book: [BookStatus.purchased, .inStash, .inProgress].map(\.rawValue)
+    case .page: [PageStatus.notStarted, .paletteChosen, .inProgress, .onHold].map(\.rawValue)
+    }
+  }
+
   func isEnabled(for verticals: VerticalPreferences) -> Bool {
     switch self {
     case .diamond: verticals.diamondPainting
@@ -53,8 +61,8 @@ extension LibrarySession {
     mode: RandomizerMode, statuses: Set<String>? = nil,
     selectedIDs: Set<LocalRecordKey>? = nil, verticals: VerticalPreferences
   ) -> [RandomizerCandidate] {
-    guard mode.isEnabled(for: verticals) else { return [] }
-    let statuses = statuses ?? mode.defaultStatuses
+    guard isActive, mode.isEnabled(for: verticals) else { return [] }
+    let statuses = (statuses ?? mode.defaultStatuses).intersection(mode.eligibleStatuses)
     return randomizerAccessibleItems(mode: mode).filter {
       statuses.contains($0.item.status) && (selectedIDs?.contains($0.id) ?? true)
     }
@@ -63,7 +71,7 @@ extension LibrarySession {
   func randomizerTarget(
     id: LocalRecordKey, mode: RandomizerMode, verticals: VerticalPreferences
   ) -> LibraryItem? {
-    guard mode.isEnabled(for: verticals) else { return nil }
+    guard isActive, mode.isEnabled(for: verticals) else { return nil }
     return randomizerAccessibleItems(mode: mode).first { $0.id == id }?.item
   }
 
@@ -91,7 +99,15 @@ extension RandomizerCandidate {
       if case .page(let page) = item { bookTitle = titles[page.book] }
       else { bookTitle = nil }
       return RandomizerCandidate(item: item, bookTitle: bookTitle)
-    }.sorted { $0.item.id < $1.item.id }
+    }.sorted { lhs, rhs in
+      if case .book(let left) = lhs.item, case .book(let right) = rhs.item {
+        let leftActivity = left.lastActivityAt?.nonEmpty ?? ""
+        let rightActivity = right.lastActivityAt?.nonEmpty ?? ""
+        if leftActivity != rightActivity { return leftActivity > rightActivity }
+      }
+      if lhs.item.updated != rhs.item.updated { return lhs.item.updated > rhs.item.updated }
+      return lhs.item.id < rhs.item.id
+    }
   }
 }
 
@@ -101,6 +117,8 @@ final class LibraryRandomizer {
   let library: LibrarySession
   private(set) var selection: RandomizerSelection?
   private(set) var isSelecting = false
+  private(set) var wheelSpin: RandomizerWheelSpin?
+  private(set) var wheelRotation: Double = 0
 
   init(library: LibrarySession) {
     self.library = library
@@ -122,36 +140,41 @@ final class LibraryRandomizer {
     selectedIDs: Set<LocalRecordKey>? = nil, verticals: VerticalPreferences,
     using generator: inout some RandomNumberGenerator
   ) -> UUID? {
-    guard !isSelecting, !Task.isCancelled else { return nil }
-    let statuses = statuses ?? mode.defaultStatuses
+    guard library.isActive, !isSelecting, !Task.isCancelled else { return nil }
+    let statuses = (statuses ?? mode.defaultStatuses).intersection(mode.eligibleStatuses)
     let candidates = library.randomizerCandidates(mode: mode, statuses: statuses,
       selectedIDs: selectedIDs, verticals: verticals)
-    let previousID = selection?.mode == mode ? selection?.winner.id : nil
-    let drawCandidates = candidates.count > 1
-      ? candidates.filter { $0.id != previousID } : candidates
-    guard let winner = drawCandidates.randomElement(using: &generator) else {
-      selection = nil
+    guard let winner = candidates.randomElement(using: &generator),
+      let winnerIndex = candidates.firstIndex(where: { $0.id == winner.id }),
+      let endRotation = RandomizerWheelGeometry.targetRotation(from: wheelRotation,
+        winnerIndex: winnerIndex, count: candidates.count) else {
+      reset()
       return nil
     }
     let selection = RandomizerSelection(id: UUID(), scope: library.scope, mode: mode,
       statuses: statuses, candidates: candidates, winner: winner)
     self.selection = selection
+    wheelSpin = RandomizerWheelSpin(selectionID: selection.id, startRotation: wheelRotation,
+      endRotation: endRotation, winnerIndex: winnerIndex, count: candidates.count)
+    wheelRotation = endRotation
     isSelecting = true
     return selection.id
   }
 
   func finishSelection(id: UUID) {
-    guard selection?.id == id, !Task.isCancelled else { return }
+    guard selection?.id == id, library.isActive, !Task.isCancelled else { return }
     isSelecting = false
   }
 
   func reset() {
     selection = nil
     isSelecting = false
+    wheelSpin = nil
+    wheelRotation = 0
   }
 
   func currentWinner(verticals: VerticalPreferences) -> LibraryItem? {
-    guard !isSelecting, let selection, selection.scope == library.scope else { return nil }
+    guard !isSelecting, library.isActive, let selection, selection.scope == library.scope else { return nil }
     return library.randomizerTarget(id: selection.winner.id,
       mode: selection.mode, verticals: verticals)
   }

@@ -36,6 +36,7 @@ final class LibrarySession {
   var onAuthenticationFailure: (@MainActor () async -> Void)?
 
   var userID: String { scope.userID }
+  var isActive: Bool { active }
   var conflicts: [LocalLibraryEntry] { entries.filter { $0.conflict != nil } }
 
   init(client: PocketBaseClient, userID: String, store: LocalLibraryStore) {

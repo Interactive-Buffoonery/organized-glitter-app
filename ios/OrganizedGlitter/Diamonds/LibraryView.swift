@@ -15,7 +15,8 @@ struct LibraryView: View {
   @State private var path: [LibraryItem] = []
   @State private var contentWidth: CGFloat = 0
   @State private var logEditor: LibraryItemDetailModel?
-  @State private var presentedTool: LibraryTool?
+  @State private var showsRandomizer = false
+  @State private var showsNumberPicker = false
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -56,23 +57,13 @@ struct LibraryView: View {
         .navigationDestination(for: LibraryItem.self) { item in
           detail(for: item)
         }
-    }
-    .sheet(item: $presentedTool) { tool in
-      switch tool {
-      case .pick:
-        PickForMeView(library: model.library, initialSection: model.section,
-          verticals: verticals) { item in path.append(item) }
-      case .number:
-        NavigationStack {
-          RandomizerView()
-            .toolbar {
-              ToolbarItem(placement: .cancellationAction) {
-                Button("Done") { presentedTool = nil }
-              }
-            }
+        .navigationDestination(isPresented: $showsRandomizer) {
+          PickForMeView(library: model.library, initialSection: model.section,
+            verticals: verticals, onCollectionChanged: { await model.load() })
         }
-        .presentationSizing(.form)
-      }
+        .navigationDestination(isPresented: $showsNumberPicker) {
+          RandomizerView()
+        }
     }
     .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
@@ -161,9 +152,9 @@ struct LibraryView: View {
       if showsLibraryTools {
         ToolbarItem(placement: .topBarTrailing) {
           Menu {
-            Button("Pick for me", systemImage: "shuffle") { presentedTool = .pick }
+            Button(RandomizerPageCopy.title, systemImage: "shuffle") { showsRandomizer = true }
               .accessibilityIdentifier("library.pickForMe")
-            Button("Pick a section number", systemImage: "number") { presentedTool = .number }
+            Button("Pick a section number", systemImage: "number") { showsNumberPicker = true }
               .accessibilityIdentifier("library.pickSectionNumber")
           } label: {
             Label("More", systemImage: "ellipsis.circle")
@@ -647,9 +638,4 @@ extension LibraryViewMode {
     }
     return [GridItem(.adaptive(minimum: minimum, maximum: maximum), spacing: 14, alignment: .top)]
   }
-}
-
-private enum LibraryTool: String, Identifiable {
-  case pick, number
-  var id: Self { self }
 }

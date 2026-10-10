@@ -17,6 +17,7 @@ struct LibraryRandomizerTests {
       .diamond(featureProject("active", title: "Active", status: "progress")),
       .diamond(featureProject("label", title: "Label", status: "In progress")),
       .diamond(featureProject("stash", title: "Stash", status: "stash")),
+      .diamond(featureProject("kitted", title: "Kitted", status: "kitted")),
       .book(featureBook("active", title: "Active", status: "in_progress")),
       .book(featureBook("stash", title: "Stash", status: "in_stash")),
       .page(featurePage("palette", book: "active", number: 1, status: "palette_chosen")),
@@ -29,8 +30,8 @@ struct LibraryRandomizerTests {
       == ["active"])
     #expect(library.randomizerCandidates(mode: .page, verticals: verticals).map(\.item.recordID)
       == ["active", "palette"])
-    #expect(library.randomizerCandidates(mode: .diamond, statuses: ["stash"],
-      verticals: verticals).map(\.item.recordID) == ["stash"])
+    #expect(library.randomizerCandidates(mode: .diamond, statuses: ["kitted"],
+      verticals: verticals).map(\.item.recordID) == ["kitted"])
     #expect(library.randomizerCandidates(mode: .page, statuses: [], verticals: verticals).isEmpty)
   }
 
@@ -101,6 +102,9 @@ struct LibraryRandomizerTests {
     #expect(!model.isSelecting)
     #expect(model.currentWinner(verticals: verticals)?.title == "Edited")
     #expect(model.selection == frozen)
+    let landed = try #require(model.wheelSpin)
+    #expect(frozen.candidates[try #require(RandomizerWheelGeometry.indexUnderPointer(
+      rotation: landed.endRotation, count: landed.count))].id == frozen.winner.id)
     #expect(model.currentWinner(verticals:
       VerticalPreferences(diamondPainting: false, coloringBooks: true)) == nil)
     try await library.close(removingData: false)
@@ -191,27 +195,90 @@ struct LibraryRandomizerTests {
     #expect(!model.isSelecting)
   }
 
-
-  @Test func pickAgainExcludesPreviousWhenAlternativesExist() async throws {
+  @Test func repeatedSpinsUseFullPoolAndAllowImmediateRepeats() async throws {
     let library = try localFeatureLibrary()
     try await seed([
       .diamond(featureProject("first", title: "First", status: "progress")),
       .diamond(featureProject("second", title: "Second", status: "progress")),
     ], library: library)
     let model = LibraryRandomizer(library: library)
+    var generator = FixedRandomGenerator()
     var previous: LocalRecordKey?
-    for _ in 0..<8 {
-      let spin = try #require(model.beginSelection(mode: .diamond, verticals: verticals))
+    for _ in 0..<3 {
+      let spin = try #require(model.beginSelection(mode: .diamond, verticals: verticals,
+        using: &generator))
       let selection = try #require(model.selection)
+      let geometry = try #require(model.wheelSpin)
       #expect(selection.candidates.count == 2)
-      #expect(selection.winner.id != previous)
+      if let previous { #expect(selection.winner.id == previous) }
+      #expect(selection.candidates[try #require(RandomizerWheelGeometry.indexUnderPointer(
+        rotation: geometry.endRotation, count: geometry.count))].id == selection.winner.id)
       previous = selection.winner.id
       model.finishSelection(id: spin)
     }
-    let spin = try #require(model.beginSelection(mode: .diamond, selectedIDs: [previous!],
-      verticals: verticals))
-    #expect(model.selection?.winner.id == previous)
+  }
+
+  private struct FixedRandomGenerator: RandomNumberGenerator {
+    mutating func next() -> UInt64 { 0 }
+  }
+
+  @Test func closedSessionCannotCompleteOrPublishOldSpin() async throws {
+    let library = try localFeatureLibrary()
+    try await seed([.diamond(featureProject("only", title: "Only", status: "progress"))],
+      library: library)
+    let model = LibraryRandomizer(library: library)
+    let spin = try #require(model.beginSelection(mode: .diamond, verticals: verticals))
+    let frozen = model.selection
+    try await library.close(removingData: false)
     model.finishSelection(id: spin)
+    #expect(model.isSelecting)
+    #expect(model.selection == frozen)
+    #expect(model.currentWinner(verticals: verticals) == nil)
+    model.reset()
+    #expect(model.beginSelection(mode: .diamond, verticals: verticals) == nil)
+    #expect(model.wheelSpin == nil)
+  }
+
+  @Test func resetCancelsWheelWithoutChangingSupersedingWinner() async throws {
+    let library = try localFeatureLibrary()
+    try await seed([.diamond(featureProject("only", title: "Only", status: "progress"))],
+      library: library)
+    let model = LibraryRandomizer(library: library)
+    let old = try #require(model.beginSelection(mode: .diamond, verticals: verticals))
+    model.reset()
+    #expect(model.wheelRotation == 0)
+    #expect(model.wheelSpin == nil)
+    let current = try #require(model.beginSelection(mode: .diamond, verticals: verticals))
+    let frozen = model.selection
+    model.finishSelection(id: old)
+    #expect(model.isSelecting)
+    #expect(model.selection == frozen)
+    model.finishSelection(id: current)
+    #expect(model.currentWinner(verticals: verticals)?.recordID == "only")
+    #expect(model.wheelSpin?.winnerIndex == 0)
+    #expect(RandomizerWheelGeometry.indexUnderPointer(rotation: model.wheelRotation, count: 1) == 0)
+  }
+
+  @Test func wheelOrderMatchesWebActivityAndUpdateSorts() async throws {
+    let library = try localFeatureLibrary()
+    var recentActivity = featureBook("a", title: "Recent activity", status: "in_progress")
+    recentActivity.lastActivityAt = "2026-10-09"
+    var olderActivity = featureBook("b", title: "Older activity", status: "in_progress")
+    olderActivity.lastActivityAt = "2026-10-01"
+    try await seed([
+      .diamond(featureProject("a", title: "Older", status: "progress", updated: "2026-10-01")),
+      .diamond(featureProject("b", title: "Newer", status: "progress", updated: "2026-10-09")),
+      .book(olderActivity), .book(recentActivity),
+    ], library: library)
+    #expect(library.randomizerCandidates(mode: .diamond, verticals: verticals).map(\.item.recordID)
+      == ["b", "a"])
+    #expect(library.randomizerCandidates(mode: .book, verticals: verticals).map(\.item.recordID)
+      == ["a", "b"])
+    let stored: ColoringBookRecord = try library.record(collection: "coloring_books", id: "a")
+    #expect(stored.lastActivityAt == "2026-10-09")
+    #expect(stored.withExpand(nil).lastActivityAt == stored.lastActivityAt)
+    #expect(try JSONDecoder().decode(ColoringBookRecord.self,
+      from: JSONEncoder().encode(featureBook("legacy", title: "Legacy"))).lastActivityAt == nil)
   }
 
 }
