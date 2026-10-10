@@ -23,9 +23,10 @@ extension View {
   /// Presents `photos` full screen. `DetailPhotoTile`s and `photoViewerSource` views
   /// inside this view open it at their photo and zoom from it.
   func photoViewer(
-    _ photos: [DetailPhoto], library: LibrarySession, surface: AnalyticsPhotoSurface
+    _ photos: [DetailPhoto], library: LibrarySession, surface: AnalyticsPhotoSurface,
+    actions: DetailPhotoActions? = nil
   ) -> some View {
-    modifier(PhotoViewerPresenter(photos: photos, library: library, surface: surface))
+    modifier(PhotoViewerPresenter(photos: photos, library: library, surface: surface, actions: actions))
   }
 
   /// Makes this view open the enclosing `photoViewer` at `id`. No-op when `id` is nil
@@ -50,6 +51,7 @@ private struct PhotoViewerPresenter: ViewModifier {
   let photos: [DetailPhoto]
   let library: LibrarySession
   let surface: AnalyticsPhotoSurface
+  let actions: DetailPhotoActions?
 
   @State private var isPresented = false
   @State private var currentID: DetailPhoto.ID?
@@ -63,7 +65,7 @@ private struct PhotoViewerPresenter: ViewModifier {
         }
       }
       .fullScreenCover(isPresented: $isPresented) {
-        let viewer = PhotoViewer(photos: photos, selection: $currentID, isPresented: $isPresented)
+        let viewer = PhotoViewer(photos: photos, selection: $currentID, isPresented: $isPresented, actions: actions)
           .presentationBackground(.clear)
         if reduceMotion {
           viewer
@@ -121,6 +123,7 @@ struct PhotoViewer: View {
   let photos: [DetailPhoto]
   @Binding var selection: DetailPhoto.ID?
   @Binding var isPresented: Bool
+  var actions: DetailPhotoActions? = nil
 
   @State private var pullDistance: CGFloat = 0
 
@@ -149,6 +152,11 @@ struct PhotoViewer: View {
       topBar
         .padding(.top, isPad ? 48 : 0)
         .opacity(pullDistance > 12 ? 0 : 1)
+    }
+    .safeAreaInset(edge: .bottom) {
+      if let actions, let selection, photos.contains(where: { $0.id == selection }) {
+        PhotoViewerActionBar(actions: actions, selection: selection, onMutation: { isPresented = false })
+      }
     }
     .environment(\.colorScheme, .dark)
     .statusBarHidden()
@@ -228,6 +236,49 @@ struct PhotoViewer: View {
     guard let index = photos.firstIndex(where: { $0.id == id }) else { return nil }
     let target = index + offset
     return photos.indices.contains(target) ? photos[target].id : nil
+  }
+}
+
+private struct PhotoViewerActionBar: View {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  let actions: DetailPhotoActions
+  let selection: DetailPhoto.ID
+  let onMutation: () -> Void
+  @State private var confirmsDelete = false
+
+  var body: some View {
+    let layout = dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 16))
+    layout {
+      if actions.mainID != selection {
+        Button("Set as main photo", systemImage: "star") {
+          actions.setMain(selection)
+          onMutation()
+        }
+          .frame(minHeight: 44)
+          .accessibilityIdentifier("photoViewer.setMain")
+      } else {
+        Label("Main photo", systemImage: "star.fill")
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      Button("Delete photo", systemImage: "trash", role: .destructive) { confirmsDelete = true }
+        .frame(minHeight: 44)
+        .accessibilityIdentifier("photoViewer.delete")
+    }
+    .font(.karla(.body))
+    .padding(12)
+    .frame(maxWidth: .infinity)
+    .background(.regularMaterial)
+    .disabled(!actions.isEnabled)
+    .confirmationDialog("Delete this photo?", isPresented: $confirmsDelete, titleVisibility: .visible) {
+      Button("Delete photo", role: .destructive) {
+        actions.delete(selection)
+        onMutation()
+      }
+      .disabled(!actions.isEnabled)
+    } message: {
+      Text("This can’t be undone.")
+    }
   }
 }
 

@@ -274,6 +274,33 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
+  func testPagePhotoViewerPromotesAndDeletesAnAttachment() throws {
+    let app = XCUIApplication()
+    app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design", "-fixture-page-photo-actions"]
+    app.launch()
+    openFirstDesignPage(in: app)
+    let second = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Open Page photo 2")).firstMatch
+    makeHittable(second, in: app)
+    second.tap()
+    let setMain = button("photoViewer.setMain", in: app)
+    XCTAssertTrue(setMain.waitForExistence(timeout: 5))
+    setMain.tap()
+    XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
+    let main = app.buttons.matching(NSPredicate(
+      format: "label BEGINSWITH %@ AND label CONTAINS %@", "Open Page photo 1", "Main photo")).firstMatch
+    XCTAssertTrue(main.waitForExistence(timeout: 5))
+    makeHittable(main, in: app)
+    main.tap()
+    XCTAssertFalse(button("photoViewer.setMain", in: app).exists)
+    let delete = button("photoViewer.delete", in: app)
+    XCTAssertTrue(delete.waitForExistence(timeout: 5))
+    delete.tap()
+    confirmationButton(named: "Delete photo", in: app).tap()
+    XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
+    XCTAssertTrue(main.waitForExistence(timeout: 5))
+    XCTAssertTrue(second.waitForNonExistence(timeout: 5))
+  }
+
   private func launchFixture(scenario: String = "design") -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario]

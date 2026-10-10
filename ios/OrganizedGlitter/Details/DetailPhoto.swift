@@ -13,10 +13,19 @@ struct DetailPhoto: Identifiable, Hashable, Sendable {
   var caption: String? = nil
 }
 
+struct DetailPhotoActions {
+  let mainID: DetailPhoto.ID?
+  let isEnabled: Bool
+  let setMain: @MainActor (DetailPhoto.ID) -> Void
+  let delete: @MainActor (DetailPhoto.ID) -> Void
+}
+
 struct DetailPhotoGallery: View {
+  @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   let photos: [DetailPhoto]
+  var actions: DetailPhotoActions? = nil
 
   var body: some View {
     ScrollView(.horizontal) {
@@ -24,7 +33,38 @@ struct DetailPhotoGallery: View {
         ForEach(photos) { photo in
           DetailPhotoTile(photo: photo, contentMode: .fit, maxPixelDimension: thumbnailSize * 3)
             .frame(width: thumbnailSize, height: thumbnailSize)
-            .photoViewerSource(photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen")
+            .overlay(alignment: .bottomLeading) {
+              if actions?.mainID == photo.id {
+                Label("Main", systemImage: "star.fill")
+                  .font(.karla(.caption).weight(.semibold))
+                  .padding(6)
+                  .foregroundStyle(theme.cardForeground)
+                  .background(theme.card, in: .capsule)
+                  .padding(4)
+                  .accessibilityHidden(true)
+              }
+            }
+            .photoViewerSource(
+              photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen"
+                + (actions?.mainID == photo.id ? ", Main photo" : ""))
+            .contextMenu {
+              if let actions {
+                if actions.mainID != photo.id {
+                  Button("Set as main photo", systemImage: "star") { actions.setMain(photo.id) }
+                    .disabled(!actions.isEnabled)
+                }
+                Button("Delete photo", systemImage: "trash", role: .destructive) { actions.delete(photo.id) }
+                  .disabled(!actions.isEnabled)
+              }
+            }
+            .accessibilityActions {
+              if let actions, actions.isEnabled {
+                if actions.mainID != photo.id {
+                  Button("Set as main photo") { actions.setMain(photo.id) }
+                }
+                Button("Delete photo") { actions.delete(photo.id) }
+              }
+            }
         }
       }
     }
