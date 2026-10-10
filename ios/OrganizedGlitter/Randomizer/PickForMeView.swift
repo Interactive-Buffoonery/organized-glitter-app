@@ -136,7 +136,7 @@ struct PickForMeView: View {
         verticals: verticals) { finishSelection(id: id) }
     } else {
       var selectionID: UUID?
-      withAnimation(.easeInOut(duration: 0.2), completionCriteria: .logicallyComplete) {
+      withAnimation(Theme.motion, completionCriteria: .logicallyComplete) {
         selectionID = model.beginSelection(mode: mode, statuses: selectedStatuses,
           verticals: verticals)
       } completion: {
