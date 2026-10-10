@@ -15,6 +15,7 @@ struct LibraryView: View {
   @State private var path: [LibraryItem] = []
   @State private var contentWidth: CGFloat = 0
   @State private var logEditor: LibraryItemDetailModel?
+  @State private var presentedTool: LibraryTool?
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -56,6 +57,23 @@ struct LibraryView: View {
           detail(for: item)
         }
     }
+    .sheet(item: $presentedTool) { tool in
+      switch tool {
+      case .pick:
+        PickForMeView(library: model.library, initialSection: model.section,
+          verticals: verticals) { item in path.append(item) }
+      case .number:
+        NavigationStack {
+          RandomizerView()
+            .toolbar {
+              ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { presentedTool = nil }
+              }
+            }
+        }
+        .presentationSizing(.form)
+      }
+    }
     .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
       path = []
@@ -79,6 +97,13 @@ struct LibraryView: View {
         }
         return
       }
+    }
+  }
+
+  private var showsLibraryTools: Bool {
+    switch presentation {
+    case .browse, .craft: true
+    case .shelf, .search: false
     }
   }
 
@@ -133,6 +158,20 @@ struct LibraryView: View {
       theme.themedBackground.ignoresSafeArea()
     }
     .toolbar {
+      if showsLibraryTools {
+        ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            Button("Pick for me", systemImage: "shuffle") { presentedTool = .pick }
+              .accessibilityIdentifier("library.pickForMe")
+            Button("Pick a section number", systemImage: "number") { presentedTool = .number }
+              .accessibilityIdentifier("library.pickSectionNumber")
+          } label: {
+            Label("More", systemImage: "ellipsis.circle")
+          }
+          .disabledWhileFormPresented(formDrawer)
+          .accessibilityIdentifier("library.more")
+        }
+      }
       if presentation != .search {
         ToolbarItem(placement: .topBarTrailing) {
           CreateMenu(
@@ -608,4 +647,9 @@ extension LibraryViewMode {
     }
     return [GridItem(.adaptive(minimum: minimum, maximum: maximum), spacing: 14, alignment: .top)]
   }
+}
+
+private enum LibraryTool: String, Identifiable {
+  case pick, number
+  var id: Self { self }
 }

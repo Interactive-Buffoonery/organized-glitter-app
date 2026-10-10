@@ -12,7 +12,8 @@ screen backgrounds. The Shelf redesign (Option B in
   tab bar. Search uses `.searchable`.
   Account opens from the Home toolbar avatar. Create is the toolbar `+`
   `CreateMenu` on Home and Library.
-  The randomizer code stays but has no tab.
+  Library’s More menu opens Pick for me and Pick a section number.
+  Neither tool has a tab; library picks and section numbers are unsaved.
 - **iPad.** The `.sidebarAdaptable` `TabView` gives each craft a `TabSection`:
   Diamond art and Coloring, each with an All row, then one row per non-empty
   shelf with its on-device count, plus a `+` section action to create that craft.
