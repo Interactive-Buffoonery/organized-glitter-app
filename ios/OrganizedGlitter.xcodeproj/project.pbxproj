@@ -53,6 +53,7 @@
 		3F93AFCA88B2EB743C6B67D5 /* OAuthWebSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C461A07DF1FA06B1AB75C0 /* OAuthWebSession.swift */; };
 		4026BC25DE6D2DCB70DB696B /* LibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */; };
 		415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371EA167F285531DE866936F /* PocketBaseDateTests.swift */; };
+		4264CD1E0C8948C1AF647295 /* ColoringPageMediumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D820E2DE14E788D05CB4600 /* ColoringPageMediumTests.swift */; };
 		42CEC1AEF6AF16DC16C4CCAF /* ListPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DCAF3CF03153FE04F7EAA84 /* ListPicker.swift */; };
 		42DB3225654CE75C370E028F /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */; };
 		4409E02928E42299C225E800 /* NativeRefinementUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA4E4CDD670B63EB681D20F /* NativeRefinementUITests.swift */; };
@@ -64,6 +65,7 @@
 		4FB1DD8A2539C2339DCA1E43 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 992DFF2FCFEA9047315D14FE /* OFL.txt */; };
 		51888056C3FE0717F9985E3F /* OverviewUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EB627700AE4A6346043C16F /* OverviewUITests.swift */; };
 		520A66E850A6A166302AD55A /* NotesFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = D397B85343078096890EF556 /* NotesFeed.swift */; };
+		55F0675A7496DDB8D63DA5B3 /* ColoringPageMediumWrite.swift in Sources */ = {isa = PBXBuildFile; fileRef = E879C2B068D2A84DC1DB9885 /* ColoringPageMediumWrite.swift */; };
 		57B719A3A6D4E0E88F59BA9D /* PrivateArtworkStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55DA63A04D6C14AE2EF96802 /* PrivateArtworkStoreTests.swift */; };
 		5984DF19440D36F48EB42089 /* DetailDateOnly.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4598F11155765ABCC33C5CA7 /* DetailDateOnly.swift */; };
 		5A4E170398BB3BFCDA4FBE6A /* EntryOnlineWriteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02B4F977702D4E0BDEBE834D /* EntryOnlineWriteTests.swift */; };
@@ -272,6 +274,7 @@
 		8A44F8DED9DD837DCCC00FAF /* ProgressNoteEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressNoteEntry.swift; sourceTree = "<group>"; };
 		8A9F90C2F0DE0D5DA98324C8 /* ScreenshotCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotCaptureTests.swift; sourceTree = "<group>"; };
 		8B1313198DCA44E2E027F7EB /* LibraryGalleryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryGalleryCard.swift; sourceTree = "<group>"; };
+		8D820E2DE14E788D05CB4600 /* ColoringPageMediumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringPageMediumTests.swift; sourceTree = "<group>"; };
 		911823E33E157F4AA5946C5D /* PocketBaseFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseFilter.swift; sourceTree = "<group>"; };
 		920CFCE135DE59618B266A5D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9293732657D92D51736C184B /* BackendContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendContractTests.swift; sourceTree = "<group>"; };
@@ -326,6 +329,7 @@
 		E0CD4E065759D3DC0D45CF73 /* PrivateArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateArtworkStore.swift; sourceTree = "<group>"; };
 		E7EA344F5E1133CC94BAC6DB /* RecordStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordStatusTests.swift; sourceTree = "<group>"; };
 		E841D3F9B09655375C7BFEEB /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		E879C2B068D2A84DC1DB9885 /* ColoringPageMediumWrite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoringPageMediumWrite.swift; sourceTree = "<group>"; };
 		E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModelTests.swift; sourceTree = "<group>"; };
 		E8B9784FB12A1B3910B9397C /* KeychainSessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSessionStoreTests.swift; sourceTree = "<group>"; };
 		E8D0EA229B55AC2A2F2442AD /* AnalyticsEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsEvent.swift; sourceTree = "<group>"; };
@@ -361,6 +365,7 @@
 				2C2B4F3D4BDDCE126CECB107 /* ColoringBookDetailView.swift */,
 				6DBA3A97EB4A2243C50C449B /* ColoringEditors.swift */,
 				07901506737CEE3AEB38D49A /* ColoringPageDetailView.swift */,
+				E879C2B068D2A84DC1DB9885 /* ColoringPageMediumWrite.swift */,
 			);
 			path = Coloring;
 			sourceTree = "<group>";
@@ -609,6 +614,7 @@
 				E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */,
 				9293732657D92D51736C184B /* BackendContractTests.swift */,
 				2E7976C3250DB200B8D6BC78 /* ColoringEditorTests.swift */,
+				8D820E2DE14E788D05CB4600 /* ColoringPageMediumTests.swift */,
 				0C6940EAB60F12991E1C4E15 /* CoverImageTests.swift */,
 				5A318B2C17B822D44688273C /* CraftingStreakTests.swift */,
 				6650DF564D525230D4A66EEE /* DetailDateOnlyTests.swift */,
@@ -827,6 +833,7 @@
 				42DB3225654CE75C370E028F /* AppModelTests.swift in Sources */,
 				D5AD7758FFB77DC9C2723A7F /* BackendContractTests.swift in Sources */,
 				0382C749EC050E1904711CAB /* ColoringEditorTests.swift in Sources */,
+				4264CD1E0C8948C1AF647295 /* ColoringPageMediumTests.swift in Sources */,
 				A86F37DD7A777928D61BA34C /* CoverImageTests.swift in Sources */,
 				7D75CBBC869499BA095138BA /* CraftingStreakTests.swift in Sources */,
 				4B70B069E5969197AB1BAF67 /* DetailDateOnlyTests.swift in Sources */,
@@ -893,6 +900,7 @@
 				81A535F58978295A957C45AE /* ColoringBookDetailView.swift in Sources */,
 				94E216D13A5F3BCDD2447A3B /* ColoringEditors.swift in Sources */,
 				100BE9E76C3F8F819393FE4E /* ColoringPageDetailView.swift in Sources */,
+				55F0675A7496DDB8D63DA5B3 /* ColoringPageMediumWrite.swift in Sources */,
 				8550BA81AF0ADB18FF6EF1BF /* Connectivity.swift in Sources */,
 				C5B48D3377B606FB1E94D862 /* CoverArtwork.swift in Sources */,
 				1F44219391316C4F080670A6 /* CoverImageSection.swift in Sources */,
