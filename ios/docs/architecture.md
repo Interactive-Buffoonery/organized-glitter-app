@@ -70,6 +70,11 @@ if that read fails. The immediate refresh preserves its acknowledged row and
 reads retain concurrent acknowledgements; later reads remain authoritative. Terminal history auth
 failures use session recovery after write accounting unwinds, preserving pending
 library edits.
+Failed and uncertain local draws retain their frozen item title and existing failure
+message alongside history when a later draw replaces the result. The current result
+shows its own message once; failure announcements are tracked once per draw while
+the page is visible. Uncertain draws offer GET-only history refresh and never
+replay creation. These local receipts and titles clear on account close.
 History is held in account-scoped session memory and clears when that session
 closes; the downloaded SwiftData library does not include spin history.
 

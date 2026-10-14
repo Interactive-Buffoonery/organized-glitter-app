@@ -308,6 +308,48 @@ struct SpinHistoryTests {
     #expect(library.spinHistorySaveStates[selection.id] == .saved("spin"))
   }
 
+  @Test func consecutiveOfflineDrawsAnnounceEachFailureOnceWhileVisible() async throws {
+    let library = try await makeLibrary(online: false)
+    var announcements = SpinHistoryFailureAnnouncements()
+    for _ in 0..<2 {
+      let selection = try draw(library)
+      #expect(await library.recordSpin(selection: selection, completedAt: .now) == .notSent)
+      let failures = library.spinHistoryFailures()
+      #expect(announcements.messages(for: failures, isPageVisible: false).isEmpty)
+      #expect(announcements.messages(for: failures, isPageVisible: true) == [RandomizerPageCopy.spinNotSent])
+      #expect(announcements.messages(for: failures, isPageVisible: true).isEmpty)
+    }
+    #expect(HistoryProtocol.postCount == 0)
+  }
+
+  @Test(arguments: [400, 500])
+  func replacedDrawRetainsLateFailureAndFrozenTitle(status: Int) async throws {
+    let library = try await makeLibrary()
+    let first = try draw(library)
+    HistoryProtocol.postStatus = status
+    HistoryProtocol.holdPosts = true
+    let pending = Task { await library.recordSpin(selection: first, completedAt: .now) }
+    while HistoryProtocol.pendingCount == 0 { await Task.yield() }
+    let second = try draw(library, mode: .book)
+    HistoryProtocol.holdPosts = false
+    HistoryProtocol.postStatus = 200
+    #expect(await library.recordSpin(selection: second, completedAt: .now) == .saved("spin"))
+    _ = try await library.store.queueEdit(scope: library.scope,
+      key: first.winner.id, patch: ["title": .string("Changed later")])
+    try await library.loadLocal()
+    HistoryProtocol.releaseFirst()
+    let expected: SpinHistorySaveState = status == 400 ? .rejected : .unknown
+    #expect(await pending.value == expected)
+    #expect(library.spinHistoryFailures(excluding: second.id) == [
+      SpinHistoryFailure(id: first.id, title: "Project", state: expected)])
+    #expect(library.spinHistoryFailures(excluding: first.id).isEmpty)
+    await library.loadSpinHistory()
+    #expect(library.spinHistoryFailures().first?.state == expected)
+    #expect(HistoryProtocol.postCount == 2)
+    try await library.close(removingData: false)
+    #expect(library.spinHistoryFailures().isEmpty)
+  }
+
   private func draw(_ library: LibrarySession, mode: RandomizerMode = .diamond) throws -> RandomizerSelection {
     let model = LibraryRandomizer(library: library)
     let id = try #require(model.beginSelection(mode: mode, verticals: verticals))

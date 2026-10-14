@@ -19,6 +19,25 @@ extension SpinHistorySaveState {
   }
 }
 
+struct SpinHistoryFailure: Identifiable, Equatable {
+  let id: UUID
+  let title: String
+  let state: SpinHistorySaveState
+}
+
+struct SpinHistoryFailureAnnouncements {
+  private var announced: Set<UUID> = []
+
+  mutating func messages(for failures: [SpinHistoryFailure], isPageVisible: Bool) -> [String] {
+    guard isPageVisible else { return [] }
+    return failures.compactMap { failure in
+      guard let message = failure.state.failureAnnouncement,
+        announced.insert(failure.id).inserted else { return nil }
+      return message
+    }
+  }
+}
+
 extension RandomizerMode {
   var spinWireValue: String {
     switch self {

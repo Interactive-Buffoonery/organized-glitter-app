@@ -18,6 +18,7 @@ struct PickForMeView: View {
   @State private var openedTarget: LibraryItem?
   @State private var logEditor: LibraryItemDetailModel?
   @State private var isPageVisible = false
+  @State private var failureAnnouncements = SpinHistoryFailureAnnouncements()
   @State private var wheelDisplayID = UUID()
   @State private var tickTask: Task<Void, Never>?
 
@@ -100,9 +101,10 @@ struct PickForMeView: View {
         AccessibilityNotification.Announcement(RandomizerPageCopy.historyLoadFailed).post()
       }
     }
-    .onChange(of: currentSaveState) { _, state in
-      guard isPageVisible, let message = state?.failureAnnouncement else { return }
-      AccessibilityNotification.Announcement(message).post()
+    .onChange(of: model.library.spinHistoryFailures()) { _, failures in
+      for message in failureAnnouncements.messages(for: failures, isPageVisible: isPageVisible) {
+        AccessibilityNotification.Announcement(message).post()
+      }
     }
     .onChange(of: mode) { _, _ in search = ""; itemSelection.selectAll(); resetSelection() }
     .onChange(of: selectedStatuses) { _, _ in
@@ -184,11 +186,6 @@ struct PickForMeView: View {
       }
       historyPanel
     }
-  }
-
-  private var currentSaveState: SpinHistorySaveState? {
-    guard let selection = model.selection else { return nil }
-    return model.library.spinHistorySaveStates[selection.id]
   }
 
   private var selectedStatuses: Set<String> { statuses[mode] ?? mode.defaultStatuses }
@@ -401,6 +398,13 @@ struct PickForMeView: View {
   private var historyPanel: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
       Text(RandomizerPageCopy.historyTitle).font(.karla(.headline))
+      ForEach(model.library.spinHistoryFailures(excluding: model.selection?.id)) { failure in
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+          Text(failure.title).font(.karla(.headline))
+          saveStatus(failure.state)
+        }
+        .accessibilityIdentifier("pickForMe.historyFailure.\(failure.id)")
+      }
       if model.library.spinHistoryLoadState == .loading {
         ProgressView(RandomizerPageCopy.loading)
       } else if model.library.spinHistoryLoadState == .failed {

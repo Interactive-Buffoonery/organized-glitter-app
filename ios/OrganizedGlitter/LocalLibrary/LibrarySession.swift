@@ -25,6 +25,7 @@ final class LibrarySession {
 
   private(set) var spinHistory: [SpinHistoryRecord] = []
   private(set) var spinHistoryLoadState = SpinHistoryLoadState.idle
+  private var spinHistoryDraws: [(id: UUID, title: String)] = []
   private(set) var spinHistorySaveStates: [UUID: SpinHistorySaveState] = [:]
   private(set) var spinHistoryLimit = 8
   private(set) var spinHistoryTotal = 0
@@ -360,10 +361,19 @@ final class LibrarySession {
     }
   }
 
+  func spinHistoryFailures(excluding selectionID: UUID? = nil) -> [SpinHistoryFailure] {
+    spinHistoryDraws.compactMap { draw in
+      guard draw.id != selectionID, let state = spinHistorySaveStates[draw.id],
+        state.failureAnnouncement != nil else { return nil }
+      return SpinHistoryFailure(id: draw.id, title: draw.title, state: state)
+    }
+  }
+
   @discardableResult
   func recordSpin(selection: RandomizerSelection, completedAt: Date) async -> SpinHistorySaveState {
     guard selection.scope == scope, active else { return .rejected }
     if let state = spinHistorySaveStates[selection.id] { return state }
+    spinHistoryDraws.append((selection.id, selection.winner.title))
     spinHistorySaveStates[selection.id] = .saving
     guard !Task.isCancelled, acceptsChanges else {
       spinHistorySaveStates[selection.id] = .rejected
@@ -483,6 +493,7 @@ final class LibrarySession {
     historyLoadGeneration &+= 1
     spinHistory = []
     spinHistorySaveStates = [:]
+    spinHistoryDraws = []
     acknowledgedSpins = []
     spinHistoryLoadState = .idle
     spinHistoryTotal = 0
