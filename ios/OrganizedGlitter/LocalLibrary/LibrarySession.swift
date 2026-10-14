@@ -33,6 +33,7 @@ final class LibrarySession {
   private(set) var items: [LibraryItem] = [] {
     didSet { rebuildShelfCounts() }
   }
+  private var randomizerItemsByID: [LocalRecordKey: LibraryItem] = [:]
   private var bookTitles: [String: String] = [:]
   private var countsBySection: [LibrarySection: [String: Int]] = [:]
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
@@ -82,6 +83,24 @@ final class LibrarySession {
     countsBySection = counts
   }
 
+  private func rebuildRandomizerItems() {
+    let accessible = entries.filter { $0.conflict != .deletedOnServer }.map(\.item)
+    var titles: [String: String] = [:]
+    for case .book(let book) in accessible where book.user == userID {
+      titles[book.id] = book.title
+    }
+    var owned: [LocalRecordKey: LibraryItem] = [:]
+    for item in accessible where item.belongs(to: item.section, userID: userID, bookTitles: titles) {
+      if owned[item.localRecordKey] == nil { owned[item.localRecordKey] = item }
+    }
+    randomizerItemsByID = owned
+  }
+
+  func ownedRandomizerItem(id: LocalRecordKey, mode: RandomizerMode) -> LibraryItem? {
+    guard let item = randomizerItemsByID[id], item.section == mode.section else { return nil }
+    return item
+  }
+
   func loadLocal() async throws {
     try checkActive()
     loadGeneration &+= 1
@@ -90,6 +109,7 @@ final class LibrarySession {
     try checkActive()
     guard requestedGeneration == loadGeneration else { return }
     entries = projection.entries
+    rebuildRandomizerItems()
     items = entries.map(\.item)
     progressNotes = projection.progressNotes
     coloringPageProgressNotes = projection.coloringPageProgressNotes
@@ -203,6 +223,7 @@ final class LibrarySession {
     if let index = entries.firstIndex(where: { $0.item.localRecordKey == key }) {
       entries[index] = entry
     } else { entries.append(entry) }
+    rebuildRandomizerItems()
     items = entries.map(\.item)
     pendingCount = entries.filter(\.pending).count
     generation &+= 1
@@ -307,6 +328,10 @@ final class LibrarySession {
   }
 
   func loadSpinHistory(limit: Int? = nil) async {
+    await refreshSpinHistory(limit: limit)
+  }
+
+  private func refreshSpinHistory(limit: Int? = nil, preserving saved: SpinHistoryRecord? = nil) async {
     guard active, !Task.isCancelled else { return }
     historyLoadGeneration &+= 1
     let generation = historyLoadGeneration
@@ -322,13 +347,16 @@ final class LibrarySession {
       guard generation == historyLoadGeneration else { return }
       let returned = page.items.filter { $0.user == userID }
       let concurrent = acknowledgedSpins.filter { $0.revision > revision }.map(\.record)
-      spinHistory = Self.sortedSpins(returned + concurrent, limit: requestedLimit)
+      spinHistory = Self.sortedSpins(returned + concurrent + (saved.map { [$0] } ?? []), limit: requestedLimit)
       spinHistoryTotal = max(page.totalItems, spinHistory.count)
       spinHistoryLoadState = .loaded
     } catch {
       guard active, generation == historyLoadGeneration else { return }
       if Task.isCancelled { spinHistoryLoadState = .idle }
-      else { spinHistoryLoadState = .failed }
+      else {
+        spinHistoryLoadState = .failed
+        await recoverHistoryAuthentication(after: error)
+      }
     }
   }
 
@@ -358,6 +386,8 @@ final class LibrarySession {
       return .rejected
     }
     var dispatched = false
+    let savedState: SpinHistorySaveState
+    let acknowledgement: SpinHistoryRecord
     do {
       try await beginOnlineWrite()
       defer { endOnlineWrite(refreshLibrary: false) }
@@ -376,7 +406,8 @@ final class LibrarySession {
       spinHistory = Self.sortedSpins([saved] + spinHistory, limit: spinHistoryLimit)
       let state = SpinHistorySaveState.saved(saved.id)
       spinHistorySaveStates[selection.id] = state
-      return state
+      savedState = state
+      acknowledgement = saved
     } catch {
       guard active else { return .unknown }
       let state: SpinHistorySaveState
@@ -389,9 +420,18 @@ final class LibrarySession {
         }
       }
       spinHistorySaveStates[selection.id] = state
-      if state == .unknown { Task { await self.loadSpinHistory() } }
+      await recoverHistoryAuthentication(after: error)
+      if active, state == .unknown { Task { await self.loadSpinHistory() } }
       return state
     }
+    await refreshSpinHistory(preserving: acknowledgement)
+    return savedState
+  }
+
+  private func recoverHistoryAuthentication(after error: Error) async {
+    guard !Task.isCancelled, let error = error as? APIError,
+      error == .unauthenticated || error == .forbidden else { return }
+    await onAuthenticationFailure?()
   }
 
   func spinHistoryTarget(_ spin: SpinHistoryRecord, verticals: VerticalPreferences) -> LibraryItem? {
@@ -447,6 +487,7 @@ final class LibrarySession {
     spinHistoryLoadState = .idle
     spinHistoryTotal = 0
     items = []
+    randomizerItemsByID = [:]
     entries = []
     progressNotes = []
     coloringPageProgressNotes = []

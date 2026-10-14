@@ -64,7 +64,12 @@ Legacy or malformed optional metadata falls back to the saved top-level fields.
 Each frozen draw dispatches at most one creation in the app session. There is
 no backend idempotency key, offline queue, or automatic POST retry after an
 ambiguous outcome. GET refreshes can reconcile history without repeating a
-creation. Acknowledged saves remain acknowledged if a subsequent read fails.
+creation. Accepted creates trigger a bounded GET refresh at the current eight/fifty-row
+limit so other clients’ history appears. Acknowledged saves remain acknowledged
+if that read fails. The immediate refresh preserves its acknowledged row and
+reads retain concurrent acknowledgements; later reads remain authoritative. Terminal history auth
+failures use session recovery after write accounting unwinds, preserving pending
+library edits.
 History is held in account-scoped session memory and clears when that session
 closes; the downloaded SwiftData library does not include spin history.
 

@@ -73,7 +73,7 @@ extension LibrarySession {
     id: LocalRecordKey, mode: RandomizerMode, verticals: VerticalPreferences
   ) -> LibraryItem? {
     guard isActive, mode.isEnabled(for: verticals) else { return nil }
-    return randomizerAccessibleItems(mode: mode).first { $0.id == id }?.item
+    return ownedRandomizerItem(id: id, mode: mode)
   }
 
   private func randomizerAccessibleItems(mode: RandomizerMode) -> [RandomizerCandidate] {

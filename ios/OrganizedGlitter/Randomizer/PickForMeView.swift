@@ -95,6 +95,15 @@ struct PickForMeView: View {
       isPageVisible = false
       if model.isSelecting { resetSelection() }
     }
+    .onChange(of: model.library.spinHistoryLoadState) { _, state in
+      if isPageVisible, state == .failed {
+        AccessibilityNotification.Announcement(RandomizerPageCopy.historyLoadFailed).post()
+      }
+    }
+    .onChange(of: currentSaveState) { _, state in
+      guard isPageVisible, let message = state?.failureAnnouncement else { return }
+      AccessibilityNotification.Announcement(message).post()
+    }
     .onChange(of: mode) { _, _ in search = ""; itemSelection.selectAll(); resetSelection() }
     .onChange(of: selectedStatuses) { _, _ in
       itemSelection.reconcile(candidates: eligibleCandidates)
@@ -175,6 +184,11 @@ struct PickForMeView: View {
       }
       historyPanel
     }
+  }
+
+  private var currentSaveState: SpinHistorySaveState? {
+    guard let selection = model.selection else { return nil }
+    return model.library.spinHistorySaveStates[selection.id]
   }
 
   private var selectedStatuses: Set<String> { statuses[mode] ?? mode.defaultStatuses }
@@ -268,7 +282,7 @@ struct PickForMeView: View {
   }
 
   private var selectionPanel: some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+    LazyVStack(alignment: .leading, spacing: Theme.Spacing.md) {
       VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
         Text(RandomizerPageCopy.statusTitle(mode)).font(.karla(.headline))
         ForEach(mode.eligibleStatuses, id: \.self) { status in
@@ -286,7 +300,7 @@ struct PickForMeView: View {
           Text(RandomizerPageCopy.resetFilters).frame(minHeight: 44, alignment: .leading)
         }
       }
-      VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+      LazyVStack(alignment: .leading, spacing: Theme.Spacing.sm) {
         Text(RandomizerPageCopy.selectorTitle(mode)).font(.karla(.headline))
         Text("\(selectedCandidates.count) of \(eligibleCandidates.count) selected")
           .font(.karla(.subheadline))

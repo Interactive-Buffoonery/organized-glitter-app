@@ -8,6 +8,17 @@ enum SpinHistorySaveState: Equatable {
   case saving, saved(String), notSent, rejected, unknown
 }
 
+extension SpinHistorySaveState {
+  var failureAnnouncement: String? {
+    switch self {
+    case .notSent: RandomizerPageCopy.spinNotSent
+    case .rejected: RandomizerPageCopy.spinRejected
+    case .unknown: RandomizerPageCopy.spinUnknown
+    case .saving, .saved: nil
+    }
+  }
+}
+
 extension RandomizerMode {
   var spinWireValue: String {
     switch self {

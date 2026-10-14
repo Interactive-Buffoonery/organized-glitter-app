@@ -177,6 +177,7 @@ struct SpinHistoryTests {
     let read = Task { await library.loadSpinHistory() }
     while HistoryProtocol.pendingCount == 0 { await Task.yield() }
     let selection = try draw(library)
+    HistoryProtocol.holdReads = false
     #expect(await library.recordSpin(selection: selection, completedAt: .now) == .saved("spin"))
     HistoryProtocol.releaseFirst(body: "{\"page\":1,\"perPage\":8,\"totalPages\":0,\"totalItems\":0,\"items\":[]}")
     await read.value
@@ -193,6 +194,118 @@ struct SpinHistoryTests {
     #expect(HistoryProtocol.postCount == 1)
     HistoryProtocol.releaseFirst()
     #expect(await save.value == .saved("spin"))
+  }
+
+  @Test(arguments: [false, true], [401, 403])
+  func terminalAuthenticationFailureDrainsWritesAndPreservesPendingEdits(saving: Bool, status: Int) async throws {
+    let library = try await makeLibrary()
+    let selection = try draw(library)
+    let key = LocalRecordKey(kind: .project, id: "project")
+    _ = try await library.store.queueEdit(scope: library.scope, key: key,
+      patch: ["title": .string("Pending title")])
+    let operation = try #require(await library.store.pendingOperations(scope: library.scope).first)
+    var recovered = false
+    library.onAuthenticationFailure = {
+      await library.waitForWrites()
+      try? await library.close(removingData: false)
+      recovered = true
+    }
+    HistoryProtocol.postStatus = status
+    HistoryProtocol.getStatus = status
+    if saving {
+      #expect(await library.recordSpin(selection: selection, completedAt: .now) == .rejected)
+      #expect(await library.recordSpin(selection: selection, completedAt: .now) == .rejected)
+      #expect(HistoryProtocol.postCount == 1)
+    } else { await library.loadSpinHistory() }
+    #expect(recovered)
+    #expect(!library.isActive)
+    #expect(try await library.store.pendingOperations(scope: library.scope).first?.id == operation.id)
+    #expect(try await library.store.entry(scope: library.scope, key: key)?.item.title == "Pending title")
+  }
+
+  @Test func acceptedWriteRefreshesCrossClientHistoryAtCurrentBound() async throws {
+    let library = try await makeLibrary()
+    await library.loadSpinHistory(limit: 50)
+    HistoryProtocol.getURLs = []
+    HistoryProtocol.getBody = "{\"page\":1,\"perPage\":50,\"totalPages\":1,\"totalItems\":2,\"items\":[\(Self.row),\(Self.row.replacingOccurrences(of: "\"spin\"", with: "\"remote\""))]}"
+    #expect(await library.recordSpin(selection: try draw(library), completedAt: .now) == .saved("spin"))
+    #expect(Set(library.spinHistory.map(\.id)) == ["spin", "remote"])
+    let url = try #require(HistoryProtocol.getURLs.last)
+    #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+      .first { $0.name == "perPage" }?.value == "50")
+    #expect(HistoryProtocol.getURLs.count == 1)
+    #expect(HistoryProtocol.postCount == 1)
+  }
+
+  @Test func automaticRefreshCannotReplaceNewerCrossClientRead() async throws {
+    let library = try await makeLibrary()
+    let selection = try draw(library)
+    HistoryProtocol.holdReads = true
+    let save = Task { await library.recordSpin(selection: selection, completedAt: .now) }
+    while HistoryProtocol.pendingCount == 0 { await Task.yield() }
+    #expect(library.spinHistorySaveStates[selection.id] == .saved("spin"))
+    await library.waitForWrites()
+    HistoryProtocol.holdReads = false
+    let remote = Self.row.replacingOccurrences(of: "\"spin\"", with: "\"remote\"")
+    HistoryProtocol.getBody = "{\"page\":1,\"perPage\":50,\"totalPages\":1,\"totalItems\":2,\"items\":[\(Self.row),\(remote)]}"
+    await library.loadSpinHistory(limit: 50)
+    HistoryProtocol.releaseFirst(body: "{\"page\":1,\"perPage\":8,\"totalPages\":0,\"totalItems\":0,\"items\":[]}")
+    #expect(await save.value == .saved("spin"))
+    #expect(Set(library.spinHistory.map(\.id)) == ["spin", "remote"])
+    #expect(library.spinHistoryLimit == 50)
+    #expect(HistoryProtocol.postCount == 1)
+  }
+
+  @Test func automaticRefreshFailureCannotRejectAcknowledgedWrite() async throws {
+    let library = try await makeLibrary()
+    HistoryProtocol.getStatus = 500
+    let selection = try draw(library)
+    #expect(await library.recordSpin(selection: selection, completedAt: .now) == .saved("spin"))
+    #expect(library.spinHistoryLoadState == .failed)
+    #expect(library.spinHistorySaveStates[selection.id] == .saved("spin"))
+    #expect(library.spinHistory.map(\.id) == ["spin"])
+    #expect(HistoryProtocol.getURLs.count == 1)
+  }
+
+  @Test func currentTargetReflectsImmediateLocalSaveBeforeReload() async throws {
+    let library = try await makeLibrary(online: false)
+    let key = LocalRecordKey(kind: .project, id: "project")
+    #expect(library.randomizerTarget(id: key, mode: .diamond, verticals: verticals)?.title == "Project")
+    let saved: DiamondProjectRecord = try await library.update(collection: "projects", id: "project",
+      body: ["title": "Locally saved"])
+    #expect(saved.title == "Locally saved")
+    #expect(library.randomizerTarget(id: key, mode: .diamond, verticals: verticals)?.title == saved.title)
+    try await library.close(removingData: false)
+    #expect(library.randomizerTarget(id: key, mode: .diamond, verticals: verticals) == nil)
+  }
+
+  @Test func openingHistoryUsesCurrentOwnedProjectionAfterEditsAndParentRemoval() async throws {
+    let library = try await makeLibrary()
+    let key = LocalRecordKey(kind: .page, id: "page")
+    #expect(library.randomizerTarget(id: key, mode: .page, verticals: verticals) != nil)
+    _ = try await library.store.queueEdit(scope: library.scope,
+      key: LocalRecordKey(kind: .project, id: "project"), patch: ["title": .string("Edited")])
+    try await library.loadLocal()
+    #expect(library.randomizerTarget(id: LocalRecordKey(kind: .project, id: "project"),
+      mode: .diamond, verticals: verticals)?.title == "Edited")
+    #expect(library.randomizerTarget(id: key, mode: .book, verticals: verticals) == nil)
+    try await library.store.removeConfirmed(scope: library.scope,
+      key: LocalRecordKey(kind: .book, id: "book"))
+    try await library.loadLocal()
+    #expect(library.randomizerTarget(id: key, mode: .page, verticals: verticals) == nil)
+  }
+
+  @Test func refreshStartedAfterAcknowledgementCannotEraseItWithStaleServerRows() async throws {
+    let library = try await makeLibrary()
+    HistoryProtocol.getBody = "{\"page\":1,\"perPage\":8,\"totalPages\":0,\"totalItems\":0,\"items\":[]}"
+    let selection = try draw(library)
+    #expect(await library.recordSpin(selection: selection, completedAt: .now) == .saved("spin"))
+    #expect(library.spinHistory.map(\.id) == ["spin"])
+    #expect(library.spinHistorySaveStates[selection.id] == .saved("spin"))
+    #expect(HistoryProtocol.postCount == 1)
+    await library.loadSpinHistory()
+    #expect(library.spinHistory.isEmpty)
+    #expect(library.spinHistorySaveStates[selection.id] == .saved("spin"))
   }
 
   private func draw(_ library: LibrarySession, mode: RandomizerMode = .diamond) throws -> RandomizerSelection {
@@ -232,6 +345,7 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
     var postStatus = 200
     var getStatus = 200
     var getURLs: [URL] = []
+    var getBody: String?
     var holdReads = false
     var holdPosts = false
     var pending: [(HistoryProtocol, Int, String)] = []
@@ -250,6 +364,10 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
     get { state.lock.withLock { state.getURLs } }
     set { state.lock.withLock { state.getURLs = newValue } }
   }
+  static var getBody: String? {
+    get { state.lock.withLock { state.getBody } }
+    set { state.lock.withLock { state.getBody = newValue } }
+  }
   static var holdReads: Bool {
     get { state.lock.withLock { state.holdReads } }
     set { state.lock.withLock { state.holdReads = newValue } }
@@ -261,6 +379,7 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
   static var pendingCount: Int { state.lock.withLock { state.pending.count } }
   static func reset() {
     state.lock.withLock {
+      state.getBody = nil
       state.postCount = 0
       state.holdReads = false
       state.holdPosts = false
@@ -278,13 +397,15 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
     let response: (Int, String, Bool) = Self.state.lock.withLock {
       if request.url!.path.hasSuffix("auth-with-password") {
         return (200, #"{"token":"fixture-token","record":{"id":"feature-user","verified":true}}"#, false)
+      } else if request.url!.path.hasSuffix("auth-refresh") {
+        return (401, "{}", false)
       } else if request.httpMethod == "POST" {
         Self.state.postCount += 1
         return (Self.state.postStatus, SpinHistoryTests.row, Self.state.holdPosts)
       } else {
         Self.state.getURLs.append(request.url!)
         return (Self.state.getStatus,
-          "{\"page\":1,\"perPage\":8,\"totalPages\":1,\"totalItems\":1,\"items\":[\(SpinHistoryTests.row)]}", Self.state.holdReads)
+          Self.state.getBody ?? "{\"page\":1,\"perPage\":8,\"totalPages\":1,\"totalItems\":1,\"items\":[\(SpinHistoryTests.row)]}", Self.state.holdReads)
       }
     }
     if response.2 {
