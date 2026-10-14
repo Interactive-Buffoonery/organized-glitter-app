@@ -13,7 +13,9 @@ screen backgrounds. The Shelf redesign (Option B in
   Account opens from the Home toolbar avatar. Create is the toolbar `+`
   `CreateMenu` on Home and Library.
   Library’s More menu opens the library Randomizer page and the separate section-number tool.
-  Neither tool has a tab; library picks and section numbers are unsaved.
+  Neither tool has a tab. Completed library picks save to shared online spin
+  history; section numbers are unsaved. Offline picks remain usable without
+  queuing history writes.
 - **iPad.** The `.sidebarAdaptable` `TabView` gives each craft a `TabSection`:
   Diamond art and Coloring, each with an All row, then one row per non-empty
   shelf with its on-device count, plus a `+` section action to create that craft.
@@ -370,4 +372,8 @@ feedback is throttled to one update per 110 milliseconds and stops on cancellati
 Leaving during a spin cancels completion,
 and opening a result rechecks the current account and accessible target.
 
-All Classic user-facing copy remains provisional pending Sarah's explicit review.
+Sarah approved the history/loading/error messages and connection message, the
+shared book label “In library”, the completion announcement “Spin complete!
+Selected: {item title}”, the separate number-tool title “Pick a section number”,
+and the inline result message “This item is no longer available in your library.”
+Other authored copy not yet shown to Sarah remains pending explicit review.

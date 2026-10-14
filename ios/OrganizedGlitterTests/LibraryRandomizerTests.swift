@@ -11,6 +11,17 @@ struct LibraryRandomizerTests {
     try await library.loadLocal()
   }
 
+  @Test(arguments: RandomizerMode.allCases)
+  func approvedCompletionCopyUsesNeutralItemTitle(mode: RandomizerMode) async throws {
+    let library = try localFeatureLibrary()
+    try await seed([.diamond(featureProject("project", title: "Project", status: "progress")),
+      .book(featureBook("book", title: "Book", status: "in_progress")),
+      .page(featurePage("page", book: "book", number: 1, status: "in_progress"))], library: library)
+    let candidate = try #require(library.randomizerCandidates(mode: mode, verticals: verticals).first)
+    #expect(RandomizerPageCopy.announcement(candidate) == "Spin complete! Selected: \(candidate.title)")
+    #expect(RandomizerPageCopy.status("in_stash", mode: .book) == BookStatus.inStash.label)
+  }
+
   @Test func defaultsUseRawStatusesForEachMode() async throws {
     let library = try localFeatureLibrary()
     try await seed([

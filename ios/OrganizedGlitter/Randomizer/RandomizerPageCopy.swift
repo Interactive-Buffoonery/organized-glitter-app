@@ -1,6 +1,6 @@
 import Foundation
 
-// Existing web copy at 62b1293; native adoption remains pending Sarah's review.
+// Remaining unseen copy is subject to Sarah's review.
 enum RandomizerPageCopy {
   static let craft = "Craft"
   static let connection = "Connect to the internet to download your library."
@@ -26,6 +26,7 @@ enum RandomizerPageCopy {
   static let selectAll = "Select all"
   static let selectNone = "Deselect all"
   static let resetFilters = "Reset filters"
+  static let unavailable = "This item is no longer available in your library."
   static let clearResult = "Clear result"
 
   static func modeTitle(_ mode: RandomizerMode) -> String {
@@ -77,7 +78,6 @@ enum RandomizerPageCopy {
   }
 
   static func status(_ status: String, mode: RandomizerMode) -> String {
-    if mode == .book, status == BookStatus.inStash.rawValue { return "On Bookshelf (Not Started)" }
     return mode.section.statusLabel(status)
   }
 
@@ -111,6 +111,6 @@ enum RandomizerPageCopy {
   }
 
   static func announcement(_ candidate: RandomizerCandidate) -> String {
-    "Spin complete! Selected project: \(candidate.title)"
+    "Spin complete! Selected: \(candidate.title)"
   }
 }

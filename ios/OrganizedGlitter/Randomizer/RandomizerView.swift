@@ -61,6 +61,6 @@ struct RandomizerView: View {
       .frame(maxWidth: .infinity)
     }
     .background { theme.themedBackground.ignoresSafeArea() }
-    .navigationTitle("Randomizer")
+    .navigationTitle("Pick a section number")
   }
 }

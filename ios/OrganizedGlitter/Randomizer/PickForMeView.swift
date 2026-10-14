@@ -384,6 +384,10 @@ struct PickForMeView: View {
       .buttonStyle(QuietActionStyle())
       .disabled(model.currentWinner(verticals: verticals) == nil)
       .accessibilityIdentifier("pickForMe.open")
+      if model.currentWinner(verticals: verticals) == nil {
+        Text(RandomizerPageCopy.unavailable)
+          .fixedSize(horizontal: false, vertical: true)
+      }
       if let state = model.library.spinHistorySaveStates[selection.id] {
         saveStatus(state)
       }
