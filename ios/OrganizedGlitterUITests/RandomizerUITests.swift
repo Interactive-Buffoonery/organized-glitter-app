@@ -48,8 +48,9 @@ final class RandomizerUITests: XCTestCase {
     app.buttons["library.more"].tap()
     app.buttons["library.pickForMe"].tap()
     let none = app.buttons["pickForMe.selectNone"]
-    XCTAssertTrue(none.waitForExistence(timeout: 5))
     for _ in 0..<8 where !none.isHittable { app.swipeUp() }
+    XCTAssertTrue(none.waitForExistence(timeout: 5))
+    XCTAssertTrue(none.isHittable)
     none.tap()
     let pick = app.buttons["pickForMe.pick"]
     XCTAssertFalse(pick.isEnabled)
