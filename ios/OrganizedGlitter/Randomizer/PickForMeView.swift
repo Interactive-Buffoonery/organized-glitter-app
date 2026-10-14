@@ -41,6 +41,7 @@ struct PickForMeView: View {
   var body: some View {
     let candidates = eligibleCandidates
     let selected = candidates.filter { itemSelection.ids?.contains($0.id) ?? true }
+    let searched = searchedCandidates(in: candidates)
     let wheelCandidates = model.selection?.candidates ?? selected
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -55,13 +56,14 @@ struct PickForMeView: View {
         .accessibilityIdentifier("pickForMe.mode")
         if sizeClass == .regular, !textSize.isAccessibilitySize {
           HStack(alignment: .top, spacing: Theme.Spacing.md) {
-            selectionPanel.frame(maxWidth: .infinity)
+            selectionPanel(candidates: candidates, selected: selected, searched: searched)
+              .frame(maxWidth: .infinity)
             wheelPanel(selected: selected, candidates: candidates, wheelCandidates: wheelCandidates)
               .frame(maxWidth: .infinity)
           }
         } else {
           wheelPanel(selected: selected, candidates: candidates, wheelCandidates: wheelCandidates)
-          selectionPanel
+          selectionPanel(candidates: candidates, selected: selected, searched: searched)
         }
       }
       .foregroundStyle(theme.foreground)
@@ -108,10 +110,10 @@ struct PickForMeView: View {
     }
     .onChange(of: mode) { _, _ in search = ""; itemSelection.selectAll(); resetSelection() }
     .onChange(of: selectedStatuses) { _, _ in
-      itemSelection.reconcile(candidates: eligibleCandidates)
+      itemSelection.reconcile(candidates: candidates)
       resetSelection()
     }
-    .onChange(of: eligibleCandidates) { _, candidates in
+    .onChange(of: candidates) { _, candidates in
       guard !model.isSelecting else { return }
       itemSelection.reconcile(candidates: candidates)
     }
@@ -194,14 +196,10 @@ struct PickForMeView: View {
     model.library.randomizerCandidates(mode: mode, statuses: selectedStatuses, verticals: verticals)
   }
 
-  private var selectedCandidates: [RandomizerCandidate] {
-    eligibleCandidates.filter { itemSelection.ids?.contains($0.id) ?? true }
-  }
-
-  private var searchedCandidates: [RandomizerCandidate] {
+  private func searchedCandidates(in candidates: [RandomizerCandidate]) -> [RandomizerCandidate] {
     let query = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    guard !query.isEmpty else { return eligibleCandidates }
-    return eligibleCandidates.filter {
+    guard !query.isEmpty else { return candidates }
+    return candidates.filter {
       "\($0.title) \($0.bookTitle ?? $0.item.subtitle)".lowercased().contains(query)
     }
   }
@@ -278,7 +276,8 @@ struct PickForMeView: View {
     }
   }
 
-  private var selectionPanel: some View {
+  private func selectionPanel(candidates: [RandomizerCandidate], selected: [RandomizerCandidate],
+    searched: [RandomizerCandidate]) -> some View {
     LazyVStack(alignment: .leading, spacing: Theme.Spacing.md) {
       VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
         Text(RandomizerPageCopy.statusTitle(mode)).font(.karla(.headline))
@@ -299,7 +298,7 @@ struct PickForMeView: View {
       }
       LazyVStack(alignment: .leading, spacing: Theme.Spacing.sm) {
         Text(RandomizerPageCopy.selectorTitle(mode)).font(.karla(.headline))
-        Text("\(selectedCandidates.count) of \(eligibleCandidates.count) selected")
+        Text("\(selected.count) of \(candidates.count) selected")
           .font(.karla(.subheadline))
         TextField(RandomizerPageCopy.searchTitle(mode), text: $search)
           .textFieldStyle(.roundedBorder)
@@ -315,12 +314,12 @@ struct PickForMeView: View {
           Text(RandomizerPageCopy.selectNone).frame(minHeight: 44, alignment: .leading)
         }
           .accessibilityIdentifier("pickForMe.selectNone")
-        if searchedCandidates.isEmpty, !search.isEmpty {
+        if searched.isEmpty, !search.isEmpty {
           Text(RandomizerPageCopy.noSearchMatches).font(.karla(.subheadline))
         }
-        ForEach(searchedCandidates) { candidate in
+        ForEach(searched) { candidate in
           Toggle(isOn: Binding(get: { itemSelection.ids?.contains(candidate.id) ?? true }, set: { included in
-            itemSelection.setSelected(candidate.id, selected: included, candidates: eligibleCandidates)
+            itemSelection.setSelected(candidate.id, selected: included, candidates: candidates)
             resetSelection()
           })) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
