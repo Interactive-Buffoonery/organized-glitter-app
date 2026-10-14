@@ -49,6 +49,25 @@ The application does not own backend schema or server behavior. Those remain in
 
 See [the offline library contract](offline-library.md) for rollout and tests.
 
+## Randomizer history
+
+The Classic Randomizer selects from a frozen, account-owned library pool with
+an equal chance for every selected item. Repeats are allowed. Skipping the
+animation reveals the same winner; it does not create another draw.
+
+`LibrarySession` reads the existing PocketBase `randomizer_spins` collection
+and records completed draws online. The initial history read requests eight
+recent rows; Show More History requests up to fifty. History remains separate
+from filter and result state, and navigation rechecks the current owned library.
+Legacy or malformed optional metadata falls back to the saved top-level fields.
+
+Each frozen draw dispatches at most one creation in the app session. There is
+no backend idempotency key, offline queue, or automatic POST retry after an
+ambiguous outcome. GET refreshes can reconcile history without repeating a
+creation. Acknowledged saves remain acknowledged if a subsequent read fails.
+History is held in account-scoped session memory and clears when that session
+closes; the downloaded SwiftData library does not include spin history.
+
 ## Analytics consent
 
 The shared `users.analytics_opt_out` account setting remains online-only. A

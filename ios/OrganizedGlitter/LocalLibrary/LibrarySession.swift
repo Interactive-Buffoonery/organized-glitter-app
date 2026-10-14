@@ -13,12 +13,22 @@ final class LibrarySession {
   private var retryTask: Task<Void, Never>?
   private var retryAttempt = 0
   private var loadGeneration = 0
+  private var historyLoadGeneration = 0
+  private var historyRevision = 0
+  private var acknowledgedSpins: [(revision: Int, record: SpinHistoryRecord)] = []
   private var active = true
   private var acceptsChanges = true
   private var onlineWrites = 0
   private var localWrites = 0
   private var writeWaiters: [CheckedContinuation<Void, Never>] = []
   private var onlineRecords: Set<LocalRecordKey> = []
+
+  private(set) var spinHistory: [SpinHistoryRecord] = []
+  private(set) var spinHistoryLoadState = SpinHistoryLoadState.idle
+  private(set) var spinHistorySaveStates: [UUID: SpinHistorySaveState] = [:]
+  private(set) var spinHistoryLimit = 8
+  private(set) var spinHistoryTotal = 0
+  private(set) var connectionAvailable: Bool?
 
   private(set) var items: [LibraryItem] = [] {
     didSet { rebuildShelfCounts() }
@@ -39,7 +49,9 @@ final class LibrarySession {
   var isActive: Bool { active }
   var conflicts: [LocalLibraryEntry] { entries.filter { $0.conflict != nil } }
 
-  init(client: PocketBaseClient, userID: String, store: LocalLibraryStore) {
+  init(client: PocketBaseClient, userID: String, store: LocalLibraryStore,
+    connectionAvailable: Bool? = nil) {
+    self.connectionAvailable = connectionAvailable
     self.client = client
     self.scope = LocalAccountScope(backendURL: client.baseURL, userID: userID)
     self.store = store
@@ -165,6 +177,7 @@ final class LibrarySession {
     defer { monitor.cancel() }
     for await connected in updates {
       guard active, !Task.isCancelled else { return }
+      connectionAvailable = connected
       if connected { try? await refresh() }
     }
   }
@@ -293,6 +306,113 @@ final class LibrarySession {
     Task { try? await refresh(force: true) }
   }
 
+  func loadSpinHistory(limit: Int? = nil) async {
+    guard active, !Task.isCancelled else { return }
+    historyLoadGeneration &+= 1
+    let generation = historyLoadGeneration
+    let revision = historyRevision
+    spinHistoryLimit = limit == 50 ? 50 : (limit == nil ? spinHistoryLimit : 8)
+    let requestedLimit = spinHistoryLimit
+    spinHistoryLoadState = .loading
+    do {
+      let page: RecordList<SpinHistoryRecord> = try await client.list(
+        collection: "randomizer_spins", perPage: requestedLimit,
+        filter: PocketBaseFilter.equals(.user, userID), sort: "-spun_at")
+      try checkActive()
+      guard generation == historyLoadGeneration else { return }
+      let returned = page.items.filter { $0.user == userID }
+      let concurrent = acknowledgedSpins.filter { $0.revision > revision }.map(\.record)
+      spinHistory = Self.sortedSpins(returned + concurrent, limit: requestedLimit)
+      spinHistoryTotal = max(page.totalItems, spinHistory.count)
+      spinHistoryLoadState = .loaded
+    } catch {
+      guard active, generation == historyLoadGeneration else { return }
+      if Task.isCancelled { spinHistoryLoadState = .idle }
+      else { spinHistoryLoadState = .failed }
+    }
+  }
+
+  @discardableResult
+  func recordSpin(selection: RandomizerSelection, completedAt: Date) async -> SpinHistorySaveState {
+    guard selection.scope == scope, active else { return .rejected }
+    if let state = spinHistorySaveStates[selection.id] { return state }
+    spinHistorySaveStates[selection.id] = .saving
+    guard !Task.isCancelled, acceptsChanges else {
+      spinHistorySaveStates[selection.id] = .rejected
+      return .rejected
+    }
+    guard connectionAvailable != false else {
+      spinHistorySaveStates[selection.id] = .notSent
+      return .notSent
+    }
+    let ownsSnapshot = !selection.candidates.isEmpty
+      && selection.candidates.contains(selection.winner)
+      && selection.candidates.allSatisfy {
+        $0.item.belongs(to: selection.mode.section, userID: userID, bookTitles: ownedBookTitles())
+      }
+    let body = SpinHistoryCreate(selection: selection, userID: userID, completedAt: completedAt)
+    guard ownsSnapshot, !body.projectTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      randomizerTarget(id: selection.winner.id, mode: selection.mode,
+        verticals: VerticalPreferences(diamondPainting: true, coloringBooks: true)) != nil else {
+      spinHistorySaveStates[selection.id] = .rejected
+      return .rejected
+    }
+    var dispatched = false
+    do {
+      try await beginOnlineWrite()
+      defer { endOnlineWrite(refreshLibrary: false) }
+      guard connectionAvailable != false else {
+        spinHistorySaveStates[selection.id] = .notSent
+        return .notSent
+      }
+      dispatched = true
+      let saved: SpinHistoryRecord = try await client.create(collection: "randomizer_spins", body: body)
+      guard active else { return .unknown }
+      guard saved.user == userID else { throw APIError.decoding }
+      historyRevision &+= 1
+      acknowledgedSpins.append((historyRevision, saved))
+      if acknowledgedSpins.count > 50 { acknowledgedSpins.removeFirst(acknowledgedSpins.count - 50) }
+      if !spinHistory.contains(where: { $0.id == saved.id }) { spinHistoryTotal += 1 }
+      spinHistory = Self.sortedSpins([saved] + spinHistory, limit: spinHistoryLimit)
+      let state = SpinHistorySaveState.saved(saved.id)
+      spinHistorySaveStates[selection.id] = state
+      return state
+    } catch {
+      guard active else { return .unknown }
+      let state: SpinHistorySaveState
+      if !dispatched { state = (error as? APIError) == .offline ? .notSent : .rejected }
+      else {
+        switch error as? APIError {
+        case .unauthenticated, .emailUnverified, .forbidden, .conflict, .validation, .notFound:
+          state = .rejected
+        default: state = .unknown
+        }
+      }
+      spinHistorySaveStates[selection.id] = state
+      if state == .unknown { Task { await self.loadSpinHistory() } }
+      return state
+    }
+  }
+
+  func spinHistoryTarget(_ spin: SpinHistoryRecord, verticals: VerticalPreferences) -> LibraryItem? {
+    guard spin.user == userID, let target = spin.target else { return nil }
+    let kind: LocalRecordKind
+    switch target.mode {
+    case .diamond: kind = .project
+    case .book: kind = .book
+    case .page: kind = .page
+    }
+    return randomizerTarget(id: LocalRecordKey(kind: kind, id: target.id),
+      mode: target.mode, verticals: verticals)
+  }
+
+  private static func sortedSpins(_ records: [SpinHistoryRecord], limit: Int) -> [SpinHistoryRecord] {
+    var seen: Set<String> = []
+    return records.filter { seen.insert($0.id).inserted }.sorted {
+      $0.spunAt == $1.spunAt ? $0.id > $1.id : $0.spunAt > $1.spunAt
+    }.prefix(limit).map { $0 }
+  }
+
   func pauseWrites() { acceptsChanges = false }
   func resumeWrites() { if active { acceptsChanges = true } }
 
@@ -320,6 +440,12 @@ final class LibrarySession {
     await coordinator.cancel()
     if let task = syncTask { _ = await task.result }
     syncTask = nil
+    historyLoadGeneration &+= 1
+    spinHistory = []
+    spinHistorySaveStates = [:]
+    acknowledgedSpins = []
+    spinHistoryLoadState = .idle
+    spinHistoryTotal = 0
     items = []
     entries = []
     progressNotes = []
@@ -344,10 +470,10 @@ final class LibrarySession {
     }
   }
 
-  private func endOnlineWrite() {
+  private func endOnlineWrite(refreshLibrary: Bool = true) {
     onlineWrites -= 1
     resumeWriteWaitersIfIdle()
-    if onlineWrites == 0, active { Task { try? await refresh(force: true) } }
+    if refreshLibrary, onlineWrites == 0, active { Task { try? await refresh(force: true) } }
   }
 
   private func reserveOnlineRecord(collection: String, id: String) async throws -> Set<LocalRecordKey> {

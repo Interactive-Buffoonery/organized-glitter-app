@@ -281,4 +281,18 @@ struct LibraryRandomizerTests {
       from: JSONEncoder().encode(featureBook("legacy", title: "Legacy"))).lastActivityAt == nil)
   }
 
+  @Test func completionYieldsOneFrozenDrawForRecording() async throws {
+    let library = try localFeatureLibrary()
+    try await seed([.diamond(featureProject("only", title: "Only", status: "progress"))],
+      library: library)
+    let model = LibraryRandomizer(library: library)
+    let id = try #require(model.beginSelection(mode: .diamond, verticals: verticals))
+    let completed = model.finishSelection(id: id)
+    #expect(completed == model.selection)
+    #expect(completed?.winner.item.recordID == "only")
+    #expect(model.finishSelection(id: id) == nil)
+    model.reset()
+    #expect(model.finishSelection(id: id) == nil)
+  }
+
 }

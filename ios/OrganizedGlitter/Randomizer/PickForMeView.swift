@@ -43,10 +43,6 @@ struct PickForMeView: View {
     let wheelCandidates = model.selection?.candidates ?? selected
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-        Text(RandomizerPageCopy.introduction)
-          .font(.karla(.subheadline))
-          .foregroundStyle(theme.pageSecondaryForeground)
-          .fixedSize(horizontal: false, vertical: true)
         Picker(RandomizerPageCopy.craft, selection: $mode) {
           ForEach(RandomizerMode.allCases.filter { $0.isEnabled(for: verticals) }) { mode in
             Text(RandomizerPageCopy.modeTitle(mode)).tag(mode)
@@ -92,6 +88,8 @@ struct PickForMeView: View {
       }
       .presentationSizing(.form)
     }
+    .task { await model.library.loadSpinHistory() }
+    .refreshable { await model.library.loadSpinHistory() }
     .onAppear { isPageVisible = true }
     .onDisappear {
       isPageVisible = false
@@ -135,10 +133,6 @@ struct PickForMeView: View {
   private func wheelPanel(selected: [RandomizerCandidate], candidates: [RandomizerCandidate],
     wheelCandidates: [RandomizerCandidate]) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-      Text(RandomizerPageCopy.wheelHeading)
-        .font(.karla(.title2))
-        .frame(maxWidth: .infinity)
-        .multilineTextAlignment(.center)
       Button(action: spin) {
         VStack(spacing: Theme.Spacing.md) {
           ClassicRandomizerWheel(candidates: wheelCandidates, rotation: model.wheelRotation,
@@ -164,7 +158,11 @@ struct PickForMeView: View {
         .accessibilityLabel("Open wheel key")
         .accessibilityIdentifier("pickForMe.key")
 
-      if selected.isEmpty, model.library.hasSnapshot {
+      if !model.library.hasSnapshot {
+        Text(RandomizerPageCopy.connection)
+          .font(.karla(.subheadline))
+          .fixedSize(horizontal: false, vertical: true)
+      } else if selected.isEmpty {
         Text(candidates.isEmpty ? RandomizerPageCopy.empty(mode) : RandomizerPageCopy.noSelection(mode))
           .fixedSize(horizontal: false, vertical: true)
       } else if selected.count == 1 {
@@ -175,6 +173,7 @@ struct PickForMeView: View {
       if !model.isSelecting, let selection = model.selection {
         result(selection)
       }
+      historyPanel
     }
   }
 
@@ -210,13 +209,13 @@ struct PickForMeView: View {
       var id: UUID?
       withAnimation(Theme.randomizerSpin, completionCriteria: .logicallyComplete) {
         id = model.beginSelection(mode: mode, statuses: selectedStatuses,
-          selectedIDs: itemSelection.ids, verticals: verticals)
+          selectedIDs: itemSelection.ids, verticals: verticals, eligibility: statuses)
       } completion: {
         if let id { finishSpin(id: id) }
       }
       if let id { startTicks(id: id) }
     } else if let id = model.beginSelection(mode: mode, statuses: selectedStatuses,
-      selectedIDs: itemSelection.ids, verticals: verticals) {
+      selectedIDs: itemSelection.ids, verticals: verticals, eligibility: statuses) {
       finishSpin(id: id)
     }
   }
@@ -227,9 +226,10 @@ struct PickForMeView: View {
     }
     tickTask?.cancel()
     tickTask = nil
-    model.finishSelection(id: id)
-    guard !model.isSelecting, let selection = model.selection, selection.id == id else { return }
+    guard let selection = model.finishSelection(id: id) else { return }
     itemSelection.reconcile(candidates: eligibleCandidates)
+    let completedAt = Date()
+    Task { await model.library.recordSpin(selection: selection, completedAt: completedAt) }
     AccessibilityNotification.Announcement(RandomizerPageCopy.announcement(selection.winner)).post()
     if UIDevice.current.userInterfaceIdiom == .phone {
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -370,11 +370,99 @@ struct PickForMeView: View {
       .buttonStyle(QuietActionStyle())
       .disabled(model.currentWinner(verticals: verticals) == nil)
       .accessibilityIdentifier("pickForMe.open")
+      if let state = model.library.spinHistorySaveStates[selection.id] {
+        saveStatus(state)
+      }
       Button { resetSelection() } label: {
         Text(RandomizerPageCopy.clearResult).frame(minHeight: 44, alignment: .leading)
       }
         .foregroundStyle(theme.pageAction)
     }
+  }
+
+  private var historyPanel: some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+      Text(RandomizerPageCopy.historyTitle).font(.karla(.headline))
+      if model.library.spinHistoryLoadState == .loading {
+        ProgressView(RandomizerPageCopy.loading)
+      } else if model.library.spinHistoryLoadState == .failed {
+        Text(RandomizerPageCopy.historyLoadFailed)
+          .fixedSize(horizontal: false, vertical: true)
+        Button(RandomizerPageCopy.retry) { Task { await model.library.loadSpinHistory() } }
+          .buttonStyle(QuietActionStyle())
+      } else if model.library.spinHistory.isEmpty,
+        model.library.spinHistoryLoadState == .loaded {
+        Text(RandomizerPageCopy.noSpins)
+      }
+      ForEach(Array(model.library.spinHistory.enumerated()), id: \.element.id) { index, spin in
+        Button {
+          if let item = model.library.spinHistoryTarget(spin, verticals: verticals) {
+            openedTarget = item
+          }
+        } label: {
+          HStack(spacing: Theme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+              Text(spin.title).font(.karla(.headline))
+              if !spin.subtitle.isEmpty { Text(spin.subtitle).font(.karla(.subheadline)) }
+              Text(RandomizerPageCopy.modeTitle(spin.mode)
+                + (index == 0 ? " · \(RandomizerPageCopy.latest)" : ""))
+                .font(.karla(.caption))
+              HStack {
+                if let date = historyDate(spin.spunAt) {
+                  Text(date, format: .dateTime.year().month().day().hour().minute())
+                }
+                if let count = spin.optionCount { Text("\(count) \(RandomizerPageCopy.options)") }
+              }
+              .font(.karla(.caption))
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").accessibilityHidden(true)
+          }
+          .frame(minHeight: 44)
+          .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .disabled(model.library.spinHistoryTarget(spin, verticals: verticals) == nil)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("pickForMe.history.\(spin.id)")
+      }
+      if model.library.spinHistoryTotal > model.library.spinHistory.count,
+        model.library.spinHistoryLimit == 8 {
+        Button(RandomizerPageCopy.moreHistory) {
+          Task { await model.library.loadSpinHistory(limit: 50) }
+        }
+        .buttonStyle(QuietActionStyle())
+        .disabled(model.library.spinHistoryLoadState == .loading)
+      }
+    }
+    .foregroundStyle(theme.foreground)
+    .padding()
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+  }
+
+  @ViewBuilder
+  private func saveStatus(_ state: SpinHistorySaveState) -> some View {
+    switch state {
+    case .saving: ProgressView(RandomizerPageCopy.loading)
+    case .notSent: Text(RandomizerPageCopy.spinNotSent).fixedSize(horizontal: false, vertical: true)
+    case .rejected: Text(RandomizerPageCopy.spinRejected).fixedSize(horizontal: false, vertical: true)
+    case .unknown:
+      Text(RandomizerPageCopy.spinUnknown).fixedSize(horizontal: false, vertical: true)
+      Button(RandomizerPageCopy.refreshHistory) { Task { await model.library.loadSpinHistory() } }
+        .buttonStyle(QuietActionStyle())
+    case .saved: EmptyView()
+    }
+  }
+
+  private func historyDate(_ value: String) -> Date? {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let normalized = value.replacingOccurrences(of: " ", with: "T")
+    if let date = formatter.date(from: normalized) { return date }
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter.date(from: normalized)
   }
 
   private enum Panel: String, Identifiable {

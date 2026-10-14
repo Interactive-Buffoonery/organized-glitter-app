@@ -96,4 +96,39 @@ final class RandomizerUITests: XCTestCase {
     XCTAssertEqual(app.sheets.count, 0)
   }
 
+  func testSavedHistorySurvivesClearAndReopensCurrentTarget() {
+    let app = XCUIApplication()
+    app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design"]
+    app.launch()
+    XCTAssertTrue(app.openLibrary())
+    app.buttons["library.more"].tap()
+    app.buttons["library.pickForMe"].tap()
+    let pick = app.buttons["pickForMe.pick"]
+    XCTAssertTrue(pick.waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["What will you work on next?"].exists)
+    pick.doubleTap()
+    let open = app.buttons["pickForMe.open"]
+    XCTAssertTrue(open.waitForExistence(timeout: 5))
+    let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "pickForMe.history.fixture-randomizer_spins-"))
+    XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5))
+    XCTAssertEqual(rows.count, 1)
+    let clear = app.buttons["Clear result"]
+    for _ in 0..<8 where !clear.isHittable { app.swipeUp() }
+    XCTAssertTrue(clear.isHittable)
+    clear.tap()
+    XCTAssertFalse(open.exists)
+    XCTAssertEqual(rows.count, 1)
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    app.buttons["library.more"].tap()
+    app.buttons["library.pickForMe"].tap()
+    XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5))
+    for _ in 0..<8 where !rows.firstMatch.isHittable { app.swipeUp() }
+    let history = XCTAttachment(screenshot: app.screenshot())
+    history.name = "Classic Randomizer saved history"
+    history.lifetime = .keepAlways
+    add(history)
+    rows.firstMatch.tap()
+    XCTAssertTrue(app.descendants(matching: .any)["detail.diamond"].waitForExistence(timeout: 5))
+  }
+
 }

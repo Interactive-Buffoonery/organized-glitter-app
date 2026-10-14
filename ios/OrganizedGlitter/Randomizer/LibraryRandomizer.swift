@@ -51,6 +51,7 @@ struct RandomizerSelection: Identifiable, Equatable, Sendable {
   let scope: LocalAccountScope
   let mode: RandomizerMode
   let statuses: Set<String>
+  let eligibility: RandomizerEligibility
   let candidates: [RandomizerCandidate]
   let winner: RandomizerCandidate
 }
@@ -127,18 +128,19 @@ final class LibraryRandomizer {
   @discardableResult
   func beginSelection(
     mode: RandomizerMode, statuses: Set<String>? = nil,
-    selectedIDs: Set<LocalRecordKey>? = nil, verticals: VerticalPreferences
+    selectedIDs: Set<LocalRecordKey>? = nil, verticals: VerticalPreferences,
+    eligibility: [RandomizerMode: Set<String>]? = nil
   ) -> UUID? {
     var generator = SystemRandomNumberGenerator()
     return beginSelection(mode: mode, statuses: statuses, selectedIDs: selectedIDs,
-      verticals: verticals, using: &generator)
+      verticals: verticals, eligibility: eligibility, using: &generator)
   }
 
   @discardableResult
   func beginSelection(
     mode: RandomizerMode, statuses: Set<String>? = nil,
     selectedIDs: Set<LocalRecordKey>? = nil, verticals: VerticalPreferences,
-    using generator: inout some RandomNumberGenerator
+    eligibility: [RandomizerMode: Set<String>]? = nil, using generator: inout some RandomNumberGenerator
   ) -> UUID? {
     guard library.isActive, !isSelecting, !Task.isCancelled else { return nil }
     let statuses = (statuses ?? mode.defaultStatuses).intersection(mode.eligibleStatuses)
@@ -152,7 +154,8 @@ final class LibraryRandomizer {
       return nil
     }
     let selection = RandomizerSelection(id: UUID(), scope: library.scope, mode: mode,
-      statuses: statuses, candidates: candidates, winner: winner)
+      statuses: statuses, eligibility: RandomizerEligibility(mode: mode, statuses: statuses, configured: eligibility),
+      candidates: candidates, winner: winner)
     self.selection = selection
     wheelSpin = RandomizerWheelSpin(selectionID: selection.id, startRotation: wheelRotation,
       endRotation: endRotation, winnerIndex: winnerIndex, count: candidates.count)
@@ -161,9 +164,12 @@ final class LibraryRandomizer {
     return selection.id
   }
 
-  func finishSelection(id: UUID) {
-    guard selection?.id == id, library.isActive, !Task.isCancelled else { return }
+  @discardableResult
+  func finishSelection(id: UUID) -> RandomizerSelection? {
+    guard isSelecting, let selection, selection.id == id,
+      library.isActive, !Task.isCancelled else { return nil }
     isSelecting = false
+    return selection
   }
 
   func reset() {

@@ -3,9 +3,20 @@ import Foundation
 // Existing web copy at 62b1293; native adoption remains pending Sarah's review.
 enum RandomizerPageCopy {
   static let craft = "Craft"
-  static let wheelHeading = "What will you work on next?"
+  static let connection = "Connect to the internet to download your library."
+  static let historyTitle = "Spin History"
+  static let latest = "Latest"
+  static let options = "options"
+  static let noSpins = "No spins yet"
+  static let loading = "Loading…"
+  static let historyLoadFailed = "Couldn’t load spin history."
+  static let retry = "Retry"
+  static let refreshHistory = "Refresh history"
+  static let moreHistory = "Show More History"
+  static let spinNotSent = "Not saved to history. Connect to the internet to save spins."
+  static let spinRejected = "Couldn’t save this spin to history."
+  static let spinUnknown = "Couldn’t confirm whether this spin was saved."
   static let title = "Randomizer"
-  static let introduction = "Pick some or all of your in-progress projects and spin the wheel!"
   static let searchNotice = "Search only changes the list. All selected items stay on the wheel."
   static let noSearchMatches = "No items match your search."
   static func searchTitle(_ mode: RandomizerMode) -> String { "Search \(selectorTitle(mode).lowercased())" }
