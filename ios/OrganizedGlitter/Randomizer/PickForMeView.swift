@@ -281,6 +281,7 @@ struct PickForMeView: View {
     LazyVStack(alignment: .leading, spacing: Theme.Spacing.md) {
       VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
         Text(RandomizerPageCopy.statusTitle(mode)).font(.karla(.headline))
+          .accessibilityAddTraits(.isHeader)
         ForEach(mode.eligibleStatuses, id: \.self) { status in
           Toggle(isOn: Binding(get: { selectedStatuses.contains(status) }, set: { included in
             if included { statuses[mode, default: []].insert(status) }
@@ -298,6 +299,7 @@ struct PickForMeView: View {
       }
       LazyVStack(alignment: .leading, spacing: Theme.Spacing.sm) {
         Text(RandomizerPageCopy.selectorTitle(mode)).font(.karla(.headline))
+          .accessibilityAddTraits(.isHeader)
         Text("\(selected.count) of \(candidates.count) selected")
           .font(.karla(.subheadline))
         TextField(RandomizerPageCopy.searchTitle(mode), text: $search)
@@ -364,6 +366,7 @@ struct PickForMeView: View {
   private func result(_ selection: RandomizerSelection) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
       Text(RandomizerPageCopy.selectedTitle(selection.mode)).font(.karla(.headline))
+        .accessibilityAddTraits(.isHeader)
       LibraryGalleryCard(item: selection.winner.item,
         imageURL: protectedFiles?.artworkURL(for: selection.winner.item, thumb: ArtworkThumb.gallery),
         mode: .covers, showsStatus: false)
@@ -397,6 +400,7 @@ struct PickForMeView: View {
   private var historyPanel: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
       Text(RandomizerPageCopy.historyTitle).font(.karla(.headline))
+        .accessibilityAddTraits(.isHeader)
       ForEach(model.library.spinHistoryFailures(excluding: model.selection?.id)) { failure in
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
           Text(failure.title).font(.karla(.headline))
