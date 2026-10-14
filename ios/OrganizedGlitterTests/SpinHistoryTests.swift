@@ -97,6 +97,40 @@ struct SpinHistoryTests {
     #expect(HistoryProtocol.postCount == 1)
   }
 
+  @Test func refreshableAuthenticationNeverReplaysSpinPost() async throws {
+    let library = try await makeLibrary()
+    let selection = try draw(library)
+    _ = try await library.store.queueEdit(scope: library.scope, key: selection.winner.id,
+      patch: ["title": .string("Pending title")])
+    let operation = try #require(await library.store.pendingOperations(scope: library.scope).first)
+    var recovered = false
+    library.onAuthenticationFailure = {
+      await library.waitForWrites()
+      recovered = true
+    }
+    HistoryProtocol.postStatus = 401
+    HistoryProtocol.refreshStatus = 200
+    #expect(await library.recordSpin(selection: selection, completedAt: .now) == .rejected)
+    #expect(recovered)
+    #expect(HistoryProtocol.postCount == 1)
+    #expect(HistoryProtocol.refreshCount == 0)
+    #expect(await library.recordSpin(selection: selection, completedAt: .now) == .rejected)
+    #expect(HistoryProtocol.postCount == 1)
+    #expect(try await library.store.pendingOperations(scope: library.scope).first?.id == operation.id)
+  }
+
+  @Test func historyGetStillRefreshesExpiredAuthentication() async throws {
+    let library = try await makeLibrary()
+    HistoryProtocol.getStatus = 401
+    HistoryProtocol.refreshStatus = 200
+    await library.loadSpinHistory()
+    #expect(library.spinHistoryLoadState == .loaded)
+    #expect(library.spinHistory.map(\.id) == ["spin"])
+    #expect(HistoryProtocol.refreshCount == 1)
+    #expect(HistoryProtocol.getURLs.count == 2)
+    #expect(HistoryProtocol.postCount == 0)
+  }
+
   @Test func disabledCraftKeepsHistoryButDisablesNavigation() async throws {
     let library = try await makeLibrary()
     await library.loadSpinHistory()
@@ -384,6 +418,8 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
   private final class State: @unchecked Sendable {
     let lock = NSLock()
     var postCount = 0
+    var refreshCount = 0
+    var refreshStatus = 401
     var postStatus = 200
     var getStatus = 200
     var getURLs: [URL] = []
@@ -393,6 +429,11 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
     var pending: [(HistoryProtocol, Int, String)] = []
   }
   private static let state = State()
+  static var refreshCount: Int { state.lock.withLock { state.refreshCount } }
+  static var refreshStatus: Int {
+    get { state.lock.withLock { state.refreshStatus } }
+    set { state.lock.withLock { state.refreshStatus = newValue } }
+  }
   static var postCount: Int { state.lock.withLock { state.postCount } }
   static var postStatus: Int {
     get { state.lock.withLock { state.postStatus } }
@@ -423,6 +464,8 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
     state.lock.withLock {
       state.getBody = nil
       state.postCount = 0
+      state.refreshCount = 0
+      state.refreshStatus = 401
       state.holdReads = false
       state.holdPosts = false
       state.pending = []
@@ -440,7 +483,10 @@ private final class HistoryProtocol: URLProtocol, @unchecked Sendable {
       if request.url!.path.hasSuffix("auth-with-password") {
         return (200, #"{"token":"fixture-token","record":{"id":"feature-user","verified":true}}"#, false)
       } else if request.url!.path.hasSuffix("auth-refresh") {
-        return (401, "{}", false)
+        Self.state.refreshCount += 1
+        if Self.state.refreshStatus == 200 { Self.state.getStatus = 200 }
+        return (Self.state.refreshStatus,
+          #"{"token":"refreshed-token","record":{"id":"feature-user","verified":true}}"#, false)
       } else if request.httpMethod == "POST" {
         Self.state.postCount += 1
         return (Self.state.postStatus, SpinHistoryTests.row, Self.state.holdPosts)

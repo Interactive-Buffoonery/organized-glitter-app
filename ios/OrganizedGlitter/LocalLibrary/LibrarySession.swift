@@ -406,7 +406,8 @@ final class LibrarySession {
         return .notSent
       }
       dispatched = true
-      let saved: SpinHistoryRecord = try await client.create(collection: "randomizer_spins", body: body)
+      let saved: SpinHistoryRecord = try await client.create(collection: "randomizer_spins", body: body,
+        canRefreshAuthentication: false)
       guard active else { return .unknown }
       guard saved.user == userID else { throw APIError.decoding }
       historyRevision &+= 1
