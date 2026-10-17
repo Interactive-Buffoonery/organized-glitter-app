@@ -64,7 +64,7 @@ extension LibrarySession {
   ) -> [RandomizerCandidate] {
     guard isActive, mode.isEnabled(for: verticals) else { return [] }
     let statuses = (statuses ?? mode.defaultStatuses).intersection(mode.eligibleStatuses)
-    return randomizerAccessibleItems(mode: mode).filter {
+    return ownedRandomizerCandidates(mode: mode).filter {
       statuses.contains($0.item.status) && (selectedIDs?.contains($0.id) ?? true)
     }
   }
@@ -74,10 +74,6 @@ extension LibrarySession {
   ) -> LibraryItem? {
     guard isActive, mode.isEnabled(for: verticals) else { return nil }
     return ownedRandomizerItem(id: id, mode: mode)
-  }
-
-  private func randomizerAccessibleItems(mode: RandomizerMode) -> [RandomizerCandidate] {
-    RandomizerCandidate.owned(entries: entries, userID: userID, mode: mode)
   }
 }
 

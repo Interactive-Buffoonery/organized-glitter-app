@@ -35,6 +35,7 @@ final class LibrarySession {
     didSet { rebuildShelfCounts() }
   }
   private var randomizerItemsByID: [LocalRecordKey: LibraryItem] = [:]
+  private var randomizerCandidatesByMode: [RandomizerMode: [RandomizerCandidate]] = [:]
   private var bookTitles: [String: String] = [:]
   private var countsBySection: [LibrarySection: [String: Int]] = [:]
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
@@ -85,16 +86,19 @@ final class LibrarySession {
   }
 
   private func rebuildRandomizerItems() {
-    let accessible = entries.filter { $0.conflict != .deletedOnServer }.map(\.item)
-    var titles: [String: String] = [:]
-    for case .book(let book) in accessible where book.user == userID {
-      titles[book.id] = book.title
-    }
     var owned: [LocalRecordKey: LibraryItem] = [:]
-    for item in accessible where item.belongs(to: item.section, userID: userID, bookTitles: titles) {
-      if owned[item.localRecordKey] == nil { owned[item.localRecordKey] = item }
+    var candidatesByMode: [RandomizerMode: [RandomizerCandidate]] = [:]
+    for mode in RandomizerMode.allCases {
+      let candidates = RandomizerCandidate.owned(entries: entries, userID: userID, mode: mode)
+      candidatesByMode[mode] = candidates
+      for candidate in candidates { owned[candidate.id] = candidate.item }
     }
     randomizerItemsByID = owned
+    randomizerCandidatesByMode = candidatesByMode
+  }
+
+  func ownedRandomizerCandidates(mode: RandomizerMode) -> [RandomizerCandidate] {
+    randomizerCandidatesByMode[mode] ?? []
   }
 
   func ownedRandomizerItem(id: LocalRecordKey, mode: RandomizerMode) -> LibraryItem? {
@@ -500,6 +504,7 @@ final class LibrarySession {
     spinHistoryTotal = 0
     items = []
     randomizerItemsByID = [:]
+    randomizerCandidatesByMode = [:]
     entries = []
     progressNotes = []
     coloringPageProgressNotes = []

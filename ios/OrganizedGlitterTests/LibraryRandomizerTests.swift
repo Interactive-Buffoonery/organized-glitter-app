@@ -185,6 +185,41 @@ struct LibraryRandomizerTests {
     #expect(secondModel.selection?.winner.title == "Other account")
   }
 
+  @Test func candidateProjectionRefreshesAfterLocalWritesAndReloads() async throws {
+    let library = try localFeatureLibrary()
+    try await seed([
+      .diamond(featureProject("project", title: "Original", status: "progress")),
+      .book(featureBook("book", title: "Original book", status: "in_progress")),
+      .page(featurePage("page", book: "book", number: 1, status: "in_progress")),
+    ], library: library)
+    #expect(library.randomizerCandidates(mode: .diamond, verticals: verticals).first?.title
+      == "Original")
+    #expect(library.randomizerCandidates(mode: .page, verticals: verticals).first?.bookTitle
+      == "Original book")
+
+    let _: DiamondProjectRecord = try await library.update(collection: "projects",
+      id: "project", body: ["title": "Edited", "status": "kitted"])
+    #expect(library.randomizerCandidates(mode: .diamond, verticals: verticals).isEmpty)
+    #expect(library.randomizerCandidates(mode: .diamond, statuses: ["kitted"],
+      verticals: verticals).first?.title == "Edited")
+    #expect(library.randomizerTarget(id: LocalRecordKey(kind: .project, id: "project"),
+      mode: .diamond, verticals: verticals)?.title == "Edited")
+
+    let _: ColoringBookRecord = try await library.update(collection: "coloring_books",
+      id: "book", body: ["title": "Renamed book"])
+    #expect(library.randomizerCandidates(mode: .page, verticals: verticals).first?.bookTitle
+      == "Renamed book")
+    try await library.store.removeConfirmed(scope: library.scope,
+      key: LocalRecordKey(kind: .page, id: "page"))
+    try await library.loadLocal()
+    #expect(library.randomizerCandidates(mode: .page, verticals: verticals).isEmpty)
+    try await library.close(removingData: false)
+    for mode in RandomizerMode.allCases {
+      #expect(library.randomizerCandidates(mode: mode, verticals: verticals).isEmpty)
+      #expect(library.ownedRandomizerCandidates(mode: mode).isEmpty)
+    }
+  }
+
   @Test func cancelledWorkCannotStartOrFinishSelection() async throws {
     let library = try localFeatureLibrary()
     try await seed([.diamond(featureProject("only", title: "Only", status: "progress"))],
