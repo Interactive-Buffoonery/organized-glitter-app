@@ -112,6 +112,10 @@ struct SpinHistoryRecord: Decodable, Equatable, Identifiable, Sendable {
   private var knownMetadata: ReadMetadata? {
     guard let metadata, metadata.version == 1,
       metadata.mode == nil || RandomizerMode(spinWireValue: metadata.mode!) != nil else { return nil }
+    if let target = metadata.target {
+      guard let raw = target.targetType, let targetMode = RandomizerMode(spinTargetType: raw),
+        metadata.mode == nil || RandomizerMode(spinWireValue: metadata.mode!) == targetMode else { return nil }
+    }
     return metadata
   }
 

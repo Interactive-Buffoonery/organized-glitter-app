@@ -51,12 +51,14 @@ struct SpinHistoryTests {
   @Test func malformedMetadataKeepsLegacyFallbackAndSafeNavigation() async throws {
     let library = try await makeLibrary()
     for metadata in ["null", "42", #"{"version":2,"target":{"id":"foreign","href":"https://example.invalid"}}"#,
-      #"{"version":1,"mode":"coloring-book","target":{"id":"project","targetType":"diamond_project"}}"#] {
+      #"{"version":1,"mode":"coloring-book","target":{"id":"project","targetType":"diamond_project","title":"Contradictory title","subtitle":"Contradictory subtitle"},"selectedTargetIds":["one","two"]}"#] {
       let data = Data(Self.row.dropLast().appending(",\"metadata\":\(metadata)}").utf8)
       let row = try JSONDecoder().decode(SpinHistoryRecord.self, from: data)
       #expect(row.title == "Project")
-      if row.mode == .diamond { #expect(library.spinHistoryTarget(row, verticals: verticals)?.recordID == "project") }
-      else { #expect(library.spinHistoryTarget(row, verticals: verticals) == nil) }
+      #expect(row.mode == .diamond)
+      #expect(row.subtitle == "")
+      #expect(row.optionCount == 1)
+      #expect(library.spinHistoryTarget(row, verticals: verticals)?.recordID == "project")
     }
     let foreign = try JSONDecoder().decode(SpinHistoryRecord.self,
       from: Data(Self.row.replacingOccurrences(of: "feature-user", with: "other").utf8))
