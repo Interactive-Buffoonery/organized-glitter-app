@@ -395,7 +395,7 @@ final class LibrarySession {
   private func captureOnlineFailure(
     _ error: Error, operation: AnalyticsOperation, collection: String
   ) {
-    guard active else { return }
+    guard active, !Task.isCancelled else { return }
     analytics?.operationFailed(operation, collection: collection, error: error, accountID: userID)
   }
 

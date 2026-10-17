@@ -293,8 +293,10 @@ struct AnalyticsBehaviorTests {
     try await fixture.library.close(removingData: false)
   }
 
-  @Test(arguments: ["projects", "progress_notes"])
-  func failedPreparationCapturesOnceWithoutSendingWrite(collection: String) async throws {
+  @Test(arguments: ["projects", "progress_notes"], [false, true])
+  func failedPreparationCapturesOnceUnlessCancelled(
+    collection: String, cancelled: Bool
+  ) async throws {
     let fixture = try await Fixture()
     defer { fixture.analytics.close() }
     let gate = LoadGate()
@@ -315,6 +317,7 @@ struct AnalyticsBehaviorTests {
       }
     }
     while !started { await Task.yield() }
+    if cancelled { write.cancel() }
     gate.resumeAll()
     do { try await refresh.value; Issue.record("Expected failed snapshot") }
     catch APIError.server {}
@@ -322,6 +325,12 @@ struct AnalyticsBehaviorTests {
     catch APIError.server {}
 
     #expect(BehaviorProtocol.writeCount == 0)
+    if cancelled {
+      #expect(fixture.events.names.isEmpty)
+      await fixture.library.waitForWrites()
+      try await fixture.library.close(removingData: false)
+      return
+    }
     #expect(fixture.events.names == [.operationFailed])
     #expect(fixture.events.properties.first?["operation"] as? String
       == (collection == "projects" ? "create_record" : "add_note"))
