@@ -19,6 +19,7 @@ struct PickForMeView: View {
   @State private var logEditor: LibraryItemDetailModel?
   @State private var isPageVisible = false
   @State private var failureAnnouncements = SpinHistoryFailureAnnouncements()
+  @State private var announcedNoSearchMatches = false
   @State private var wheelDisplayID = UUID()
   @State private var tickTask: Task<Void, Never>?
 
@@ -42,6 +43,8 @@ struct PickForMeView: View {
     let candidates = eligibleCandidates
     let selected = candidates.filter { itemSelection.ids?.contains($0.id) ?? true }
     let searched = searchedCandidates(in: candidates)
+    let searchFeedback = SearchFeedback(query: search, hasMatches: !searched.isEmpty,
+      isVisible: isPageVisible, isActive: model.library.isActive)
     let wheelCandidates = model.selection?.candidates ?? selected
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -93,7 +96,11 @@ struct PickForMeView: View {
     }
     .task { await model.library.loadSpinHistory() }
     .refreshable { await model.library.loadSpinHistory() }
-    .onAppear { isPageVisible = true }
+    .task(id: searchFeedback) { await announceSearchFeedback(searchFeedback) }
+    .onAppear {
+      isPageVisible = true
+      announceSpinHistoryFailures()
+    }
     .onDisappear {
       isPageVisible = false
       if model.isSelecting { resetSelection() }
@@ -103,11 +110,7 @@ struct PickForMeView: View {
         AccessibilityNotification.Announcement(RandomizerPageCopy.historyLoadFailed).post()
       }
     }
-    .onChange(of: model.library.spinHistoryFailures()) { _, failures in
-      for message in failureAnnouncements.messages(for: failures, isPageVisible: isPageVisible) {
-        AccessibilityNotification.Announcement(message).post()
-      }
-    }
+    .onChange(of: model.library.spinHistoryFailures()) { _, _ in announceSpinHistoryFailures() }
     .onChange(of: mode) { _, _ in search = ""; itemSelection.selectAll(); resetSelection() }
     .onChange(of: selectedStatuses) { _, _ in
       itemSelection.reconcile(candidates: candidates)
@@ -191,6 +194,34 @@ struct PickForMeView: View {
   }
 
   private var selectedStatuses: Set<String> { statuses[mode] ?? mode.defaultStatuses }
+
+  private func announceSpinHistoryFailures() {
+    for message in failureAnnouncements.messages(
+      for: model.library.spinHistoryFailures(), isPageVisible: isPageVisible) {
+      AccessibilityNotification.Announcement(message).post()
+    }
+  }
+
+  private func announceSearchFeedback(_ feedback: SearchFeedback) async {
+    guard feedback.isVisible, feedback.isActive, !feedback.hasMatches,
+      !feedback.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      announcedNoSearchMatches = false
+      return
+    }
+    guard !announcedNoSearchMatches else { return }
+    do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
+    guard !Task.isCancelled, isPageVisible, model.library.isActive,
+      UIAccessibility.isVoiceOverRunning else { return }
+    announcedNoSearchMatches = true
+    AccessibilityNotification.Announcement(RandomizerPageCopy.noSearchMatches).post()
+  }
+
+  private struct SearchFeedback: Hashable {
+    let query: String
+    let hasMatches: Bool
+    let isVisible: Bool
+    let isActive: Bool
+  }
 
   private var eligibleCandidates: [RandomizerCandidate] {
     model.library.randomizerCandidates(mode: mode, statuses: selectedStatuses, verticals: verticals)
