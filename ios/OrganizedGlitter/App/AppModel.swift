@@ -220,7 +220,7 @@ final class AppModel {
     try await library?.close(removingData: false)
     await RemoteArtworkLoader.shared.purgeMemoryCache()
     guard generation == sessionGeneration else { throw APIError.cancelled }
-    let next = LibrarySession(client: client, userID: user.id, store: localStore)
+    let next = LibrarySession(client: client, userID: user.id, store: localStore, analytics: analytics)
     next.onAuthenticationFailure = { [weak self] in await self?.expireSession() }
     try await next.loadLocal()
     guard generation == sessionGeneration else { throw APIError.cancelled }
@@ -270,6 +270,7 @@ final class AppModel {
       try await openLibrary(for: session.user, generation: generation)
       guard generation == sessionGeneration else { return }
       setSignedInUser(session.user, analyticsConsentVerified: true)
+      analytics.loginSucceeded(provider: "email")
       applyThemePreference(from: session.user)
     } catch APIError.cancelled {
       return
@@ -403,6 +404,7 @@ final class AppModel {
           try await openLibrary(for: session.user, generation: attempt.generation)
           guard attempt.generation == sessionGeneration else { return }
           setSignedInUser(session.user, analyticsConsentVerified: true)
+          analytics.loginSucceeded(provider: "apple")
           applyThemePreference(from: session.user)
         } catch is CancellationError {
           return
@@ -494,6 +496,7 @@ final class AppModel {
         try await openLibrary(for: session.user, generation: generation)
         guard generation == sessionGeneration else { return }
         setSignedInUser(session.user, analyticsConsentVerified: true)
+        analytics.loginSucceeded(provider: provider.rawValue)
         applyThemePreference(from: session.user)
       } catch is CancellationError {
         return
@@ -555,6 +558,7 @@ final class AppModel {
 
   func signOut(discardPending: Bool = false) {
     guard !isSigningOut else { return }
+    if !requiresDiscardConfirmation { analytics.capture(.signOutRequested) }
     isSigningOut = true
     sessionGeneration &+= 1
     library?.pauseWrites()

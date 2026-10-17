@@ -207,7 +207,7 @@ struct LibraryView: View {
   private var craftPicker: some View {
     let selection = Binding<LibrarySection>(
       get: { model.section == .pages ? .books : model.section },
-      set: { model.select($0) }
+      set: { model.select($0, userInitiated: true) }
     )
     return Group {
       if dynamicTypeSize.isAccessibilitySize {

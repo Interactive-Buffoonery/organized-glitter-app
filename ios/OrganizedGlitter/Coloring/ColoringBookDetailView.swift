@@ -136,7 +136,7 @@ struct ColoringBookDetailView: View {
       .frame(width: horizontalSizeClass == .regular ? 240 : 184)
       .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
       .padding(.bottom, 8)
-      .photoViewer(opening: coverPhoto)
+      .photoViewer(opening: coverPhoto, library: model.library, surface: .coloringBookCover)
       .accessibilityIdentifier("detail.hero")
 
       DetailInlineTitle(

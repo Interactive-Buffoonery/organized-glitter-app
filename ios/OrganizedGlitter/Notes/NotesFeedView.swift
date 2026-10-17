@@ -1,5 +1,42 @@
 import SwiftUI
 
+@MainActor
+@Observable
+final class NotesFilterModel {
+  private let library: LibrarySession
+  private(set) var craft: NotesCraft = .all
+  private(set) var year: Int?
+
+  init(library: LibrarySession) {
+    self.library = library
+  }
+
+  func selectCraft(_ craft: NotesCraft) {
+    guard self.craft != craft else { return }
+    self.craft = craft
+    year = nil
+    library.captureAnalytics(.notesCraftFilterChanged, properties: ["craft": craft.rawValue])
+  }
+
+  func selectYear(_ year: Int?) {
+    guard self.year != year else { return }
+    self.year = year
+    library.captureAnalytics(.notesYearFilterChanged, properties: ["filter_active": year != nil])
+  }
+
+  func align(to verticals: VerticalPreferences) {
+    let selected = craft.resolved(for: verticals) ?? .all
+    if selected != craft {
+      craft = selected
+      year = nil
+    }
+  }
+
+  func reconcile(availableYears: [Int]) {
+    if let year, !availableYears.contains(year) { self.year = nil }
+  }
+}
+
 /// Notes from every enabled craft, grouped by the date the maker chose.
 struct NotesFeedView: View {
   @Environment(FormDrawer.self) private var formDrawer
@@ -14,17 +51,25 @@ struct NotesFeedView: View {
   let verticals: VerticalPreferences
   let onAddNote: () -> Void
 
-  @State private var craft: NotesCraft = .all
-  @State private var year: Int?
+  @State private var filters: NotesFilterModel
   @State private var loadMessage: String?
   @State private var allEntries: [NotesFeedEntry] = []
   @State private var sections: [NotesFeedSection] = []
   @State private var years: [Int] = []
   @State private var photos: [DetailPhoto] = []
 
+  init(
+    library: LibrarySession, verticals: VerticalPreferences, onAddNote: @escaping () -> Void
+  ) {
+    self.library = library
+    self.verticals = verticals
+    self.onAddNote = onAddNote
+    _filters = State(initialValue: NotesFilterModel(library: library))
+  }
+
   var body: some View {
     let availableCrafts = NotesCraft.available(for: verticals)
-    let visibleCraft = craft.resolved(for: verticals)
+    let visibleCraft = filters.craft.resolved(for: verticals)
 
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 20) {
@@ -122,7 +167,7 @@ struct NotesFeedView: View {
       .padding(.vertical, 12)
       .frame(maxWidth: .infinity)
     }
-    .photoViewer(photos)
+    .photoViewer(photos, library: library, surface: .notesFeed)
     .background { theme.themedBackground.ignoresSafeArea() }
     .refreshable { await refresh() }
     .navigationTitle("Notes")
@@ -132,15 +177,17 @@ struct NotesFeedView: View {
       if years.count > 1 {
         ToolbarItem(placement: .topBarTrailing) {
           Menu {
-            Picker("Year", selection: $year) {
+            Picker("Year", selection: Binding(
+              get: { filters.year }, set: { filters.selectYear($0) }
+            )) {
               Text("All years").tag(Int?.none)
               ForEach(years, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
             }
           } label: {
-            Label(year.map(String.init) ?? "All years", systemImage: "calendar")
+            Label(filters.year.map(String.init) ?? "All years", systemImage: "calendar")
           }
           .accessibilityLabel("Filter notes by year")
-          .accessibilityValue(year.map(String.init) ?? "All years")
+          .accessibilityValue(filters.year.map(String.init) ?? "All years")
           .accessibilityIdentifier("notes.year")
         }
       }
@@ -151,14 +198,10 @@ struct NotesFeedView: View {
           .accessibilityIdentifier("notes.add")
       }
     }
-    .onChange(of: craft) { _, _ in year = nil; updateVisible() }
-    .onChange(of: year) { _, _ in updateVisible() }
+    .onChange(of: filters.craft) { _, _ in updateVisible() }
+    .onChange(of: filters.year) { _, _ in updateVisible() }
     .onChange(of: verticals) { _, _ in
-      let selected = craft.resolved(for: verticals) ?? .all
-      if selected != craft {
-        craft = selected
-        year = nil
-      }
+      filters.align(to: verticals)
       updateVisible()
     }
     .onChange(of: protectedFiles?.token) { _, _ in updatePhotos() }
@@ -182,7 +225,9 @@ struct NotesFeedView: View {
   }
 
   private func craftPicker(_ crafts: [NotesCraft]) -> some View {
-    Picker("Craft", selection: $craft) {
+    Picker("Craft", selection: Binding(
+      get: { filters.craft }, set: { filters.selectCraft($0) }
+    )) {
       ForEach(crafts) { Text($0.title).tag($0) }
     }
     .accessibilityLabel("Filter notes by craft")
@@ -191,11 +236,11 @@ struct NotesFeedView: View {
 
   private func updateVisible() {
     let craftEntries = NotesFeed.filter(
-      allEntries, craft: craft, year: nil, verticals: verticals)
+      allEntries, craft: filters.craft, year: nil, verticals: verticals)
     let availableYears = NotesFeed.years(in: craftEntries)
     years = availableYears
-    let selectedYear = year.flatMap { availableYears.contains($0) ? $0 : nil }
-    if selectedYear != year { year = selectedYear }
+    filters.reconcile(availableYears: availableYears)
+    let selectedYear = filters.year
     let visibleEntries = craftEntries.filter { selectedYear == nil || $0.year == selectedYear }
     sections = NotesFeed.months(visibleEntries).map {
       NotesFeedSection(id: $0.id, title: $0.title(locale: locale), entries: $0.entries)
@@ -246,9 +291,9 @@ struct NotesFeedView: View {
     return ContentUnavailableView {
       Label("Start logging progress", systemImage: "note.text")
     } description: {
-      Text(year.map { "No notes from \($0)." } ?? description)
+      Text(filters.year.map { "No notes from \($0)." } ?? description)
     } actions: {
-      if year == nil, !NotesCraft.available(for: verticals).isEmpty {
+      if filters.year == nil, !NotesCraft.available(for: verticals).isEmpty {
         Button("Add a progress note", action: onAddNote)
           .disabledWhileFormPresented(formDrawer)
           .buttonStyle(.borderedProminent)

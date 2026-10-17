@@ -1,6 +1,15 @@
 import SwiftUI
 import UIKit
 
+enum AnalyticsPhotoSurface: String, CaseIterable {
+  case projectCover = "project_cover"
+  case coloringBookCover = "coloring_book_cover"
+  case coloringPageCover = "coloring_page_cover"
+  case coloringPageGallery = "coloring_page_gallery"
+  case progressNotes = "progress_notes"
+  case notesFeed = "notes_feed"
+}
+
 struct PhotoViewerAction {
   let namespace: Namespace.ID
   let open: @MainActor (DetailPhoto.ID) -> Void
@@ -13,8 +22,10 @@ extension EnvironmentValues {
 extension View {
   /// Presents `photos` full screen. `DetailPhotoTile`s and `photoViewerSource` views
   /// inside this view open it at their photo and zoom from it.
-  func photoViewer(_ photos: [DetailPhoto]) -> some View {
-    modifier(PhotoViewerPresenter(photos: photos))
+  func photoViewer(
+    _ photos: [DetailPhoto], library: LibrarySession, surface: AnalyticsPhotoSurface
+  ) -> some View {
+    modifier(PhotoViewerPresenter(photos: photos, library: library, surface: surface))
   }
 
   /// Makes this view open the enclosing `photoViewer` at `id`. No-op when `id` is nil
@@ -24,8 +35,11 @@ extension View {
   }
 
   /// A single tappable photo, such as a cover, that opens full screen.
-  func photoViewer(opening photo: DetailPhoto?) -> some View {
-    photoViewerSource(photo?.id).photoViewer(photo.map { [$0] } ?? [])
+  func photoViewer(
+    opening photo: DetailPhoto?, library: LibrarySession, surface: AnalyticsPhotoSurface
+  ) -> some View {
+    photoViewerSource(photo?.id)
+      .photoViewer(photo.map { [$0] } ?? [], library: library, surface: surface)
   }
 }
 
@@ -34,6 +48,8 @@ private struct PhotoViewerPresenter: ViewModifier {
   @Namespace private var namespace
 
   let photos: [DetailPhoto]
+  let library: LibrarySession
+  let surface: AnalyticsPhotoSurface
 
   @State private var isPresented = false
   @State private var currentID: DetailPhoto.ID?
@@ -59,6 +75,7 @@ private struct PhotoViewerPresenter: ViewModifier {
 
   private func open(_ id: DetailPhoto.ID) {
     guard photos.contains(where: { $0.id == id }) else { return }
+    library.captureAnalytics(.photoViewed, properties: ["surface": surface.rawValue])
     currentID = id
     isPresented = true
   }
