@@ -14,8 +14,10 @@ struct LibrarySyncStatusView: View {
           .frame(maxWidth: .infinity, alignment: .leading)
         Button(actionTitle) {
           if library.conflicts.isEmpty {
+            library.captureAnalytics(.syncRequested, properties: ["pending_count": min(10_000, library.pendingCount)])
             Task { try? await library.refresh(force: true) }
           } else {
+            library.captureAnalytics(.conflictReviewOpened, properties: ["pending_count": min(10_000, library.pendingCount)])
             formDrawer.present(detents: [.medium, .large]) {
               NavigationStack { LibraryConflictView(library: library) }
             }

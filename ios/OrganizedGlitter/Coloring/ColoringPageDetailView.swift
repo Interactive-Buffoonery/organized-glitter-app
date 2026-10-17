@@ -33,7 +33,7 @@ struct ColoringPageDetailView: View {
             loadedAccessibilityLabel: "Page artwork"
           )
           .frame(maxWidth: .infinity, maxHeight: heroHeight)
-          .photoViewer(opening: coverPhoto)
+          .photoViewer(opening: coverPhoto, library: model.library, surface: .coloringPageCover)
           .accessibilityIdentifier("detail.hero")
 
           VStack(alignment: .leading, spacing: 6) {
@@ -205,7 +205,7 @@ struct ColoringPageDetailView: View {
         theme.themedBackground.ignoresSafeArea()
       }
       .refreshable { await model.refresh() }
-      .photoViewer(photos)
+      .photoViewer(photos, library: model.library, surface: .coloringPageGallery)
       .task(id: selectedItem) {
         await prepareSelection()
       }

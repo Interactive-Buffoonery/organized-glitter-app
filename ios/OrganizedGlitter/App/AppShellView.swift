@@ -8,6 +8,41 @@ enum AppTab: Hashable {
   case shelf(LibrarySection, status: String)
   case notes
   case search
+
+  var librarySection: LibrarySection? {
+    switch self {
+    case .craft(let section), .shelf(let section, _): section
+    case .home, .library, .notes, .search: nil
+    }
+  }
+
+  func sidebarAnalytics(from previous: AppTab) -> [SidebarAnalyticsAction] {
+    guard self != previous, let section = librarySection else { return [] }
+    var actions: [SidebarAnalyticsAction] = []
+    if previous.librarySection != section {
+      actions.append(SidebarAnalyticsAction(event: .craftChanged,
+        recordType: section.analyticsCollection))
+    }
+    switch self {
+    case .shelf:
+      actions.append(SidebarAnalyticsAction(event: section.filterAnalyticsEvent,
+        recordType: section.analyticsCollection, filterActive: true))
+    case .craft:
+      if case .shelf(let previousSection, _) = previous, previousSection == section {
+        actions.append(SidebarAnalyticsAction(event: section.filterAnalyticsEvent,
+          recordType: section.analyticsCollection, filterActive: false))
+      }
+    case .home, .library, .notes, .search:
+      break
+    }
+    return actions
+  }
+}
+
+struct SidebarAnalyticsAction: Equatable {
+  let event: AnalyticsEvent
+  let recordType: String
+  var filterActive: Bool? = nil
 }
 
 struct AppShellView: View {
@@ -52,7 +87,8 @@ struct AppShellView: View {
         user: user,
         onUserRefresh: model.replaceSignedInUser,
         onAnalyticsConsentUnknown: model.pauseAnalyticsUntilAccountRefresh,
-        onAnalyticsLocalPauseChanged: { model.setAnalyticsLocallyPaused($0, accountID: user.id) }
+        onAnalyticsLocalPauseChanged: { model.setAnalyticsLocallyPaused($0, accountID: user.id) },
+        analytics: model.analytics
       ))
   }
 
@@ -61,7 +97,7 @@ struct AppShellView: View {
   }
 
   var body: some View {
-    TabView(selection: $selectedTab) {
+    TabView(selection: tabSelection) {
       Tab("Home", systemImage: "house", value: .home) {
         tabContent(NavigationStack(path: $homePath) {
           OverviewView(
@@ -162,6 +198,19 @@ struct AppShellView: View {
       }
     }
     .tabViewStyle(.sidebarAdaptable)
+    .onChange(of: selectedTab, initial: true) { _, tab in
+      let screen: String = switch tab {
+      case .home: "home"
+      case .library, .craft: "library"
+      case .shelf: "shelf"
+      case .notes: "notes"
+      case .search: "search"
+      }
+      model.analytics.capture(.screenViewed, properties: ["screen": screen])
+    }
+    .onChange(of: isShowingAccount) { _, presented in
+      if presented { model.analytics.capture(.screenViewed, properties: ["screen": "account"]) }
+    }
     .formDrawerHost(formDrawer)
     .onChange(of: sizeClass) { _, sizeClass in
       switch (sizeClass, selectedTab) {
@@ -225,6 +274,19 @@ struct AppShellView: View {
       }
       .environment(\.connectionAvailable, connectivity.connectionAvailable)
     }
+  }
+
+  private var tabSelection: Binding<AppTab> {
+    Binding(
+      get: { selectedTab },
+      set: { selection in
+        for action in selection.sidebarAnalytics(from: selectedTab) {
+          var properties: [String: Any] = ["record_type": action.recordType]
+          if let filterActive = action.filterActive { properties["filter_active"] = filterActive }
+          library.captureAnalytics(action.event, properties: properties)
+        }
+        selectedTab = selection
+      })
   }
 
   private func presentNoteTargetPicker() {

@@ -87,6 +87,41 @@ struct NativeAnalyticsTests {
     })
   }
 
+  @Test func actionPropertiesAreFilteredInActualBatches() async throws {
+    let fixture = makeFixture()
+    defer { fixture.close() }
+    fixture.analytics.setSession(accountID: "account-a", isActive: true, analyticsEnabled: true)
+    fixture.analytics.capture(.searchPerformed, properties: [
+      "record_type": "projects", "result_count": 3, "search": "Private query",
+    ])
+    fixture.sdk.capture("library_conflict_resolved", properties: [
+      "record_type": "projects", "resolution": "keep_local", "title": "Private title",
+      "field_count": 1, "$set": ["name": "Private name"],
+    ])
+    fixture.sdk.capture("dashboard_sort_changed", properties: [
+      "sort": "Private string", "record_type": "Private string", "result_count": -1,
+    ])
+    fixture.sdk.flush()
+    let batch = try await waitForBatch(token: fixture.token)
+    let events = try #require(batch["batch"] as? [[String: Any]])
+    let search = try #require(events.first { $0["event"] as? String == "dashboard_search_performed" })
+    let properties = try #require(search["properties"] as? [String: Any])
+    #expect(properties["record_type"] as? String == "projects")
+    #expect(properties["result_count"] as? Int == 3)
+    #expect(properties["search"] == nil)
+    let conflict = try #require(events.first { $0["event"] as? String == "library_conflict_resolved" })
+    let conflictProperties = try #require(conflict["properties"] as? [String: Any])
+    #expect(conflictProperties["resolution"] as? String == "keep_local")
+    #expect(conflictProperties["title"] == nil)
+    #expect(conflictProperties["field_count"] == nil)
+    #expect(conflictProperties["$set"] == nil)
+    let sort = try #require(events.first { $0["event"] as? String == "dashboard_sort_changed" })
+    let sortProperties = try #require(sort["properties"] as? [String: Any])
+    #expect(sortProperties["sort"] == nil)
+    #expect(sortProperties["record_type"] == nil)
+    #expect(sortProperties["result_count"] == nil)
+  }
+
   @Test func optOutStopsCaptureAndNetworkUntilReenabled() async throws {
     let fixture = makeFixture()
     defer { fixture.close() }

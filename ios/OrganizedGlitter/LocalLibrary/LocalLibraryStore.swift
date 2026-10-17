@@ -148,7 +148,10 @@ actor LocalLibraryStore: ModelActor {
     try account(scope.storageKey)?.hasSnapshot == true
   }
 
-  func ingestSnapshot(_ snapshot: LocalFullSnapshot, scope: LocalAccountScope) throws {
+  @discardableResult
+  func ingestSnapshot(
+    _ snapshot: LocalFullSnapshot, scope: LocalAccountScope
+  ) throws -> [LocalConflictTransition] {
     guard snapshot.version == 1 else { throw LocalLibraryError.invalidValue }
     var incoming: [(LocalRecordKey, Data, String?)] = []
     for record in snapshot.projects {
@@ -188,6 +191,7 @@ actor LocalLibraryStore: ModelActor {
     let existingNotes = try storedNotes(scopeKey)
     let notesByKey = Dictionary(uniqueKeysWithValues: existingNotes.map { ($0.key, $0) })
     let noteKeys = Set(notes.map { "\(scopeKey)|\($0.0)" })
+    var conflictTransitions: [LocalConflictTransition] = []
     do {
       try context.transaction {
         if let account = try account(scopeKey) {
@@ -210,6 +214,15 @@ actor LocalLibraryStore: ModelActor {
         }
         for stored in existing where !incomingKeys.contains(stored.key) {
           if stored.activeData != nil {
+            if stored.conflictValue == nil,
+              let activeData = stored.activeData,
+              let active = try? decoder.decode(LocalPendingOperation.self, from: activeData)
+            {
+              let fieldCount = (try? pendingPatch(stored, active: active).count)
+                ?? active.patch.count
+              conflictTransitions.append(LocalConflictTransition(
+                key: active.key, fieldCount: fieldCount))
+            }
             stored.conflictValue = LocalConflict.deletedOnServer.rawValue
           } else {
             context.delete(stored)
@@ -236,6 +249,7 @@ actor LocalLibraryStore: ModelActor {
       context.rollback()
       throw error
     }
+    return conflictTransitions
   }
 
   func ingest(_ item: LibraryItem, scope: LocalAccountScope) throws {
@@ -441,13 +455,15 @@ actor LocalLibraryStore: ModelActor {
   @discardableResult
   func acknowledge(
     scope: LocalAccountScope, operationID: UUID, record item: LibraryItem
-  ) throws -> LocalLibraryEntry? {
+  ) throws -> LocalAcknowledgeResult {
     try verify(item, scope: scope)
     guard let stored = try record(scope.storageKey, item.localRecordKey),
       let activeData = stored.activeData
-    else { return nil }
+    else { return LocalAcknowledgeResult(entry: nil, conflictTransition: nil) }
     let active = try decoder.decode(LocalPendingOperation.self, from: activeData)
-    guard active.id == operationID else { return try entry(stored) }
+    guard active.id == operationID else {
+      return LocalAcknowledgeResult(entry: try entry(stored), conflictTransition: nil)
+    }
     let serverData = try data(for: item)
     let next = try stored.nextData.map {
       try decoder.decode([String: LocalJSONValue].self, from: $0)
@@ -467,6 +483,8 @@ actor LocalLibraryStore: ModelActor {
     stored.nextBaseData = nil
     stored.conflictValue = remaining.isEmpty || !changedSinceQueued
       ? nil : LocalConflict.changedOnServer.rawValue
+    let conflictTransition = stored.conflictValue == nil ? nil : LocalConflictTransition(
+      key: active.key, fieldCount: remaining.count)
     if remaining.isEmpty {
       stored.activeData = nil
     } else {
@@ -477,7 +495,8 @@ actor LocalLibraryStore: ModelActor {
         patch: remaining))
     }
     try commit()
-    return try entry(stored)
+    return LocalAcknowledgeResult(
+      entry: try entry(stored), conflictTransition: conflictTransition)
   }
 
   @discardableResult

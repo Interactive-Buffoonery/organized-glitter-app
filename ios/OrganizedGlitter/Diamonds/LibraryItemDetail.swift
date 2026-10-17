@@ -6,6 +6,7 @@ struct LibraryItemDetailDestination: View {
   @Environment(\.theme) private var theme
   @Environment(\.connectionAvailable) private var connectionAvailable
   @State private var model: LibraryItemDetailModel
+  @State private var capturedOpen = false
   @State private var isConfirmingDelete = false
   @State private var deleteErrorMessage: String?
   @Binding private var logEditor: LibraryItemDetailModel?
@@ -89,6 +90,11 @@ struct LibraryItemDetailDestination: View {
       }
     }
     .task {
+      if !capturedOpen {
+        capturedOpen = true
+        model.library.captureAnalytics(model.item.section == .diamonds ? .projectOpened : .recordOpened,
+          properties: ["record_type": model.item.section.analyticsCollection])
+      }
       if !model.hasLoaded {
         await model.load()
       }

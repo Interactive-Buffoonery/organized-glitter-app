@@ -85,6 +85,16 @@ struct LocalConflictChange: Sendable {
   let isComparisonOnly: Bool
 }
 
+struct LocalConflictTransition: Sendable, Equatable {
+  let key: LocalRecordKey
+  let fieldCount: Int
+}
+
+struct LocalAcknowledgeResult: Sendable {
+  let entry: LocalLibraryEntry?
+  let conflictTransition: LocalConflictTransition?
+}
+
 enum LocalLibraryError: Error, Equatable {
   case missingRecord
   case wrongAccount
