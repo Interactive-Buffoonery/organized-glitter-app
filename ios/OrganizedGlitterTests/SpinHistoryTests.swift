@@ -65,6 +65,23 @@ struct SpinHistoryTests {
     #expect(library.spinHistoryTarget(foreign, verticals: verticals) == nil)
   }
 
+  @Test(arguments: RandomizerMode.allCases)
+  func matchingMetadataPreservesDisplayAndNavigation(mode: RandomizerMode) async throws {
+    let library = try await makeLibrary()
+    let selection = try draw(library, mode: mode)
+    let encoded = try JSONEncoder().encode(SpinHistoryCreate(selection: selection,
+      userID: library.userID, completedAt: Date(timeIntervalSince1970: 0)))
+    var body = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    body["id"] = "spin"
+    let row = try JSONDecoder().decode(SpinHistoryRecord.self,
+      from: JSONSerialization.data(withJSONObject: body))
+    #expect(row.mode == mode)
+    #expect(row.title == (mode == .page ? "Book, page 3" : selection.winner.title))
+    #expect(row.target?.mode == mode)
+    #expect(library.spinHistoryTarget(row, verticals: verticals)?.recordID
+      == selection.winner.item.recordID)
+  }
+
   @Test func acknowledgedSaveDispatchesOnceAndSurvivesFailedRefresh() async throws {
     let library = try await makeLibrary()
     let selection = try draw(library)
