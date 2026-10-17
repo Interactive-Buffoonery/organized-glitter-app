@@ -87,10 +87,8 @@ final class LibrarySession {
 
   private func rebuildRandomizerItems() {
     var owned: [LocalRecordKey: LibraryItem] = [:]
-    var candidatesByMode: [RandomizerMode: [RandomizerCandidate]] = [:]
-    for mode in RandomizerMode.allCases {
-      let candidates = RandomizerCandidate.owned(entries: entries, userID: userID, mode: mode)
-      candidatesByMode[mode] = candidates
+    let candidatesByMode = RandomizerCandidate.ownedByMode(entries: entries, userID: userID)
+    for candidates in candidatesByMode.values {
       for candidate in candidates { owned[candidate.id] = candidate.item }
     }
     randomizerItemsByID = owned

@@ -81,6 +81,12 @@ extension RandomizerCandidate {
   static func owned(
     entries: [LocalLibraryEntry], userID: String, mode: RandomizerMode
   ) -> [Self] {
+    ownedByMode(entries: entries, userID: userID)[mode] ?? []
+  }
+
+  static func ownedByMode(
+    entries: [LocalLibraryEntry], userID: String
+  ) -> [RandomizerMode: [Self]] {
     let accessibleItems = entries.filter { $0.conflict != .deletedOnServer }.map(\.item)
     var titles: [String: String] = [:]
     for item in accessibleItems {
@@ -89,21 +95,32 @@ extension RandomizerCandidate {
       }
     }
     var seen: Set<LocalRecordKey> = []
-    return accessibleItems.compactMap { item in
-      guard item.belongs(to: mode.section, userID: userID, bookTitles: titles),
-        seen.insert(item.localRecordKey).inserted else { return nil }
+    var candidatesByMode: [RandomizerMode: [Self]] = [:]
+    for item in accessibleItems {
+      guard item.belongs(to: item.section, userID: userID, bookTitles: titles),
+        seen.insert(item.localRecordKey).inserted else { continue }
+      let mode: RandomizerMode
+      switch item {
+      case .diamond: mode = .diamond
+      case .book: mode = .book
+      case .page: mode = .page
+      }
       let bookTitle: String?
       if case .page(let page) = item { bookTitle = titles[page.book] }
       else { bookTitle = nil }
-      return RandomizerCandidate(item: item, bookTitle: bookTitle)
-    }.sorted { lhs, rhs in
-      if case .book(let left) = lhs.item, case .book(let right) = rhs.item {
-        let leftActivity = left.lastActivityAt?.nonEmpty ?? ""
-        let rightActivity = right.lastActivityAt?.nonEmpty ?? ""
-        if leftActivity != rightActivity { return leftActivity > rightActivity }
+      candidatesByMode[mode, default: []].append(
+        RandomizerCandidate(item: item, bookTitle: bookTitle))
+    }
+    return candidatesByMode.mapValues { candidates in
+      candidates.sorted { lhs, rhs in
+        if case .book(let left) = lhs.item, case .book(let right) = rhs.item {
+          let leftActivity = left.lastActivityAt?.nonEmpty ?? ""
+          let rightActivity = right.lastActivityAt?.nonEmpty ?? ""
+          if leftActivity != rightActivity { return leftActivity > rightActivity }
+        }
+        if lhs.item.updated != rhs.item.updated { return lhs.item.updated > rhs.item.updated }
+        return lhs.item.id < rhs.item.id
       }
-      if lhs.item.updated != rhs.item.updated { return lhs.item.updated > rhs.item.updated }
-      return lhs.item.id < rhs.item.id
     }
   }
 }

@@ -74,6 +74,35 @@ struct LibraryRandomizerTests {
       .isEmpty)
   }
 
+  @Test func sharedProjectionPartitionsAndDeduplicatesOwnedRecords() {
+    func entry(_ item: LibraryItem, _ conflict: LocalConflict? = nil) -> LocalLibraryEntry {
+      LocalLibraryEntry(item: item, pending: conflict != nil, conflict: conflict)
+    }
+    let entries = [
+      entry(.diamond(featureProject("shared", title: "First", updated: "2026-10-01"))),
+      entry(.diamond(featureProject("shared", title: "Duplicate", updated: "2026-10-10"))),
+      entry(.diamond(featureProject("recent", title: "Recent", updated: "2026-10-09"))),
+      entry(.diamond(featureProject("foreign", title: "Foreign", user: "another-account"))),
+      entry(.book(featureBook("shared", title: "First book"))),
+      entry(.book(featureBook("shared", title: "Latest parent title"))),
+      entry(.book(featureBook("deleted", title: "Deleted")), .deletedOnServer),
+      entry(.page(featurePage("shared", book: "shared", number: 1))),
+      entry(.page(featurePage("shared", book: "shared", number: 2))),
+      entry(.page(featurePage("orphan", book: "deleted", number: 1))),
+      entry(.page(featurePage("removed", book: "shared", number: 3)), .deletedOnServer),
+    ]
+    let projection = RandomizerCandidate.ownedByMode(entries: entries, userID: "feature-user")
+    #expect(projection[.diamond]?.map(\.title) == ["Recent", "First"])
+    #expect(projection[.book]?.map(\.title) == ["First book"])
+    #expect(projection[.page]?.map(\.item.recordID) == ["shared"])
+    #expect(projection[.page]?.first?.bookTitle == "Latest parent title")
+    if case .page(let page) = projection[.page]?.first?.item {
+      #expect(page.pageNumber == 1)
+    } else {
+      Issue.record("Expected the first owned page")
+    }
+  }
+
   @Test func selectionUsesIDsAndDisabledCraftsHaveNoCandidates() async throws {
     let library = try localFeatureLibrary()
     try await seed([
