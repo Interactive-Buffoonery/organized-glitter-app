@@ -152,7 +152,9 @@ opaque PocketBase ID supplied by the verified session.
   update, delete, note, or photo failure with fixed `operation` and
   `failure_category` enums plus an optional fixed record type. Validation,
   permission, authentication, missing-record, and conflict rejections remain
-  distinct. Offline, server, and decoding results use `outcome_unknown` because
+  distinct. Preparation and reservation failures use the same operation boundary;
+  pending local changes that block an online write use `pending_changes`.
+  Offline, server, and decoding results use `outcome_unknown` because
   server acceptance is uncertain. Cancellation is not collected, and no error
   text, content, record ID, or operation ID is sent.
 - Lists and tag links: accepted online writes reuse matching company, artist,

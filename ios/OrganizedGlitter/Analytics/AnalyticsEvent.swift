@@ -233,11 +233,16 @@ enum AnalyticsFailureCategory: String, CaseIterable, Sendable {
   case authentication
   case notFound = "not_found"
   case conflict
+  case pendingChanges = "pending_changes"
   case outcomeUnknown = "outcome_unknown"
   case unexpected
 
   init?(error: Error) {
     if error is CancellationError { return nil }
+    if case .pendingChanges? = error as? LibrarySessionError {
+      self = .pendingChanges
+      return
+    }
     switch error as? APIError {
     case .cancelled: return nil
     case .validation: self = .validation

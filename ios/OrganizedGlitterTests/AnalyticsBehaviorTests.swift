@@ -293,6 +293,84 @@ struct AnalyticsBehaviorTests {
     try await fixture.library.close(removingData: false)
   }
 
+  @Test(arguments: ["projects", "progress_notes"])
+  func failedPreparationCapturesOnceWithoutSendingWrite(collection: String) async throws {
+    let fixture = try await Fixture()
+    defer { fixture.analytics.close() }
+    let gate = LoadGate()
+    BehaviorProtocol.snapshotGate = gate
+    BehaviorProtocol.status = 503
+    let refresh = Task { try await fixture.library.refreshFromServer() }
+    await gate.waitUntilPaused(1)
+    var started = false
+    let write = Task {
+      started = true
+      if collection == "projects" {
+        let _: DiamondProjectRecord = try await fixture.library.create(
+          collection: collection, body: ["title": "Private title"])
+      } else {
+        let _: DiamondProgressNoteRecord = try await fixture.library.create(
+          collection: collection, multipart: PocketBaseMultipartForm(
+            fields: ["project": "project", "content": "Private note"]))
+      }
+    }
+    while !started { await Task.yield() }
+    gate.resumeAll()
+    do { try await refresh.value; Issue.record("Expected failed snapshot") }
+    catch APIError.server {}
+    do { try await write.value; Issue.record("Expected failed preparation") }
+    catch APIError.server {}
+
+    #expect(BehaviorProtocol.writeCount == 0)
+    #expect(fixture.events.names == [.operationFailed])
+    #expect(fixture.events.properties.first?["operation"] as? String
+      == (collection == "projects" ? "create_record" : "add_note"))
+    #expect(fixture.events.properties.first?["failure_category"] as? String == "outcome_unknown")
+    let failure = try #require(fixture.events.properties.first)
+    #expect(Set(failure.keys)
+      == ["operation", "failure_category", "record_type"])
+    await fixture.library.waitForWrites()
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test(arguments: [LocalRecordKind.book, .page])
+  func pendingChangesBlockPageCountWriteWithTypedFailure(kind: LocalRecordKind) async throws {
+    let fixture = try await Fixture()
+    defer { fixture.analytics.close() }
+    let book = ColoringBookRecord(
+      id: "book", user: "feature-user", title: "Private book", series: nil,
+      status: "in_stash", totalPages: 2, completedPages: nil, completionPercentage: nil,
+      coverImage: nil, publisher: nil, illustrator: nil,
+      created: "2026-10-06", updated: "2026-10-06", expand: nil)
+    let page = ColoringPageRecord(
+      id: "page", book: "book", pageNumber: 1, status: "not_started", photos: [],
+      revealedSubject: nil, completedAt: nil, startedAt: nil,
+      created: "2026-10-06", updated: "2026-10-06", expand: nil)
+    try await fixture.library.store.ingest(.book(book), scope: fixture.library.scope)
+    try await fixture.library.store.ingest(.page(page), scope: fixture.library.scope)
+    _ = try await fixture.library.store.queueEdit(
+      scope: fixture.library.scope,
+      key: LocalRecordKey(kind: kind, id: kind == .book ? "book" : "page"),
+      patch: kind == .book ? ["title": .string("Private edited title")]
+        : ["status": .string("in_progress")])
+    BehaviorProtocol.status = 503
+
+    do {
+      let _: ColoringBookRecord = try await fixture.library.updateOnline(
+        collection: "coloring_books", id: "book", body: ["total_pages": 3])
+      Issue.record("Expected pending changes to block page count")
+    } catch LibrarySessionError.pendingChanges {}
+
+    #expect(BehaviorProtocol.writeCount == 0)
+    #expect(fixture.events.names == [.operationFailed])
+    #expect(fixture.events.properties.first?["operation"] as? String == "update_record")
+    #expect(fixture.events.properties.first?["failure_category"] as? String == "pending_changes")
+    #expect(fixture.events.properties.first?["record_type"] as? String == "coloring_books")
+    #expect(try await fixture.library.store.pendingOperations(scope: fixture.library.scope).count == 1)
+    await fixture.library.waitForWrites()
+    try await fixture.library.close(removingData: false)
+  }
+
   @Test func rejectedNoteEditCapturesTypedFailureWithoutPrivateData() async throws {
     let fixture = try await Fixture()
     try await fixture.seed()
@@ -517,6 +595,8 @@ private struct Fixture {
     library = LibrarySession(client: client, userID: "feature-user", store: store, analytics: analytics)
     coordinator = LocalSyncCoordinator(store: store, client: client, scope: library.scope, analytics: analytics)
     BehaviorProtocol.status = 200
+    BehaviorProtocol.snapshotGate = nil
+    BehaviorProtocol.resetWriteCount()
     BehaviorProtocol.record = try JSONEncoder().encode(featureProject("project", title: "Private changed title", status: "progress"))
     BehaviorProtocol.snapshot = Data(
       #"{"version":1,"projects":[],"coloringBooks":[],"coloringPages":[],"progressNotes":[],"coloringPageProgressNotes":[]}"#.utf8)
@@ -532,9 +612,28 @@ private final class BehaviorProtocol: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) static var status = 200
   nonisolated(unsafe) static var record = Data()
   nonisolated(unsafe) static var snapshot = Data()
+  nonisolated(unsafe) static var snapshotGate: LoadGate?
+  private static let writeLock = NSLock()
+  nonisolated(unsafe) private static var writes = 0
+  static var writeCount: Int { writeLock.withLock { writes } }
+  static func resetWriteCount() { writeLock.withLock { writes = 0 } }
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
   override func startLoading() {
+    if request.url?.path == "/api/mobile/sync/snapshot", let gate = Self.snapshotGate {
+      Task { @MainActor in
+        try? await gate.pause()
+        respond()
+      }
+    } else {
+      respond()
+    }
+  }
+  private func respond() {
+    if request.url?.path.contains("/api/collections/") == true,
+      ["POST", "PATCH", "DELETE"].contains(request.httpMethod) {
+      Self.writeLock.withLock { Self.writes += 1 }
+    }
     guard request.url?.path.contains("/apply") == true
       || request.url?.path == "/api/mobile/sync/snapshot"
       || ["POST", "PATCH", "DELETE"].contains(request.httpMethod)

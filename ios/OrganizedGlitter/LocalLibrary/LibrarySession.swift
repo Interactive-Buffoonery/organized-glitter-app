@@ -228,10 +228,12 @@ final class LibrarySession {
   func create<Record: Decodable & Sendable>(
     collection: String, body: some Encodable & Sendable
   ) async throws -> Record {
-    try await beginOnlineWrite()
-    defer { endOnlineWrite() }
+    var beganWrite = false
+    defer { if beganWrite { endOnlineWrite() } }
     let saved: Record
     do {
+      try await beginOnlineWrite()
+      beganWrite = true
       saved = try await client.create(collection: collection, body: body)
     } catch {
       captureOnlineFailure(error, operation: createOperation(collection), collection: collection)
@@ -246,10 +248,12 @@ final class LibrarySession {
   func create<Record: Decodable & Sendable>(
     collection: String, multipart: PocketBaseMultipartForm
   ) async throws -> Record {
-    try await beginOnlineWrite()
-    defer { endOnlineWrite() }
+    var beganWrite = false
+    defer { if beganWrite { endOnlineWrite() } }
     let saved: Record
     do {
+      try await beginOnlineWrite()
+      beganWrite = true
       saved = try await client.create(collection: collection, multipart: multipart)
     } catch {
       captureOnlineFailure(error, operation: createOperation(collection), collection: collection)
@@ -264,14 +268,19 @@ final class LibrarySession {
   func updateOnline<Record: Decodable & Sendable>(
     collection: String, id: String, body: some Encodable & Sendable
   ) async throws -> Record {
-    try await beginOnlineWrite()
-    defer { endOnlineWrite() }
-    let reserved = try await reserveOnlineRecord(collection: collection, id: id)
+    var beganWrite = false
+    defer { if beganWrite { endOnlineWrite() } }
+    var reserved: Set<LocalRecordKey> = []
     defer { onlineRecords.subtract(reserved) }
-    let previousStatus = items.first { $0.localRecordKey.kind.rawValue == collection && $0.recordID == id }?.status
-    let patch = (try? JSONDecoder().decode([String: LocalJSONValue].self, from: JSONEncoder().encode(body))) ?? [:]
+    let previousStatus: String?
+    let patch: [String: LocalJSONValue]
     let saved: Record
     do {
+      try await beginOnlineWrite()
+      beganWrite = true
+      reserved = try await reserveOnlineRecord(collection: collection, id: id)
+      previousStatus = items.first { $0.localRecordKey.kind.rawValue == collection && $0.recordID == id }?.status
+      patch = (try? JSONDecoder().decode([String: LocalJSONValue].self, from: JSONEncoder().encode(body))) ?? [:]
       saved = try await client.update(collection: collection, id: id, body: body)
     } catch {
       captureOnlineFailure(error, operation: updateOperation(collection), collection: collection)
@@ -289,12 +298,15 @@ final class LibrarySession {
   func update<Record: Decodable & Sendable>(
     collection: String, id: String, multipart: PocketBaseMultipartForm
   ) async throws -> Record {
-    try await beginOnlineWrite()
-    defer { endOnlineWrite() }
-    let reserved = try await reserveOnlineRecord(collection: collection, id: id)
+    var beganWrite = false
+    defer { if beganWrite { endOnlineWrite() } }
+    var reserved: Set<LocalRecordKey> = []
     defer { onlineRecords.subtract(reserved) }
     let saved: Record
     do {
+      try await beginOnlineWrite()
+      beganWrite = true
+      reserved = try await reserveOnlineRecord(collection: collection, id: id)
       saved = try await client.update(collection: collection, id: id, multipart: multipart)
     } catch {
       captureOnlineFailure(error, operation: .addPhoto, collection: collection)
@@ -311,11 +323,14 @@ final class LibrarySession {
   }
 
   func delete(collection: String, id: String) async throws {
-    try await beginOnlineWrite()
-    defer { endOnlineWrite() }
-    let reserved = try await reserveOnlineRecord(collection: collection, id: id)
+    var beganWrite = false
+    defer { if beganWrite { endOnlineWrite() } }
+    var reserved: Set<LocalRecordKey> = []
     defer { onlineRecords.subtract(reserved) }
     do {
+      try await beginOnlineWrite()
+      beganWrite = true
+      reserved = try await reserveOnlineRecord(collection: collection, id: id)
       try await client.delete(collection: collection, id: id)
     } catch {
       captureOnlineFailure(error, operation: deleteOperation(collection), collection: collection)
