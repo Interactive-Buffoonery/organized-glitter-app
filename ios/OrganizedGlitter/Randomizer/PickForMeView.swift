@@ -184,10 +184,6 @@ struct PickForMeView: View {
       } else if selected.isEmpty {
         Text(candidates.isEmpty ? RandomizerPageCopy.empty(mode) : RandomizerPageCopy.noSelection(mode))
           .fixedSize(horizontal: false, vertical: true)
-      } else if selected.count == 1 {
-        Text(RandomizerPageCopy.oneItem(mode))
-          .font(.karla(.footnote))
-          .fixedSize(horizontal: false, vertical: true)
       }
       if !model.isSelecting, let selection = model.selection {
         result(selection)
@@ -382,7 +378,6 @@ struct PickForMeView: View {
 
   private func keyPanel(_ candidates: [RandomizerCandidate]) -> some View {
     List {
-      Text(RandomizerPageCopy.keyDescription)
       ForEach(Array(candidates.enumerated()), id: \.element.id) { index, candidate in
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
           Text("\(index + 1). \(candidate.title)").font(.karla(.headline))

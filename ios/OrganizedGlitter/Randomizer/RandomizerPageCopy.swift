@@ -1,10 +1,9 @@
 import Foundation
 
-// Remaining unseen copy is subject to Sarah's review.
 enum RandomizerPageCopy {
   static let craft = "Craft"
   static let connection = "Connect to the internet to download your library."
-  static let historyTitle = "Spin History"
+  static let historyTitle = "Spin history"
   static let latest = "Latest"
   static let options = "options"
   static let noSpins = "No spins yet"
@@ -12,21 +11,20 @@ enum RandomizerPageCopy {
   static let historyLoadFailed = "Couldn’t load spin history."
   static let retry = "Retry"
   static let refreshHistory = "Refresh history"
-  static let moreHistory = "Show More History"
-  static let spinNotSent = "Not saved to history. Connect to the internet to save spins."
+  static let moreHistory = "Show more"
+  static let spinNotSent = "This spin wasn’t saved because you were offline."
   static let spinRejected = "Couldn’t save this spin to history."
   static let spinUnknown = "Couldn’t confirm whether this spin was saved."
   static let title = "Randomizer"
-  static let searchNotice = "Search only changes the list. All selected items stay on the wheel."
+  static let searchNotice = "Searching won’t change your selections."
   static let noSearchMatches = "No items match your search."
   static func searchTitle(_ mode: RandomizerMode) -> String { "Search \(selectorTitle(mode).lowercased())" }
-  static let key = "Key"
+  static let key = "Wheel key"
   static let keyTitle = "Wheel key"
-  static let keyDescription = "Selected items by wheel number."
   static let selectAll = "Select all"
   static let selectNone = "Deselect all"
   static let resetFilters = "Reset filters"
-  static let unavailable = "This item is no longer available in your library."
+  static let unavailable = "This item is no longer available."
   static let clearResult = "Clear result"
 
   static func modeTitle(_ mode: RandomizerMode) -> String {
@@ -83,9 +81,9 @@ enum RandomizerPageCopy {
 
   static func noSelection(_ mode: RandomizerMode) -> String {
     switch mode {
-    case .diamond: "No projects are currently selected."
-    case .book: "No books are currently selected."
-    case .page: "No pages are currently selected."
+    case .diamond: "No projects selected."
+    case .book: "No books selected."
+    case .page: "No pages selected."
     }
   }
 
@@ -97,17 +95,8 @@ enum RandomizerPageCopy {
     }
   }
 
-  static func oneItem(_ mode: RandomizerMode) -> String {
-    switch mode {
-    case .diamond: "Only one project is selected. We recommend selecting more projects before spinning the wheel."
-    case .book: "Only one book is selected. We recommend selecting more books before spinning the wheel."
-    case .page: "Only one page is selected. We recommend selecting more pages before spinning the wheel."
-    }
-  }
-
   static func actionAccessibility(_ mode: RandomizerMode, count: Int) -> String {
-    mode == .diamond ? "Spin the wheel to randomly select from \(count) items"
-      : "\(action(mode)) from \(count) items"
+    "\(action(mode)), \(count) selected"
   }
 
   static func announcement(_ candidate: RandomizerCandidate) -> String {
