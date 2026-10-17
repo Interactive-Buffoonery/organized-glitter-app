@@ -459,7 +459,7 @@
           if let image = upload.files["image"]?.first {
             record["image"] = image
           }
-        case "user_dashboard_settings":
+        case "user_dashboard_settings", "randomizer_spins":
           break
         default:
           return FixtureResponse(object: ["message": "Unsupported fixture create"], status: 400)

@@ -15,6 +15,8 @@ struct LibraryView: View {
   @State private var path: [LibraryItem] = []
   @State private var contentWidth: CGFloat = 0
   @State private var logEditor: LibraryItemDetailModel?
+  @State private var showsRandomizer = false
+  @State private var showsNumberPicker = false
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -55,6 +57,13 @@ struct LibraryView: View {
         .navigationDestination(for: LibraryItem.self) { item in
           detail(for: item)
         }
+        .navigationDestination(isPresented: $showsRandomizer) {
+          PickForMeView(library: model.library, initialSection: model.section,
+            verticals: verticals, onCollectionChanged: { await model.load() })
+        }
+        .navigationDestination(isPresented: $showsNumberPicker) {
+          RandomizerView()
+        }
     }
     .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
@@ -79,6 +88,13 @@ struct LibraryView: View {
         }
         return
       }
+    }
+  }
+
+  private var showsLibraryTools: Bool {
+    switch presentation {
+    case .browse, .craft: true
+    case .shelf, .search: false
     }
   }
 
@@ -133,6 +149,20 @@ struct LibraryView: View {
       theme.themedBackground.ignoresSafeArea()
     }
     .toolbar {
+      if showsLibraryTools {
+        ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            Button(RandomizerPageCopy.title, systemImage: "shuffle") { showsRandomizer = true }
+              .accessibilityIdentifier("library.pickForMe")
+            Button("Pick a section number", systemImage: "number") { showsNumberPicker = true }
+              .accessibilityIdentifier("library.pickSectionNumber")
+          } label: {
+            Label("More", systemImage: "ellipsis.circle")
+          }
+          .disabledWhileFormPresented(formDrawer)
+          .accessibilityIdentifier("library.more")
+        }
+      }
       if presentation != .search {
         ToolbarItem(placement: .topBarTrailing) {
           CreateMenu(

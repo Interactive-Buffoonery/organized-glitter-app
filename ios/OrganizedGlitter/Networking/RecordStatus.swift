@@ -62,7 +62,7 @@ enum BookStatus: String, RecordStatus {
     switch self {
     case .wishlist: "Wishlist"
     case .purchased: "Purchased"
-    case .inStash: "In stash"
+    case .inStash: "In library"
     case .inProgress: "In progress"
     case .completed: "Completed"
     case .archived: "Archived"

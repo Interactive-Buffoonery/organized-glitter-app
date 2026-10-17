@@ -117,6 +117,7 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
   var expand: ColoringBookExpand?
   var dateStarted: String? = nil
   var dateCompleted: String? = nil
+  var lastActivityAt: String? = nil
 
   var notes: String? = nil
   var isMystery: Bool? = nil
@@ -149,6 +150,7 @@ struct ColoringBookRecord: Codable, Hashable, Identifiable, Sendable {
     case dateReceived = "date_received"
     case dateStarted = "date_started"
     case dateCompleted = "date_completed"
+    case lastActivityAt = "last_activity_at"
   }
 
   var tags: [TagRecord] {

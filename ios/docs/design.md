@@ -12,7 +12,10 @@ screen backgrounds. The Shelf redesign (Option B in
   tab bar. Search uses `.searchable`.
   Account opens from the Home toolbar avatar. Create is the toolbar `+`
   `CreateMenu` on Home and Library.
-  The randomizer code stays but has no tab.
+  Library’s More menu opens the library Randomizer page and the separate section-number tool.
+  Neither tool has a tab. Completed library picks save to shared online spin
+  history; section numbers are unsaved. Offline picks remain usable without
+  queuing history writes.
 - **iPad.** The `.sidebarAdaptable` `TabView` gives each craft a `TabSection`:
   Diamond art and Coloring, each with an All row, then one row per non-empty
   shelf with its on-device count, plus a `+` section action to create that craft.
@@ -350,3 +353,27 @@ The app icon uses Sarah's supplied hand-drawn pink and lilac artwork on navy
 (`#05051A`), with no added outer border in either appearance. See
 [App icon](app-icon.md) for the source and export rules. The Caveat wordmark
 remains separate.
+
+### Classic Randomizer page
+
+The library wheel is a navigation destination on both iPhone and iPad, with an
+inline result. Status and item controls follow the wheel on compact widths and
+occupy the left column on regular widths. Accessibility text sizes stack these
+sections. Search only filters visible rows; typed selection IDs remain unchanged.
+The Key sheet provides the complete numbered mapping when wedges become dense.
+
+A draw freezes owned candidates and its winner before animating. The top pointer
+lands at the winning wedge center, and repeated draws use the complete selected
+pool. The wheel uses the web Classic palette and its three-second ease-out spin
+through `Theme.randomizerSpin`; this deliberate spin duration is an exception to
+the brief general `Theme.motion` transition. Reduce Motion and VoiceOver show
+the frozen result without rotation. Tapping the wheel during rotation cuts to the same frozen result. Phone tick
+feedback is throttled to one update per 110 milliseconds and stops on cancellation.
+Leaving during a spin cancels completion,
+and opening a result rechecks the current account and accessible target.
+
+Sarah approved the history/loading/error messages and connection message, the
+shared book label “In library”, the completion announcement “Spin complete!
+Selected: {item title}”, the separate number-tool title “Pick a section number”,
+and the inline result message “This item is no longer available in your library.”
+Other authored copy not yet shown to Sarah remains pending explicit review.

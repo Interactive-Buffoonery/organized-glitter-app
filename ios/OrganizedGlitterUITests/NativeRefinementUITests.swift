@@ -115,10 +115,12 @@ final class NativeRefinementUITests: XCTestCase {
     button("detail.more", in: app).tap()
     button("detail.delete", in: app).tap()
     let confirmation = confirmationButton(named: "Delete Project", in: app)
-    if confirmation.waitForExistence(timeout: 2) {
-      confirmation.tap()
-    }
-    XCTAssertFalse(element("detail.diamond", in: app).waitForExistence(timeout: 3))
+    XCTAssertTrue(confirmation.waitForExistence(timeout: 2))
+    confirmation.tap()
+    XCTAssertTrue(element("detail.diamond", in: app).waitForNonExistence(timeout: 5))
+    XCTAssertTrue(
+      app.navigationBars["Library"].waitForExistence(timeout: 5)
+        || app.navigationBars["Diamond art"].exists)
     XCTAssertFalse(app.staticTexts["Summer Garden Blooms updated"].exists)
   }
 

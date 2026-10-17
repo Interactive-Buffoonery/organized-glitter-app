@@ -49,6 +49,37 @@ The application does not own backend schema or server behavior. Those remain in
 
 See [the offline library contract](offline-library.md) for rollout and tests.
 
+## Randomizer history
+
+The Classic Randomizer selects from a frozen, account-owned library pool with
+an equal chance for every selected item. Repeats are allowed. Skipping the
+animation reveals the same winner; it does not create another draw.
+
+`LibrarySession` reads the existing PocketBase `randomizer_spins` collection
+and records completed draws online. The initial history read requests eight
+recent rows; Show More History requests up to fifty. History remains separate
+from filter and result state, and navigation rechecks the current owned library.
+Legacy or malformed optional metadata falls back to the saved top-level fields.
+
+Each frozen draw dispatches at most one creation in the app session. There is
+no backend idempotency key, offline queue, or automatic POST retry after an
+ambiguous outcome. Spin creation explicitly disables the transport's authentication
+refresh-and-replay behavior; terminal authentication recovery runs after write
+accounting unwinds. Other creates and GET requests retain their existing refresh
+policy. GET refreshes can reconcile history without repeating a creation. Accepted creates trigger a bounded GET refresh at the current eight/fifty-row
+limit so other clients’ history appears. Acknowledged saves remain acknowledged
+if that read fails. The immediate refresh preserves its acknowledged row and
+reads retain concurrent acknowledgements; later reads remain authoritative. Terminal history auth
+failures use session recovery after write accounting unwinds, preserving pending
+library edits.
+Failed and uncertain local draws retain their frozen item title and existing failure
+message alongside history when a later draw replaces the result. The current result
+shows its own message once; failure announcements are tracked once per draw while
+the page is visible. Uncertain draws offer GET-only history refresh and never
+replay creation. These local receipts and titles clear on account close.
+History is held in account-scoped session memory and clears when that session
+closes; the downloaded SwiftData library does not include spin history.
+
 ## Analytics consent
 
 The shared `users.analytics_opt_out` account setting remains online-only. A
