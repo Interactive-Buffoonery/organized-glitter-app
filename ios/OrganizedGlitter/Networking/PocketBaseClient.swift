@@ -496,12 +496,14 @@ actor PocketBaseClient {
 
   func create<Record: Decodable & Sendable>(
     collection: String,
-    body: some Encodable
+    body: some Encodable,
+    canRefreshAuthentication: Bool = true
   ) async throws -> Record {
     try await request(
       path: "/api/collections/\(collection)/records",
       method: "POST",
-      body: body
+      body: body,
+      canRefreshAuthentication: canRefreshAuthentication
     )
   }
 
@@ -753,14 +755,16 @@ actor PocketBaseClient {
     queryItems: [URLQueryItem] = [],
     method: String = "GET",
     body: (any Encodable)? = nil,
-    includesAuthentication: Bool = true
+    includesAuthentication: Bool = true,
+    canRefreshAuthentication: Bool = true
   ) async throws -> Response {
     try await requestEncoded(
       path: path,
       queryItems: queryItems,
       method: method,
       body: try body.map(PocketBaseRequestBody.init(json:)),
-      includesAuthentication: includesAuthentication
+      includesAuthentication: includesAuthentication,
+      canRefreshAuthentication: canRefreshAuthentication
     )
   }
 
@@ -769,14 +773,16 @@ actor PocketBaseClient {
     queryItems: [URLQueryItem] = [],
     method: String = "GET",
     body: PocketBaseRequestBody? = nil,
-    includesAuthentication: Bool = true
+    includesAuthentication: Bool = true,
+    canRefreshAuthentication: Bool = true
   ) async throws -> Response {
     let data = try await sendEncoded(
       path: path,
       queryItems: queryItems,
       method: method,
       body: body,
-      includesAuthentication: includesAuthentication
+      includesAuthentication: includesAuthentication,
+      canRefreshAuthentication: canRefreshAuthentication
     )
 
     do {

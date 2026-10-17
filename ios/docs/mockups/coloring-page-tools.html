@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Organized Glitter · Coloring page tools</title>
+<style>
+@font-face { font-family: Caveat; src: url("../../OrganizedGlitter/Resources/Fonts/Caveat.ttf"); }
+
+:root {
+  --bg-top: #FDEEF3; --bg-mid: #F8E9F6; --bg-bot: #E7DEFA;
+  --page: linear-gradient(#FDEEF3, #F8E9F6 50%, #E7DEFA);
+  --base: #F8E9F6;
+  --fg: #46323E; --fg2: #765669; --fg3: rgba(70,50,62,.38);
+  --primary: #D23C77; --on-primary: #fff; --accent: #8535D4;
+  --cell: rgba(253,245,248,.86); --sep: rgba(70,50,62,.13);
+  --fill: rgba(118,90,110,.12); --seg-on: #fff;
+  --glass: rgba(255,255,255,.58); --glass-edge: rgba(255,255,255,.9); --glass-hi: rgba(255,255,255,.95);
+  --lens: rgba(210,60,119,.11); --sheet: #FDF5F8; --scrim: rgba(40,20,40,.22);
+  --chrome: #fff7fb; --ink: #1b1320;
+}
+[data-theme="dark"] {
+  --page: radial-gradient(ellipse 120% 70% at 56% 116%, #5C27B5 0, #371475 38%, transparent 73%), #05051A;
+  --base: #05051A;
+  --fg: #F7F2F7; --fg2: #BEB1C3; --fg3: rgba(247,242,247,.35);
+  --primary: #F58AB5; --on-primary: #381423; --accent: #CAA4F9;
+  --cell: rgba(20,16,40,.82); --sep: rgba(255,255,255,.1);
+  --fill: rgba(190,177,195,.14); --seg-on: rgba(255,255,255,.2);
+  --glass: rgba(34,26,66,.52); --glass-edge: rgba(255,255,255,.14); --glass-hi: rgba(255,255,255,.18);
+  --lens: rgba(255,255,255,.12); --sheet: #141028; --scrim: rgba(0,0,0,.5);
+  --chrome: #0d0a1f; --ink: #f4eef6;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; background: var(--chrome); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; }
+
+/* ---------- Page chrome ---------- */
+.top { position: sticky; top: 0; z-index: 20; display: flex; gap: 20px; align-items: center; padding: 14px 40px; background: color-mix(in srgb, var(--chrome) 85%, transparent); backdrop-filter: blur(16px); border-bottom: 1px solid var(--sep); }
+.top b { font-size: 15px; }
+.top nav { display: flex; gap: 16px; flex: 1; }
+.top nav a { color: var(--fg2); text-decoration: none; font-weight: 500; }
+.top nav a:hover { color: var(--primary); }
+.toggle { padding: 6px 14px; border-radius: 99px; background: var(--fill); font-weight: 600; cursor: pointer; }
+header.intro, section { padding: 56px 40px 8px; max-width: 1900px; }
+header.intro h1 { font-size: 40px; letter-spacing: -.02em; }
+header.intro p, .lede { max-width: 780px; color: var(--fg2); font-size: 17px; margin-top: 10px; }
+section h2 { font-size: 30px; letter-spacing: -.015em; }
+section h2 small { font-size: 15px; font-weight: 600; color: var(--primary); display: block; letter-spacing: .02em; text-transform: uppercase; margin-bottom: 4px; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 32px; max-width: 1300px; margin-top: 18px; }
+.notes div { font-size: 14px; color: var(--fg2); }
+.notes h4 { font-size: 13px; color: var(--ink); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.notes ul { padding-left: 18px; }
+.row-of-phones { display: flex; gap: 32px; flex-wrap: wrap; margin: 34px 0 40px; align-items: flex-start; }
+figure { display: flex; flex-direction: column; gap: 14px; }
+figcaption { font-size: 14px; font-weight: 600; color: var(--ink); padding-left: 6px; }
+figcaption span { display: block; font-weight: 400; color: var(--fg2); max-width: 393px; }
+.before { display: flex; gap: 28px; margin-top: 24px; flex-wrap: wrap; }
+.before img { width: 220px; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+.findings { margin-top: 20px; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px 40px; font-size: 14px; color: var(--fg2); counter-reset: f; }
+.findings p { counter-increment: f; }
+.findings p::before { content: counter(f) ". "; font-weight: 700; color: var(--primary); }
+.findings b { color: var(--ink); }
+
+/* ---------- Device ---------- */
+.phone { position: relative; width: 393px; height: 852px; border-radius: 58px; overflow: hidden; background: var(--page); background-color: var(--base); color: var(--fg); box-shadow: 0 0 0 11px #121016, 0 0 0 12px #2c2830, 0 30px 60px rgba(0,0,0,.28); font-size: 17px; line-height: 1.3; letter-spacing: -.01em; flex: none; }
+.phone::before { content: ""; position: absolute; z-index: 30; top: 11px; left: 50%; width: 124px; height: 36px; margin-left: -62px; border-radius: 20px; background: #000; }
+.phone::after { content: ""; position: absolute; z-index: 30; bottom: 8px; left: 50%; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: var(--fg); opacity: .85; }
+.sb { position: absolute; z-index: 25; top: 0; left: 0; right: 0; height: 54px; display: flex; justify-content: space-between; align-items: center; padding: 6px 34px 0 50px; font-size: 17px; font-weight: 600; }
+.sb .icons { display: flex; gap: 6px; align-items: center; }
+.sb .batt { width: 27px; height: 13px; border-radius: 4px; border: 1.5px solid currentColor; opacity: .9; position: relative; }
+.sb .batt::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; border-radius: 2px; background: currentColor; }
+.content { position: absolute; inset: 0; padding-top: 54px; overflow: hidden; }
+
+/* ---------- Icons ---------- */
+i[data-i] { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; flex: none; font-style: normal; }
+i[data-i] svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fillicon svg { fill: currentColor; stroke: none; }
+
+/* ---------- Navigation ---------- */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 56px; padding: 4px 16px 0; position: relative; }
+.bar .ctr { position: absolute; left: 90px; right: 90px; text-align: center; font-weight: 600; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gb, .gbs { height: 44px; min-width: 44px; border-radius: 22px; display: inline-flex; align-items: center; justify-content: center; gap: 2px; background: var(--glass); backdrop-filter: blur(14px) saturate(1.8); -webkit-backdrop-filter: blur(14px) saturate(1.8); border: .5px solid var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi), 0 4px 16px rgba(40,10,40,.08); font-size: 17px; font-weight: 500; color: var(--fg); }
+.gb i { font-size: 21px; }
+.gbs > span { width: 44px; height: 44px; display: grid; place-items: center; font-size: 21px; }
+.gb.txt { padding: 0 16px; }
+.gb.pro { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+.spacer { flex: 1; }
+.lt { font-size: 34px; font-weight: 700; letter-spacing: .005em; padding: 2px 20px 10px; }
+.lt.cav { font: 600 46px/1.05 Caveat, cursive; letter-spacing: 0; padding: 0 20px 8px; }
+.eyebrow { padding: 4px 20px 0; font-size: 13px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .02em; }
+
+.tabs { position: absolute; z-index: 10; left: 20px; right: 20px; bottom: 26px; display: flex; gap: 10px; }
+.tb { flex: 1; display: flex; height: 62px; padding: 4px; border-radius: 31px; }
+.tb, .tsearch, .accbar { background: var(--glass); backdrop-filter: blur(18px) saturate(1.8); -webkit-backdrop-filter: blur(18px) saturate(1.8); border: .5px solid var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 26px rgba(40,10,40,.14); }
+.tb a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 10px; font-weight: 600; border-radius: 27px; letter-spacing: 0; }
+.tb a i { font-size: 25px; }
+.tb a.on { color: var(--primary); background: var(--lens); }
+.tsearch { width: 62px; height: 62px; border-radius: 31px; display: grid; place-items: center; font-size: 24px; flex: none; }
+.accbar { position: absolute; z-index: 10; left: 20px; right: 20px; bottom: 98px; height: 50px; border-radius: 25px; display: flex; align-items: center; gap: 10px; padding: 0 6px; font-size: 15px; }
+.accbar .th { width: 38px; height: 38px; border-radius: 19px; }
+.accbar b { font-weight: 600; display: block; }
+.accbar small { color: var(--fg2); font-size: 13px; }
+.accbar .gb { height: 38px; min-width: 38px; }
+
+/* ---------- Lists ---------- */
+.gh { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 36px 7px; font-size: 13px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .02em; }
+.gh a { text-transform: none; color: var(--primary); font-size: 15px; font-weight: 400; letter-spacing: 0; }
+.sh { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 20px 10px; font-size: 22px; font-weight: 700; }
+.sh a { font-size: 17px; font-weight: 400; color: var(--primary); }
+.group { background: var(--cell); border-radius: 26px; margin: 0 16px 8px; overflow: hidden; }
+.gf { padding: 2px 36px 12px; font-size: 13px; color: var(--fg2); }
+.r { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 16px; position: relative; }
+.r + .r::before { content: ""; position: absolute; top: 0; right: 0; left: var(--inset, 16px); border-top: .5px solid var(--sep); }
+.r.ti { --inset: 58px; }
+.r.tt { --inset: 72px; }
+.tx { flex: 1; min-width: 0; }
+.t1 { font-size: 17px; }
+.t1.b { font-weight: 600; }
+.t2 { font-size: 15px; color: var(--fg2); margin-top: 1px; }
+.val { color: var(--fg2); white-space: nowrap; }
+.chev { color: var(--fg3); font-size: 15px; }
+.tint { color: var(--primary); }
+.danger { color: #d93b52; }
+[data-theme="dark"] .danger { color: #ff6b7d; }
+.ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 17px; flex: none; }
+.ic.p { background: #D23C77; } .ic.a { background: #8535D4; } .ic.b { background: #3E7BD6; } .ic.g { background: #2E9D6A; } .ic.o { background: #E08A2E; } .ic.n { background: #8E8093; } .ic.rd { background: #C93A4C; } .ic.t { background: #1F9AA8; }
+.th { width: 44px; height: 56px; border-radius: 8px; flex: none; position: relative; overflow: hidden; }
+.th.sq { height: 44px; }
+.toggle-sw { width: 51px; height: 31px; border-radius: 16px; background: #34C759; position: relative; flex: none; }
+.toggle-sw::after { content: ""; position: absolute; top: 2px; right: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.toggle-sw.off { background: var(--fill); }
+.toggle-sw.off::after { right: auto; left: 2px; }
+
+.seg { display: flex; margin: 0 16px 12px; padding: 3px; border-radius: 99px; background: var(--fill); }
+.seg span { flex: 1; text-align: center; padding: 7px 0; font-size: 14px; font-weight: 500; border-radius: 99px; }
+.seg .on { background: var(--seg-on); font-weight: 600; box-shadow: 0 2px 8px rgba(40,10,40,.12); }
+.chips { display: flex; gap: 8px; padding: 0 16px 14px; overflow: hidden; white-space: nowrap; }
+.chip { padding: 8px 14px; border-radius: 99px; background: var(--cell); font-size: 15px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+.chip.on { background: var(--primary); color: var(--on-primary); }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 99px; background: var(--fill); font-size: 13px; font-weight: 600; color: var(--fg2); }
+.st { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--fg2); }
+.st i { font-size: 15px; }
+.st.progress i { color: var(--primary); } .st.done i { color: var(--accent); } .st.kit i { color: #2E9D6A; } .st.wish i { color: var(--primary); } .st.stash i { color: var(--fg2); }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 50px; border-radius: 25px; font-weight: 600; font-size: 17px; background: var(--primary); color: var(--on-primary); }
+.btn.gl { background: var(--glass); color: var(--fg); border: .5px solid var(--glass-edge); backdrop-filter: blur(14px); }
+.meter { height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--primary); border-radius: 3px; }
+.muted { color: var(--fg2); }
+.small { font-size: 13px; }
+
+/* ---------- Artwork ---------- */
+.art { position: relative; overflow: hidden; background-size: cover; }
+.dia::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,255,255,.26) .8px, transparent 1.3px) 0 0 / 4px 4px; }
+.a1 { background: radial-gradient(circle at 70% 22%, #F2D48A 0 10%, transparent 10.5%), radial-gradient(ellipse 12% 30% at 20% 78%, #5FA884 0 98%, transparent), radial-gradient(ellipse 12% 34% at 42% 82%, #6CB592 0 98%, transparent), radial-gradient(ellipse 12% 30% at 64% 80%, #5FA884 0 98%, transparent), radial-gradient(ellipse 12% 34% at 86% 84%, #6CB592 0 98%, transparent), linear-gradient(#2E3A5C, #1B2240); }
+.a2 { background: radial-gradient(ellipse 18% 9% at 32% 62%, #F08A4B 0 97%, transparent), radial-gradient(ellipse 14% 7% at 66% 38%, #F6EFE6 0 97%, transparent), radial-gradient(ellipse 10% 5% at 58% 74%, #E85D3A 0 97%, transparent), linear-gradient(160deg, #2A7C8E, #164764 60%, #0B2239); }
+.a3 { background: linear-gradient(#F7C6A3 0 34%, transparent 34%), radial-gradient(circle at 70% 22%, #FFE9B8 0 7%, transparent 7.5%), repeating-linear-gradient(100deg, #7D5BB5 0 7px, #A98BDA 7px 13px); }
+.a4 { background: radial-gradient(circle at 30% 34%, #E86A92 0 15%, transparent 15.5%), radial-gradient(circle at 68% 60%, #F4A6BF 0 18%, transparent 18.5%), radial-gradient(circle at 36% 78%, #F9D66B 0 9%, transparent 9.5%), radial-gradient(circle at 78% 22%, #8FC7A0 0 11%, transparent 11.5%), radial-gradient(circle at 16% 60%, #9FD0B3 0 8%, transparent 8.5%), #FFF1E8; }
+.a5 { background: radial-gradient(circle at 50% 40%, #FFF4D6 0 6%, transparent 6.5%), repeating-radial-gradient(circle at 50% 130%, #2F6FB0 0 11px, #4B90CF 11px 21px); }
+.a6 { background: radial-gradient(ellipse 70% 40% at 25% 100%, #4A2A5E 0 98%, transparent), radial-gradient(ellipse 70% 45% at 85% 104%, #6B3A70 0 98%, transparent), radial-gradient(circle at 55% 52%, #FFD27A 0 11%, transparent 11.5%), linear-gradient(#F58AB5, #F7B27A); }
+.a7 { background: linear-gradient(#D6ECDC 0 28%, transparent 28%), repeating-linear-gradient(75deg, #2F6B4F 0 14px, #3E8A63 14px 26px); }
+.a8 { background: radial-gradient(circle at 50% 62%, #1B1030 0 22%, transparent 22.5%), radial-gradient(circle at 20% 20%, #fff 0 1%, transparent 1.5%), radial-gradient(circle at 82% 30%, #fff 0 .8%, transparent 1.3%), radial-gradient(circle at 70% 82%, #fff 0 .8%, transparent 1.3%), linear-gradient(135deg, #5C27B5, #D23C77); }
+.bk1 { background: radial-gradient(circle at 28% 38%, #E86A92 0 12%, transparent 12.5%), radial-gradient(circle at 70% 52%, #5FB3A2 0 14%, transparent 14.5%), radial-gradient(circle at 44% 72%, #F2C46B 0 8%, transparent 8.5%), linear-gradient(#1C1B33, #2C2350); }
+.bk2 { background: repeating-radial-gradient(circle at 50% 50%, transparent 0 9px, rgba(60,40,50,.4) 9px 10px), #F4EADB; }
+.bk3 { background: radial-gradient(circle at 50% 45%, #F5E9C8 0 20%, transparent 20.5%), repeating-conic-gradient(from 0deg at 50% 45%, #3E7BD6 0 15deg, #2B5CA8 15deg 30deg); }
+.pg { background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 13deg, rgba(40,30,40,.45) 13deg 14deg), repeating-radial-gradient(circle at 50% 50%, transparent 0 15px, rgba(40,30,40,.45) 15px 16px), #FFFDF9; }
+.pg.c1 { background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 13deg, rgba(40,30,40,.45) 13deg 14deg), repeating-radial-gradient(circle at 50% 50%, transparent 0 15px, rgba(40,30,40,.45) 15px 16px), radial-gradient(circle at 50% 50%, #E86A92 0 16px, #F4A6BF 16px 32px, #8FC7A0 32px 48px, #F9D66B 48px 64px, transparent 64px), #FFFDF9; }
+.pg.c2 { background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 13deg, rgba(40,30,40,.45) 13deg 14deg), repeating-radial-gradient(circle at 50% 50%, transparent 0 15px, rgba(40,30,40,.45) 15px 16px), conic-gradient(from 0deg at 50% 50%, #8535D4 0 90deg, #5FB3A2 90deg 170deg, transparent 170deg), #FFFDF9; }
+.mys { background: var(--fill); display: grid; place-items: center; color: var(--fg2); font-size: 22px; }
+
+/* ---------- Sheets ---------- */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 12; }
+.sheet { position: absolute; z-index: 14; left: 0; right: 0; bottom: 0; top: 58px; border-radius: 38px 38px 0 0; background: var(--sheet); overflow: hidden; }
+.sheet.float { left: 8px; right: 8px; bottom: 8px; top: 330px; border-radius: 42px; }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--fg3); margin: 6px auto 0; }
+.sheet .group { background: color-mix(in srgb, var(--fill) 60%, transparent); }
+[data-theme="dark"] .sheet .group { background: rgba(255,255,255,.06); }
+.field { color: var(--fg3); }
+.well { margin: 8px 16px 16px; height: 150px; border-radius: 26px; border: 1.5px dashed var(--fg3); display: flex; align-items: center; justify-content: center; gap: 28px; color: var(--primary); font-weight: 600; font-size: 15px; }
+.well div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.well i { font-size: 28px; }
+
+/* ---------- iPad ---------- */
+.ipad { width: 1180px; height: 820px; border-radius: 34px; position: relative; overflow: hidden; background: var(--page); background-color: var(--base); color: var(--fg); box-shadow: 0 0 0 14px #121016, 0 0 0 15px #2c2830, 0 30px 60px rgba(0,0,0,.28); zoom: .72; font-size: 17px; line-height: 1.3; }
+.side { position: absolute; top: 12px; left: 12px; bottom: 12px; width: 300px; border-radius: 26px; padding: 56px 12px 12px; }
+.side, .ipad .gb { background: var(--glass); backdrop-filter: blur(18px) saturate(1.8); border: .5px solid var(--glass-edge); box-shadow: inset 0 1px 0 var(--glass-hi), 0 8px 26px rgba(40,10,40,.1); }
+.side h5 { font-size: 13px; color: var(--fg2); padding: 16px 12px 6px; text-transform: uppercase; letter-spacing: .03em; }
+.side a { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; font-size: 17px; }
+.side a i { color: var(--primary); font-size: 20px; }
+.side a.on { background: var(--primary); color: var(--on-primary); }
+.side a.on i { color: inherit; }
+.side a .val { margin-left: auto; font-size: 15px; }
+.side a.on .val { color: inherit; opacity: .8; }
+.pad-main { position: absolute; left: 324px; right: 0; top: 0; bottom: 0; padding-top: 24px; }
+.grid { display: grid; gap: 22px 18px; padding: 0 20px; }
+.grid .cov { aspect-ratio: 4 / 5; border-radius: 12px; box-shadow: 0 6px 16px rgba(30,10,30,.16); }
+.grid .t1 { font-size: 15px; font-weight: 600; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid .st { margin-top: 3px; }
+.carousel { display: flex; gap: 14px; padding: 0 20px; overflow: hidden; }
+.carousel .cov { border-radius: 14px; box-shadow: 0 8px 20px rgba(30,10,30,.18); position: relative; }
+
+/* ---------- Chart ---------- */
+.chart { padding: 16px 16px 12px; }
+.chart .plot { position: relative; height: 150px; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid var(--sep); }
+.chart .plot::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--sep); }
+.chart .bar-v { flex: 1; margin: 0 5px; background: var(--primary); border-radius: 4px 4px 0 0; position: relative; }
+.chart .bar-v:hover { filter: brightness(1.1); }
+.chart .bar-v:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--fg); color: var(--base); font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 8px; }
+.chart .axis { display: flex; gap: 2px; margin-top: 6px; }
+.chart .axis span { flex: 1; margin: 0 5px; text-align: center; font-size: 11px; color: var(--fg2); }
+.chart .ytick { position: absolute; right: 0; top: calc(50% - 16px); font-size: 11px; color: var(--fg2); }
+
+/* ---------- Coloring page tools ---------- */
+@font-face { font-family: Karla; src: url("../../OrganizedGlitter/Resources/Fonts/Karla.ttf"); }
+.phone { font-family: Karla, -apple-system, system-ui, sans-serif; }
+.phone.long { height: 1200px; }
+.picks { margin-top: 18px; border-collapse: collapse; max-width: 1100px; font-size: 15px; }
+.picks th, .picks td { text-align: left; padding: 10px 18px 10px 0; border-bottom: 1px solid var(--sep); vertical-align: top; }
+.picks th { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg2); }
+.picks td:last-child { color: var(--fg2); }
+.pick { display: inline-block !important; margin-bottom: 4px; padding: 2px 9px; border-radius: 99px; background: var(--primary); color: var(--on-primary) !important; font-size: 12px; font-weight: 700; letter-spacing: .02em; margin-right: 6px; }
+.dp { display: flex; flex-direction: column; gap: 14px; padding: 0 20px; }
+.hero { height: 220px; border-radius: 22px; box-shadow: 0 8px 22px rgba(30,10,30,.14); }
+.ttl { font-size: 28px; font-weight: 700; letter-spacing: -.01em; display: flex; align-items: center; gap: 6px; }
+.sub { font-size: 15px; color: var(--fg2); margin-top: 2px; }
+.stat { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 99px; background: var(--cell); font-size: 15px; font-weight: 600; }
+.sh2 { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; margin-top: 6px; }
+.lnk { color: var(--primary); font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+.mchips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mchip { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 99px; background: var(--fill); font-size: 15px; font-weight: 600; }
+.mchip.on { background: var(--primary); color: var(--on-primary); }
+.mchip.add { background: transparent; color: var(--primary); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 45%, transparent); }
+.n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 11px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; flex: none; }
+.group.flat { margin: 0; }
+.pill.date { font-size: 15px; padding: 6px 11px; color: var(--fg); }
+.thumbs { display: flex; gap: 10px; }
+.thumb { width: 104px; height: 130px; border-radius: 14px; position: relative; box-shadow: 0 4px 12px rgba(30,10,30,.12); }
+.thumb.sel { outline: 3px solid var(--primary); outline-offset: 2px; }
+.selmark { position: absolute; right: 6px; bottom: 6px; width: 24px; height: 24px; border-radius: 12px; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: 14px; }
+.badge { position: absolute; left: 6px; bottom: 6px; display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 99px; background: rgba(20,10,20,.6); color: #fff; font-size: 11px; font-weight: 700; backdrop-filter: blur(6px); }
+.scrim.blur { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.lifted { position: absolute; z-index: 15; width: 130px; height: 130px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,.25); }
+.menu { position: absolute; z-index: 16; width: 240px; border-radius: 18px; overflow: hidden; background: color-mix(in srgb, var(--sheet) 88%, transparent); backdrop-filter: blur(20px); box-shadow: 0 16px 40px rgba(30,10,30,.25); font-size: 16px; }
+.menu div { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
+.menu div + div { border-top: .5px solid var(--sep); }
+.viewer { position: absolute; inset: 0; background: #000; z-index: 5; }
+.gb.dark { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.2); box-shadow: none; color: #fff; }
+.vbar { position: absolute; left: 16px; right: 16px; bottom: 34px; display: flex; align-items: center; }
+.asheet { position: absolute; z-index: 16; left: 8px; right: 8px; bottom: 30px; }
+.asheet .group { background: var(--sheet); margin: 0 0 8px; }
+.alert { position: absolute; z-index: 16; left: 50%; top: 46%; transform: translate(-50%, -50%); width: 290px; border-radius: 28px; padding: 20px 16px 14px; background: var(--sheet); text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.alert h3 { font-size: 17px; font-weight: 700; }
+.alert p { font-size: 14px; color: var(--fg2); margin-top: 2px; }
+.alert .inp { margin: 14px 0; padding: 9px 12px; border-radius: 12px; background: var(--fill); text-align: left; font-size: 16px; }
+.alert .btns { display: flex; gap: 8px; }
+.alert .btns span { flex: 1; height: 44px; border-radius: 22px; display: grid; place-items: center; background: var(--fill); font-weight: 600; }
+.alert .btns .pri { background: var(--primary); color: var(--on-primary); }
+.caret { display: inline-block; width: 2px; height: 1.1em; background: var(--primary); vertical-align: -3px; margin-left: 1px; }
+.mcard { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 22px; background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 16%, var(--cell)), color-mix(in srgb, var(--accent) 16%, var(--cell))); }
+.btn.sm { height: 36px; padding: 0 16px; font-size: 15px; border-radius: 18px; }
+.ctiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 0 20px; }
+.ctile { aspect-ratio: 3 / 4; border-radius: 12px; position: relative; overflow: hidden; box-shadow: 0 4px 12px rgba(30,10,30,.1); }
+.ctile.myst { background: var(--cell); display: grid; place-items: center; font: 600 46px/1 Caveat, cursive; color: color-mix(in srgb, var(--primary) 85%, transparent); }
+.ctile.myst::after { content: "?"; position: absolute; top: 4px; right: 10px; font: 700 34px/1 Caveat, cursive; color: color-mix(in srgb, var(--primary) 22%, transparent); }
+.cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 8px 6px; font-size: 13px; font-weight: 700; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.5)); }
+.srch { display: flex; align-items: center; gap: 8px; margin: 4px 16px 12px; padding: 10px 14px; border-radius: 99px; background: var(--fill); }
+.srch i { color: var(--fg2); }
+.swg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sw { aspect-ratio: 3 / 4; border-radius: 12px; background-color: #FFFDF9; box-shadow: 0 4px 12px rgba(30,10,30,.12); }
+.sw1 { background-image: radial-gradient(circle, #F2B58F 0 7px, transparent 8px), radial-gradient(circle, #9E2B3C 0 7px, transparent 8px), radial-gradient(circle, #D2386E 0 7px, transparent 8px); background-size: 33% 22%; background-position: 0 6px, 50% 6px, 100% 6px; }
+.sw2 { background-image: repeating-linear-gradient(#FFFDF9 0 10px, transparent 10px 26px), linear-gradient(90deg, #2F5D3A 0 25%, #7FA83B 25% 50%, #B9D36B 50% 75%, #E9EFC8 75%); background-origin: content-box; padding: 8px; background-clip: content-box; }
+.sw3 { background-image: radial-gradient(circle at 30% 30%, #5FB3D6 0 9px, transparent 10px), radial-gradient(circle at 70% 30%, #2B5CA8 0 9px, transparent 10px), radial-gradient(circle at 30% 65%, #F9D66B 0 9px, transparent 10px), radial-gradient(circle at 70% 65%, #E08A2E 0 9px, transparent 10px); }
+.codes .r { font-size: 15px; min-height: 44px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="house" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol>
+  <symbol id="books" viewBox="0 0 24 24"><rect x="3" y="4" width="4.5" height="16" rx="1"/><rect x="9.5" y="4" width="4.5" height="16" rx="1"/><path d="m16 5.2 3.4-.9 3 14.6-3.4.9z"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="person" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.2"/><path d="M6.3 18.6a6.5 6.5 0 0 1 11.4 0"/></symbol>
+  <symbol id="chev-r" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="chev-l" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="chev-d" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="updown" viewBox="0 0 24 24"><path d="m7 9 5-5 5 5M7 15l5 5 5-5"/></symbol>
+  <symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7a4.3 4.3 0 0 1 7.5 2.8C19.5 15.4 12 20 12 20z"/></symbol>
+  <symbol id="play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M10 8.5v7l5.5-3.5z" fill="currentColor"/></symbol>
+  <symbol id="pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M10 9v6M14 9v6"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="m8.2 12.4 2.6 2.6 5-5.4"/></symbol>
+  <symbol id="checkmark" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="xmark" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4.5" rx="1.2"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 12.5h4"/></symbol>
+  <symbol id="box" viewBox="0 0 24 24"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></symbol>
+  <symbol id="gem" viewBox="0 0 24 24"><path d="M6.5 3.5h11l3.5 5.5L12 20.5 3 9z"/><path d="M3 9h18M12 20.5 8.5 9l2.5-5.5M12 20.5 15.5 9 13 3.5"/></symbol>
+  <symbol id="page" viewBox="0 0 24 24"><path d="M6 3h8.5L19 7.5V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="camera" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="m8.5 7 1.5-3h4l1.5 3"/></symbol>
+  <symbol id="photo" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 15.5-5-5L5 19.5"/></symbol>
+  <symbol id="pencil" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="journal" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="chart" viewBox="0 0 24 24"><path d="M5 20v-8M10 20V5M15 20v-6M20 20V9"/></symbol>
+  <symbol id="filter" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></symbol>
+  <symbol id="calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="tag" viewBox="0 0 24 24"><path d="M3.5 12V4.5a1 1 0 0 1 1-1H12l8.5 8.5-8 8z"/><circle cx="8" cy="8" r="1.4"/></symbol>
+  <symbol id="eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="sparkle" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16v4M17 18h4"/></symbol>
+  <symbol id="swatch" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 2-2s-1-1.6-1-2.6c0-1.2 1-2 2.4-2H18a3 3 0 0 0 3-3C21 6.8 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="building" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-4h6v4M8.5 7.5h2M13.5 7.5h2M8.5 11.5h2M13.5 11.5h2"/></symbol>
+  <symbol id="brush" viewBox="0 0 24 24"><path d="M18.5 3.5 10 12l2 2 8.5-8.5a1.4 1.4 0 0 0-2-2z"/><path d="M10 12c-2.5 0-4 1.5-4 4 0 1.5-1 2.5-2.5 3 3.5 1.5 8.5 1 8.5-5z"/></symbol>
+  <symbol id="upload" viewBox="0 0 24 24"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5"/></symbol>
+  <symbol id="download" viewBox="0 0 24 24"><path d="M12 3.5V15M7.5 10.5 12 15l4.5-4.5M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+  <symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.6M12 17h.01"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.5 2.7 3.8 5.9 3.8 9.5s-1.3 6.8-3.8 9.5c-2.5-2.7-3.8-5.9-3.8-9.5s1.3-6.8 3.8-9.5z"/></symbol>
+  <symbol id="link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3A4.5 4.5 0 0 0 13 4.6l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
+  <symbol id="ruler" viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="1.5"/><path d="M6.5 8v3M10.5 8v4M14.5 8v3M18.5 8v4"/></symbol>
+</svg>
+<div class="top">
+  <b>Organized Glitter · Coloring page tools</b>
+  <nav>
+    <a href="#picks">Picks</a><a href="#layout">Layout</a><a href="#mediums">Mediums</a><a href="#photos">Photos</a><a href="#mystery">Mystery</a><a href="#colors">Colors</a>
+  </nav>
+  <button class="toggle" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'">Light / Dark</button>
+</div>
+
+<header class="intro">
+  <h1>Coloring page tools</h1>
+  <p>Four things the web app can do on a coloring page that iOS can't yet: choose mediums, manage photos, reveal mystery pages, and keep color codes and swatches. Each one has two or three options. Pick one per section, or mix and match. My picks are marked.</p>
+  <p>Page dates aren't here. They already use the same date rows as diamond projects.</p>
+</header>
+
+<section id="picks">
+  <h2><small>Short version</small>My picks</h2>
+  <table class="picks">
+    <tr><th>Tool</th><th>Pick</th><th>Why</th></tr>
+    <tr><td>Mediums</td><td><b>A · Chips and picker</b></td><td>You can see what you used at a glance. The picker is the tag picker we already have, so you can add a new medium the same way you add a tag.</td></tr>
+    <tr><td>Photos</td><td><b>A · Long press, plus the viewer</b></td><td>This is how Photos and Files work. It adds no buttons to the page, and the same two actions are on the full-screen viewer for people who never long press.</td></tr>
+    <tr><td>Mystery</td><td><b>A · Reveal card</b></td><td>It's hard to miss when a page is still a mystery, and it goes away once you name it. Hiding it again is in the title menu.</td></tr>
+    <tr><td>Colors</td><td><b>B · Its own screen</b></td><td>Swatch sheets are something you look at while you color. They get a full screen, and the page itself stays short.</td></tr>
+  </table>
+</section>
+
+<!-- ======================= LAYOUT ======================= -->
+<section id="layout">
+  <h2><small>Where it all goes</small>The page, top to bottom</h2>
+  <p class="lede">This is the page with my picks in place. Mediums go right under the status because they're part of what the page is. Colors is a single row that opens its own screen. Notes and dates stay where they are today.</p>
+  <div class="row-of-phones">
+    <figure>
+      <div class="phone long">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c1"></div>
+            <div><div class="ttl">Hummingbird</div><div class="sub">Midnight Botanica · Page 14</div></div>
+            <div><span class="stat"><span class="st progress"><i data-i="play"></i></span>In progress <i data-i="chev-d" style="font-size:13px"></i></span></div>
+            <div class="mchips"><span class="mchip">Prismacolor Premier</span><span class="mchip">Gel pens</span><span class="mchip add"><i data-i="plus"></i>Medium</span><span class="n">1</span></div>
+            <div class="sh2">Photos <span class="n">2</span><span class="spacer"></span><span class="lnk"><i data-i="plus"></i> Add photo</span></div>
+            <div class="thumbs"><div class="thumb art pg c1"><span class="badge"><i data-i="sparkle"></i>Main</span></div><div class="thumb art pg c2"></div><div class="thumb art pg"></div></div>
+            <div class="group flat"><div class="r ti"><span class="ic a"><i data-i="swatch"></i></span><div class="tx"><div class="t1">Colors</div><div class="t2">3 swatch photos · 14 codes</div></div><span class="n">4</span><i data-i="chev-r" class="chev"></i></div></div>
+            <div class="sh2">Progress notes<span class="spacer"></span><span class="lnk"><i data-i="plus"></i> Log</span></div>
+            <div class="group flat">
+              <div class="r"><div class="tx"><div class="t1">Finished the wings</div><div class="t2">Oct 2</div></div></div>
+              <div class="r"><div class="tx"><div class="t1">Blended the background</div><div class="t2">Sep 28</div></div></div>
+            </div>
+            <div class="sh2">Page details</div>
+            <div class="group flat">
+              <div class="r"><span class="tx t1">Started</span><span class="pill date">Sep 24, 2026</span></div>
+              <div class="r"><span class="tx t1">Completed</span><span class="val field">Not set</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Normal page, everything filled in<span>1 Mediums · 2 Photos · 4 Colors. Mystery pages (3) put the reveal card where the mediums are. See below.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= MEDIUMS ======================= -->
+<section id="mediums">
+  <h2><small>1 · INT-1214</small>Mediums</h2>
+  <p class="lede">You pick which mediums you used from your Mediums list, and you can add a new one without leaving the page. Every change saves right away. It needs a connection for now.</p>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c1"></div>
+            <div><div class="ttl">Hummingbird</div><div class="sub">Midnight Botanica · Page 14</div></div>
+            <div><span class="stat"><span class="st progress"><i data-i="play"></i></span>In progress <i data-i="chev-d" style="font-size:13px"></i></span></div>
+            <div class="mchips"><span class="mchip">Prismacolor Premier</span><span class="mchip">Gel pens</span><span class="mchip add"><i data-i="plus"></i>Medium</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><span class="pick">My pick</span>A · Chips under the status<span>Chips show what you used. Tap any chip, or "+ Medium", to open the picker. With no mediums it's just the "+ Medium" chip.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content"><div class="bar"></div><div class="dp"><div class="hero art pg c1"></div></div></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="bar" style="height:52px"><span class="gb"><i data-i="xmark"></i></span><span class="ctr">Mediums</span><span class="gb pro"><i data-i="checkmark"></i></span></div>
+          <div class="srch"><i data-i="search"></i>Copic</div>
+          <div class="group">
+            <div class="r"><span class="tx t1 tint"><i data-i="plus"></i> Add "Copic"</span></div>
+          </div>
+          <div class="group">
+            <div class="r"><span class="tx t1">Gel pens</span><i data-i="checkmark" class="tint"></i></div>
+            <div class="r"><span class="tx t1">Posca markers</span></div>
+            <div class="r"><span class="tx t1">Prismacolor Premier</span><i data-i="checkmark" class="tint"></i></div>
+            <div class="r"><span class="tx t1">Watercolor pencils</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>A · The picker<span>This is the tag picker we already have, pointed at Mediums. Search, check, or add a new one inline. Names with no letters or numbers get the same message as tags.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c1" style="height:150px"></div>
+            <div><div class="ttl">Hummingbird</div><div class="sub">Midnight Botanica · Page 14</div></div>
+            <div class="sh2">Page details</div>
+            <div class="group flat">
+              <div class="r"><span class="tx t1">Mediums</span><span class="val">Prismacolor, Gel pens</span><i data-i="chev-r" class="chev"></i></div>
+              <div class="r"><span class="tx t1">Started</span><span class="pill date">Sep 24, 2026</span></div>
+              <div class="r"><span class="tx t1">Completed</span><span class="val field">Not set</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>B · A row in Page details<span>Quieter. It opens the same picker. Long lists get cut off, and it's easy to forget it's there.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c1" style="height:150px"></div>
+            <div><div class="ttl">Hummingbird</div><div class="sub">Midnight Botanica · Page 14</div></div>
+            <div class="sh2">Mediums</div>
+            <div class="mchips">
+              <span class="mchip on"><i data-i="checkmark"></i>Prismacolor Premier</span><span class="mchip on"><i data-i="checkmark"></i>Gel pens</span><span class="mchip">Posca markers</span><span class="mchip">Watercolor pencils</span><span class="mchip">Faber-Castell Polychromos</span><span class="mchip">Fineliners</span><span class="mchip">Brush pens</span><span class="mchip add"><i data-i="plus"></i>New</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>C · Every medium as a toggle<span>This is how the web does it. One tap per change, but with a long Mediums list it pushes everything else down on every page.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= PHOTOS ======================= -->
+<section id="photos">
+  <h2><small>2 · INT-1216</small>Photos</h2>
+  <p class="lede">Two new actions: delete a photo, and choose which one is the main photo. The main photo is the one on the page and in the Library, and it's always the first in the list. Delete always asks first.</p>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c1"></div>
+            <div class="sh2">Photos<span class="spacer"></span><span class="lnk"><i data-i="plus"></i> Add photo</span></div>
+            <div class="thumbs"><div class="thumb art pg c1"><span class="badge"><i data-i="sparkle"></i>Main</span></div><div class="thumb" style="visibility:hidden"></div><div class="thumb art pg"></div></div>
+          </div>
+        </div>
+        <div class="scrim blur"></div>
+        <div class="lifted art pg c2" style="left:126px;top:350px"></div>
+        <div class="menu" style="left:126px;top:494px">
+          <div>Set as main photo <i data-i="sparkle"></i></div>
+          <div>Share <i data-i="upload"></i></div>
+          <div class="danger">Delete photo <i data-i="trash"></i></div>
+        </div>
+      </div>
+      <figcaption><span class="pick">My pick</span>A · Long press a photo<span>A standard context menu. The main photo has a small "Main" badge, and its menu leaves out "Set as main photo".</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb" style="color:#fff">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="viewer">
+          <div class="bar" style="padding-top:54px;height:110px"><span class="gb dark"><i data-i="xmark"></i></span><span class="ctr" style="color:#fff">2 of 3</span><span class="gb dark"><i data-i="upload"></i></span></div>
+          <div class="art pg c2" style="margin:60px 0;height:470px"></div>
+          <div class="vbar"><span class="gb dark txt"><i data-i="sparkle"></i> Set as main</span><span class="spacer"></span><span class="gb dark"><i data-i="trash"></i></span></div>
+        </div>
+      </div>
+      <figcaption><span class="pick">My pick, with A</span>A · The same actions in the viewer<span>When you open a photo full screen, "Set as main" and delete are on the bottom bar. So nobody has to know about long press.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c1"></div>
+            <div class="sh2">Photos<span class="spacer"></span><span class="lnk">Done</span></div>
+            <div class="thumbs"><div class="thumb art pg c1"><span class="badge"><i data-i="sparkle"></i>Main</span></div><div class="thumb art pg c2 sel"><span class="selmark"><i data-i="checkmark"></i></span></div><div class="thumb art pg"></div></div>
+          </div>
+        </div>
+        <div class="tabs"><div class="tb" style="justify-content:space-around;align-items:center;padding:0 18px"><span class="tint">Set as main</span><span class="danger">Delete</span></div></div>
+      </div>
+      <figcaption>B · Select mode<span>"Edit" on the Photos header turns on selection, with actions at the bottom. Easy to find, but it's more to build, and it's clunky when you only want to change one photo.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c1"></div>
+            <div class="sh2">Photos<span class="spacer"></span><span class="lnk"><i data-i="plus"></i> Add photo</span></div>
+            <div class="thumbs"><div class="thumb art pg c1"></div><div class="thumb art pg c2"></div><div class="thumb art pg"></div></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="asheet">
+          <div class="group"><div class="r" style="justify-content:center;flex-direction:column;gap:2px"><b style="font-size:15px">Delete this photo?</b><span class="small muted">This can't be undone.</span></div><div class="r danger" style="justify-content:center;font-weight:600">Delete photo</div></div>
+          <div class="group"><div class="r" style="justify-content:center;font-weight:600">Cancel</div></div>
+        </div>
+      </div>
+      <figcaption>The delete check, for A and B<span>A confirmation dialog anchored at the bottom. Deleting needs a connection, like uploading does.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= MYSTERY ======================= -->
+<section id="mystery">
+  <h2><small>3 · INT-1217</small>Mystery pages</h2>
+  <p class="lede">In a mystery book, a page stays a mystery until you say what it turned out to be. Until then, the Library shows the page number instead of the photo, so nothing gets spoiled. You can reveal a page, change the answer, or hide it again.</p>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <h1 class="lt">Mystery Garden</h1>
+          <div class="sub" style="padding:0 20px 14px">Mystery book · 3 of 24 revealed</div>
+          <div class="ctiles">
+            <div class="ctile art a4"><span class="cap">Fox</span></div>
+            <div class="ctile myst">5</div>
+            <div class="ctile myst">6</div>
+            <div class="ctile art a7"><span class="cap">Fern</span></div>
+            <div class="ctile myst">8</div>
+            <div class="ctile myst">9</div>
+            <div class="ctile myst">10</div>
+            <div class="ctile art a5"><span class="cap">Whale</span></div>
+            <div class="ctile myst">12</div>
+          </div>
+        </div>
+      </div>
+      <figcaption>In the book (any option)<span>Mystery pages show the page number in Caveat with a small "?" instead of a photo, the same as the web. Once revealed, they show the photo and the answer.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c2"></div>
+            <div><div class="ttl">Page 7</div><div class="sub">Mystery Garden · Page 7</div></div>
+            <div><span class="stat"><span class="st done"><i data-i="check"></i></span>Completed <i data-i="chev-d" style="font-size:13px"></i></span></div>
+            <div class="mcard"><span class="ic a"><i data-i="sparkle"></i></span><div class="tx"><div class="t1 b">Still a mystery</div><div class="t2">What did it turn out to be?</div></div><span class="btn sm">Reveal</span></div>
+            <div class="mchips"><span class="mchip">Gel pens</span><span class="mchip add"><i data-i="plus"></i>Medium</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><span class="pick">My pick</span>A · A reveal card<span>A card right under the status. On mystery pages the title can't be edited until you reveal. Tapping Reveal opens the next screen.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"></div>
+          <div class="dp"><div class="hero art pg c2"></div><div><div class="ttl">Page 7</div></div></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="alert">
+          <h3>Reveal page 7</h3>
+          <p>What did the mystery turn out to be?</p>
+          <div class="inp">Snow leopard<span class="caret"></span></div>
+          <div class="btns"><span>Cancel</span><span class="pri">Reveal</span></div>
+        </div>
+      </div>
+      <figcaption>A · Naming it<span>A standard alert with a text field. Reveal stays off until you type something.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c2"></div>
+            <div><div class="ttl">Snow leopard <i data-i="chev-d" style="font-size:18px;color:var(--fg2)"></i></div><div class="sub">Mystery Garden · Page 7 · Revealed Oct 4</div></div>
+          </div>
+        </div>
+        <div class="menu" style="left:20px;top:430px">
+          <div>Edit answer <i data-i="pencil"></i></div>
+          <div>Hide again <i data-i="eye-off"></i></div>
+        </div>
+      </div>
+      <figcaption>A · After revealing<span>The answer becomes the title, with the reveal date underneath. Tapping the title gives "Edit answer" and "Hide again". Hiding clears the answer, and the page is a mystery again.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb txt"><i data-i="sparkle"></i> Reveal</span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="hero art pg c2"></div>
+            <div><div class="ttl">Page 7</div><div class="sub">Mystery Garden · Page 7 · Mystery</div></div>
+            <div><span class="stat"><span class="st done"><i data-i="check"></i></span>Completed <i data-i="chev-d" style="font-size:13px"></i></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>B · A toolbar button<span>Less on the page, but it's easy to miss that a page is still a mystery. "Edit answer" and "Hide again" would go in the ⋯ menu.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= COLORS ======================= -->
+<section id="colors">
+  <h2><small>4 · INT-1218</small>Color codes and swatches</h2>
+  <p class="lede">The same as the web: one free-text note for color codes, and up to 100 swatch photos. Swatch photos are private, like other uploads. Adding or removing them needs a connection.</p>
+  <div class="row-of-phones">
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="thumbs"><div class="thumb art pg c1"><span class="badge"><i data-i="sparkle"></i>Main</span></div><div class="thumb art pg c2"></div><div class="thumb art pg"></div></div>
+            <div class="group flat"><div class="r ti"><span class="ic a"><i data-i="swatch"></i></span><div class="tx"><div class="t1">Colors</div><div class="t2">3 swatch photos · 14 codes</div></div><i data-i="chev-r" class="chev"></i></div></div>
+            <div class="sh2">Progress notes<span class="spacer"></span><span class="lnk"><i data-i="plus"></i> Log</span></div>
+            <div class="group flat"><div class="r"><div class="tx"><div class="t1">Finished the wings</div><div class="t2">Oct 2</div></div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><span class="pick">My pick</span>B · A Colors row on the page<span>It shows how much is there. With nothing yet, it reads "Add color codes or swatches".</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="ctr">Colors</span><span class="gb"><i data-i="plus"></i></span></div>
+          <div class="dp">
+            <div class="sub" style="margin-top:4px">Hummingbird · Page 14</div>
+            <div class="swg">
+              <div class="sw sw1"></div><div class="sw sw2"></div><div class="sw sw3"></div>
+            </div>
+            <div class="sh2">Color codes<span class="spacer"></span><span class="lnk">Edit</span></div>
+            <div class="group flat codes">
+              <div class="r">PC 1013 Deco Peach — beak</div>
+              <div class="r">PC 937 Tuscan Red, PC 1030 Raspberry — throat</div>
+              <div class="r">PC 908 Dark Green, PC 1005 Limepeel — wings</div>
+              <div class="r">Gel pen white — highlights</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption><span class="pick">My pick</span>B · The Colors screen<span>Swatches on top, codes below. Tap a swatch to open it full screen and zoom in. Long press it to delete. "+" gives Take photo or Choose photos. The codes are just your text, one line each, as you typed it.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"></div>
+          <div class="dp"><div class="swg"><div class="sw sw1"></div><div class="sw sw2"></div><div class="sw sw3"></div></div></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="bar" style="height:52px"><span class="gb"><i data-i="xmark"></i></span><span class="ctr">Color Codes</span><span class="gb pro"><i data-i="checkmark"></i></span></div>
+          <div class="group"><div class="r codes" style="min-height:300px;align-items:flex-start;line-height:1.6">PC 1013 Deco Peach — beak<br>PC 937 Tuscan Red, PC 1030 Raspberry — throat<br>PC 908 Dark Green, PC 1005 Limepeel — wings<br>Gel pen white — highlights<span class="caret"></span></div></div>
+          <div class="gf">Autocorrect is off, so codes stay how you type them.</div>
+        </div>
+      </div>
+      <figcaption>B · Editing codes<span>A plain text sheet. Cancel asks first if you've typed something.</span></figcaption>
+    </figure>
+
+    <figure>
+      <div class="phone">
+        <div class="sb">9:41<span class="icons"><span class="batt"></span></span></div>
+        <div class="content">
+          <div class="bar"><span class="gb"><i data-i="chev-l"></i></span><span class="spacer"></span><span class="gb"><i data-i="more"></i></span></div>
+          <div class="dp">
+            <div class="thumbs"><div class="thumb art pg c1"><span class="badge"><i data-i="sparkle"></i>Main</span></div><div class="thumb art pg c2"></div><div class="thumb art pg"></div></div>
+            <div class="sh2">Colors<span class="spacer"></span><span class="lnk"><i data-i="plus"></i> Swatch</span></div>
+            <div class="swg"><div class="sw sw1"></div><div class="sw sw2"></div><div class="sw sw3"></div></div>
+            <div class="group flat codes">
+              <div class="r">PC 1013 Deco Peach — beak</div>
+              <div class="r">PC 937 Tuscan Red, PC 1030 Raspberry — throat</div>
+              <div class="r tint" style="font-family:inherit">Edit codes</div>
+            </div>
+            <div class="sh2">Progress notes</div>
+          </div>
+        </div>
+      </div>
+      <figcaption>A · Inline on the page<span>Everything in one scroll. Nice with one swatch sheet, but with several it pushes notes and dates a long way down.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="next" style="padding-bottom:80px">
+  <h2><small>After you pick</small>What happens next</h2>
+  <div class="notes">
+    <div><h4>Build order</h4>Mediums, then photos, then mystery, then colors. Each one is its own PR with screenshots.</div>
+    <div><h4>Offline</h4>The reveal saves offline, like status does. Mediums, photo deletes and swatches need a connection for now. The offline sync doesn't cover them yet.</div>
+    <div><h4>Backend</h4>I don't expect backend changes. Colors uses the web's existing color reference records, and Sol will check first that the app can reach them.</div>
+  </div>
+</section>
+
+<script>
+for (const el of document.querySelectorAll('i[data-i]')) {
+  el.innerHTML = `<svg aria-hidden="true"><use href="#${el.dataset.i}"/></svg>`;
+}
+if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.dataset.theme = 'dark';
+</script>
+</body>
+</html>

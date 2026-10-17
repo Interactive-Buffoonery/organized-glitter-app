@@ -1,0 +1,116 @@
+import Foundation
+
+// Remaining unseen copy is subject to Sarah's review.
+enum RandomizerPageCopy {
+  static let craft = "Craft"
+  static let connection = "Connect to the internet to download your library."
+  static let historyTitle = "Spin History"
+  static let latest = "Latest"
+  static let options = "options"
+  static let noSpins = "No spins yet"
+  static let loading = "Loading…"
+  static let historyLoadFailed = "Couldn’t load spin history."
+  static let retry = "Retry"
+  static let refreshHistory = "Refresh history"
+  static let moreHistory = "Show More History"
+  static let spinNotSent = "Not saved to history. Connect to the internet to save spins."
+  static let spinRejected = "Couldn’t save this spin to history."
+  static let spinUnknown = "Couldn’t confirm whether this spin was saved."
+  static let title = "Randomizer"
+  static let searchNotice = "Search only changes the list. All selected items stay on the wheel."
+  static let noSearchMatches = "No items match your search."
+  static func searchTitle(_ mode: RandomizerMode) -> String { "Search \(selectorTitle(mode).lowercased())" }
+  static let key = "Key"
+  static let keyTitle = "Wheel key"
+  static let keyDescription = "Selected items by wheel number."
+  static let selectAll = "Select all"
+  static let selectNone = "Deselect all"
+  static let resetFilters = "Reset filters"
+  static let unavailable = "This item is no longer available in your library."
+  static let clearResult = "Clear result"
+
+  static func modeTitle(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "Diamond paintings"
+    case .book: "Coloring books"
+    case .page: "Coloring pages"
+    }
+  }
+
+  static func action(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "Spin"
+    case .book: "Pick a book"
+    case .page: "Pick a page"
+    }
+  }
+
+  static func statusTitle(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "Project status"
+    case .book: "Book status"
+    case .page: "Page status"
+    }
+  }
+
+  static func selectorTitle(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "Projects"
+    case .book: "Books"
+    case .page: "Pages"
+    }
+  }
+
+  static func selectedTitle(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "Selected diamond painting"
+    case .book: "Selected coloring book"
+    case .page: "Selected coloring page"
+    }
+  }
+
+  static func viewAction(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "View project"
+    case .book: "View book"
+    case .page: "View page"
+    }
+  }
+
+  static func status(_ status: String, mode: RandomizerMode) -> String {
+    return mode.section.statusLabel(status)
+  }
+
+  static func noSelection(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "No projects are currently selected."
+    case .book: "No books are currently selected."
+    case .page: "No pages are currently selected."
+    }
+  }
+
+  static func empty(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "No diamond paintings match these filters."
+    case .book: "No coloring books match these filters."
+    case .page: "No coloring pages match these filters."
+    }
+  }
+
+  static func oneItem(_ mode: RandomizerMode) -> String {
+    switch mode {
+    case .diamond: "Only one project is selected. We recommend selecting more projects before spinning the wheel."
+    case .book: "Only one book is selected. We recommend selecting more books before spinning the wheel."
+    case .page: "Only one page is selected. We recommend selecting more pages before spinning the wheel."
+    }
+  }
+
+  static func actionAccessibility(_ mode: RandomizerMode, count: Int) -> String {
+    mode == .diamond ? "Spin the wheel to randomly select from \(count) items"
+      : "\(action(mode)) from \(count) items"
+  }
+
+  static func announcement(_ candidate: RandomizerCandidate) -> String {
+    "Spin complete! Selected: \(candidate.title)"
+  }
+}

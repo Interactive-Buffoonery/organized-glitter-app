@@ -27,7 +27,7 @@ struct RecordStatusTests {
     #expect(Set(BookStatus.allCases.map(\.systemImage)).count == BookStatus.allCases.count)
     #expect(Set(PageStatus.allCases.map(\.systemImage)).count == PageStatus.allCases.count)
     #expect(DiamondStatus.label(for: "kitted") == "Kitted up")
-    #expect(BookStatus.label(for: "in_stash") == "In stash")
+    #expect(BookStatus.label(for: "in_stash") == "In library")
     #expect(PageStatus.label(for: "palette_chosen") == "Palette chosen")
   }
 

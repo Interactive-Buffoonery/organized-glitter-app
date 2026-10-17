@@ -622,8 +622,8 @@ struct PocketBaseClientTests {
     await client.signOut()
   }
 
-  @Test
-  func refreshesOnceAndRetriesAnExpiredAuthenticatedRequest() async throws {
+  @Test(arguments: ["GET", "POST"])
+  func refreshesOnceAndRetriesAnExpiredAuthenticatedRequest(method: String) async throws {
     PocketBaseClientURLProtocol.requests = []
     PocketBaseClientURLProtocol.requestBodies = []
     PocketBaseClientURLProtocol.responses = [
@@ -638,7 +638,8 @@ struct PocketBaseClientTests {
       ),
       (
         200,
-        #"{"page":1,"perPage":50,"totalItems":0,"totalPages":0,"items":[]}"#
+        method == "GET" ? #"{"page":1,"perPage":50,"totalItems":0,"totalPages":0,"items":[]}"#
+          : #"{"id":"project-1","title":"Project"}"#
       ),
     ]
 
@@ -654,9 +655,16 @@ struct PocketBaseClientTests {
     )
 
     _ = try await client.signIn(identity: "sarah@example.test", password: "password")
-    let records: RecordList<TestProject> = try await client.list(collection: "projects")
-
-    #expect(records.items.isEmpty)
+    if method == "GET" {
+      let records: RecordList<TestProject> = try await client.list(collection: "projects")
+      #expect(records.items.isEmpty)
+    } else {
+      let record: TestProject = try await client.create(collection: "projects",
+        body: TestProjectUpdate(title: "Project"))
+      #expect(record.id == "project-1")
+    }
+    #expect(PocketBaseClientURLProtocol.requests.filter { $0.url?.path.hasSuffix("/projects/records") == true }
+      .map(\.httpMethod) == [method, method])
     #expect(
       PocketBaseClientURLProtocol.requests.map(\.url?.path) == [
         "/api/collections/users/auth-with-password",
