@@ -44,7 +44,7 @@ struct PickForMeView: View {
     let selected = candidates.filter { itemSelection.ids?.contains($0.id) ?? true }
     let searched = searchedCandidates(in: candidates)
     let searchFeedback = SearchFeedback(query: search, hasMatches: !searched.isEmpty,
-      isVisible: isPageVisible, isActive: model.library.isActive)
+      isVisible: canAnnounceFeedback, isActive: model.library.isActive)
     let wheelCandidates = model.selection?.candidates ?? selected
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -106,11 +106,14 @@ struct PickForMeView: View {
       if model.isSelecting { resetSelection() }
     }
     .onChange(of: model.library.spinHistoryLoadState) { _, state in
-      if isPageVisible, state == .failed {
+      if canAnnounceFeedback, state == .failed {
         AccessibilityNotification.Announcement(RandomizerPageCopy.historyLoadFailed).post()
       }
     }
     .onChange(of: model.library.spinHistoryFailures()) { _, _ in announceSpinHistoryFailures() }
+    .onChange(of: canAnnounceFeedback) { _, visible in
+      if visible { announceSpinHistoryFailures() }
+    }
     .onChange(of: mode) { _, _ in search = ""; itemSelection.selectAll(); resetSelection() }
     .onChange(of: selectedStatuses) { _, _ in
       itemSelection.reconcile(candidates: candidates)
@@ -195,9 +198,13 @@ struct PickForMeView: View {
 
   private var selectedStatuses: Set<String> { statuses[mode] ?? mode.defaultStatuses }
 
+  private var canAnnounceFeedback: Bool {
+    isPageVisible && presentedPanel == nil && logEditor == nil && openedTarget == nil
+  }
+
   private func announceSpinHistoryFailures() {
     for message in failureAnnouncements.messages(
-      for: model.library.spinHistoryFailures(), isPageVisible: isPageVisible) {
+      for: model.library.spinHistoryFailures(), isPageVisible: canAnnounceFeedback) {
       AccessibilityNotification.Announcement(message).post()
     }
   }
@@ -210,7 +217,7 @@ struct PickForMeView: View {
     }
     guard !announcedNoSearchMatches else { return }
     do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
-    guard !Task.isCancelled, isPageVisible, model.library.isActive,
+    guard !Task.isCancelled, canAnnounceFeedback, model.library.isActive,
       UIAccessibility.isVoiceOverRunning else { return }
     announcedNoSearchMatches = true
     AccessibilityNotification.Announcement(RandomizerPageCopy.noSearchMatches).post()
