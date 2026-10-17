@@ -630,6 +630,7 @@ private final class BehaviorProtocol: URLProtocol, @unchecked Sendable {
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
   override func startLoading() {
     if request.url?.path == "/api/mobile/sync/snapshot", let gate = Self.snapshotGate {
+      let respond: @Sendable () -> Void = { [self] in self.respond() }
       Task { @MainActor in
         try? await gate.pause()
         respond()
