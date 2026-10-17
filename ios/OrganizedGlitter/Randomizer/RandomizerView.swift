@@ -9,16 +9,16 @@ struct RandomizerView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-          Text("Numbers to pick from")
+          Text("Section numbers")
             .font(.karla(.headline))
-          Text("Enter your section numbers, separated by commas.")
+          Text("Separate numbers with commas.")
             .foregroundStyle(theme.pageSecondaryForeground)
           TextField("2, 5, 8, 12", text: $picker.numbers, axis: .vertical)
             .textFieldStyle(.roundedBorder)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .focused($isEditing)
-            .accessibilityLabel("Numbers to pick from")
+            .accessibilityLabel("Section numbers")
             .accessibilityIdentifier("numberSectionInput")
             .accessibilityHint("Whole numbers greater than zero, separated by commas")
 
@@ -47,13 +47,9 @@ struct RandomizerView: View {
             AccessibilityNotification.Announcement("Number picked: \(number)").post()
           }
         } label: {
-          Label(picker.selectedNumber == nil ? "Pick number" : "Try again", systemImage: "dice")
+          Label(picker.selectedNumber == nil ? "Pick a number" : "Pick another", systemImage: "dice")
         }
         .buttonStyle(QuietActionStyle())
-
-        Text("Picks stay on this screen and are not saved to a project.")
-          .font(.karla(.footnote))
-          .foregroundStyle(theme.pageSecondaryForeground)
       }
       .foregroundStyle(theme.foreground)
       .padding()
