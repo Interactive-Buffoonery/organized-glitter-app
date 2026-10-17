@@ -133,6 +133,106 @@ struct AnalyticsBehaviorTests {
     try await fixture.library.close(removingData: false)
   }
 
+  @Test func replacementLoadCompletesCancelledSearchCaptureOnce() async throws {
+    let fixture = try await Fixture()
+    try await fixture.seed()
+    let gate = LoadGate()
+    let model = LibraryModel(library: fixture.library, loadLocal: {
+      try await gate.pause()
+      try await fixture.library.loadLocal()
+    })
+    model.searchText = "Private"
+    let submission = Task { await model.submitSearch() }
+    await gate.waitUntilPaused(1)
+    let replacement = Task { await model.load() }
+    await gate.waitUntilPaused(2)
+
+    submission.cancel()
+    gate.resumeAll()
+    await submission.value
+    await replacement.value
+
+    #expect(fixture.events.names == [.searchPerformed])
+    #expect(fixture.events.properties.first?["result_count"] as? Int == 1)
+    #expect(model.items.map(\.recordID) == ["project"])
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func supersededSearchPublishesOnlyLatestResultCount() async throws {
+    let fixture = try await Fixture()
+    try await fixture.seed()
+    try await fixture.library.store.ingest(
+      .diamond(featureProject("second", title: "Latest match")), scope: fixture.library.scope)
+    let gate = LoadGate()
+    let model = LibraryModel(library: fixture.library, loadLocal: {
+      try await gate.pause()
+      try await fixture.library.loadLocal()
+    })
+    model.searchText = "Private"
+    let first = Task { await model.submitSearch() }
+    await gate.waitUntilPaused(1)
+    model.searchText = "Latest"
+    let latest = Task { await model.submitSearch() }
+    await gate.waitUntilPaused(2)
+
+    gate.resumeAll()
+    await first.value
+    await latest.value
+
+    #expect(fixture.events.names == [.searchPerformed])
+    #expect(fixture.events.properties.first?["result_count"] as? Int == 1)
+    #expect(model.items.map(\.recordID) == ["second"])
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func craftChangesCaptureOnlyExplicitChoices() async throws {
+    let fixture = try await Fixture()
+    let model = LibraryModel(library: fixture.library)
+    model.select(.books)
+    model.align(to: VerticalPreferences(diamondPainting: true, coloringBooks: false))
+    model.apply(LibraryRequest(section: .books, status: BookStatus.inStash.rawValue))
+    #expect(fixture.events.names.isEmpty)
+
+    model.select(.diamonds, userInitiated: true)
+    model.select(.books, userInitiated: true)
+    #expect(fixture.events.names == [.craftChanged, .craftChanged])
+    #expect(fixture.events.properties.map { $0["record_type"] as? String }
+      == ["projects", "coloring_books"])
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func sidebarActionsDescribeOnlyExplicitCraftAndFilterChoices() {
+    #expect(AppTab.craft(.diamonds).sidebarAnalytics(from: .home) == [
+      SidebarAnalyticsAction(event: .craftChanged, recordType: "projects"),
+    ])
+    #expect(AppTab.shelf(.diamonds, status: "private-status")
+      .sidebarAnalytics(from: .craft(.diamonds)) == [
+        SidebarAnalyticsAction(event: .filterChanged, recordType: "projects", filterActive: true),
+      ])
+    #expect(AppTab.craft(.diamonds)
+      .sidebarAnalytics(from: .shelf(.diamonds, status: "private-status")) == [
+        SidebarAnalyticsAction(event: .filterChanged, recordType: "projects", filterActive: false),
+      ])
+    #expect(AppTab.library.sidebarAnalytics(from: .craft(.diamonds)).isEmpty)
+  }
+
+  @Test func notesFiltersCaptureInteractionsWithoutYearsOrAutomaticChanges() async throws {
+    let fixture = try await Fixture()
+    let filters = NotesFilterModel(library: fixture.library)
+    filters.align(to: VerticalPreferences(diamondPainting: false, coloringBooks: true))
+    filters.reconcile(availableYears: [2025])
+    #expect(fixture.events.names.isEmpty)
+
+    filters.selectCraft(.all)
+    filters.selectYear(2026)
+    filters.reconcile(availableYears: [2025])
+    #expect(fixture.events.names == [.notesCraftFilterChanged, .notesYearFilterChanged])
+    #expect(fixture.events.properties[0]["craft"] as? String == "all")
+    #expect(fixture.events.properties[1]["filter_active"] as? Bool == true)
+    #expect(fixture.events.properties.allSatisfy { $0["year"] == nil })
+    try await fixture.library.close(removingData: false)
+  }
+
   @Test func acceptedOnlineCreateAndFailureHaveDistinctOutcomes() async throws {
     let fixture = try await Fixture()
     let _: DiamondProjectRecord = try await fixture.library.create(
@@ -227,6 +327,52 @@ struct AnalyticsBehaviorTests {
     #expect(AnalyticsPayload.properties(["result_count": NSNumber(value: 1)], for: .searchPerformed)["result_count"] as? Int == 1)
     #expect(AnalyticsPayload.properties(["result_count": -1], for: .searchPerformed).isEmpty)
     #expect(AnalyticsPayload.properties(["auth_provider": "private@example.test"], for: .loginSucceeded).isEmpty)
+    #expect(AnalyticsPayload.properties(["craft": "Private craft"],
+      for: .notesCraftFilterChanged).isEmpty)
+    #expect(AnalyticsPayload.properties(["filter_active": true, "year": 2026],
+      for: .notesYearFilterChanged)["year"] == nil)
+    #expect(AnalyticsPayload.properties(["surface": "private-filename.jpg"],
+      for: .photoViewed).isEmpty)
+    let photo = AnalyticsPayload.properties([
+      "surface": AnalyticsPhotoSurface.notesFeed.rawValue,
+      "filename": "private-filename.jpg",
+      "record_id": "private-id",
+    ], for: .photoViewed)
+    #expect(photo["surface"] as? String == "notes_feed")
+    #expect(Set(photo.keys) == ["surface"])
+  }
+}
+
+@MainActor
+private final class LoadGate {
+  private var paused: [CheckedContinuation<Void, Never>] = []
+  private var countWaiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
+
+  func pause() async throws {
+    await withCheckedContinuation { continuation in
+      paused.append(continuation)
+      resumeCountWaiters()
+    }
+    try Task.checkCancellation()
+  }
+
+  func waitUntilPaused(_ count: Int) async {
+    if paused.count >= count { return }
+    await withCheckedContinuation { continuation in
+      countWaiters.append((count, continuation))
+    }
+  }
+
+  func resumeAll() {
+    let continuations = paused
+    paused.removeAll()
+    for continuation in continuations { continuation.resume() }
+  }
+
+  private func resumeCountWaiters() {
+    let ready = countWaiters.filter { paused.count >= $0.count }
+    countWaiters.removeAll { paused.count >= $0.count }
+    for waiter in ready { waiter.continuation.resume() }
   }
 }
 

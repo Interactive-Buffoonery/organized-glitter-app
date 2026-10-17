@@ -17,6 +17,9 @@ enum AnalyticsEvent: String, Sendable {
   case filterChanged = "dashboard_status_segment_clicked"
   case booksFilterChanged = "coloring_books_filter_changed"
   case craftChanged = "dashboard_mode_changed"
+  case notesCraftFilterChanged = "notes_craft_filter_changed"
+  case notesYearFilterChanged = "notes_year_filter_changed"
+  case photoViewed = "record_photo_viewed"
   case recordSavedLocally = "library_record_saved_locally"
   case projectCreated = "project_created"
   case projectUpdated = "project_updated"
@@ -73,6 +76,9 @@ enum AnalyticsEvent: String, Sendable {
     case .loginSucceeded: ["auth_method", "auth_provider", "auth_entrypoint"]
     case .screenViewed: ["screen"]
     case .projectOpened, .recordOpened, .craftChanged: ["record_type"]
+    case .notesCraftFilterChanged: ["craft"]
+    case .notesYearFilterChanged: ["filter_active"]
+    case .photoViewed: ["surface"]
     case .searchPerformed, .booksSearchPerformed: ["record_type", "result_count"]
     case .sortChanged, .booksSortChanged, .pagesSortChanged: ["record_type", "sort"]
     case .filterChanged, .booksFilterChanged, .pagesFilterChanged: ["record_type", "filter_active"]
@@ -155,6 +161,8 @@ enum AnalyticsPayload {
       "save_destination": ["server"],
       "resolution": ["keep_local", "use_server"],
       "setting": ["profile", "theme", "palette", "timezone"],
+      "craft": Set(NotesCraft.allCases.map(\.rawValue)),
+      "surface": Set(AnalyticsPhotoSurface.allCases.map(\.rawValue)),
     ]
     for key in event.propertyKeys {
       guard let value = input[key] else { continue }

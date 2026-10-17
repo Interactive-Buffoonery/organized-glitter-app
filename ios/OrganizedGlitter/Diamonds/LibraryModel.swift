@@ -251,11 +251,18 @@ final class LibraryModel {
   private var generation = 0
   private var listingEpoch = 0
   private var adjustingListing = false
+  private var pendingSearch: PendingSearch?
+  @ObservationIgnored private let loadLocal: @MainActor () async throws -> Void
   var onSessionExpired: (@MainActor @Sendable () async -> Void)?
 
-  init(library: LibrarySession, searchesColoringPages: Bool = false) {
+  init(
+    library: LibrarySession,
+    searchesColoringPages: Bool = false,
+    loadLocal: (@MainActor () async throws -> Void)? = nil
+  ) {
     self.library = library
     self.searchesColoringPages = searchesColoringPages
+    self.loadLocal = loadLocal ?? { try await library.loadLocal() }
   }
 
   var items: [LibraryItem] {
@@ -297,6 +304,7 @@ final class LibraryModel {
     let previousAdjustment = adjustingListing
     adjustingListing = true
     defer { adjustingListing = previousAdjustment }
+    pendingSearch = nil
     select(request.section)
     searchText = ""
     committedSearch = ""
@@ -305,15 +313,18 @@ final class LibraryModel {
     listingEpoch += 1
   }
 
-  func select(_ section: LibrarySection) {
+  func select(_ section: LibrarySection, userInitiated: Bool = false) {
     let previousAdjustment = adjustingListing
     adjustingListing = true
     defer { adjustingListing = previousAdjustment }
     guard self.section != section else {
       return
     }
+    pendingSearch = nil
     self.section = section
-    library.captureAnalytics(.craftChanged, properties: ["record_type": section.analyticsCollection])
+    if userInitiated {
+      library.captureAnalytics(.craftChanged, properties: ["record_type": section.analyticsCollection])
+    }
     searchText = ""
     committedSearch = ""
     statusFilter = nil
@@ -328,18 +339,17 @@ final class LibraryModel {
       sort = .recentlyUpdated
     }
     statusFilter = nil
+    let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    pendingSearch = query.isEmpty ? nil : PendingSearch(section: section, query: query)
     adjustingListing = previousAdjustment
     await load()
-    guard !committedSearch.isEmpty, errorMessage == nil else { return }
-    library.captureAnalytics(section == .diamonds ? .searchPerformed : .booksSearchPerformed,
-      properties: ["record_type": section.analyticsCollection,
-        "result_count": min(10_000, shelfCounts.values.reduce(0, +))])
   }
 
   func clearSearch() async {
     guard !searchText.isEmpty || !committedSearch.isEmpty else {
       return
     }
+    pendingSearch = nil
     searchText = ""
     committedSearch = ""
     await load()
@@ -395,6 +405,7 @@ final class LibraryModel {
     }
     let requestGeneration = generation
     let requestedSection = section
+    let requestedSearch = committedSearch
     let requestedPage = reset ? 1 : currentPage + 1
 
     isLoading = true
@@ -407,10 +418,11 @@ final class LibraryModel {
     }
 
     do {
-      if reset { try await library.loadLocal() }
+      if reset { try await loadLocal() }
       guard requestGeneration == generation, section == requestedSection else { return }
       if !library.hasSnapshot && library.items.isEmpty {
         displayedItems = []
+        discardPendingSearch(section: requestedSection, query: requestedSearch)
         return
       }
       let bookTitles = ownedBookTitles()
@@ -420,18 +432,23 @@ final class LibraryModel {
       totalPages = (matching.count + Self.pageSize - 1) / Self.pageSize
       currentPage = min(requestedPage, totalPages)
       displayedItems = Array(matching.prefix(requestedPage * Self.pageSize))
+      capturePendingSearch(section: requestedSection, query: requestedSearch)
     } catch APIError.cancelled {
+      return
+    } catch is CancellationError {
       return
     } catch APIError.unauthenticated {
       guard requestGeneration == generation else {
         return
       }
+      discardPendingSearch(section: requestedSection, query: requestedSearch)
       errorMessage = APIError.unauthenticated.libraryMessage
       await onSessionExpired?()
     } catch {
       guard requestGeneration == generation else {
         return
       }
+      discardPendingSearch(section: requestedSection, query: requestedSearch)
       errorMessage = error.libraryMessage
     }
   }
@@ -494,6 +511,23 @@ final class LibraryModel {
   }
 
   private static let pageSize = 30
+
+  private struct PendingSearch: Equatable {
+    let section: LibrarySection
+    let query: String
+  }
+
+  private func capturePendingSearch(section: LibrarySection, query: String) {
+    guard pendingSearch == PendingSearch(section: section, query: query) else { return }
+    pendingSearch = nil
+    library.captureAnalytics(section == .diamonds ? .searchPerformed : .booksSearchPerformed,
+      properties: ["record_type": section.analyticsCollection,
+        "result_count": min(10_000, shelfCounts.values.reduce(0, +))])
+  }
+
+  private func discardPendingSearch(section: LibrarySection, query: String) {
+    if pendingSearch == PendingSearch(section: section, query: query) { pendingSearch = nil }
+  }
 
   private func ownedBookTitles() -> [String: String] {
     section == .pages || searchesColoringPages ? library.ownedBookTitles() : [:]

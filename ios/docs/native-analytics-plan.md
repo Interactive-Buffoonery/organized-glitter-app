@@ -130,6 +130,11 @@ opaque PocketBase ID supplied by the verified session.
   Page sorting and filtering have explicit `coloring_pages_*` names.
   Presentation changes reset filters and sorting without recording those
   resets as additional user choices.
+- Notes filters: `notes_craft_filter_changed` records only an explicit picker
+  choice with the fixed `craft` enum. `notes_year_filter_changed` records an
+  explicit year choice using only `filter_active`; it never includes the year.
+  Setup, preference alignment, invalid-year cleanup, and craft-driven resets do
+  not emit filter events.
 - Existing-record edits: `library_record_saved_locally` follows the durable
   SwiftData commit, with record type, patch field count, and whether the visible status
   changed. This event does not claim server acceptance.
@@ -140,6 +145,9 @@ opaque PocketBase ID supplied by the verified session.
   own names. Note creation includes only `has_photo`. Page photo uploads reuse
   `coloring_page_photo_added`. Generic record update and photo events describe
   separate outcomes of the same accepted upload; do not sum them as two edits.
+- Photo viewing: `record_photo_viewed` follows an explicit full-screen open and
+  includes only a fixed `surface` enum. Viewer paging, setup, filenames, URLs,
+  captions, dates, and record identifiers are not collected.
 - Lists and tag links: accepted online writes reuse matching company, artist,
   tag, publisher, illustrator, and medium names from web. Other list outcomes
   use `library_list_entry_*` with a fixed list kind. Accepted relationship

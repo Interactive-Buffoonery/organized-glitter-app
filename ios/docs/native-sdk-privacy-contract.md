@@ -45,6 +45,14 @@ note edits/deletes, photo viewing, Account actions and sync/conflict decisions.
 Document each additional name, trigger and allowed properties before wiring it.
 Do not treat the original web-derived list as a smaller approved native scope.
 
+Reachable Notes filters use `notes_craft_filter_changed` after an explicit craft
+choice with the fixed `craft` enum, and `notes_year_filter_changed` after an
+explicit year choice with only `filter_active`. Automatic craft alignment,
+unavailable-year cleanup, and craft-driven year resets emit neither event.
+`record_photo_viewed` follows an explicit full-screen photo open and includes
+only a fixed `surface` enum; photo identifiers, filenames, URLs, captions, and
+dates are excluded.
+
 - Allow fixed enums, booleans, bounded counts, duration buckets, platform,
   environment and app version. Review SDK-added fields separately.
 - Block names, titles, notes, descriptions, search text, raw barcodes, images,

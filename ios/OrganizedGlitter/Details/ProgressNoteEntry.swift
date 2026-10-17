@@ -253,7 +253,7 @@ struct ProgressNotesSection: View {
         do { try await Task.sleep(for: .seconds(1.6)) } catch { return }
         withAnimation(Theme.motion) { highlightedNoteID = nil }
       }
-      .photoViewer(progressPhotos)
+      .photoViewer(progressPhotos, library: model.library, surface: .progressNotes)
     }
   }
 
