@@ -12,7 +12,7 @@ enum RandomizerPageCopy {
   static let retry = "Retry"
   static let refreshHistory = "Refresh history"
   static let moreHistory = "Show more"
-  static let spinNotSent = "You’re offline. This spin wasn’t saved."
+  static let spinNotSent = "This spin wasn’t saved because you were offline."
   static let spinRejected = "Couldn’t save this spin to history."
   static let spinUnknown = "Couldn’t confirm whether this spin was saved."
   static let title = "Randomizer"
