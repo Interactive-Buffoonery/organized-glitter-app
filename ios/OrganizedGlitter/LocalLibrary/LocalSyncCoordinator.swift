@@ -25,7 +25,10 @@ actor LocalSyncCoordinator {
   private func refresh(expectedGeneration: Int) async throws {
     let snapshot = try await client.mobileSnapshot()
     try checkActive(expectedGeneration)
-    try await store.ingestSnapshot(snapshot, scope: scope)
+    let transitions = try await store.ingestSnapshot(snapshot, scope: scope)
+    for transition in transitions {
+      await captureConflict(transition)
+    }
   }
 
   func syncPending() async throws {
@@ -48,8 +51,12 @@ actor LocalSyncCoordinator {
         guard record.localRecordKey == operation.key else {
           throw LocalLibraryError.invalidValue
         }
-        try await store.acknowledge(scope: scope, operationID: operation.id, record: record)
+        let result = try await store.acknowledge(
+          scope: scope, operationID: operation.id, record: record)
         await analytics?.synchronized(operation, accountID: scope.userID)
+        if let transition = result.conflictTransition {
+          await captureConflict(transition)
+        }
       } catch let conflict as LocalSyncConflict {
         try checkActive(expectedGeneration)
         guard conflict.current.localRecordKey == operation.key else {
@@ -84,5 +91,12 @@ actor LocalSyncCoordinator {
   private func checkActive(_ expectedGeneration: Int) throws {
     try Task.checkCancellation()
     guard generation == expectedGeneration else { throw CancellationError() }
+  }
+
+  private func captureConflict(_ transition: LocalConflictTransition) async {
+    await analytics?.capture(.syncConflict, properties: [
+      "record_type": transition.key.kind.rawValue,
+      "field_count": min(10_000, transition.fieldCount),
+    ], accountID: scope.userID)
   }
 }

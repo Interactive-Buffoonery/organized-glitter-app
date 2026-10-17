@@ -230,7 +230,13 @@ final class LibrarySession {
   ) async throws -> Record {
     try await beginOnlineWrite()
     defer { endOnlineWrite() }
-    let saved: Record = try await client.create(collection: collection, body: body)
+    let saved: Record
+    do {
+      saved = try await client.create(collection: collection, body: body)
+    } catch {
+      captureOnlineFailure(error, operation: createOperation(collection), collection: collection)
+      throw error
+    }
     try checkActive()
     try await acceptOnline(saved)
     analytics?.record(.created, collection: collection, accountID: userID)
@@ -242,7 +248,13 @@ final class LibrarySession {
   ) async throws -> Record {
     try await beginOnlineWrite()
     defer { endOnlineWrite() }
-    let saved: Record = try await client.create(collection: collection, multipart: multipart)
+    let saved: Record
+    do {
+      saved = try await client.create(collection: collection, multipart: multipart)
+    } catch {
+      captureOnlineFailure(error, operation: createOperation(collection), collection: collection)
+      throw error
+    }
     try checkActive()
     try await acceptOnline(saved)
     analytics?.record(.created, collection: collection, hasPhoto: !multipart.files.isEmpty, accountID: userID)
@@ -258,7 +270,13 @@ final class LibrarySession {
     defer { onlineRecords.subtract(reserved) }
     let previousStatus = items.first { $0.localRecordKey.kind.rawValue == collection && $0.recordID == id }?.status
     let patch = (try? JSONDecoder().decode([String: LocalJSONValue].self, from: JSONEncoder().encode(body))) ?? [:]
-    let saved: Record = try await client.update(collection: collection, id: id, body: body)
+    let saved: Record
+    do {
+      saved = try await client.update(collection: collection, id: id, body: body)
+    } catch {
+      captureOnlineFailure(error, operation: updateOperation(collection), collection: collection)
+      throw error
+    }
     try checkActive()
     try await acceptOnline(saved)
     analytics?.record(.updated, collection: collection, accountID: userID)
@@ -275,7 +293,13 @@ final class LibrarySession {
     defer { endOnlineWrite() }
     let reserved = try await reserveOnlineRecord(collection: collection, id: id)
     defer { onlineRecords.subtract(reserved) }
-    let saved: Record = try await client.update(collection: collection, id: id, multipart: multipart)
+    let saved: Record
+    do {
+      saved = try await client.update(collection: collection, id: id, multipart: multipart)
+    } catch {
+      captureOnlineFailure(error, operation: .addPhoto, collection: collection)
+      throw error
+    }
     try checkActive()
     try await acceptOnline(saved)
     analytics?.record(.updated, collection: collection, accountID: userID)
@@ -291,7 +315,12 @@ final class LibrarySession {
     defer { endOnlineWrite() }
     let reserved = try await reserveOnlineRecord(collection: collection, id: id)
     defer { onlineRecords.subtract(reserved) }
-    try await client.delete(collection: collection, id: id)
+    do {
+      try await client.delete(collection: collection, id: id)
+    } catch {
+      captureOnlineFailure(error, operation: deleteOperation(collection), collection: collection)
+      throw error
+    }
     try checkActive()
     analytics?.record(.deleted, collection: collection, accountID: userID)
     let noteKind: LocalNoteKind?
@@ -331,6 +360,28 @@ final class LibrarySession {
       "resolution": retainLocal ? "keep_local" : "use_server",
     ], accountID: userID)
     Task { try? await refresh(force: true) }
+  }
+
+  private func createOperation(_ collection: String) -> AnalyticsOperation {
+    ["progress_notes", "coloring_page_progress_notes"].contains(collection)
+      ? .addNote : .createRecord
+  }
+
+  private func updateOperation(_ collection: String) -> AnalyticsOperation {
+    ["progress_notes", "coloring_page_progress_notes"].contains(collection)
+      ? .editNote : .updateRecord
+  }
+
+  private func deleteOperation(_ collection: String) -> AnalyticsOperation {
+    ["progress_notes", "coloring_page_progress_notes"].contains(collection)
+      ? .deleteNote : .deleteRecord
+  }
+
+  private func captureOnlineFailure(
+    _ error: Error, operation: AnalyticsOperation, collection: String
+  ) {
+    guard active else { return }
+    analytics?.operationFailed(operation, collection: collection, error: error, accountID: userID)
   }
 
   func pauseWrites() { acceptsChanges = false }

@@ -116,7 +116,17 @@ struct AccountView: View {
         }
 
         Section("Home") {
-          Toggle("Show crafting streak", isOn: $showCraftingStreak)
+          Toggle("Show crafting streak", isOn: Binding(
+            get: { showCraftingStreak },
+            set: { enabled in
+              guard AccountPreferenceInteraction.changed(from: showCraftingStreak, to: enabled)
+              else { return }
+              showCraftingStreak = enabled
+              library.captureAnalytics(
+                .accountUpdated,
+                properties: ["setting": AnalyticsAccountSetting.craftingStreak.rawValue])
+            }
+          ))
             .accessibilityLabel("Show crafting streak")
             .accessibilityIdentifier("account.showCraftingStreak")
         }
@@ -281,6 +291,12 @@ struct AccountView: View {
         Task { _ = await preferences.updateVerticals(next) }
       }
     )
+  }
+}
+
+enum AccountPreferenceInteraction {
+  static func changed(from current: Bool, to selection: Bool) -> Bool {
+    current != selection
   }
 }
 

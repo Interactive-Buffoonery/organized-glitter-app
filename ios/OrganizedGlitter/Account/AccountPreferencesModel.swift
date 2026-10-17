@@ -146,15 +146,15 @@ final class AccountPreferencesModel {
       errorMessage = "Enter a profile name."
       return false
     }
-    return await updateUser(ProfileUpdate(username: trimmed), setting: "profile")
+    return await updateUser(ProfileUpdate(username: trimmed), setting: .profile)
   }
 
   func updateTheme(_ theme: ThemeFlavor) async -> Bool {
-    await updateUser(ThemeUpdate(themePreference: theme.rawValue), setting: "theme")
+    await updateUser(ThemeUpdate(themePreference: theme.rawValue), setting: .theme)
   }
 
   func updatePalette(_ palette: ThemePalette) async -> Bool {
-    await updateUser(PaletteUpdate(themePalette: palette.rawValue), setting: "palette")
+    await updateUser(PaletteUpdate(themePalette: palette.rawValue), setting: .palette)
   }
 
   func updateTimezone(_ identifier: String) async -> Bool {
@@ -162,7 +162,7 @@ final class AccountPreferencesModel {
       errorMessage = "Choose a valid time zone."
       return false
     }
-    return await updateUser(TimezoneUpdate(timezone: identifier), setting: "timezone")
+    return await updateUser(TimezoneUpdate(timezone: identifier), setting: .timezone)
   }
 
   func updateAnalyticsEnabled(_ enabled: Bool) async -> Bool {
@@ -210,6 +210,7 @@ final class AccountPreferencesModel {
     isSaving = true
     errorMessage = nil
     defer { isSaving = false }
+    let operation: AnalyticsOperation = settingsID == nil ? .createRecord : .updateRecord
 
     do {
       if let settingsID {
@@ -234,12 +235,16 @@ final class AccountPreferencesModel {
     } catch APIError.cancelled {
       return false
     } catch {
+      analytics?.operationFailed(
+        operation, collection: "user_dashboard_settings", error: error, accountID: userID)
       errorMessage = error.accountMessage
       return false
     }
   }
 
-  private func updateUser<Body: Encodable & Sendable>(_ body: Body, setting: String) async -> Bool {
+  private func updateUser<Body: Encodable & Sendable>(
+    _ body: Body, setting: AnalyticsAccountSetting
+  ) async -> Bool {
     guard !isSaving, !isLoading, !isRefreshingAnalytics else {
       return false
     }
@@ -253,12 +258,15 @@ final class AccountPreferencesModel {
         collection: "users", id: userID, body: body)
       guard generation == userRequestGeneration else { return false }
       apply(updated)
-      analytics?.capture(.accountUpdated, properties: ["setting": setting], accountID: userID)
+      analytics?.capture(
+        .accountUpdated, properties: ["setting": setting.rawValue], accountID: userID)
       await refreshUserAfterWrite(generation: generation)
       return true
     } catch APIError.cancelled {
       return false
     } catch {
+      analytics?.operationFailed(
+        .updateRecord, collection: "users", error: error, accountID: userID)
       errorMessage = error.accountMessage
       return false
     }

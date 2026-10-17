@@ -20,6 +20,7 @@ enum AnalyticsEvent: String, Sendable {
   case notesCraftFilterChanged = "notes_craft_filter_changed"
   case notesYearFilterChanged = "notes_year_filter_changed"
   case photoViewed = "record_photo_viewed"
+  case operationFailed = "operation_failed"
   case recordSavedLocally = "library_record_saved_locally"
   case projectCreated = "project_created"
   case projectUpdated = "project_updated"
@@ -79,6 +80,7 @@ enum AnalyticsEvent: String, Sendable {
     case .notesCraftFilterChanged: ["craft"]
     case .notesYearFilterChanged: ["filter_active"]
     case .photoViewed: ["surface"]
+    case .operationFailed: ["operation", "failure_category", "record_type"]
     case .searchPerformed, .booksSearchPerformed: ["record_type", "result_count"]
     case .sortChanged, .booksSortChanged, .pagesSortChanged: ["record_type", "sort"]
     case .filterChanged, .booksFilterChanged, .pagesFilterChanged: ["record_type", "filter_active"]
@@ -160,9 +162,11 @@ enum AnalyticsPayload {
       "sort": Set(LibrarySort.allCases.map(\.rawValue)),
       "save_destination": ["server"],
       "resolution": ["keep_local", "use_server"],
-      "setting": ["profile", "theme", "palette", "timezone"],
+      "setting": Set(AnalyticsAccountSetting.allCases.map(\.rawValue)),
       "craft": Set(NotesCraft.allCases.map(\.rawValue)),
       "surface": Set(AnalyticsPhotoSurface.allCases.map(\.rawValue)),
+      "operation": Set(AnalyticsOperation.allCases.map(\.rawValue)),
+      "failure_category": Set(AnalyticsFailureCategory.allCases.map(\.rawValue)),
     ]
     for key in event.propertyKeys {
       guard let value = input[key] else { continue }
@@ -202,5 +206,47 @@ enum AnalyticsPayload {
     }
     event.properties = properties
     return event
+  }
+}
+
+enum AnalyticsOperation: String, CaseIterable, Sendable {
+  case createRecord = "create_record"
+  case updateRecord = "update_record"
+  case deleteRecord = "delete_record"
+  case addNote = "add_note"
+  case editNote = "edit_note"
+  case deleteNote = "delete_note"
+  case addPhoto = "add_photo"
+}
+
+enum AnalyticsAccountSetting: String, CaseIterable, Sendable {
+  case profile
+  case theme
+  case palette
+  case timezone
+  case craftingStreak = "crafting_streak"
+}
+
+enum AnalyticsFailureCategory: String, CaseIterable, Sendable {
+  case validation
+  case permission
+  case authentication
+  case notFound = "not_found"
+  case conflict
+  case outcomeUnknown = "outcome_unknown"
+  case unexpected
+
+  init?(error: Error) {
+    if error is CancellationError { return nil }
+    switch error as? APIError {
+    case .cancelled: return nil
+    case .validation: self = .validation
+    case .forbidden: self = .permission
+    case .unauthenticated, .emailUnverified: self = .authentication
+    case .notFound: self = .notFound
+    case .conflict: self = .conflict
+    case .offline, .server, .decoding: self = .outcomeUnknown
+    case nil: self = .unexpected
+    }
   }
 }

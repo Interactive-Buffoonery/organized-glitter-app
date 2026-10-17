@@ -148,6 +148,13 @@ opaque PocketBase ID supplied by the verified session.
 - Photo viewing: `record_photo_viewed` follows an explicit full-screen open and
   includes only a fixed `surface` enum. Viewer paging, setup, filenames, URLs,
   captions, dates, and record identifiers are not collected.
+- Write failures: `operation_failed` follows a user-visible online create,
+  update, delete, note, or photo failure with fixed `operation` and
+  `failure_category` enums plus an optional fixed record type. Validation,
+  permission, authentication, missing-record, and conflict rejections remain
+  distinct. Offline, server, and decoding results use `outcome_unknown` because
+  server acceptance is uncertain. Cancellation is not collected, and no error
+  text, content, record ID, or operation ID is sent.
 - Lists and tag links: accepted online writes reuse matching company, artist,
   tag, publisher, illustrator, and medium names from web. Other list outcomes
   use `library_list_entry_*` with a fixed list kind. Accepted relationship
@@ -173,6 +180,9 @@ opaque PocketBase ID supplied by the verified session.
   with the setting category, and `vertical_preferences_updated` with the
   accepted craft booleans. Analytics opt-out itself immediately closes the
   gate and is not captured. No preference values or profile content are sent.
+  Explicit changes to the device-local crafting-streak visibility setting also
+  use `account_preferences_updated` with `setting=crafting_streak`; its value,
+  initialization, and restoration are not collected.
 
 First-ever and activation milestones remain deferred until there is a shared
 cross-client deduplication contract. `app_opened` remains once per app process

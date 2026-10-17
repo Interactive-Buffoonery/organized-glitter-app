@@ -53,6 +53,15 @@ unavailable-year cleanup, and craft-driven year resets emit neither event.
 only a fixed `surface` enum; photo identifiers, filenames, URLs, captions, and
 dates are excluded.
 
+`operation_failed` follows a user-visible online write failure. Its `operation`
+is one of `create_record`, `update_record`, `delete_record`, `add_note`,
+`edit_note`, `delete_note`, or `add_photo`; `failure_category` is one of
+`validation`, `permission`, `authentication`, `not_found`, `conflict`,
+`outcome_unknown`, or `unexpected`. Offline, server, and decoding failures use
+`outcome_unknown` because acceptance was not disproven. Cancellation emits no
+event. The optional `record_type` remains a fixed enum, and no error text,
+content, record ID, or operation ID is included.
+
 - Allow fixed enums, booleans, bounded counts, duration buckets, platform,
   environment and app version. Review SDK-added fields separately.
 - Block names, titles, notes, descriptions, search text, raw barcodes, images,

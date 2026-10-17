@@ -88,6 +88,25 @@ final class NativeAnalytics {
     capture(event, properties: properties, accountID: accountID)
   }
 
+  func operationFailed(
+    _ operation: AnalyticsOperation, collection: String, error: Error,
+    accountID: String? = nil
+  ) {
+    guard let category = AnalyticsFailureCategory(error: error) else { return }
+    var properties: [String: Any] = [
+      "operation": operation.rawValue,
+      "failure_category": category.rawValue,
+    ]
+    let recordType: String? = switch collection {
+    case "projects", "progress_notes": "projects"
+    case "coloring_books": "coloring_books"
+    case "coloring_pages", "coloring_page_progress_notes": "coloring_pages"
+    default: nil
+    }
+    if let recordType { properties["record_type"] = recordType }
+    capture(.operationFailed, properties: properties, accountID: accountID)
+  }
+
   func synchronized(_ operation: LocalPendingOperation, accountID: String) {
     capture(.syncAccepted, properties: [
       "record_type": operation.key.kind.rawValue, "field_count": operation.patch.count,

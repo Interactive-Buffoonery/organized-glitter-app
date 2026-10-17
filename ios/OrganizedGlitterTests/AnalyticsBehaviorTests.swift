@@ -88,6 +88,49 @@ struct AnalyticsBehaviorTests {
     try await fixture.library.close(removingData: false)
   }
 
+  @Test func snapshotDeletionCapturesOnlyTheCommittedConflictTransition() async throws {
+    let fixture = try await Fixture()
+    try await fixture.seed()
+    _ = try await fixture.library.store.queueEdit(
+      scope: fixture.library.scope,
+      key: LocalRecordKey(kind: .project, id: "project"),
+      patch: ["title": .string("Private local title")])
+    BehaviorProtocol.snapshot = Data(
+      #"{"version":1,"projects":[],"coloringBooks":[],"coloringPages":[],"progressNotes":[],"coloringPageProgressNotes":[]}"#.utf8)
+
+    try await fixture.coordinator.refresh()
+    try await fixture.coordinator.refresh()
+
+    #expect(fixture.events.names == [.syncConflict])
+    #expect(fixture.events.properties.first?["record_type"] as? String == "projects")
+    #expect(fixture.events.properties.first?["field_count"] as? Int == 1)
+    #expect(fixture.events.properties.first?["record_id"] == nil)
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func acknowledgedFollowUpCapturesItsNewConflictOnce() async throws {
+    let fixture = try await Fixture()
+    try await fixture.seed()
+    let key = LocalRecordKey(kind: .project, id: "project")
+    _ = try await fixture.library.store.queueEdit(
+      scope: fixture.library.scope, key: key,
+      patch: ["title": .string("Private first title")])
+    _ = try await fixture.library.store.queueEdit(
+      scope: fixture.library.scope, key: key,
+      patch: ["status": .string("progress")])
+    BehaviorProtocol.record = try JSONEncoder().encode(featureProject(
+      "project", title: "Private first title", status: "completed"))
+
+    try await fixture.coordinator.syncPending()
+    try await fixture.coordinator.syncPending()
+
+    #expect(fixture.events.names == [.syncAccepted, .projectUpdated, .syncConflict])
+    #expect(fixture.events.properties.last?["record_type"] as? String == "projects")
+    #expect(fixture.events.properties.last?["field_count"] as? Int == 1)
+    #expect(fixture.events.properties.last?["operation_id"] == nil)
+    try await fixture.library.close(removingData: false)
+  }
+
   @Test func rejectedSynchronizationRetainsEditsWithoutCountingAcceptance() async throws {
     let fixture = try await Fixture()
     try await fixture.seed()
@@ -244,7 +287,63 @@ struct AnalyticsBehaviorTests {
         collection: "projects", body: ["title": "Private title"])
       Issue.record("Expected rejected creation")
     } catch APIError.server {}
-    #expect(fixture.events.names == [.projectCreated])
+    #expect(fixture.events.names == [.projectCreated, .operationFailed])
+    #expect(fixture.events.properties.last?["operation"] as? String == "create_record")
+    #expect(fixture.events.properties.last?["failure_category"] as? String == "outcome_unknown")
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func rejectedNoteEditCapturesTypedFailureWithoutPrivateData() async throws {
+    let fixture = try await Fixture()
+    try await fixture.seed()
+    let note = DiamondProgressNoteRecord(
+      id: "note", project: "project", content: "Private note", date: "2026-10-06",
+      image: nil, created: "2026-10-06", updated: "2026-10-06", expand: nil)
+    try await fixture.library.store.ingestNote(note, scope: fixture.library.scope)
+    try await fixture.library.loadLocal()
+    let model = LibraryItemDetailModel(
+      item: .diamond(featureProject("project", title: "Private title")),
+      library: fixture.library)
+    #expect(await model.load())
+    let loaded = try #require(model.progressNotes.first)
+    BehaviorProtocol.status = 400
+
+    let message = await model.updateProgressNote(
+      loaded, content: "Private changed note", date: Date(timeIntervalSince1970: 0))
+
+    #expect(message != nil)
+    #expect(fixture.events.names == [.operationFailed])
+    #expect(fixture.events.properties.first?["operation"] as? String == "edit_note")
+    #expect(fixture.events.properties.first?["failure_category"] as? String == "validation")
+    #expect(fixture.events.properties.first?["record_type"] as? String == "projects")
+    #expect(fixture.events.properties.first?["content"] == nil)
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func cancelledWritesDoNotCaptureFailures() async throws {
+    let fixture = try await Fixture()
+    fixture.analytics.operationFailed(
+      .editNote, collection: "progress_notes", error: APIError.cancelled,
+      accountID: fixture.library.userID)
+    fixture.analytics.operationFailed(
+      .editNote, collection: "progress_notes", error: CancellationError(),
+      accountID: fixture.library.userID)
+    #expect(fixture.events.names.isEmpty)
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func craftingStreakSettingCapturesOnlyAnExplicitChange() async throws {
+    let fixture = try await Fixture()
+    var stored = false
+    #expect(!AccountPreferenceInteraction.changed(from: stored, to: false))
+    if AccountPreferenceInteraction.changed(from: stored, to: true) {
+      stored = true
+      fixture.library.captureAnalytics(
+        .accountUpdated, properties: ["setting": "crafting_streak", "value": stored])
+    }
+    #expect(fixture.events.names == [.accountUpdated])
+    #expect(fixture.events.properties.first?["setting"] as? String == "crafting_streak")
+    #expect(fixture.events.properties.first?["value"] == nil)
     try await fixture.library.close(removingData: false)
   }
 
@@ -340,6 +439,15 @@ struct AnalyticsBehaviorTests {
     ], for: .photoViewed)
     #expect(photo["surface"] as? String == "notes_feed")
     #expect(Set(photo.keys) == ["surface"])
+    let failure = AnalyticsPayload.properties([
+      "operation": "edit_note", "failure_category": "permission",
+      "record_type": "projects", "error": "Private validation message",
+      "record_id": "private-id",
+    ], for: .operationFailed)
+    #expect(failure["operation"] as? String == "edit_note")
+    #expect(failure["failure_category"] as? String == "permission")
+    #expect(failure["record_type"] as? String == "projects")
+    #expect(Set(failure.keys) == ["operation", "failure_category", "record_type"])
   }
 }
 
@@ -410,6 +518,8 @@ private struct Fixture {
     coordinator = LocalSyncCoordinator(store: store, client: client, scope: library.scope, analytics: analytics)
     BehaviorProtocol.status = 200
     BehaviorProtocol.record = try JSONEncoder().encode(featureProject("project", title: "Private changed title", status: "progress"))
+    BehaviorProtocol.snapshot = Data(
+      #"{"version":1,"projects":[],"coloringBooks":[],"coloringPages":[],"progressNotes":[],"coloringPageProgressNotes":[]}"#.utf8)
   }
 
   func seed() async throws {
@@ -421,16 +531,22 @@ private struct Fixture {
 private final class BehaviorProtocol: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) static var status = 200
   nonisolated(unsafe) static var record = Data()
+  nonisolated(unsafe) static var snapshot = Data()
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
   override func startLoading() {
-    guard request.url?.path.contains("/apply") == true || ["POST", "PATCH", "DELETE"].contains(request.httpMethod) || request.url?.path.hasSuffix("auth-refresh") == true else {
+    guard request.url?.path.contains("/apply") == true
+      || request.url?.path == "/api/mobile/sync/snapshot"
+      || ["POST", "PATCH", "DELETE"].contains(request.httpMethod)
+      || request.url?.path.hasSuffix("auth-refresh") == true else {
       client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
       return
     }
     let response = HTTPURLResponse(url: request.url!, statusCode: Self.status, httpVersion: nil, headerFields: nil)!
     let body: Data
-    if request.url?.path.contains("auth-with-password") == true || request.url?.path.hasSuffix("auth-refresh") == true {
+    if request.url?.path == "/api/mobile/sync/snapshot" {
+      body = Self.snapshot
+    } else if request.url?.path.contains("auth-with-password") == true || request.url?.path.hasSuffix("auth-refresh") == true {
       body = Data(#"{"token":"example-token","record":{"id":"feature-user","verified":true,"analytics_opt_out":false}}"#.utf8)
     } else if request.url?.path.contains("progress_notes") == true {
       body = Data(#"{"id":"note","project":"project","user":"feature-user","content":"Private note","date":"2026-10-06","image":"private-name.jpg","created":"2026-10-06","updated":"2026-10-06"}"#.utf8)
