@@ -241,7 +241,7 @@ struct ColoringBookEditor: View {
           if book != nil {
             Section {
               Text(
-                "Changing the total updates the generated pages after save. Pages above the new total are removed only if you never touched them."
+                "Pages you’ve worked on won’t be deleted."
               )
               .font(.karla(.footnote))
               .foregroundStyle(theme.mutedForeground)
@@ -427,7 +427,7 @@ struct ColoringBookPageCountEditor: View {
             Text("Total pages")
           } footer: {
             Text(
-              "Connect to change the total. Saving updates the generated pages. Pages above the new total are removed only if you never touched them."
+              "Pages you’ve worked on won’t be deleted."
             )
           }
 
