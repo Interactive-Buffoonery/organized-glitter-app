@@ -115,13 +115,23 @@ struct SymbolCatalog: Decodable, Sendable {
 
   func symbol(id: String) -> Symbol? { symbolsByID[id] }
 
+  /// Matches ranked like the web app: the exact character, then name prefixes,
+  /// keyword prefixes, then any substring. Ties keep catalog order.
   func search(_ query: String) -> [Symbol] {
-    let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !query.isEmpty else { return symbols }
-    return symbols.filter { symbol in
-      symbol.name.localizedCaseInsensitiveContains(query)
-        || symbol.keywords.contains { $0.localizedCaseInsensitiveContains(query) }
+    let term = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard !term.isEmpty else { return symbols }
+    func rank(_ symbol: Symbol) -> Int? {
+      let name = symbol.name.lowercased()
+      if symbol.char?.lowercased() == term { return 0 }
+      if name.hasPrefix(term) { return 1 }
+      if symbol.keywords.contains(where: { $0.hasPrefix(term) }) { return 2 }
+      if name.contains(term) || symbol.keywords.contains(where: { $0.contains(term) }) { return 3 }
+      return nil
     }
+    return symbols.enumerated()
+      .compactMap { index, symbol in rank(symbol).map { (rank: $0, index: index, symbol: symbol) } }
+      .sorted { ($0.rank, $0.index) < ($1.rank, $1.index) }
+      .map(\.symbol)
   }
 
   func grouped(_ symbols: [Symbol]) -> [Section] {

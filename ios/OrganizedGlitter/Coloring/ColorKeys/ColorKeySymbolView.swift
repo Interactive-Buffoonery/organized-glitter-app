@@ -82,7 +82,8 @@ private struct SymbolShape: Shape {
 
 #Preview {
   let ids = ["u:03C8", "u:1D25", "u:A728", "u:AB53", "u:2603", "u:0378", "c:linked-circles",
-    "c:wave", "c:leaf", "c:curled-triangle", "c:plus-box", "c:missing", "r:abc123def456ghi"]
+    "c:curled-triangle", "c:spiral-square", "c:crossed-ribbons", "c:lightning", "c:circled-dot",
+    "c:w-over-w", "c:missing", "r:abc123def456ghi"]
   LazyVGrid(columns: [GridItem(.adaptive(minimum: 64))]) {
     ForEach(ids, id: \.self) { ColorKeySymbolView(id: $0, size: 56) }
   }

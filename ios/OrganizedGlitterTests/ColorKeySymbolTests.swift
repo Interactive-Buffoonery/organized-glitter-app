@@ -86,6 +86,8 @@ struct SymbolCatalogTests {
       #expect(catalog.symbol(id: id) == nil, "\(id) was dropped from the catalog")
     }
     #expect(catalog.symbols.allSatisfy { !($0.char ?? "").unicodeScalars.contains { [0xFE0E, 0xFE0F].contains($0.value) } })
+    let emoji = catalog.symbols.filter { ($0.char ?? "").unicodeScalars.contains(where: \.properties.isEmojiPresentation) }
+    #expect(emoji.map(\.id) == [])
   }
 
   @Test("setup defaults are 1-9, 0, then a-z")
@@ -97,11 +99,23 @@ struct SymbolCatalogTests {
     #expect(SymbolCatalog.setupDefaults.allSatisfy { catalog.symbol(id: $0) != nil })
   }
 
-  @Test("search matches names and keywords, case-insensitively, in catalog order")
+  @Test("search ranks the character, name prefixes, keyword prefixes, then substrings")
   func search() {
-    #expect(catalog.search("TRIDENT").map(\.id) == ["u:03C8"])
-    #expect(catalog.search("psi").map(\.id) == ["u:03C8"])
-    #expect(catalog.search("rings").map(\.id) == ["c:linked-circles"])
+    for query in ["a", "pi", "circle", "triangle", "y"] {
+      let ranks = catalog.search(query).map { symbol in
+        if symbol.char?.lowercased() == query { return 0 }
+        if symbol.name.lowercased().hasPrefix(query) { return 1 }
+        if symbol.keywords.contains(where: { $0.hasPrefix(query) }) { return 2 }
+        return 3
+      }
+      #expect(ranks.count > 1)
+      #expect(ranks == ranks.sorted(), "\(query) results are out of rank order")
+    }
+    #expect(catalog.search("ψ").first?.id == "u:03C8")
+    #expect(catalog.search(" PI ") == catalog.search("pi"))
+    #expect(catalog.search("TRIDENT").map(\.id).contains("u:03C8"))
+    #expect(catalog.search("psi").first?.id == "u:03C8")
+    #expect(catalog.search("rings").map(\.id).contains("c:linked-circles"))
     #expect(catalog.search("  ").count == catalog.symbols.count)
     #expect(catalog.search("no such symbol").isEmpty)
   }
@@ -110,13 +124,14 @@ struct SymbolCatalogTests {
   func grouped() {
     let sections = catalog.grouped(catalog.symbols)
     #expect(sections.map(\.group.id) == catalog.groups.map(\.id))
-    #expect(sections.first?.symbols.first?.id == "u:0031")
+    #expect(sections.first?.symbols.first?.id == "u:0030")
   }
 
   @Test("accessibility names prefer the catalog")
   func accessibilityNames() {
     #expect(catalog.accessibilityName(for: "u:03C8") == "Psi")
-    #expect(catalog.accessibilityName(for: "u:2603") == "☃")
+    #expect(catalog.accessibilityName(for: "u:2603") == "Snowman")
+    #expect(catalog.accessibilityName(for: "u:6F22") == "漢")
     #expect(catalog.accessibilityName(for: "c:linked-circles") == "Linked circles")
     #expect(catalog.accessibilityName(for: "c:not-in-catalog") == "Unknown symbol")
     #expect(catalog.accessibilityName(for: "r:abc123def456ghi") == "Requested symbol")
@@ -205,6 +220,7 @@ struct SymbolPathTests {
 @MainActor
 @Suite("Symbol glyph coverage")
 struct SymbolGlyphCoverageTests {
+
   @Test("system fonts cover the rare catalog glyphs", arguments: ["ᴥ", "ꭓ", "ψ", "♪", "♥", "✔", "♀", "❄", "☀", "▶", "♥\u{FE0E}", "♥\u{FE0F}"])
   func coversRareGlyphs(text: String) {
     #expect(SymbolGlyphCoverage.isRenderable(text))
