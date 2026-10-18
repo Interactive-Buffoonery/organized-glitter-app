@@ -62,7 +62,9 @@ final class LibraryItemDetailModel {
   private var progressNotesTotalPages = 0
   private var generation = 0
   private(set) var unresolvedPhotoAction = false
-  private var unresolvedPagePhotoUpload = false
+  private(set) var unresolvedPagePhotoUpload = false
+  private(set) var isChangingPagePhoto = false
+  private(set) var photoMutationErrorMessage: String?
   private var unresolvedNoteWriteIncludesPhoto = false
   private var unresolvedNoteCreate = false
   private var unresolvedNoteAction: String?
@@ -103,6 +105,7 @@ final class LibraryItemDetailModel {
           unresolvedPhotoAction = true
           unresolvedWriteState = .needsRefresh
           mutationErrorMessage = "Photo action needs review. Refresh photos before changing this page again."
+          photoMutationErrorMessage = mutationErrorMessage
         }
         pageProgressNotes(pageID: page.id, pagesToShow: max(progressNotesPage, 1))
       }
@@ -445,7 +448,13 @@ final class LibraryItemDetailModel {
     isMutating = true
     mutationErrorMessage = nil
     editErrorMessage = nil
-    defer { isMutating = false }
+    photoMutationErrorMessage = nil
+    isChangingPagePhoto = true
+    defer {
+      isMutating = false
+      isChangingPagePhoto = false
+      photoMutationErrorMessage = mutationErrorMessage
+    }
     do {
       _ = try await library.changePagePhoto(id: page.id, filename: filename, setMain: setMain)
       guard item.id == targetID else { throw APIError.cancelled }
@@ -502,7 +511,13 @@ final class LibraryItemDetailModel {
     isMutating = true
     mutationErrorMessage = nil
     editErrorMessage = nil
-    defer { isMutating = false }
+    photoMutationErrorMessage = nil
+    isChangingPagePhoto = true
+    defer {
+      isMutating = false
+      isChangingPagePhoto = false
+      photoMutationErrorMessage = mutationErrorMessage
+    }
 
     let form = PocketBaseMultipartForm(
       files: [
@@ -521,7 +536,11 @@ final class LibraryItemDetailModel {
       guard await load(), item.id == LibraryItem.page(page).id else { throw APIError.server }
       return true
     } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
-      guard item.id == LibraryItem.page(page).id, await client.isAuthenticated(as: userID) else { return false }
+      guard item.id == LibraryItem.page(page).id else { return false }
+      guard await client.isAuthenticated(as: userID) else {
+        mutationErrorMessage = APIError.sessionExpiredMessage
+        return false
+      }
       library.requirePhotoReview(id: page.id)
       unresolvedPagePhotoUpload = true
       unresolvedWriteState = .needsRefresh
@@ -554,6 +573,7 @@ final class LibraryItemDetailModel {
     unresolvedWriteState = nil
     unresolvedPhotoAction = false
     unresolvedPagePhotoUpload = false
+    photoMutationErrorMessage = nil
     unresolvedNoteWriteIncludesPhoto = false
     unresolvedNoteCreate = false
     unresolvedNoteAction = nil
@@ -562,6 +582,11 @@ final class LibraryItemDetailModel {
   }
 
   private func reconcileUnresolvedWrite() async -> Bool {
+    defer {
+      if unresolvedPhotoAction || unresolvedPagePhotoUpload {
+        photoMutationErrorMessage = mutationErrorMessage
+      }
+    }
     let didRefresh: Bool
     var refreshError: Error?
     do {
@@ -608,6 +633,11 @@ final class LibraryItemDetailModel {
     }
 
     unresolvedWriteState = .needsRefresh
+    if unresolvedPhotoAction || unresolvedPagePhotoUpload,
+      refreshError as? APIError == .unauthenticated || refreshError as? APIError == .forbidden {
+      mutationErrorMessage = APIError.sessionExpiredMessage
+      return false
+    }
     let needsConnection = refreshError as? APIError == .offline
     if unresolvedPhotoAction {
       mutationErrorMessage = "Photo action needs review. Connect and refresh photos before changing them again."

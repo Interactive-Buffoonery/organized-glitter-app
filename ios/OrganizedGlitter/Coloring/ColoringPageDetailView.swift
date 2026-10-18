@@ -73,9 +73,12 @@ struct ColoringPageDetailView: View {
             if isPreparingPhoto {
               ProgressView("Preparing photo…")
                 .frame(maxWidth: .infinity, alignment: .leading)
-            } else if model.isMutating {
+            } else if model.isMutating,
+              model.isChangingPagePhoto || model.unresolvedPhotoAction || model.unresolvedPagePhotoUpload {
               ProgressView(
-                pendingPhoto != nil ? "Uploading photo…" : "Saving photo change…"
+                pendingPhoto != nil || model.unresolvedPagePhotoUpload
+                  ? (model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…")
+                  : "Saving photo change…"
               )
               .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -84,7 +87,7 @@ struct ColoringPageDetailView: View {
               AccessibleErrorLabel(message: message)
             }
 
-            if pendingPhoto == nil, let message = model.mutationErrorMessage {
+            if pendingPhoto == nil, let message = model.photoMutationErrorMessage {
               AccessibleErrorLabel(message: message)
             }
             if model.unresolvedPhotoAction {

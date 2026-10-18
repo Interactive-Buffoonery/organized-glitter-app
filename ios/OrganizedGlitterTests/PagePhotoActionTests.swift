@@ -24,6 +24,51 @@ struct PagePhotoActionTests {
     return (library, model)
   }
 
+  @Test func unauthenticatedUploadShowsSessionExpiredMessage() async throws {
+    let (library, model) = try await setup()
+    await library.client.prepareOfflineSession(.init(token: "other-token", userID: "other-user"))
+    let photo = ProcessedDetailPhoto(data: Data([1]), fileName: "new.jpg", contentType: "image/jpeg")
+    #expect(!(await model.appendPagePhoto(photo)))
+    #expect(model.mutationErrorMessage == APIError.sessionExpiredMessage)
+    #expect(model.photoMutationErrorMessage == APIError.sessionExpiredMessage)
+    #expect(PhotoActionURLProtocol.mutations.isEmpty)
+    try await library.close(removingData: false)
+  }
+
+  @Test(arguments: [401, 403], ["refresh", "main", "upload"])
+  func photoAuthenticationFailureUnwindsWrites(status: Int, operation: String) async throws {
+    let (library, _) = try await setup()
+    var recovered = false
+    library.onAuthenticationFailure = {
+      await library.waitForWrites()
+      recovered = true
+    }
+    PhotoActionURLProtocol.authenticationFailureStatus = status
+    do {
+      switch operation {
+      case "main":
+        _ = try await library.changePagePhoto(id: "page", filename: "second.jpg", setMain: true)
+      case "upload":
+        _ = try await library.appendPagePhoto(id: "page", multipart: PocketBaseMultipartForm(files: [
+          PocketBaseMultipartFile(fieldName: "photos+", fileName: "new.jpg", contentType: "image/jpeg", data: Data([1]))
+        ]))
+      default:
+        _ = try await library.store.queueEdit(
+          scope: library.scope, key: .init(kind: .page, id: "page"), patch: ["status": .string("in_progress")])
+        try await library.loadLocal()
+        try await library.refreshPagePhotos()
+      }
+      Issue.record("Expected authentication failure")
+    } catch {
+      #expect(error as? APIError == .unauthenticated || error as? APIError == .forbidden)
+    }
+    #expect(recovered)
+    if operation == "refresh" {
+      #expect(try await library.store.pendingOperations(scope: library.scope).count == 1)
+    }
+    try await library.close(removingData: false)
+  }
+
   @Test func mainPromotionPreservesNewServerAttachmentsAndCommitsLocally() async throws {
     let (library, model) = try await setup()
     PhotoActionURLProtocol.files.append("other-device.jpg")
@@ -181,6 +226,7 @@ struct PagePhotoActionTests {
 }
 
 private final class PhotoActionURLProtocol: URLProtocol, @unchecked Sendable {
+  nonisolated(unsafe) static var authenticationFailureStatus: Int?
   nonisolated(unsafe) static var offline = false
   nonisolated(unsafe) static var holdsResponse = false
   nonisolated(unsafe) static var held: PhotoActionURLProtocol?
@@ -193,6 +239,7 @@ private final class PhotoActionURLProtocol: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) static var snapshotRequests = 0
 
   static func reset() {
+    authenticationFailureStatus = nil
     offline = false; holdsResponse = false; held = nil; gate = PhotoActionGate()
     files = ["first.jpg", "second.jpg"]
     mutations = []; bodies = []; losesResponse = false; snapshotAvailable = true; snapshotRequests = 0
@@ -210,6 +257,10 @@ private final class PhotoActionURLProtocol: URLProtocol, @unchecked Sendable {
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
   override func startLoading() {
+    if let status = Self.authenticationFailureStatus {
+      respond(["message": "Authentication failed"], status: status)
+      return
+    }
     if Self.offline { fail(); return }
     if request.url?.path == "/api/mobile/sync/snapshot" {
       Self.snapshotRequests += 1

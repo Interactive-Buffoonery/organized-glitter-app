@@ -238,7 +238,8 @@ struct ProgressNotesSection: View {
           .disabled(model.isLoadingMore)
           .accessibilityIdentifier("detail.progress.loadMore")
         }
-        if !isAddingNote, !model.unresolvedStatusWrite {
+        if !isAddingNote, !model.unresolvedStatusWrite,
+          !model.unresolvedPhotoAction, !model.unresolvedPagePhotoUpload {
           recovery
         }
       }
