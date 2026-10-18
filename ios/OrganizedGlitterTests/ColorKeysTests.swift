@@ -317,6 +317,74 @@ struct ColorKeysSessionTests {
     #expect(server.posts == 3)
   }
 
+  @Test("a 401 during a save lets sign-out finish", .timeLimit(.minutes(1)))
+  func expiredSessionDuringSave() async throws {
+    let library = try await makeLibrary()
+    ColorKeyProtocol.respond { _ in (401, #"{"message":"expired"}"#) }
+    var closed = false
+    library.onAuthenticationFailure = {
+      try? await library.close(removingData: false)
+      closed = true
+    }
+    let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    await #expect(throws: APIError.unauthenticated) { try await library.saveColorKey(write, original: nil) }
+    #expect(closed)
+  }
+
+  @Test("retrying a create whose response was lost adopts the stored key")
+  func lostCreateResponse() async throws {
+    let library = try await makeLibrary()
+    let server = ColorKeyServer(failingPost: 1)
+    ColorKeyProtocol.respond { request in server.handle(request, template: Self.saved) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    let saved = try await model.save(write, id: nil).get()
+    #expect(model.keys.map(\.id) == [saved.id])
+    #expect(server.posts == 1)
+  }
+
+  @Test("no new create is sent until the page shows whether the last one landed")
+  func unconfirmedCreateBlocksRetry() async throws {
+    let library = try await makeLibrary()
+    let server = ColorKeyServer(failingPost: 1)
+    nonisolated(unsafe) var readable = true
+    ColorKeyProtocol.respond { request in
+      request.method == "GET" && !readable ? (500, #"{"message":"busy"}"#) : server.handle(request, template: Self.saved)
+    }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    readable = false
+    let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    await #expect(throws: ColorKeysModel.Failure.self) { try await model.save(write, id: nil).get() }
+    #expect(await model.setUp(symbols: ["u:0031", "u:0032"]) != nil)
+    #expect(server.posts == 1)
+    readable = true
+    #expect(await model.setUp(symbols: ["u:0031", "u:0032"]) == nil)
+    #expect(model.keys.map(\.symbol) == ["u:0031", "u:0032"])
+    #expect(server.posts == 2)
+  }
+
+  @Test("a load that finishes after a save keeps the saved key")
+  func staleLoadKeepsSave() async throws {
+    let library = try await makeLibrary()
+    ColorKeyProtocol.respond { request in
+      request.method == "GET"
+        ? (200, #"{"page":1,"perPage":50,"totalPages":1,"totalItems":0,"items":[]}"#) : (200, Self.saved)
+    }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    ColorKeyProtocol.holdResponses(true)
+    let loading = Task { await model.load() }
+    while ColorKeyProtocol.requests.isEmpty { await Task.yield() }
+    ColorKeyProtocol.holdResponses(false)
+    let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    let saved = try await model.save(write, id: nil).get()
+    ColorKeyProtocol.releaseHeld()
+    await loading.value
+    #expect(model.keys.map(\.id) == [saved.id])
+    #expect(model.loadState == .loaded)
+  }
+
   private func makeLibrary(online: Bool = true) async throws -> LibrarySession {
     ColorKeyProtocol.reset()
     let configuration = URLSessionConfiguration.ephemeral
@@ -332,25 +400,30 @@ struct ColorKeysSessionTests {
   }
 }
 
-/// Stores created keys; the second create is stored but answered with a 500.
+/// Stores created keys; one create is stored but answered with a 500.
 private final class ColorKeyServer: @unchecked Sendable {
   private let lock = NSLock()
+  private let failingPost: Int
   private var stored: [String] = []
-  private(set) var posts = 0
+  private var postCount = 0
+  var posts: Int { lock.withLock { postCount } }
+
+  init(failingPost: Int = 2) { self.failingPost = failingPost }
 
   func handle(_ request: ColorKeyProtocol.Request, template: String) -> (Int, String) {
     lock.withLock {
       guard request.method == "POST" else {
         return (200, #"{"page":1,"perPage":50,"totalPages":1,"totalItems":\#(stored.count),"items":[\#(stored.joined(separator: ","))]}"#)
       }
-      posts += 1
+      postCount += 1
+      let posts = postCount
       let body = (try? JSONSerialization.jsonObject(with: request.body) as? [String: Any]) ?? [:]
       let record = template
         .replacingOccurrences(of: "key1234567890ab", with: "key\(posts)".padding(toLength: 15, withPad: "0", startingAt: 0))
         .replacingOccurrences(of: "u:0031", with: body["symbol"] as? String ?? "")
         .replacingOccurrences(of: "\"position\":0", with: "\"position\":\(body["position"] as? Int ?? 0)")
       stored.append(record)
-      return posts == 2 ? (500, #"{"message":"busy"}"#) : (200, record)
+      return posts == failingPost ? (500, #"{"message":"busy"}"#) : (200, record)
     }
   }
 }
@@ -365,10 +438,18 @@ private final class ColorKeyProtocol: URLProtocol, @unchecked Sendable {
   private static let lock = NSLock()
   nonisolated(unsafe) private static var recorded: [Request] = []
   nonisolated(unsafe) private static var responder: Responder?
+  nonisolated(unsafe) private static var holding = false
+  nonisolated(unsafe) private static var held: [(ColorKeyProtocol, Int, String)] = []
 
   static var requests: [Request] { lock.withLock { recorded } }
-  static func reset() { lock.withLock { recorded = []; responder = nil } }
+  static func reset() { lock.withLock { recorded = []; responder = nil; holding = false; held = [] } }
   static func respond(_ responder: @escaping Responder) { lock.withLock { self.responder = responder } }
+  /// While on, responses wait until `releaseHeld()`.
+  static func holdResponses(_ on: Bool) { lock.withLock { holding = on } }
+  static func releaseHeld() {
+    let responses = lock.withLock { defer { held = [] }; return held }
+    for (instance, status, body) in responses { instance.respond(status, body) }
+  }
 
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -379,11 +460,12 @@ private final class ColorKeyProtocol: URLProtocol, @unchecked Sendable {
       return respond(200, #"{"token":"fixture-token","record":{"id":"feature-user","verified":true}}"#)
     }
     let recorded = Request(method: request.httpMethod ?? "GET", url: url, body: Self.body(of: request))
-    let responder = Self.lock.withLock {
+    let (responder, holding) = Self.lock.withLock {
       Self.recorded.append(recorded)
-      return Self.responder
+      return (Self.responder, Self.holding)
     }
     let (status, body) = responder?(recorded) ?? (404, #"{"message":"missing"}"#)
+    if holding { return Self.lock.withLock { Self.held.append((self, status, body)) } }
     respond(status, body)
   }
 

@@ -591,9 +591,10 @@ final class LibrarySession {
     guard key.user == userID, original.map({ $0.user == userID && $0.page == key.page }) ?? true
     else { throw APIError.forbidden }
     guard connectionAvailable != false else { throw APIError.offline }
-    try await beginOnlineWrite()
-    defer { endOnlineWrite(refreshLibrary: false) }
+    // The write ends before sign-out recovery, which waits for open writes.
     do {
+      try await beginOnlineWrite()
+      defer { endOnlineWrite(refreshLibrary: false) }
       let saved: ColorKeyRecord = if let original {
         try await client.update(collection: ColorKeys.collection, id: original.id,
           body: ColorKeyPatch(original: original.write, changed: key))
@@ -611,9 +612,9 @@ final class LibrarySession {
 
   func deleteColorKey(id: String) async throws {
     guard connectionAvailable != false else { throw APIError.offline }
-    try await beginOnlineWrite()
-    defer { endOnlineWrite(refreshLibrary: false) }
     do {
+      try await beginOnlineWrite()
+      defer { endOnlineWrite(refreshLibrary: false) }
       try await client.delete(collection: ColorKeys.collection, id: id)
       try checkActive()
     } catch {
