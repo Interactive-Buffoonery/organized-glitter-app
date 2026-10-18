@@ -8,11 +8,12 @@ final class StatsUITests: XCTestCase {
     XCTAssertTrue(app.otherElements.matching(NSPredicate(format: "label == %@", "Total kits")).firstMatch.waitForExistence(timeout: 5))
     let total = app.otherElements.matching(NSPredicate(format: "label == %@", "Total kits")).firstMatch
     XCTAssertEqual(total.value as? String, "24")
-    let finished = app.otherElements.matching(NSPredicate(format: "label == %@", "Finished in 2026")).firstMatch
+    let year = Calendar(identifier: .gregorian).component(.year, from: .now)
+    let finished = app.otherElements.matching(NSPredicate(format: "label == %@", "Finished in \(year)")).firstMatch
     XCTAssertEqual(finished.value as? String, "5")
     app.buttons["stats.year"].tap()
-    app.buttons["2025"].tap()
-    let previous = app.otherElements.matching(NSPredicate(format: "label == %@", "Finished in 2025")).firstMatch
+    app.buttons[String(year - 1)].tap()
+    let previous = app.otherElements.matching(NSPredicate(format: "label == %@", "Finished in \(year - 1)")).firstMatch
     XCTAssertTrue(previous.waitForExistence(timeout: 5))
     XCTAssertEqual(previous.value as? String, "2")
   }
@@ -38,7 +39,7 @@ final class StatsUITests: XCTestCase {
     let more = app.buttons["library.more"]
     XCTAssertTrue(more.waitForExistence(timeout: 5))
     more.tap()
-    app.buttons["Stats"].tap()
+    app.buttons["library.stats"].tap()
     XCTAssertTrue(app.navigationBars["Stats"].waitForExistence(timeout: 5))
   }
 }
