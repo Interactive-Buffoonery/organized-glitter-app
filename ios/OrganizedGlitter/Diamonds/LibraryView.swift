@@ -17,6 +17,7 @@ struct LibraryView: View {
   @State private var logEditor: LibraryItemDetailModel?
   @State private var showsRandomizer = false
   @State private var showsNumberPicker = false
+  @State private var showsStats = false
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -63,6 +64,9 @@ struct LibraryView: View {
         }
         .navigationDestination(isPresented: $showsNumberPicker) {
           RandomizerView()
+        }
+        .navigationDestination(isPresented: $showsStats) {
+          StatsView(library: model.library, verticals: verticals)
         }
     }
     .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
@@ -152,6 +156,8 @@ struct LibraryView: View {
       if showsLibraryTools {
         ToolbarItem(placement: .topBarTrailing) {
           Menu {
+            Button("Stats", systemImage: "chart.bar") { showsStats = true }
+              .accessibilityIdentifier("library.stats")
             Button(RandomizerPageCopy.title, systemImage: "shuffle") { showsRandomizer = true }
               .accessibilityIdentifier("library.pickForMe")
             Button("Pick a section number", systemImage: "number") { showsNumberPicker = true }
@@ -164,24 +170,6 @@ struct LibraryView: View {
         }
       }
       if presentation != .search {
-        ToolbarItem(placement: .topBarTrailing) {
-          Menu {
-            NavigationLink {
-              StatsView(library: model.library, verticals: verticals)
-            } label: {
-              Label("Stats", systemImage: "chart.bar")
-            }
-            .accessibilityIdentifier("library.stats")
-            NavigationLink {
-              RandomizerView()
-            } label: {
-              Label("Pick a section number", systemImage: "number")
-            }
-          } label: {
-            Label("More", systemImage: "ellipsis.circle")
-          }
-          .accessibilityIdentifier("library.more")
-        }
         ToolbarItem(placement: .topBarTrailing) {
           CreateMenu(
             library: model.library,
