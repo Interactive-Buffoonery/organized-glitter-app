@@ -570,7 +570,8 @@ actor PocketBaseClient {
   }
 
   func statsSnapshot(year: Int, userID: String) async throws -> StatsSnapshot {
-    guard authentication?.user.id == userID else { throw APIError.cancelled }
+    guard let authentication else { throw APIError.unauthenticated }
+    guard authentication.user.id == userID else { throw APIError.cancelled }
     let generation = sessionGeneration
     let diamond = try await diamondStatsSummary(year: year)
     guard generation == sessionGeneration, !Task.isCancelled else { throw APIError.cancelled }
