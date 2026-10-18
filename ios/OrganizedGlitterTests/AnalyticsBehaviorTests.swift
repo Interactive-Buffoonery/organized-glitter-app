@@ -7,6 +7,36 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct AnalyticsBehaviorTests {
+  @Test(arguments: [false, true])
+  func pagePhotoUploadRetainsExistingAnalytics(fails: Bool) async throws {
+    let fixture = try await Fixture()
+    defer { fixture.analytics.close() }
+    let page = try JSONDecoder().decode(ColoringPageRecord.self, from: Data(
+      #"{"id":"page","book":"book","page_number":1,"status":"not_started","photos":["first.jpg"],"created":"2026-09-01","updated":"2026-09-02"}"#.utf8))
+    try await fixture.library.store.ingest(.book(featureBook("book", title: "Private book")), scope: fixture.library.scope)
+    try await fixture.library.store.ingest(.page(page), scope: fixture.library.scope)
+    try await fixture.library.loadLocal()
+    BehaviorProtocol.record = try JSONEncoder().encode(page)
+    BehaviorProtocol.status = fails ? 503 : 200
+    let form = PocketBaseMultipartForm(files: [
+      PocketBaseMultipartFile(fieldName: "photos+", fileName: "new.jpg", contentType: "image/jpeg", data: Data([1]))
+    ])
+    do {
+      _ = try await fixture.library.appendPagePhoto(id: page.id, multipart: form)
+      #expect(!fails)
+    } catch APIError.server {
+      #expect(fails)
+    }
+    if fails {
+      #expect(fixture.events.names == [.operationFailed])
+      #expect(fixture.events.properties.first?["operation"] as? String == "add_photo")
+    } else {
+      #expect(fixture.events.names == [.pageUpdated, .pagePhotoAdded])
+      #expect(fixture.events.properties.last?["save_destination"] as? String == "server")
+    }
+    try await fixture.library.close(removingData: false)
+  }
+
   @Test func localSavePrecedesAcceptanceAndRetryDoesNotDuplicate() async throws {
     let fixture = try await Fixture()
     defer { fixture.analytics.close() }

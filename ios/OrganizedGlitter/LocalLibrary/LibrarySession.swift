@@ -348,35 +348,57 @@ final class LibrarySession {
   }
 
   func changePagePhoto(id: String, filename: String, setMain: Bool) async throws -> ColoringPageRecord {
-    guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
-    try await beginOnlineWrite()
-    defer { endOnlineWrite(refreshLibrary: false) }
-    let reserved = try await reserveOnlineRecord(collection: "coloring_pages", id: id)
-    defer { onlineRecords.subtract(reserved) }
-    guard localWrites == 0 else { throw LibrarySessionError.pendingChanges }
-    let current: ColoringPageRecord = try record(collection: "coloring_pages", id: id)
-    guard current.photos.contains(filename) else { throw APIError.conflict }
-    let saved: ColoringPageRecord
-    if setMain {
-      saved = try await client.setMainPagePhoto(pageID: id, filename: filename, userID: userID)
-    } else {
-      saved = try await client.removePagePhoto(pageID: id, filename: filename, userID: userID)
+    do {
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      try await beginOnlineWrite()
+      defer {
+        endOnlineWrite(refreshLibrary: false)
+        if hasQueuedChanges { scheduleSync() }
+      }
+      let reserved = try await reserveOnlineRecord(collection: "coloring_pages", id: id)
+      defer { onlineRecords.subtract(reserved) }
+      guard localWrites == 0 else { throw LibrarySessionError.pendingChanges }
+      let current: ColoringPageRecord = try record(collection: "coloring_pages", id: id)
+      guard current.photos.contains(filename) else { throw APIError.conflict }
+      let saved: ColoringPageRecord
+      if setMain {
+        saved = try await client.setMainPagePhoto(pageID: id, filename: filename, userID: userID)
+      } else {
+        saved = try await client.removePagePhoto(pageID: id, filename: filename, userID: userID)
+      }
+      try await acceptPagePhoto(saved, replacing: current)
+      return saved
+    } catch {
+      await recoverHistoryAuthentication(after: error)
+      throw error
     }
-    try await acceptPagePhoto(saved, replacing: current)
-    return saved
   }
 
   func appendPagePhoto(id: String, multipart: PocketBaseMultipartForm) async throws -> ColoringPageRecord {
-    guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
-    try await beginOnlineWrite()
-    defer { endOnlineWrite(refreshLibrary: false) }
-    let reserved = try await reserveOnlineRecord(collection: "coloring_pages", id: id)
-    defer { onlineRecords.subtract(reserved) }
-    guard localWrites == 0 else { throw LibrarySessionError.pendingChanges }
-    let current: ColoringPageRecord = try record(collection: "coloring_pages", id: id)
-    let saved: ColoringPageRecord = try await client.update(collection: "coloring_pages", id: id, multipart: multipart)
-    try await acceptPagePhoto(saved, replacing: current)
-    return saved
+    do {
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      try await beginOnlineWrite()
+      defer {
+        endOnlineWrite(refreshLibrary: false)
+        if hasQueuedChanges { scheduleSync() }
+      }
+      let reserved = try await reserveOnlineRecord(collection: "coloring_pages", id: id)
+      defer { onlineRecords.subtract(reserved) }
+      guard localWrites == 0 else { throw LibrarySessionError.pendingChanges }
+      let current: ColoringPageRecord = try record(collection: "coloring_pages", id: id)
+      let saved: ColoringPageRecord = try await client.update(collection: "coloring_pages", id: id, multipart: multipart)
+      try await acceptPagePhoto(saved, replacing: current)
+      analytics?.record(.updated, collection: "coloring_pages", accountID: userID)
+      if !multipart.files.isEmpty {
+        analytics?.capture(.pagePhotoAdded,
+          properties: ["record_type": "coloring_pages", "save_destination": "server"], accountID: userID)
+      }
+      return saved
+    } catch {
+      captureOnlineFailure(error, operation: .addPhoto, collection: "coloring_pages")
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
   }
 
   private func acceptPagePhoto(_ saved: ColoringPageRecord, replacing current: ColoringPageRecord) async throws {
@@ -394,21 +416,35 @@ final class LibrarySession {
   }
 
   func refreshPagePhotos() async throws {
-    try checkActive()
-    guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
-    try await beginOnlineWrite()
-    defer { endOnlineWrite(refreshLibrary: false) }
-    let snapshot = try await client.mobileSnapshot(userID: userID)
-    try checkActive()
-    guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
-    try await store.ingestSnapshot(snapshot, scope: scope)
-    try checkActive()
-    try await loadLocal()
-    try await client.retainDownloadedArtwork(
-      items: entries.filter { $0.conflict != .deletedOnServer }.map(\.item),
-      notes: progressNotes, coloringNotes: coloringPageProgressNotes, scope: scope)
-    try checkActive()
-    generation &+= 1
+    do {
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      try await beginOnlineWrite()
+      defer {
+        endOnlineWrite(refreshLibrary: false)
+        if hasQueuedChanges { scheduleSync() }
+      }
+      let snapshot = try await client.mobileSnapshot(userID: userID)
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      let transitions = try await store.ingestSnapshot(snapshot, scope: scope)
+      for transition in transitions {
+        analytics?.capture(.syncConflict, properties: [
+          "record_type": transition.key.kind.rawValue,
+          "field_count": min(10_000, transition.fieldCount),
+        ], accountID: userID)
+      }
+      try checkActive()
+      try await loadLocal()
+      try await client.retainDownloadedArtwork(
+        items: entries.filter { $0.conflict != .deletedOnServer }.map(\.item),
+        notes: progressNotes, coloringNotes: coloringPageProgressNotes, scope: scope)
+      try checkActive()
+      generation &+= 1
+    } catch {
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
   }
 
   func update<Record: Decodable & Sendable>(
