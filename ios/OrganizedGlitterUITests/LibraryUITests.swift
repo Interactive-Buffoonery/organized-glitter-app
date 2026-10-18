@@ -59,7 +59,9 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(date.waitForExistence(timeout: 3))
     let originalDate = date.label
     answer.tap()
-    app.buttons["Edit answer"].tap()
+    let editAnswer = app.buttons["detail.page.editAnswer"]
+    XCTAssertTrue(editAnswer.waitForExistence(timeout: 3))
+    editAnswer.tap()
     let edit = app.alerts.textFields.firstMatch
     XCTAssertTrue(edit.waitForExistence(timeout: 3))
     edit.tap()
@@ -70,7 +72,9 @@ final class LibraryUITests: XCTestCase {
     XCTAssertEqual(XCTWaiter.wait(for: [edited], timeout: 5), .completed)
     XCTAssertEqual(date.label, originalDate)
     answer.tap()
-    app.buttons["Hide again"].tap()
+    let hide = app.buttons["detail.page.hide"]
+    XCTAssertTrue(hide.waitForExistence(timeout: 3))
+    hide.tap()
     let confirmHide = app.buttons["Hide again"].firstMatch
     XCTAssertTrue(confirmHide.waitForExistence(timeout: 3))
     confirmHide.tap()
