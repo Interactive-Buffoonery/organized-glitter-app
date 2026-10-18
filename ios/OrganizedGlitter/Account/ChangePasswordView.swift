@@ -14,7 +14,6 @@ struct ChangePasswordView: View {
   @State private var didChange = false
   @State private var errorMessage: String?
   @State private var outcomeUnknown = false
-  @State private var saveTask: Task<Void, Never>?
   @State private var generation = 0
 
   var body: some View {
@@ -68,8 +67,6 @@ struct ChangePasswordView: View {
     .navigationTitle("Change password")
     .onDisappear {
       generation &+= 1
-      saveTask?.cancel()
-      saveTask = nil
       isSaving = false
       clearPasswords()
     }
@@ -92,7 +89,8 @@ struct ChangePasswordView: View {
     let currentGeneration = generation
     isSaving = true
     errorMessage = nil
-    saveTask = Task {
+    // A dispatched change finishes after the form closes so session recovery still runs.
+    Task {
       defer { if generation == currentGeneration { isSaving = false } }
       do {
         _ = try await appModel.changePassword(
