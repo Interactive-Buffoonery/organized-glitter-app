@@ -22,12 +22,13 @@ struct SymbolPickerView: View {
             .scrollIndicators(.hidden)
           }
         }
-        ForEach(catalog.grouped(results)) { group in
-          section(group.group.label) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: cellSize + 8), spacing: 8)], spacing: 8) {
-              ForEach(group.symbols.map(\.id), id: \.self, content: cell)
-            }
+        if query.isEmpty {
+          ForEach(catalog.grouped(results)) { group in
+            section(group.group.label) { grid(group.symbols) }
           }
+        } else {
+          // Search results stay in rank order, best match first.
+          grid(results)
         }
         if results.isEmpty {
           ContentUnavailableView.search(text: query)
@@ -55,6 +56,12 @@ struct SymbolPickerView: View {
         .foregroundStyle(theme.foreground)
         .accessibilityAddTraits(.isHeader)
       content()
+    }
+  }
+
+  private func grid(_ symbols: [SymbolCatalog.Symbol]) -> some View {
+    LazyVGrid(columns: [GridItem(.adaptive(minimum: cellSize + 8), spacing: 8)], spacing: 8) {
+      ForEach(symbols.map(\.id), id: \.self, content: cell)
     }
   }
 

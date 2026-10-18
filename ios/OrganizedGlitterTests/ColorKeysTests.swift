@@ -279,7 +279,8 @@ struct ColorKeysSessionTests {
     ColorKeyProtocol.respond { request in
       request.method == "GET"
         ? (200, #"{"page":1,"perPage":50,"totalPages":1,"totalItems":0,"items":[]}"#)
-        : (200, Self.saved.replacingOccurrences(of: "u:0031", with: "u:03C8"))
+        : (200, Self.saved.replacingOccurrences(of: "u:0031", with: "u:03C8")
+          .replacingOccurrences(of: #""code":"""#, with: #""code":"B000""#))
     }
     let model = ColorKeysModel(library: library, pageID: "page")
     await model.load()
@@ -289,6 +290,14 @@ struct ColorKeysSessionTests {
     #expect(saved.symbol == "u:03C8")
     #expect(model.keys.map(\.symbol) == ["u:03C8"])
     #expect(model.recentSymbols.first == "u:03C8")
+
+    var edit = saved.write
+    edit.colorName = " Black "
+    _ = try await model.save(edit, id: saved.id).get()
+    let request = try #require(ColorKeyProtocol.requests.last)
+    #expect(request.method == "PATCH")
+    let body = try #require(JSONSerialization.jsonObject(with: request.body) as? [String: String])
+    #expect(body == ["color_name": "Black"])
   }
 
   @Test("setup reloads after an uncertain failure and skips symbols already saved on retry")

@@ -295,7 +295,7 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(first.waitForExistence(timeout: 10))
     XCTAssertTrue(button("colorKeys.row.32", in: app).exists)
     XCTAssertFalse(button("colorKeys.row.33", in: app).exists)
-    XCTAssertTrue(first.label.hasPrefix("Number 1, No code yet"))
+    XCTAssertTrue(first.label.hasPrefix("One, No code yet"))
     first.tap()
 
     let code = app.textFields["colorKeys.entry.code"]
@@ -320,8 +320,8 @@ final class NativeRefinementUITests: XCTestCase {
     button("colorKeys.entry.save", in: app).tap()
 
     XCTAssertTrue(first.waitForExistence(timeout: 5))
-    XCTAssertTrue(first.label.hasPrefix("Number 1, B000, Pale porcelain"))
-    XCTAssertTrue(button("colorKeys.row.1", in: app).label.hasPrefix("Number 2, B000"))
+    XCTAssertTrue(first.label.hasPrefix("One, B000, Pale porcelain"))
+    XCTAssertTrue(button("colorKeys.row.1", in: app).label.hasPrefix("Two, B000"))
 
     button("colorKeys.add", in: app).tap()
     let search = app.searchFields.firstMatch
