@@ -50,7 +50,7 @@ struct AccountActionsTests {
     let library = try #require(model.library)
     AccountActionProtocol.patchStatus = 400
     var accepted = false
-    await #expect(throws: APIError.validation("Current password is incorrect.")) {
+    await #expect(throws: APIError.validation("Failed to update record.")) {
       _ = try await model.changePassword(
         oldPassword: "WrongExample1", password: "NewExample2", confirmation: "NewExample2",
         library: library, onAccepted: { accepted = true })
@@ -169,7 +169,7 @@ private final class AccountActionProtocol: URLProtocol, @unchecked Sendable {
       body = "{\"token\":\"\(token)\",\"record\":{\"id\":\"\(owner)\",\"email\":\"account@example.test\",\"verified\":true}}"
     } else if request.httpMethod == "PATCH" {
       status = Self.patchStatus
-      body = status == 200 ? "accepted response without JSON" : #"{"message":"Current password is incorrect."}"#
+      body = status == 200 ? "accepted response without JSON" : #"{"status":400,"message":"Failed to update record.","data":{"oldPassword":{"code":"validation_invalid_old_password","message":"Missing or invalid old password."}}}"#
     } else if path.hasSuffix("request-email-change") {
       status = 204
     } else {

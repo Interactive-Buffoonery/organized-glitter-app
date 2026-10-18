@@ -110,9 +110,14 @@ struct ChangePasswordView: View {
           errorMessage = "The result could not be confirmed. Sign in again with your new password or reset it before trying another change. Your unsent library changes stay on this device."
           return
         }
+        let rejected = "The password could not be changed. Check your current password and try again."
+        // PocketBase reports a wrong current password only as a generic record-update message.
+        if case .validation = error as? APIError {
+          errorMessage = rejected
+          return
+        }
         errorMessage = error.userMessage(
-          permission: "This account cannot change its password.",
-          fallback: "The password could not be changed. Check your current password and try again.")
+          permission: "This account cannot change its password.", fallback: rejected)
       }
     }
   }
