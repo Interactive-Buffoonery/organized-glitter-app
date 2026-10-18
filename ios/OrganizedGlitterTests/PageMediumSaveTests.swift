@@ -59,6 +59,41 @@ struct PageMediumSaveTests {
       != MediumSaveProtocol.bodies[1]["operationId"] as? String)
   }
 
+  @Test(.timeLimit(.minutes(1)), arguments: [401, 403], [false, true])
+  func authenticationFailureClosesSessionAndKeepsDraft(status: Int, recovering: Bool) async throws {
+    let library = try await makeLibrary(ids: ["a"])
+    defer { library.onAuthenticationFailure = nil; library.pauseWrites() }
+    if recovering {
+      MediumSaveProtocol.failureAfterAcceptance = .networkConnectionLost
+      await #expect(throws: APIError.self) {
+        try await library.savePageMediums(
+          pageID: "page", baseline: ["a"], selection: ["mine"], connected: true)
+      }
+    }
+    var closed = false
+    library.onAuthenticationFailure = {
+      do {
+        try await library.close(removingData: false)
+        closed = true
+      } catch { Issue.record("Session close failed") }
+    }
+    MediumSaveProtocol.overrideStatus = status
+    await #expect(throws: status == 401 ? APIError.unauthenticated : .forbidden) {
+      if recovering {
+        let attempt = try #require(library.mediumAttempts.first)
+        return try await library.resumePageMediums(attempt.id, connected: true)
+      }
+      return try await library.savePageMediums(
+        pageID: "page", baseline: ["a"], selection: ["mine"], connected: true)
+    }
+    #expect(closed)
+    #expect(library.items.isEmpty)
+    let attempts = try await library.store.mediumAttempts(scope: library.scope)
+    #expect(attempts.count == 1)
+    #expect(attempts.first?.state == .awaitingReceipt)
+    #expect(attempts.first?.patch.mediums == ["mine"])
+  }
+
   @Test(arguments: [URLError.Code.networkConnectionLost, .cancelled])
   func ambiguousResultReplaysSameAttemptAndUsesCurrentRecord(code: URLError.Code) async throws {
     let library = try await makeLibrary(ids: ["a"])

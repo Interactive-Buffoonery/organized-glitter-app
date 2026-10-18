@@ -340,19 +340,26 @@ final class LibrarySession {
     pageID: String, baseline: [String], selection: Set<String>, connected: Bool,
     replacing conflictID: UUID? = nil
   ) async throws -> ColoringPageRecord {
-    guard connected else { throw APIError.offline }
-    guard selection.count <= 99 else {
-      throw APIError.validation("Choose no more than 99 mediums.")
+    do {
+      guard connected else { throw APIError.offline }
+      guard selection.count <= 99 else {
+        throw APIError.validation("Choose no more than 99 mediums.")
+      }
+      try await beginOnlineWrite()
+      defer { endOnlineWrite() }
+      let reserved = try await reserveOnlineRecord(
+        collection: "coloring_pages", id: pageID, allowingMediumAttempt: conflictID)
+      defer { onlineRecords.subtract(reserved) }
+      let attempt = PageMediumAttempt(pageID: pageID, baseline: baseline, selection: selection)
+      try await store.saveMediumAttempt(attempt, scope: scope, replacing: conflictID)
+      try await loadLocal()
+      return try await sendPageMediumAttempt(attempt)
+    } catch {
+      if active, error as? APIError == .unauthenticated || error as? APIError == .forbidden {
+        await onAuthenticationFailure?()
+      }
+      throw error
     }
-    try await beginOnlineWrite()
-    defer { endOnlineWrite() }
-    let reserved = try await reserveOnlineRecord(
-      collection: "coloring_pages", id: pageID, allowingMediumAttempt: conflictID)
-    defer { onlineRecords.subtract(reserved) }
-    let attempt = PageMediumAttempt(pageID: pageID, baseline: baseline, selection: selection)
-    try await store.saveMediumAttempt(attempt, scope: scope, replacing: conflictID)
-    try await loadLocal()
-    return try await sendPageMediumAttempt(attempt)
   }
 
   func mediumOptions() async throws -> [NamedRelationRecord] {
@@ -364,16 +371,23 @@ final class LibrarySession {
   }
 
   func resumePageMediums(_ attemptID: UUID, connected: Bool) async throws -> ColoringPageRecord {
-    guard connected else { throw APIError.offline }
-    try await beginOnlineWrite()
-    defer { endOnlineWrite() }
-    try await loadLocal()
-    guard let attempt = mediumAttempts.first(where: { $0.id == attemptID }),
-      attempt.state == .awaitingReceipt else { throw PageMediumSaveError.needsReview }
-    let reserved = try await reserveOnlineRecord(
-      collection: "coloring_pages", id: attempt.pageID, allowingMediumAttempt: attempt.id)
-    defer { onlineRecords.subtract(reserved) }
-    return try await sendPageMediumAttempt(attempt)
+    do {
+      guard connected else { throw APIError.offline }
+      try await beginOnlineWrite()
+      defer { endOnlineWrite() }
+      try await loadLocal()
+      guard let attempt = mediumAttempts.first(where: { $0.id == attemptID }),
+        attempt.state == .awaitingReceipt else { throw PageMediumSaveError.needsReview }
+      let reserved = try await reserveOnlineRecord(
+        collection: "coloring_pages", id: attempt.pageID, allowingMediumAttempt: attempt.id)
+      defer { onlineRecords.subtract(reserved) }
+      return try await sendPageMediumAttempt(attempt)
+    } catch {
+      if active, error as? APIError == .unauthenticated || error as? APIError == .forbidden {
+        await onAuthenticationFailure?()
+      }
+      throw error
+    }
   }
 
   func discardPageMediums(_ attemptID: UUID) async throws {
@@ -411,6 +425,9 @@ final class LibrarySession {
       try await loadLocal()
       throw conflict
     } catch {
+      if error as? APIError == .unauthenticated || error as? APIError == .forbidden {
+        throw error
+      }
       if active {
         var saved = attempt
         if error as? PageMediumSaveError == .integrityFailure { saved.state = .integrityFailure }
@@ -420,9 +437,6 @@ final class LibrarySession {
           try await store.recordMediumOutcome(saved, scope: scope)
         }
         try await loadLocal()
-        if error as? APIError == .unauthenticated || error as? APIError == .forbidden {
-          await onAuthenticationFailure?()
-        }
       }
       throw error
     }
