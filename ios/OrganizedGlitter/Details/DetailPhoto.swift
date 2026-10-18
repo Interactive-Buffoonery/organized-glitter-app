@@ -47,6 +47,7 @@ struct DetailPhotoGallery: View {
             .photoViewerSource(
               photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen"
                 + (actions?.mainID == photo.id ? ", Main photo" : ""))
+            .accessibilityIdentifier("detail.photo.\(photo.id)")
             .contextMenu {
               if let actions {
                 if actions.mainID != photo.id {

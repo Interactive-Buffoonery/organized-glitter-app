@@ -279,7 +279,8 @@ final class NativeRefinementUITests: XCTestCase {
     app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design", "-fixture-page-photo-actions"]
     app.launch()
     openFirstDesignPage(in: app)
-    let second = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Open Page photo 2")).firstMatch
+    let second = app.buttons["detail.photo.design-page-2.jpg"]
+    XCTAssertFalse(second.label.contains("Main photo"))
     makeHittable(second, in: app)
     second.tap()
     let setMain = button("photoViewer.setMain", in: app)
@@ -287,7 +288,7 @@ final class NativeRefinementUITests: XCTestCase {
     setMain.tap()
     XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
     let main = app.buttons.matching(NSPredicate(
-      format: "label BEGINSWITH %@ AND label CONTAINS %@", "Open Page photo 1", "Main photo")).firstMatch
+      format: "identifier == %@ AND label CONTAINS %@", "detail.photo.design-page-2.jpg", "Main photo")).firstMatch
     XCTAssertTrue(main.waitForExistence(timeout: 5))
     makeHittable(main, in: app)
     main.tap()
@@ -295,10 +296,14 @@ final class NativeRefinementUITests: XCTestCase {
     let delete = button("photoViewer.delete", in: app)
     XCTAssertTrue(delete.waitForExistence(timeout: 5))
     delete.tap()
-    confirmationButton(named: "Delete photo", in: app).tap()
+    let confirmation = app.sheets.buttons["Delete photo"]
+    XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+    confirmation.tap()
     XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
-    XCTAssertTrue(main.waitForExistence(timeout: 5))
     XCTAssertTrue(second.waitForNonExistence(timeout: 5))
+    let remaining = app.buttons["detail.photo.design-page-1.jpg"]
+    XCTAssertTrue(remaining.waitForExistence(timeout: 5))
+    XCTAssertTrue(remaining.label.contains("Main photo"))
   }
 
   private func launchFixture(scenario: String = "design") -> XCUIApplication {
