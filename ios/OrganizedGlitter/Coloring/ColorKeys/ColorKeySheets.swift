@@ -77,6 +77,8 @@ struct ColorKeySetupSheet: View {
   @ScaledMetric(relativeTo: .title) private var cellSize: CGFloat = 48
 
   let recentSymbols: [String]
+  /// After a partial save, the choices are locked so a retry sends the same symbols.
+  let hasSavedKeys: Bool
   let onSave: (_ symbols: [String]) async -> String?
 
   @State private var enabled = Set(SymbolCatalog.setupDefaults)
@@ -96,9 +98,18 @@ struct ColorKeySetupSheet: View {
             ForEach(SymbolCatalog.setupDefaults, id: \.self) { id in
               Toggle(isOn: binding(for: id)) {
                 ColorKeySymbolView(id: id, size: cellSize * 0.6)
+                  .opacity(enabled.contains(id) ? 1 : 0.35)
                   .frame(maxWidth: .infinity, minHeight: cellSize)
+                  .overlay(alignment: .topTrailing) {
+                    if enabled.contains(id) {
+                      Image(systemName: "checkmark.circle.fill")
+                        .font(.caption)
+                        .accessibilityHidden(true)
+                    }
+                  }
               }
               .toggleStyle(.button)
+              .disabled(isLocked)
               .accessibilityIdentifier("colorKeys.setup.\(id)")
             }
           }
@@ -114,14 +125,15 @@ struct ColorKeySetupSheet: View {
                     .frame(maxWidth: .infinity, minHeight: cellSize)
                 }
                 .buttonStyle(.bordered)
+                .disabled(isLocked)
                 .accessibilityLabel("Remove \(SymbolCatalog.bundled.accessibilityName(for: id))")
               }
             }
           }
           Button("Add symbol", systemImage: "plus") { isPickingExtra = true }
             .frame(minHeight: 44)
+            .disabled(isLocked)
             .accessibilityIdentifier("colorKeys.setup.addExtra")
-          if isSaving { ProgressView("Saving symbols…") }
           if let errorMessage { AccessibleErrorLabel(message: errorMessage) }
           NeedsConnectionHint()
         }
@@ -138,15 +150,23 @@ struct ColorKeySetupSheet: View {
             .accessibilityIdentifier("colorKeys.setup.skip")
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button("Save") { Task { await save() } }
-            .disabled(isSaving || !connectionAvailable || symbols.isEmpty)
-            .accessibilityIdentifier("colorKeys.setup.save")
+          if isSaving {
+            ProgressView().accessibilityLabel("Saving symbols")
+          } else {
+            Button("Save") { save() }
+              .disabled(!connectionAvailable || symbols.isEmpty)
+              .accessibilityIdentifier("colorKeys.setup.save")
+          }
         }
       }
       .sheet(isPresented: $isPickingExtra) {
         NavigationStack {
           SymbolPickerView(recentSymbols: recentSymbols) { id in
-            if !symbols.contains(id) { extras.append(id) }
+            if SymbolCatalog.setupDefaults.contains(id) {
+              enabled.insert(id)
+            } else if !extras.contains(id) {
+              extras.append(id)
+            }
             isPickingExtra = false
           }
           .toolbar {
@@ -160,6 +180,8 @@ struct ColorKeySetupSheet: View {
     .interactiveDismissDisabled(isSaving)
   }
 
+  private var isLocked: Bool { isSaving || hasSavedKeys }
+
   private var symbols: [String] {
     SymbolCatalog.setupDefaults.filter(enabled.contains) + extras
   }
@@ -170,11 +192,15 @@ struct ColorKeySetupSheet: View {
     })
   }
 
-  private func save() async {
+  private func save() {
+    guard !isSaving else { return }
     isSaving = true
-    errorMessage = await onSave(symbols)
-    isSaving = false
-    if errorMessage == nil { dismiss() }
+    AccessibilityNotification.Announcement("Saving symbols").post()
+    Task {
+      errorMessage = await onSave(symbols)
+      isSaving = false
+      if errorMessage == nil { dismiss() }
+    }
   }
 }
 
@@ -219,13 +245,15 @@ struct ColorKeyEntrySheet: View {
         }
 
         Section("Color") {
-          TextField("Code", text: $draft.code)
-            .focused($focusedCode)
-            .textInputAutocapitalization(.characters)
-            .autocorrectionDisabled()
-            .accessibilityIdentifier("colorKeys.entry.code")
+          LabeledContent("Code") {
+            TextField("Code", text: $draft.code)
+              .focused($focusedCode)
+              .textInputAutocapitalization(.characters)
+              .autocorrectionDisabled()
+              .accessibilityIdentifier("colorKeys.entry.code")
+          }
           if focusedCode {
-            ForEach(model.suggestions(for: draft.code), id: \.self) { suggestion in
+            ForEach(suggestions, id: \.self) { suggestion in
               Button { apply(suggestion) } label: {
                 HStack {
                   Text(suggestion.code).foregroundStyle(theme.foreground)
@@ -235,10 +263,13 @@ struct ColorKeyEntrySheet: View {
                 }
               }
               .accessibilityLabel("Use \(suggestion.code) \(suggestion.colorName)")
+              .accessibilityHint("Fills in the color name and swatch")
             }
           }
-          TextField("Color name", text: $draft.colorName)
-            .accessibilityIdentifier("colorKeys.entry.colorName")
+          LabeledContent("Color name") {
+            TextField("Color name", text: $draft.colorName)
+              .accessibilityIdentifier("colorKeys.entry.colorName")
+          }
           ColorPicker("Swatch", selection: swatch, supportsOpacity: false)
           if !draft.swatch.isEmpty {
             Button("Remove swatch", role: .destructive) { draft.swatch = "" }
@@ -246,8 +277,9 @@ struct ColorKeyEntrySheet: View {
         }
 
         Section("Tried first") {
-          ForEach($tried) { $color in
+          ForEach(Array($tried.enumerated()), id: \.element.id) { index, $color in
             TextField("Color tried", text: $color.text)
+              .accessibilityLabel("Color tried \(index + 1)")
           }
           .onDelete { tried.remove(atOffsets: $0) }
           Button("Add color tried", systemImage: "plus") { tried.append(TriedColor(text: "")) }
@@ -279,6 +311,7 @@ struct ColorKeyEntrySheet: View {
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button("Cancel", role: .cancel) { dismiss() }
+            .disabled(model.isSaving)
         }
         ToolbarItem(placement: .confirmationAction) {
           Button("Save") { Task { await save(advance: false) } }
@@ -292,6 +325,13 @@ struct ColorKeyEntrySheet: View {
       }
     }
     .interactiveDismissDisabled(model.isSaving)
+    .task { if draft.code.isEmpty { focusedCode = true } }
+  }
+
+  /// A suggestion that matches what's already entered would change nothing.
+  private var suggestions: [ColorKeySuggestion] {
+    let current = ColorKeySuggestion(code: draft.code, colorName: draft.colorName, swatch: draft.swatch)
+    return model.suggestions(for: draft.code).filter { $0 != current }
   }
 
   private var canSave: Bool { connectionAvailable && !model.isSaving }
@@ -303,8 +343,8 @@ struct ColorKeyEntrySheet: View {
 
   private func apply(_ suggestion: ColorKeySuggestion) {
     draft.code = suggestion.code
-    if !suggestion.colorName.isEmpty { draft.colorName = suggestion.colorName }
-    if !suggestion.swatch.isEmpty { draft.swatch = suggestion.swatch }
+    draft.colorName = suggestion.colorName
+    draft.swatch = suggestion.swatch
     focusedCode = false
   }
 
@@ -318,8 +358,8 @@ struct ColorKeyEntrySheet: View {
   }
 
   private func delete() async {
-    guard let id, let key = model.keys.first(where: { $0.id == id }) else { return }
-    errorMessage = await model.delete(key)
+    guard let id else { return }
+    errorMessage = await model.delete(id: id)
     if errorMessage == nil { dismiss() }
   }
 }

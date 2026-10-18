@@ -461,7 +461,7 @@
           }
         case "user_dashboard_settings", "randomizer_spins":
           break
-        case "coloring_page_color_keys":
+        case ColorKeys.collection:
           record["user"] = "preview-user"
           for field in ["code", "color_name", "swatch", "note"] { record[field] = record[field] ?? "" }
           record["tried"] = record["tried"] ?? []
@@ -597,7 +597,7 @@
         {
           return false
         }
-        for relation in ["book", "project"] + (collection == "coloring_page_color_keys" ? ["page"] : []) {
+        for relation in ["book", "project"] + (collection == ColorKeys.collection ? ["page"] : []) {
           if let value = equalityValue(field: relation, in: filter),
             item[relation] as? String != value
           {

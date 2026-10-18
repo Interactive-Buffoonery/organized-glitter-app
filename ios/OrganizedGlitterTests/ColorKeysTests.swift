@@ -25,6 +25,21 @@ struct ColorKeyLogicTests {
     #expect(decoded.position == 3 && decoded.colorName == "Black" && decoded.tried == ["B0000"])
   }
 
+  @Test("updates send only the changed fields, never user or page")
+  func patchBody() throws {
+    let original = ColorKeyWrite(user: "u", page: "p", position: 2, symbol: "r:abc123def456ghi",
+      code: "B000", tried: ["R1"])
+    var changed = original
+    changed.colorName = "Black"
+    changed.tried = ["R1", "R2"]
+    let body = try #require(JSONSerialization.jsonObject(
+      with: JSONEncoder().encode(ColorKeyPatch(original: original, changed: changed))) as? [String: Any])
+    #expect(Set(body.keys) == ["color_name", "tried"])
+    #expect(body["tried"] as? [String] == ["R1", "R2"])
+    let empty = try JSONEncoder().encode(ColorKeyPatch(original: original, changed: original))
+    #expect(String(decoding: empty, as: UTF8.self) == "{}")
+  }
+
   @Test("writes always include position, even zero, and the full record")
   func writeBody() throws {
     let write = ColorKeyWrite(user: "u", page: "p", position: 0, symbol: "u:0031")
@@ -53,10 +68,11 @@ struct ColorKeyLogicTests {
       key("b", position: 1, symbol: "u:2665", code: "R29"),
       key("a", position: 0, symbol: "u:0031", code: "B000"),
       key("c", position: 2, symbol: "u:0061"),
-      key("d", position: 3, symbol: "c:wave", code: "W1"),
+      key("d", position: 3, symbol: "c:linked-circles", code: "W1"),
+      key("e", position: 4, symbol: "r:abc123def456ghi", code: "P2"),
     ]
     let text = ColorKeys.copyText(keys, catalog: .bundled)
-    #expect(text == "1 B000\n♥ R29\na\nWave W1")
+    #expect(text == "1 B000\n♥ R29\na\nLinked circles W1\nSent symbol P2")
     #expect(!text.unicodeScalars.contains { $0.value == 0xFE0E || $0.value == 0xFE0F })
   }
 
@@ -73,16 +89,17 @@ struct ColorKeyLogicTests {
     let matches = ColorKeys.suggestions(for: "b0", history: history)
     #expect(matches == [ColorKeySuggestion(code: "B000", colorName: "Pale porcelain", swatch: "#FFEEDD")])
     #expect(ColorKeys.suggestions(for: " ", history: history).isEmpty)
-    #expect(ColorKeys.suggestions(for: "B000", history: history).isEmpty)
+    #expect(ColorKeys.suggestions(for: "b000", history: history).map(\.code) == ["B000"])
   }
 
-  @Test("recent symbols are unique, valid and most recent first")
+  @Test("recent symbols are unique, valid, used with a code and most recent first")
   func recents() {
     let history = [
-      key("1", position: 0, symbol: "u:0061", updated: "2026-10-03 10:00:00.000Z"),
-      key("2", position: 1, symbol: "u:0031", updated: "2026-10-02 10:00:00.000Z"),
-      key("3", position: 2, symbol: "u:0061", updated: "2026-10-01 10:00:00.000Z"),
-      key("4", position: 3, symbol: "bogus", updated: "2026-10-04 10:00:00.000Z"),
+      key("1", position: 0, symbol: "u:0061", code: "A", updated: "2026-10-03 10:00:00.000Z"),
+      key("2", position: 1, symbol: "u:0031", code: "B", updated: "2026-10-02 10:00:00.000Z"),
+      key("3", position: 2, symbol: "u:0061", code: "C", updated: "2026-10-01 10:00:00.000Z"),
+      key("4", position: 3, symbol: "bogus", code: "D", updated: "2026-10-04 10:00:00.000Z"),
+      key("5", position: 4, symbol: "u:0062", updated: "2026-10-05 10:00:00.000Z"),
     ]
     #expect(ColorKeys.recentSymbols(history) == ["u:0061", "u:0031"])
   }
@@ -90,9 +107,9 @@ struct ColorKeyLogicTests {
   @Test("setup writes enabled defaults then extras, in order, from position zero")
   func setupWrites() {
     let writes = ColorKeys.setupWrites(
-      symbols: ["u:0031", "u:0061", "c:wave"], user: "u", page: "p")
+      symbols: ["u:0031", "u:0061", "c:linked-circles"], user: "u", page: "p")
     #expect(writes.map(\.position) == [0, 1, 2])
-    #expect(writes.map(\.symbol) == ["u:0031", "u:0061", "c:wave"])
+    #expect(writes.map(\.symbol) == ["u:0031", "u:0061", "c:linked-circles"])
     #expect(writes.allSatisfy { $0.user == "u" && $0.page == "p" && $0.code.isEmpty })
   }
 
@@ -108,7 +125,9 @@ struct ColorKeyLogicTests {
     #expect(ColorKeys.swatchHex(red: 1.2, green: -0.1, blue: 0.2) == "#FF0033")
     #expect(ColorKeys.swatchComponents("#FF8000").map { [$0.red, $0.green, $0.blue] }
       == [1, 128.0 / 255, 0])
-    #expect(ColorKeys.swatchComponents("#ff8000") == nil)
+    #expect(ColorKeys.swatchComponents("#ff8000").map { [$0.red, $0.green, $0.blue] }
+      == [1, 128.0 / 255, 0])
+    #expect(ColorKeys.swatchComponents("FF8000") == nil)
     #expect(ColorKeys.swatchComponents("") == nil)
   }
 
@@ -176,7 +195,7 @@ struct ColorKeysSessionTests {
       (200, Self.saved.replacingOccurrences(of: "u:0031", with: "u:03C8"))
     }
     let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "r:abc123def456ghi")
-    let saved = try await library.saveColorKey(write, id: nil)
+    let saved = try await library.saveColorKey(write, original: nil)
     #expect(saved.symbol == "u:03C8")
     let request = try #require(ColorKeyProtocol.requests.last)
     #expect(request.method == "POST")
@@ -186,18 +205,54 @@ struct ColorKeysSessionTests {
     #expect(body["user"] as? String == "feature-user" && body["page"] as? String == "page")
   }
 
-  @Test("updates patch the record by ID with the full record")
+  @Test("updates patch the record by ID with only the changed fields")
   func updates() async throws {
     let library = try await makeLibrary()
     ColorKeyProtocol.respond { _ in (200, Self.saved) }
-    var write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    let original = try JSONDecoder().decode(ColorKeyRecord.self, from: Data(Self.saved.utf8))
+    var write = original.write
     write.code = "B000"
-    _ = try await library.saveColorKey(write, id: "key1234567890ab")
+    _ = try await library.saveColorKey(write, original: original)
     let request = try #require(ColorKeyProtocol.requests.last)
     #expect(request.method == "PATCH")
     #expect(request.url.path == "/api/collections/coloring_page_color_keys/records/key1234567890ab")
     let body = try #require(JSONSerialization.jsonObject(with: request.body) as? [String: Any])
-    #expect(body["code"] as? String == "B000" && body["page"] as? String == "page")
+    #expect(body as? [String: String] == ["code": "B000"])
+  }
+
+  @Test("a forbidden key doesn't sign the user out, an expired session does")
+  func forbiddenKeepsSession() async throws {
+    let library = try await makeLibrary()
+    nonisolated(unsafe) var status = 403
+    ColorKeyProtocol.respond { _ in (status, #"{"message":"no"}"#) }
+    var signOuts = 0
+    library.onAuthenticationFailure = { signOuts += 1 }
+    await #expect(throws: APIError.forbidden) { try await library.colorKeys(pageID: "page") }
+    #expect(signOuts == 0)
+    status = 401
+    await #expect(throws: APIError.unauthenticated) { try await library.colorKeys(pageID: "page") }
+    #expect(signOuts == 1)
+  }
+
+  @Test("history asks only for this user's keys with a code")
+  func historyQuery() async throws {
+    let library = try await makeLibrary()
+    ColorKeyProtocol.respond { _ in
+      (200, #"{"page":1,"perPage":200,"totalPages":1,"totalItems":1,"items":[\#(Self.saved)]}"#)
+    }
+    #expect(try await library.colorKeyHistory().isEmpty)
+    let url = try #require(ColorKeyProtocol.requests.last?.url)
+    let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+    #expect(query.first { $0.name == "filter" }?.value == #"user = "feature-user" && code != """#)
+  }
+
+  @Test("the section hides when the server has no color keys collection yet")
+  func missingCollection() async throws {
+    let library = try await makeLibrary()
+    ColorKeyProtocol.respond { _ in (404, #"{"message":"Missing collection context."}"#) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    #expect(model.loadState == .unavailable)
   }
 
   @Test("rejects saved records that belong to another user or page")
@@ -207,14 +262,14 @@ struct ColorKeysSessionTests {
       (200, Self.saved.replacingOccurrences(of: "\"page\":\"page\"", with: "\"page\":\"elsewhere\""))
     }
     let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
-    await #expect(throws: APIError.decoding) { try await library.saveColorKey(write, id: nil) }
+    await #expect(throws: APIError.decoding) { try await library.saveColorKey(write, original: nil) }
   }
 
   @Test("writes stay online: offline saves are not sent")
   func offlineSaves() async throws {
     let library = try await makeLibrary(online: false)
     let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
-    await #expect(throws: APIError.offline) { try await library.saveColorKey(write, id: nil) }
+    await #expect(throws: APIError.offline) { try await library.saveColorKey(write, original: nil) }
     #expect(ColorKeyProtocol.requests.isEmpty)
   }
 
@@ -236,32 +291,21 @@ struct ColorKeysSessionTests {
     #expect(model.recentSymbols.first == "u:03C8")
   }
 
-  @Test("setup creates each enabled symbol and skips ones already saved on retry")
+  @Test("setup reloads after an uncertain failure and skips symbols already saved on retry")
   func setupRetry() async throws {
     let library = try await makeLibrary()
-    nonisolated(unsafe) var posts = 0
-    ColorKeyProtocol.respond { request in
-      if request.method == "GET" {
-        return (200, #"{"page":1,"perPage":50,"totalPages":1,"totalItems":0,"items":[]}"#)
-      }
-      posts += 1
-      if posts == 2 { return (500, #"{"message":"busy"}"#) }
-      let body = (try? JSONSerialization.jsonObject(with: request.body) as? [String: Any]) ?? [:]
-      let symbol = body["symbol"] as? String ?? ""
-      let position = body["position"] as? Int ?? 0
-      return (200, Self.saved
-        .replacingOccurrences(of: "key1234567890ab", with: "key\(posts)".padding(toLength: 15, withPad: "0", startingAt: 0))
-        .replacingOccurrences(of: "u:0031", with: symbol)
-        .replacingOccurrences(of: "\"position\":0", with: "\"position\":\(position)"))
-    }
+    let server = ColorKeyServer()
+    ColorKeyProtocol.respond { request in server.handle(request, template: Self.saved) }
     let model = ColorKeysModel(library: library, pageID: "page")
     await model.load()
     let symbols = ["u:0031", "u:0032", "u:0033"]
+    // The second create is stored, but its response is lost.
     #expect(await model.setUp(symbols: symbols) != nil)
-    #expect(model.keys.map(\.symbol) == ["u:0031"])
+    #expect(model.keys.map(\.symbol) == ["u:0031", "u:0032"])
     #expect(await model.setUp(symbols: symbols) == nil)
     #expect(model.keys.map(\.symbol) == symbols)
     #expect(model.keys.map(\.position) == [0, 1, 2])
+    #expect(server.posts == 3)
   }
 
   private func makeLibrary(online: Bool = true) async throws -> LibrarySession {
@@ -276,6 +320,29 @@ struct ColorKeysSessionTests {
     ColorKeyProtocol.reset()
     return LibrarySession(client: client, userID: "feature-user",
       store: try LocalLibraryStore.inMemory(), connectionAvailable: online)
+  }
+}
+
+/// Stores created keys; the second create is stored but answered with a 500.
+private final class ColorKeyServer: @unchecked Sendable {
+  private let lock = NSLock()
+  private var stored: [String] = []
+  private(set) var posts = 0
+
+  func handle(_ request: ColorKeyProtocol.Request, template: String) -> (Int, String) {
+    lock.withLock {
+      guard request.method == "POST" else {
+        return (200, #"{"page":1,"perPage":50,"totalPages":1,"totalItems":\#(stored.count),"items":[\#(stored.joined(separator: ","))]}"#)
+      }
+      posts += 1
+      let body = (try? JSONSerialization.jsonObject(with: request.body) as? [String: Any]) ?? [:]
+      let record = template
+        .replacingOccurrences(of: "key1234567890ab", with: "key\(posts)".padding(toLength: 15, withPad: "0", startingAt: 0))
+        .replacingOccurrences(of: "u:0031", with: body["symbol"] as? String ?? "")
+        .replacingOccurrences(of: "\"position\":0", with: "\"position\":\(body["position"] as? Int ?? 0)")
+      stored.append(record)
+      return posts == 2 ? (500, #"{"message":"busy"}"#) : (200, record)
+    }
   }
 }
 

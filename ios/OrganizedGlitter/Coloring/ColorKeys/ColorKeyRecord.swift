@@ -57,8 +57,8 @@ struct ColorKeyRecord: Decodable, Identifiable, Hashable, Sendable {
   }
 }
 
-/// The full record sent on every create and update. The server rejects a
-/// create without `position`, so it is never optional here.
+/// The full record sent on create. The server rejects a create without
+/// `position`, so it is never optional here.
 struct ColorKeyWrite: Encodable, Hashable, Sendable {
   var user: String
   var page: String
@@ -70,7 +70,7 @@ struct ColorKeyWrite: Encodable, Hashable, Sendable {
   var tried: [String] = []
   var note = ""
 
-  private enum CodingKeys: String, CodingKey {
+  fileprivate enum CodingKeys: String, CodingKey {
     case user, page, position, symbol, code, swatch, tried, note
     case colorName = "color_name"
   }
@@ -85,6 +85,30 @@ struct ColorKeyWrite: Encodable, Hashable, Sendable {
   }
 }
 
+/// An update body with only the fields that differ from the loaded record.
+/// `user` and `page` never change, so they are never sent.
+struct ColorKeyPatch: Encodable, Sendable {
+  let original: ColorKeyWrite
+  let changed: ColorKeyWrite
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: ColorKeyWrite.CodingKeys.self)
+    func encode<Value: Encodable & Equatable>(_ field: KeyPath<ColorKeyWrite, Value>,
+      _ key: ColorKeyWrite.CodingKeys) throws {
+      if original[keyPath: field] != changed[keyPath: field] {
+        try container.encode(changed[keyPath: field], forKey: key)
+      }
+    }
+    try encode(\.position, .position)
+    try encode(\.symbol, .symbol)
+    try encode(\.code, .code)
+    try encode(\.colorName, .colorName)
+    try encode(\.swatch, .swatch)
+    try encode(\.tried, .tried)
+    try encode(\.note, .note)
+  }
+}
+
 struct ColorKeySuggestion: Hashable, Sendable {
   let code: String
   let colorName: String
@@ -94,20 +118,21 @@ struct ColorKeySuggestion: Hashable, Sendable {
 enum ColorKeys {
   static let collection = "coloring_page_color_keys"
   static let maxTried = 20
+  static let maxFieldLength = 100
+  static let maxNoteLength = 2_000
 
   static func sorted(_ keys: [ColorKeyRecord]) -> [ColorKeyRecord] {
     keys.sorted { ($0.position, $0.created, $0.id) < ($1.position, $1.created, $1.id) }
   }
 
-  /// One `<symbol> <code>` line per key. `u:` symbols copy their characters;
-  /// other symbols have no text, so they copy their name.
+  /// One `<symbol> <code>` line per key. `u:` symbols copy their characters,
+  /// custom shapes their catalog name, and requests "Sent symbol".
   static func copyText(_ keys: [ColorKeyRecord], catalog: SymbolCatalog) -> String {
     sorted(keys).map { key in
-      let symbol: String
-      if case .unicode(let text) = ColorKeySymbol(id: key.symbol) {
-        symbol = text
-      } else {
-        symbol = catalog.accessibilityName(for: key.symbol)
+      let symbol = switch ColorKeySymbol(id: key.symbol) {
+      case .unicode(let text): text
+      case .request: "Sent symbol"
+      case .custom, nil: catalog.accessibilityName(for: key.symbol)
       }
       return key.code.isEmpty ? symbol : "\(symbol) \(key.code)"
     }.joined(separator: "\n")
@@ -125,8 +150,7 @@ enum ColorKeys {
     for key in history.sorted(by: { $0.updated > $1.updated }) where !key.code.isEmpty {
       let folded = key.code.lowercased()
       guard seen.insert(folded).inserted,
-        key.code.range(of: prefix, options: [.caseInsensitive, .anchored]) != nil,
-        key.code.caseInsensitiveCompare(prefix) != .orderedSame
+        key.code.range(of: prefix, options: [.caseInsensitive, .anchored]) != nil
       else { continue }
       result.append(ColorKeySuggestion(code: key.code, colorName: key.colorName, swatch: key.swatch))
       if result.count == limit { break }
@@ -134,10 +158,11 @@ enum ColorKeys {
     return result
   }
 
-  /// The user's own symbols, most recently used first.
+  /// The user's own symbols, most recently used first. Keys without a code are
+  /// skipped so the blank keys from setup don't crowd out real use.
   static func recentSymbols(_ history: [ColorKeyRecord], limit: Int = 12) -> [String] {
     var seen: Set<String> = []
-    return history.sorted { $0.updated > $1.updated }.map(\.symbol)
+    return history.filter { !$0.code.isEmpty }.sorted { $0.updated > $1.updated }.map(\.symbol)
       .filter { ColorKeySymbol(id: $0) != nil && seen.insert($0).inserted }
       .prefix(limit).map { $0 }
   }
@@ -156,20 +181,22 @@ enum ColorKeys {
   }
 
   static func swatchComponents(_ hex: String) -> (red: Double, green: Double, blue: Double)? {
-    guard hex.wholeMatch(of: #/#[0-9A-F]{6}/#) != nil, let value = UInt32(hex.dropFirst(), radix: 16)
+    guard hex.wholeMatch(of: #/#[0-9A-Fa-f]{6}/#) != nil, let value = UInt32(hex.dropFirst(), radix: 16)
     else { return nil }
     return (Double(value >> 16 & 0xFF) / 255, Double(value >> 8 & 0xFF) / 255, Double(value & 0xFF) / 255)
   }
 
   static func validationMessage(_ write: ColorKeyWrite) -> String? {
     if ColorKeySymbol(id: write.symbol) == nil { return "Choose a symbol." }
-    if write.code.count > 100 { return "Keep the code under 100 characters." }
-    if write.colorName.count > 100 { return "Keep the color name under 100 characters." }
-    if write.tried.count > maxTried { return "Add up to \(maxTried) colors tried." }
-    if write.tried.contains(where: { $0.count > 100 }) {
-      return "Keep each color tried under 100 characters."
+    if write.code.count > maxFieldLength { return "Keep the code to 100 characters or fewer." }
+    if write.colorName.count > maxFieldLength {
+      return "Keep the color name to 100 characters or fewer."
     }
-    if write.note.count > 2_000 { return "Keep the note under 2,000 characters." }
+    if write.tried.count > maxTried { return "Add up to \(maxTried) colors tried." }
+    if write.tried.contains(where: { $0.count > maxFieldLength }) {
+      return "Keep each color tried to 100 characters or fewer."
+    }
+    if write.note.count > maxNoteLength { return "Keep the note to 2,000 characters or fewer." }
     return nil
   }
 }

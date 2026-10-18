@@ -17,22 +17,39 @@ struct ColorKeysSection: View {
   }
 
   var body: some View {
+    // The section lives in a lazy stack, so load once rather than on every scroll back.
+    content
+      .task { if model.loadState == .idle { await model.load() } }
+  }
+
+  @ViewBuilder
+  private var content: some View {
+    if model.loadState != .unavailable {
+      section
+    }
+  }
+
+  private var section: some View {
     VStack(alignment: .leading, spacing: 12) {
       header
       switch model.loadState {
-      case .idle, .loading where model.keys.isEmpty:
+      case .idle where model.keys.isEmpty, .loading where model.keys.isEmpty:
         ProgressView("Loading colors…")
           .frame(maxWidth: .infinity, alignment: .leading)
-      case .failed where model.keys.isEmpty:
-        AccessibleErrorLabel(message: "Couldn’t load colors.")
-        Button("Try again") { Task { await model.load() } }
-          .accessibilityIdentifier("colorKeys.retry")
       default:
-        if model.keys.isEmpty { emptyState } else { rows }
+        if model.loadState == .failed {
+          AccessibleErrorLabel(message: "Couldn’t load colors.")
+          Button("Try again") { Task { await model.load() } }
+            .accessibilityIdentifier("colorKeys.retry")
+        }
+        if !model.keys.isEmpty {
+          rows
+        } else if model.loadState != .failed {
+          emptyState
+        }
       }
       NeedsConnectionHint()
     }
-    .task { await model.load() }
     .sheet(item: $sheet) { sheet in
       sheetContent(sheet)
         .environment(\.connectionAvailable, connectionAvailable)
@@ -107,9 +124,10 @@ struct ColorKeysSection: View {
   private func sheetContent(_ sheet: ColorKeySheet) -> some View {
     switch sheet {
     case .setup:
-      ColorKeySetupSheet(recentSymbols: model.recentSymbols) { symbols in
-        await model.setUp(symbols: symbols)
+      ColorKeySetupSheet(recentSymbols: model.recentSymbols, hasSavedKeys: !model.keys.isEmpty) {
+        symbols in await model.setUp(symbols: symbols)
       }
+      .task { await model.loadHistoryIfNeeded() }
     case .picker(let position):
       NavigationStack {
         SymbolPickerView(recentSymbols: model.recentSymbols) { symbol in
@@ -121,6 +139,7 @@ struct ColorKeysSection: View {
           }
         }
       }
+      .task { await model.loadHistoryIfNeeded() }
     case .entry(let write, let id):
       ColorKeyEntrySheet(model: model, initial: write, id: id) { saved, advance in
         guard advance else { return self.sheet = nil }
@@ -130,6 +149,7 @@ struct ColorKeysSection: View {
           self.sheet = .picker(position: model.nextPosition)
         }
       }
+      .task { await model.loadHistoryIfNeeded() }
     }
   }
 }
@@ -178,8 +198,7 @@ private struct ColorKeyRow: View {
 
   private var accessibilityLabel: String {
     let symbol = SymbolCatalog.bundled.accessibilityName(for: key.symbol)
-    return ([symbol, key.code.isEmpty ? "No code yet" : key.code, key.colorName]
-      + (key.swatch.isEmpty ? [] : ["Swatch \(key.swatch)"]))
+    return [symbol, key.code.isEmpty ? "No code yet" : key.code, key.colorName]
       .filter { !$0.isEmpty }.joined(separator: ", ")
   }
 }

@@ -549,7 +549,8 @@ final class LibrarySession {
   }
 
   // Color keys have no offline contract, so they are read and written online
-  // and held only by the page that shows them.
+  // and held only by the page that shows them. A 403 here means this page,
+  // not the session, so only a 401 signs out.
   func colorKeys(pageID: String) async throws -> [ColorKeyRecord] {
     try checkActive()
     do {
@@ -560,37 +561,42 @@ final class LibrarySession {
       try checkActive()
       return ColorKeys.sorted(keys.filter { $0.user == userID && $0.page == pageID })
     } catch {
-      await recoverHistoryAuthentication(after: error)
+      await recoverColorKeyAuthentication(after: error)
       throw error
     }
   }
 
-  /// The user's most recently updated keys across pages, for code suggestions
-  /// and recently used symbols.
+  /// The user's most recently updated keys with a code, across pages, for code
+  /// suggestions and recently used symbols.
   func colorKeyHistory() async throws -> [ColorKeyRecord] {
     try checkActive()
     do {
       // ponytail: one page of recent keys; page further if suggestions feel thin.
       let page: RecordList<ColorKeyRecord> = try await client.list(collection: ColorKeys.collection,
-        perPage: 200, filter: PocketBaseFilter.equals(.user, userID), sort: "-updated")
+        perPage: 200, filter: PocketBaseFilter.all([
+          PocketBaseFilter.equals(.user, userID), PocketBaseFilter.notEquals(.code, ""),
+        ]), sort: "-updated")
       try checkActive()
-      return page.items.filter { $0.user == userID }
+      return page.items.filter { $0.user == userID && !$0.code.isEmpty }
     } catch {
-      await recoverHistoryAuthentication(after: error)
+      await recoverColorKeyAuthentication(after: error)
       throw error
     }
   }
 
-  /// Creates or updates a key and returns the stored record. The server may
-  /// store a different symbol than the one sent, so callers use the result.
-  func saveColorKey(_ key: ColorKeyWrite, id: String?) async throws -> ColorKeyRecord {
-    guard key.user == userID else { throw APIError.forbidden }
+  /// Creates a key, or updates `original` with only the fields that changed,
+  /// and returns the stored record. The server may store a different symbol
+  /// than the one sent, so callers use the result.
+  func saveColorKey(_ key: ColorKeyWrite, original: ColorKeyRecord?) async throws -> ColorKeyRecord {
+    guard key.user == userID, original.map({ $0.user == userID && $0.page == key.page }) ?? true
+    else { throw APIError.forbidden }
     guard connectionAvailable != false else { throw APIError.offline }
     try await beginOnlineWrite()
     defer { endOnlineWrite(refreshLibrary: false) }
     do {
-      let saved: ColorKeyRecord = if let id {
-        try await client.update(collection: ColorKeys.collection, id: id, body: key)
+      let saved: ColorKeyRecord = if let original {
+        try await client.update(collection: ColorKeys.collection, id: original.id,
+          body: ColorKeyPatch(original: original.write, changed: key))
       } else {
         try await client.create(collection: ColorKeys.collection, body: key)
       }
@@ -598,7 +604,7 @@ final class LibrarySession {
       guard saved.user == userID, saved.page == key.page else { throw APIError.decoding }
       return saved
     } catch {
-      await recoverHistoryAuthentication(after: error)
+      await recoverColorKeyAuthentication(after: error)
       throw error
     }
   }
@@ -611,9 +617,14 @@ final class LibrarySession {
       try await client.delete(collection: ColorKeys.collection, id: id)
       try checkActive()
     } catch {
-      await recoverHistoryAuthentication(after: error)
+      await recoverColorKeyAuthentication(after: error)
       throw error
     }
+  }
+
+  private func recoverColorKeyAuthentication(after error: Error) async {
+    guard !Task.isCancelled, error as? APIError == .unauthenticated else { return }
+    await onAuthenticationFailure?()
   }
 
   private func recoverHistoryAuthentication(after error: Error) async {
