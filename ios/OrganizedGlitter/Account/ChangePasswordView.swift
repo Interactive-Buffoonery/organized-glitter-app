@@ -89,12 +89,13 @@ struct ChangePasswordView: View {
     let currentGeneration = generation
     isSaving = true
     errorMessage = nil
+    let (oldPassword, password, confirmation) = (currentPassword, self.password, self.confirmation)
     // A dispatched change finishes after the form closes so session recovery still runs.
     Task {
       defer { if generation == currentGeneration { isSaving = false } }
       do {
         _ = try await appModel.changePassword(
-          oldPassword: currentPassword, password: password, confirmation: confirmation,
+          oldPassword: oldPassword, password: password, confirmation: confirmation,
           library: library, onAccepted: {
             clearPasswords()
             AccessibilityNotification.Announcement("Password changed").post()
