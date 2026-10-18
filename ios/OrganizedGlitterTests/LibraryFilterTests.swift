@@ -133,6 +133,20 @@ struct LibraryFilterTests {
     #expect(!LibraryFilters(companyID: "company-a").matches(items[1]))
   }
 
+  @Test func staleExpandedNamesDoNotLabelAnotherRelation() {
+    let named = project("one", company: "company-b")
+    let pendingEdit = project("two", company: "company-b").withExpand(DiamondProjectExpand(
+      company: NamedRelationRecord(id: "company-a", name: "Previous company"),
+      artist: nil, projectTags: []))
+    let options = LibraryFilterOptions(items: [.diamond(named), .diamond(pendingEdit)],
+      section: .diamonds, userID: "feature-user")
+    #expect(options.companies == [LibraryFilterOption(id: "company-b", name: "Same company")])
+    let reversed = LibraryFilterOptions(items: [.diamond(pendingEdit), .diamond(named)],
+      section: .diamonds, userID: "feature-user")
+    #expect(reversed.companies == options.companies)
+    #expect(reversed.artists == [LibraryFilterOption(id: "artist-a", name: "Same artist")])
+  }
+
   @Test func accountModelsDoNotCarrySelectionsOrOptions() async throws {
     let library = try localFeatureLibrary()
     try await library.store.ingest(.diamond(project("one", company: "company-a")), scope: library.scope)

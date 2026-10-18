@@ -78,22 +78,18 @@ struct LibraryFilterOptions {
     for item in items where item.belongs(to: section, userID: userID, bookTitles: [:]) {
       switch item {
       case .diamond(let project):
-        if let id = project.company, !id.isEmpty {
-          companies[id] = project.expand?.company?.name ?? "Unavailable company"
-        }
-        if let id = project.artist, !id.isEmpty {
-          artists[id] = project.expand?.artist?.name ?? "Unavailable artist"
-        }
+        Self.name(project.company, from: project.expand?.company, fallback: "Unavailable company",
+          in: &companies)
+        Self.name(project.artist, from: project.expand?.artist, fallback: "Unavailable artist",
+          in: &artists)
         if let drill = project.drillShape, !drill.isEmpty { drills[drill] = drill.capitalized }
         if let year = LibraryFilters.year(in: project.dateCompleted) { years.insert(year) }
         for tag in project.tags { tags[tag.id] = tag.name }
       case .book(let book):
-        if let id = book.publisher, !id.isEmpty {
-          publishers[id] = book.expand?.publisher?.name ?? "Unavailable publisher"
-        }
-        if let id = book.illustrator, !id.isEmpty {
-          illustrators[id] = book.expand?.illustrator?.name ?? "Unavailable illustrator"
-        }
+        Self.name(book.publisher, from: book.expand?.publisher, fallback: "Unavailable publisher",
+          in: &publishers)
+        Self.name(book.illustrator, from: book.expand?.illustrator,
+          fallback: "Unavailable illustrator", in: &illustrators)
         for tag in book.tags { tags[tag.id] = tag.name }
       case .page: break
       }
@@ -105,6 +101,19 @@ struct LibraryFilterOptions {
     self.publishers = Self.options(publishers)
     self.illustrators = Self.options(illustrators)
     self.tags = Self.options(tags)
+  }
+
+  /// A pending offline relation edit keeps the previous expanded name, so only trust a matching ID.
+  private static func name(
+    _ id: String?, from expanded: NamedRelationRecord?, fallback: String,
+    in names: inout [String: String]
+  ) {
+    guard let id, !id.isEmpty else { return }
+    if let expanded, expanded.id == id {
+      names[id] = expanded.name
+    } else if names[id] == nil {
+      names[id] = fallback
+    }
   }
 
   private static func options(_ values: [String: String]) -> [LibraryFilterOption] {
