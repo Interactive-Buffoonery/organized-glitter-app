@@ -651,10 +651,19 @@ struct ColoringPageEditor: View {
     _draft = State(initialValue: initialDraft)
   }
 
+  private var mediumAttempt: PageMediumAttempt? {
+    library.mediumAttempts.first { $0.pageID == page.id }
+  }
+
   var body: some View {
     NavigationStack {
       Form {
         Group {
+          if let mediumAttempt {
+            Section("Review medium save") {
+              PageMediumRecovery(library: library, attempt: mediumAttempt)
+            }
+          }
           Section("Page \(page.pageNumber)") {
             if let photo = page.photos.first {
               RemoteArtwork(
@@ -719,7 +728,7 @@ struct ColoringPageEditor: View {
           Button("Save") {
             Task { await save() }
           }
-          .disabled(isSaving)
+          .disabled(isSaving || mediumAttempt != nil)
         }
       }
     }
@@ -729,6 +738,8 @@ struct ColoringPageEditor: View {
     guard !isSaving else {
       return
     }
+
+    guard mediumAttempt == nil else { return }
 
     isSaving = true
     errorMessage = nil
@@ -745,6 +756,10 @@ struct ColoringPageEditor: View {
       onSaved(saved)
       dismiss()
     } catch {
+      if error as? PageMediumSaveError == .recoveryRequired {
+        errorMessage = "A medium save needs review. Check its result before saving again."
+        return
+      }
       errorMessage = error.userMessage(
         permission: "Your account does not have permission to save this page.",
         fallback: "The page could not be saved. Try again."

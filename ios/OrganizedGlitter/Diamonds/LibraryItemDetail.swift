@@ -71,7 +71,7 @@ struct LibraryItemDetailDestination: View {
             editorView(for: editor)
           }
         }
-        .disabledWhileFormPresented(formDrawer, or: model.isMutating)
+        .disabledWhileFormPresented(formDrawer, or: model.isMutating || hasMediumRecovery)
         .accessibilityIdentifier("detail.edit")
 
         if model.item.canDeleteFromDetail {
@@ -145,6 +145,11 @@ struct LibraryItemDetailDestination: View {
     } message: {
       Text(deleteErrorMessage ?? "")
     }
+  }
+
+  private var hasMediumRecovery: Bool {
+    guard case .page(let page) = model.item else { return false }
+    return model.library.mediumAttempts.contains { $0.pageID == page.id }
   }
 
   @ViewBuilder
