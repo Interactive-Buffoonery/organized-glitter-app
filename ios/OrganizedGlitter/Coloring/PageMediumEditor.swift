@@ -96,6 +96,7 @@ struct PageMediumEditor: View {
     defer { loading = false }
     do {
       try await library.loadLocal()
+      options = ListOptions.fromDownloadedLibrary(library.items, kind: .medium, userID: library.userID)
       if let attempt {
         baseline = attempt.base.mediums
         selection = Set(attempt.patch.mediums)
@@ -109,12 +110,12 @@ struct PageMediumEditor: View {
         baseline = raw
         selection = Set(raw)
       }
-      options = ListOptions.fromDownloadedLibrary(library.items, kind: .medium, userID: library.userID)
       options = try await library.mediumOptions()
     } catch {
       errorMessage = error.userMessage(
         permission: "Your account cannot view these mediums.",
-        offline: "Showing downloaded mediums. Reconnect to see the full list and save.",
+        offline: baseline == nil ? "Mediums could not be loaded. Try again."
+          : "Showing downloaded mediums. Reconnect to see the full list and save.",
         fallback: "Mediums could not be loaded. Try again.")
     }
   }
@@ -154,6 +155,12 @@ struct PageMediumEditor: View {
       AccessibilityNotification.Announcement("Mediums saved").post()
       dismiss()
     } catch {
+      guard attempt != nil else {
+        errorMessage = error.userMessage(
+          permission: "Your account does not have permission to save this page.",
+          fallback: "The page could not be saved. Try again.")
+        return
+      }
       errorMessage = error.userMessage(
         permission: "Sign in again to recover this medium save.",
         offline: "Reconnect to check the medium save. Your selection is kept on this device.",
