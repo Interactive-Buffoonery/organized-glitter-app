@@ -193,7 +193,7 @@ final class ColorKeysModel {
   }
 
   private static func isUncertain(_ error: Error) -> Bool {
-    [.offline, .server, .decoding].contains(error as? APIError)
+    [.offline, .server, .tryLater, .decoding].contains(error as? APIError)
   }
 
   /// Reloads after an unconfirmed create. Returns false while the page can't

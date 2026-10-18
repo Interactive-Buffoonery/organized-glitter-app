@@ -9,6 +9,8 @@ enum APIError: Error, Equatable {
   case notFound
   case offline
   case server
+  /// Rate limited or temporarily unavailable (429 or 503).
+  case tryLater
   case decoding
   case cancelled
 
@@ -34,6 +36,8 @@ enum APIError: Error, Equatable {
       return .conflict
     case 404:
       return .notFound
+    case 429, 503:
+      return .tryLater
     default:
       return .server
     }

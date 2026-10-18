@@ -225,7 +225,7 @@ final class LibraryItemDetailModel {
       statusSaveRevision += 1
       await load()
       return true
-    } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
+    } catch APIError.offline, APIError.server, APIError.tryLater, APIError.decoding, APIError.cancelled {
       unresolvedStatusWrite = true
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -343,7 +343,7 @@ final class LibraryItemDetailModel {
       lastAddedProgressNoteID = saved.recordID
       unresolvedNoteCreate = false
       return true
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch APIError.offline, APIError.server, APIError.tryLater, APIError.cancelled {
       unresolvedNoteWriteIncludesPhoto = photo != nil
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -384,7 +384,7 @@ final class LibraryItemDetailModel {
       mergeProgressNote(saved)
       mutationErrorMessage = nil
       return nil
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch APIError.offline, APIError.server, APIError.tryLater, APIError.cancelled {
       unresolvedNoteAction = "edit"
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -410,7 +410,7 @@ final class LibraryItemDetailModel {
       }
       mutationErrorMessage = nil
       return nil
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch APIError.offline, APIError.server, APIError.tryLater, APIError.cancelled {
       unresolvedNoteAction = "delete"
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -453,7 +453,7 @@ final class LibraryItemDetailModel {
       item = .page(saved.withExpand(page.expand))
       await load()
       return true
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch APIError.offline, APIError.server, APIError.tryLater, APIError.cancelled {
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
       return false

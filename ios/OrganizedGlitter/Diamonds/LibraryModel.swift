@@ -489,7 +489,7 @@ final class LibraryModel {
       try await library.delete(collection: collection, id: recordID)
       await load()
     } catch {
-      if error as? APIError == .offline || error as? APIError == .server {
+      if [.offline, .server, .tryLater].contains(error as? APIError) {
         do {
           try await library.refreshFromServer()
           await load()
