@@ -30,7 +30,7 @@ final class LibraryUITests: XCTestCase {
   func testMysteryPageRevealsEditsAndHidesAnswer() throws {
     let app = launch("mystery")
     openLibrary(app)
-    app.buttons["Coloring"].tap()
+    XCTAssertTrue(app.openCraft("Coloring"))
     let book = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@",
       "Moonlit meadows", "24 pages")).firstMatch
     XCTAssertTrue(book.waitForExistence(timeout: 5))
