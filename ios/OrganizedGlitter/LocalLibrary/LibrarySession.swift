@@ -548,6 +548,74 @@ final class LibrarySession {
     return savedState
   }
 
+  // Color keys have no offline contract, so they are read and written online
+  // and held only by the page that shows them.
+  func colorKeys(pageID: String) async throws -> [ColorKeyRecord] {
+    try checkActive()
+    do {
+      let keys: [ColorKeyRecord] = try await client.allRecords(collection: ColorKeys.collection,
+        filter: PocketBaseFilter.all([
+          PocketBaseFilter.equals(.user, userID), PocketBaseFilter.equals(.page, pageID),
+        ]), sort: "position,created")
+      try checkActive()
+      return ColorKeys.sorted(keys.filter { $0.user == userID && $0.page == pageID })
+    } catch {
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
+  }
+
+  /// The user's most recently updated keys across pages, for code suggestions
+  /// and recently used symbols.
+  func colorKeyHistory() async throws -> [ColorKeyRecord] {
+    try checkActive()
+    do {
+      // ponytail: one page of recent keys; page further if suggestions feel thin.
+      let page: RecordList<ColorKeyRecord> = try await client.list(collection: ColorKeys.collection,
+        perPage: 200, filter: PocketBaseFilter.equals(.user, userID), sort: "-updated")
+      try checkActive()
+      return page.items.filter { $0.user == userID }
+    } catch {
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
+  }
+
+  /// Creates or updates a key and returns the stored record. The server may
+  /// store a different symbol than the one sent, so callers use the result.
+  func saveColorKey(_ key: ColorKeyWrite, id: String?) async throws -> ColorKeyRecord {
+    guard key.user == userID else { throw APIError.forbidden }
+    guard connectionAvailable != false else { throw APIError.offline }
+    try await beginOnlineWrite()
+    defer { endOnlineWrite(refreshLibrary: false) }
+    do {
+      let saved: ColorKeyRecord = if let id {
+        try await client.update(collection: ColorKeys.collection, id: id, body: key)
+      } else {
+        try await client.create(collection: ColorKeys.collection, body: key)
+      }
+      try checkActive()
+      guard saved.user == userID, saved.page == key.page else { throw APIError.decoding }
+      return saved
+    } catch {
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
+  }
+
+  func deleteColorKey(id: String) async throws {
+    guard connectionAvailable != false else { throw APIError.offline }
+    try await beginOnlineWrite()
+    defer { endOnlineWrite(refreshLibrary: false) }
+    do {
+      try await client.delete(collection: ColorKeys.collection, id: id)
+      try checkActive()
+    } catch {
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
+  }
+
   private func recoverHistoryAuthentication(after error: Error) async {
     guard !Task.isCancelled, let error = error as? APIError,
       error == .unauthenticated || error == .forbidden else { return }

@@ -1,0 +1,215 @@
+import SwiftUI
+import UIKit
+
+/// "Colors used" on a coloring page: the symbol key the user is coloring from.
+struct ColorKeysSection: View {
+  @Environment(\.connectionAvailable) private var connectionAvailable
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.theme) private var theme
+  @ScaledMetric(relativeTo: .title) private var symbolSize: CGFloat = 40
+
+  @State private var model: ColorKeysModel
+  @State private var sheet: ColorKeySheet?
+  @State private var copyCount = 0
+
+  init(library: LibrarySession, pageID: String) {
+    _model = State(initialValue: ColorKeysModel(library: library, pageID: pageID))
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      header
+      switch model.loadState {
+      case .idle, .loading where model.keys.isEmpty:
+        ProgressView("Loading colors…")
+          .frame(maxWidth: .infinity, alignment: .leading)
+      case .failed where model.keys.isEmpty:
+        AccessibleErrorLabel(message: "Couldn’t load colors.")
+        Button("Try again") { Task { await model.load() } }
+          .accessibilityIdentifier("colorKeys.retry")
+      default:
+        if model.keys.isEmpty { emptyState } else { rows }
+      }
+      NeedsConnectionHint()
+    }
+    .task { await model.load() }
+    .sheet(item: $sheet) { sheet in
+      sheetContent(sheet)
+        .environment(\.connectionAvailable, connectionAvailable)
+    }
+    .sensoryFeedback(.success, trigger: copyCount)
+  }
+
+  private var header: some View {
+    let layout = dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())
+    return layout {
+      Text("Colors used")
+        .font(.karla(.title3).weight(.semibold))
+        .foregroundStyle(theme.foreground)
+        .accessibilityAddTraits(.isHeader)
+      if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+      if !model.keys.isEmpty {
+        Button("Copy", systemImage: "doc.on.doc") {
+          UIPasteboard.general.string = model.copyText()
+          copyCount += 1
+          AccessibilityNotification.Announcement("Copied colors").post()
+        }
+        .frame(minHeight: 44)
+        .accessibilityLabel("Copy colors")
+        .accessibilityIdentifier("colorKeys.copy")
+        Button("Add symbol", systemImage: "plus") {
+          sheet = .picker(position: model.nextPosition)
+        }
+        .frame(minHeight: 44)
+        .disabled(!connectionAvailable || model.isSaving)
+        .accessibilityIdentifier("colorKeys.add")
+      }
+    }
+    .font(.karla(.body))
+  }
+
+  private var emptyState: some View {
+    ContentUnavailableView {
+      Label("No colors yet", systemImage: "paintpalette")
+    } description: {
+      Text("Set up the symbols on this page, then add the color you used for each.")
+    } actions: {
+      Button("Set up symbols") { sheet = .setup }
+        .buttonStyle(.borderedProminent)
+        .accessibilityIdentifier("colorKeys.setup")
+      Button("Add one symbol") { sheet = .picker(position: model.nextPosition) }
+        .accessibilityIdentifier("colorKeys.addFirst")
+    }
+    .disabled(!connectionAvailable || model.isSaving)
+    .frame(maxWidth: .infinity)
+  }
+
+  private var rows: some View {
+    VStack(spacing: 0) {
+      ForEach(model.keys) { key in
+        Button {
+          sheet = .entry(key.write, id: key.id)
+        } label: {
+          ColorKeyRow(key: key, symbolSize: symbolSize)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Edit color")
+        .accessibilityIdentifier("colorKeys.row.\(key.position)")
+        if key.id != model.keys.last?.id { Divider() }
+      }
+    }
+    .padding(.horizontal, 16)
+    .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+  }
+
+  @ViewBuilder
+  private func sheetContent(_ sheet: ColorKeySheet) -> some View {
+    switch sheet {
+    case .setup:
+      ColorKeySetupSheet(recentSymbols: model.recentSymbols) { symbols in
+        await model.setUp(symbols: symbols)
+      }
+    case .picker(let position):
+      NavigationStack {
+        SymbolPickerView(recentSymbols: model.recentSymbols) { symbol in
+          self.sheet = .entry(model.newKey(symbol: symbol, position: position), id: nil)
+        }
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Cancel", role: .cancel) { self.sheet = nil }
+          }
+        }
+      }
+    case .entry(let write, let id):
+      ColorKeyEntrySheet(model: model, initial: write, id: id) { saved, advance in
+        guard advance else { return self.sheet = nil }
+        if let next = model.key(after: saved) {
+          self.sheet = .entry(next.write, id: next.id)
+        } else {
+          self.sheet = .picker(position: model.nextPosition)
+        }
+      }
+    }
+  }
+}
+
+enum ColorKeySheet: Identifiable {
+  case setup
+  case picker(position: Int)
+  case entry(ColorKeyWrite, id: String?)
+
+  var id: String {
+    switch self {
+    case .setup: "setup"
+    case .picker(let position): "picker-\(position)"
+    case .entry(let write, let id): "entry-\(id ?? "new-\(write.position)")"
+    }
+  }
+}
+
+private struct ColorKeyRow: View {
+  @Environment(\.theme) private var theme
+  let key: ColorKeyRecord
+  let symbolSize: CGFloat
+
+  var body: some View {
+    HStack(spacing: 14) {
+      ColorKeySymbolView(id: key.symbol, size: symbolSize)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(key.code.isEmpty ? "No code yet" : key.code)
+          .font(.karla(.headline))
+          .foregroundStyle(key.code.isEmpty ? theme.mutedForeground : theme.foreground)
+        if !key.colorName.isEmpty {
+          Text(key.colorName)
+            .font(.karla(.subheadline))
+            .foregroundStyle(theme.mutedForeground)
+        }
+      }
+      Spacer(minLength: 0)
+      SwatchDot(hex: key.swatch)
+    }
+    .padding(.vertical, 10)
+    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    .contentShape(.rect)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(accessibilityLabel)
+  }
+
+  private var accessibilityLabel: String {
+    let symbol = SymbolCatalog.bundled.accessibilityName(for: key.symbol)
+    return ([symbol, key.code.isEmpty ? "No code yet" : key.code, key.colorName]
+      + (key.swatch.isEmpty ? [] : ["Swatch \(key.swatch)"]))
+      .filter { !$0.isEmpty }.joined(separator: ", ")
+  }
+}
+
+struct SwatchDot: View {
+  @Environment(\.theme) private var theme
+  @ScaledMetric(relativeTo: .body) private var size: CGFloat = 28
+  let hex: String
+
+  var body: some View {
+    if let color = Color(swatchHex: hex) {
+      Circle()
+        .fill(color)
+        .strokeBorder(theme.mutedForeground.opacity(0.4), lineWidth: 1)
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+  }
+}
+
+extension Color {
+  init?(swatchHex hex: String) {
+    guard let parts = ColorKeys.swatchComponents(hex) else { return nil }
+    self.init(.sRGB, red: parts.red, green: parts.green, blue: parts.blue)
+  }
+
+  /// The `#RRGGBB` form of this color in sRGB.
+  var swatchHex: String {
+    var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+    UIColor(self).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+    return ColorKeys.swatchHex(red: red, green: green, blue: blue)
+  }
+}

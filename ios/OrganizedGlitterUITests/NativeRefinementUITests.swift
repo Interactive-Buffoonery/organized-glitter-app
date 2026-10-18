@@ -274,6 +274,105 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
+  func testColorKeysSetUpEnterAndAddSymbols() throws {
+    let app = launchFixture()
+    openFirstDesignPage(in: app)
+
+    let setUp = button("colorKeys.setup", in: app)
+    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
+    makeHittable(setUp, in: app)
+    try capture("colorkeys-01-empty")
+    setUp.tap()
+
+    let z = element("colorKeys.setup.u:007A", in: app)
+    XCTAssertTrue(z.waitForExistence(timeout: 5))
+    XCTAssertEqual(z.label, "Lowercase z")
+    for letter in ["007A", "0079", "0078"] { element("colorKeys.setup.u:\(letter)", in: app).tap() }
+    try capture("colorkeys-02-setup")
+    button("colorKeys.setup.save", in: app).tap()
+
+    let first = button("colorKeys.row.0", in: app)
+    XCTAssertTrue(first.waitForExistence(timeout: 10))
+    XCTAssertTrue(button("colorKeys.row.32", in: app).exists)
+    XCTAssertFalse(button("colorKeys.row.33", in: app).exists)
+    XCTAssertTrue(first.label.hasPrefix("Number 1, No code yet"))
+    first.tap()
+
+    let code = app.textFields["colorKeys.entry.code"]
+    XCTAssertTrue(code.waitForExistence(timeout: 5))
+    code.tap()
+    code.typeText("B000")
+    let name = app.textFields["colorKeys.entry.colorName"]
+    name.tap()
+    name.typeText("Pale porcelain")
+    try capture("colorkeys-03-entry")
+    button("colorKeys.entry.saveNext", in: app).tap()
+
+    XCTAssertTrue(app.navigationBars["Edit color"].waitForExistence(timeout: 5))
+    let nextCode = app.textFields["colorKeys.entry.code"]
+    XCTAssertEqual(nextCode.value as? String, "Code")
+    nextCode.tap()
+    nextCode.typeText("B0")
+    let suggestion = app.buttons["Use B000 Pale porcelain"]
+    XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+    suggestion.tap()
+    XCTAssertEqual(app.textFields["colorKeys.entry.colorName"].value as? String, "Pale porcelain")
+    button("colorKeys.entry.save", in: app).tap()
+
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+    XCTAssertTrue(first.label.hasPrefix("Number 1, B000, Pale porcelain"))
+    XCTAssertTrue(button("colorKeys.row.1", in: app).label.hasPrefix("Number 2, B000"))
+
+    button("colorKeys.add", in: app).tap()
+    let search = app.searchFields.firstMatch
+    XCTAssertTrue(search.waitForExistence(timeout: 5))
+    search.tap()
+    search.typeText("trident")
+    XCTAssertTrue(element("symbolPicker.footer", in: app).waitForExistence(timeout: 5))
+    try capture("colorkeys-04-picker")
+    let psi = button("symbolPicker.u:03C8", in: app)
+    XCTAssertTrue(psi.waitForExistence(timeout: 5))
+    XCTAssertEqual(psi.label, "Psi")
+    psi.tap()
+    XCTAssertTrue(app.navigationBars["Add color"].waitForExistence(timeout: 5))
+    button("colorKeys.entry.save", in: app).tap()
+
+    let added = button("colorKeys.row.33", in: app)
+    XCTAssertTrue(added.waitForExistence(timeout: 5))
+    XCTAssertTrue(added.label.hasPrefix("Psi, No code yet"))
+    try capture("colorkeys-05-rows")
+  }
+
+  func testColorKeysAtLargestTextSize() throws {
+    let app = XCUIApplication()
+    app.launchArguments += [
+      "-ui-testing-authenticated", "-overview-fixture", "design",
+      "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+    ]
+    app.launch()
+    openFirstDesignPage(in: app)
+
+    let setUp = button("colorKeys.setup", in: app)
+    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
+    makeHittable(setUp, in: app)
+    setUp.tap()
+    let save = button("colorKeys.setup.save", in: app)
+    XCTAssertTrue(save.waitForExistence(timeout: 5))
+    try capture("colorkeys-ax5-setup")
+    save.tap()
+
+    let copy = button("colorKeys.copy", in: app)
+    XCTAssertTrue(copy.waitForExistence(timeout: 10))
+    for _ in 0..<12 where !copy.isHittable { app.swipeDown() }
+    XCTAssertTrue(copy.isHittable)
+    try capture("colorkeys-ax5-rows")
+    let first = button("colorKeys.row.0", in: app)
+    makeHittable(first, in: app)
+    first.tap()
+    XCTAssertTrue(app.textFields["colorKeys.entry.code"].waitForExistence(timeout: 5))
+    try capture("colorkeys-ax5-entry")
+  }
+
   private func launchFixture(scenario: String = "design") -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario]
