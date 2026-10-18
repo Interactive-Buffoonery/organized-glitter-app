@@ -47,7 +47,7 @@ struct StatsView: View {
             .font(.karla(.footnote))
             .foregroundStyle(theme.pageSecondaryForeground)
             .fixedSize(horizontal: false, vertical: true)
-        } else if model.isLoading {
+        } else if model.isLoading || model.errorMessage == nil {
           ProgressView("Loading stats")
             .frame(maxWidth: .infinity, minHeight: 280)
         } else {
