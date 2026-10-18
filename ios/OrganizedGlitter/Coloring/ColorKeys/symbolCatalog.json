@@ -1,0 +1,660 @@
+{
+ "version": 1,
+ "groups": [
+  {
+   "id": "numbers",
+   "label": "Numbers"
+  },
+  {
+   "id": "lowercase",
+   "label": "Lowercase"
+  },
+  {
+   "id": "uppercase",
+   "label": "Uppercase"
+  },
+  {
+   "id": "greek",
+   "label": "Greek"
+  },
+  {
+   "id": "money",
+   "label": "Money"
+  },
+  {
+   "id": "math",
+   "label": "Math"
+  },
+  {
+   "id": "music",
+   "label": "Music"
+  },
+  {
+   "id": "signs",
+   "label": "Signs"
+  },
+  {
+   "id": "letters-extra",
+   "label": "More letters"
+  },
+  {
+   "id": "shapes",
+   "label": "Shapes"
+  }
+ ],
+ "symbols": [
+  {
+   "id": "u:0031",
+   "char": "1",
+   "name": "Number 1",
+   "group": "numbers",
+   "keywords": [
+    "one",
+    "1"
+   ]
+  },
+  {
+   "id": "u:0032",
+   "char": "2",
+   "name": "Number 2",
+   "group": "numbers",
+   "keywords": [
+    "two",
+    "2"
+   ]
+  },
+  {
+   "id": "u:0033",
+   "char": "3",
+   "name": "Number 3",
+   "group": "numbers",
+   "keywords": [
+    "three",
+    "3"
+   ]
+  },
+  {
+   "id": "u:0034",
+   "char": "4",
+   "name": "Number 4",
+   "group": "numbers",
+   "keywords": [
+    "four",
+    "4"
+   ]
+  },
+  {
+   "id": "u:0035",
+   "char": "5",
+   "name": "Number 5",
+   "group": "numbers",
+   "keywords": [
+    "five",
+    "5"
+   ]
+  },
+  {
+   "id": "u:0036",
+   "char": "6",
+   "name": "Number 6",
+   "group": "numbers",
+   "keywords": [
+    "six",
+    "6"
+   ]
+  },
+  {
+   "id": "u:0037",
+   "char": "7",
+   "name": "Number 7",
+   "group": "numbers",
+   "keywords": [
+    "seven",
+    "7"
+   ]
+  },
+  {
+   "id": "u:0038",
+   "char": "8",
+   "name": "Number 8",
+   "group": "numbers",
+   "keywords": [
+    "eight",
+    "8"
+   ]
+  },
+  {
+   "id": "u:0039",
+   "char": "9",
+   "name": "Number 9",
+   "group": "numbers",
+   "keywords": [
+    "nine",
+    "9"
+   ]
+  },
+  {
+   "id": "u:0030",
+   "char": "0",
+   "name": "Number 0",
+   "group": "numbers",
+   "keywords": [
+    "zero",
+    "0"
+   ]
+  },
+  {
+   "id": "u:0061",
+   "char": "a",
+   "name": "Lowercase a",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "a"
+   ]
+  },
+  {
+   "id": "u:0062",
+   "char": "b",
+   "name": "Lowercase b",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "b"
+   ]
+  },
+  {
+   "id": "u:0063",
+   "char": "c",
+   "name": "Lowercase c",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "c"
+   ]
+  },
+  {
+   "id": "u:0064",
+   "char": "d",
+   "name": "Lowercase d",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "d"
+   ]
+  },
+  {
+   "id": "u:0065",
+   "char": "e",
+   "name": "Lowercase e",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "e"
+   ]
+  },
+  {
+   "id": "u:0066",
+   "char": "f",
+   "name": "Lowercase f",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "f"
+   ]
+  },
+  {
+   "id": "u:0067",
+   "char": "g",
+   "name": "Lowercase g",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "g"
+   ]
+  },
+  {
+   "id": "u:0068",
+   "char": "h",
+   "name": "Lowercase h",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "h"
+   ]
+  },
+  {
+   "id": "u:0069",
+   "char": "i",
+   "name": "Lowercase i",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "i"
+   ]
+  },
+  {
+   "id": "u:006A",
+   "char": "j",
+   "name": "Lowercase j",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "j"
+   ]
+  },
+  {
+   "id": "u:006B",
+   "char": "k",
+   "name": "Lowercase k",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "k"
+   ]
+  },
+  {
+   "id": "u:006C",
+   "char": "l",
+   "name": "Lowercase l",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "l"
+   ]
+  },
+  {
+   "id": "u:006D",
+   "char": "m",
+   "name": "Lowercase m",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "m"
+   ]
+  },
+  {
+   "id": "u:006E",
+   "char": "n",
+   "name": "Lowercase n",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "n"
+   ]
+  },
+  {
+   "id": "u:006F",
+   "char": "o",
+   "name": "Lowercase o",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "o"
+   ]
+  },
+  {
+   "id": "u:0070",
+   "char": "p",
+   "name": "Lowercase p",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "p"
+   ]
+  },
+  {
+   "id": "u:0071",
+   "char": "q",
+   "name": "Lowercase q",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "q"
+   ]
+  },
+  {
+   "id": "u:0072",
+   "char": "r",
+   "name": "Lowercase r",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "r"
+   ]
+  },
+  {
+   "id": "u:0073",
+   "char": "s",
+   "name": "Lowercase s",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "s"
+   ]
+  },
+  {
+   "id": "u:0074",
+   "char": "t",
+   "name": "Lowercase t",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "t"
+   ]
+  },
+  {
+   "id": "u:0075",
+   "char": "u",
+   "name": "Lowercase u",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "u"
+   ]
+  },
+  {
+   "id": "u:0076",
+   "char": "v",
+   "name": "Lowercase v",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "v"
+   ]
+  },
+  {
+   "id": "u:0077",
+   "char": "w",
+   "name": "Lowercase w",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "w"
+   ]
+  },
+  {
+   "id": "u:0078",
+   "char": "x",
+   "name": "Lowercase x",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "x"
+   ]
+  },
+  {
+   "id": "u:0079",
+   "char": "y",
+   "name": "Lowercase y",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "y"
+   ]
+  },
+  {
+   "id": "u:007A",
+   "char": "z",
+   "name": "Lowercase z",
+   "group": "lowercase",
+   "keywords": [
+    "letter",
+    "z"
+   ]
+  },
+  {
+   "id": "u:0041",
+   "char": "A",
+   "name": "Uppercase A",
+   "group": "uppercase",
+   "keywords": [
+    "letter",
+    "a"
+   ]
+  },
+  {
+   "id": "u:0042",
+   "char": "B",
+   "name": "Uppercase B",
+   "group": "uppercase",
+   "keywords": [
+    "letter",
+    "b"
+   ]
+  },
+  {
+   "id": "u:0043",
+   "char": "C",
+   "name": "Uppercase C",
+   "group": "uppercase",
+   "keywords": [
+    "letter",
+    "c"
+   ]
+  },
+  {
+   "id": "u:03C8",
+   "char": "ψ",
+   "name": "Psi",
+   "group": "greek",
+   "keywords": [
+    "psi",
+    "trident",
+    "fork"
+   ]
+  },
+  {
+   "id": "u:03B1",
+   "char": "α",
+   "name": "Alpha",
+   "group": "greek",
+   "keywords": [
+    "alpha",
+    "fish"
+   ]
+  },
+  {
+   "id": "u:03A9",
+   "char": "Ω",
+   "name": "Omega",
+   "group": "greek",
+   "keywords": [
+    "omega",
+    "horseshoe"
+   ]
+  },
+  {
+   "id": "u:0024",
+   "char": "$",
+   "name": "Dollar",
+   "group": "money",
+   "keywords": [
+    "dollar",
+    "money",
+    "s with line"
+   ]
+  },
+  {
+   "id": "u:20AC",
+   "char": "€",
+   "name": "Euro",
+   "group": "money",
+   "keywords": [
+    "euro",
+    "money"
+   ]
+  },
+  {
+   "id": "u:002B",
+   "char": "+",
+   "name": "Plus",
+   "group": "math",
+   "keywords": [
+    "plus",
+    "cross",
+    "add"
+   ]
+  },
+  {
+   "id": "u:00F7",
+   "char": "÷",
+   "name": "Divide",
+   "group": "math",
+   "keywords": [
+    "divide",
+    "division"
+   ]
+  },
+  {
+   "id": "u:266A",
+   "char": "♪",
+   "name": "Eighth note",
+   "group": "music",
+   "keywords": [
+    "note",
+    "music"
+   ]
+  },
+  {
+   "id": "u:2665",
+   "char": "♥",
+   "name": "Heart",
+   "group": "signs",
+   "keywords": [
+    "heart",
+    "love"
+   ]
+  },
+  {
+   "id": "u:2605",
+   "char": "★",
+   "name": "Star",
+   "group": "signs",
+   "keywords": [
+    "star"
+   ]
+  },
+  {
+   "id": "u:1D25",
+   "char": "ᴥ",
+   "name": "Letter ain",
+   "group": "letters-extra",
+   "keywords": [
+    "ain",
+    "bear",
+    "face",
+    "nose"
+   ]
+  },
+  {
+   "id": "u:A728",
+   "char": "Ꜩ",
+   "name": "Tz",
+   "group": "letters-extra",
+   "keywords": [
+    "tz",
+    "tresillo"
+   ]
+  },
+  {
+   "id": "u:AB53",
+   "char": "ꭓ",
+   "name": "Chi with low ring",
+   "group": "letters-extra",
+   "keywords": [
+    "chi",
+    "x",
+    "loop"
+   ]
+  },
+  {
+   "id": "c:linked-circles",
+   "name": "Linked circles",
+   "group": "shapes",
+   "keywords": [
+    "circles",
+    "rings",
+    "infinity"
+   ],
+   "path": "M4 12a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M10 12a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"
+  },
+  {
+   "id": "c:diamond-outline",
+   "name": "Diamond outline",
+   "group": "shapes",
+   "keywords": [
+    "diamond",
+    "rhombus",
+    "kite"
+   ],
+   "path": "M12 3L21 12L12 21L3 12Z"
+  },
+  {
+   "id": "c:plus-box",
+   "name": "Square with plus",
+   "group": "shapes",
+   "keywords": [
+    "square",
+    "box",
+    "plus",
+    "cross"
+   ],
+   "path": "M4 4h16v16H4zM12 7V17M7 12H17"
+  },
+  {
+   "id": "c:wave",
+   "name": "Wave",
+   "group": "shapes",
+   "keywords": [
+    "wave",
+    "water",
+    "squiggle"
+   ],
+   "path": "M3 12C6 6 9 6 12 12C15 18 18 18 21 12"
+  },
+  {
+   "id": "c:leaf",
+   "name": "Leaf",
+   "group": "shapes",
+   "keywords": [
+    "leaf",
+    "petal",
+    "drop"
+   ],
+   "path": "M5 19Q5 5 19 5Q19 19 5 19zm0 0l14 -14"
+  },
+  {
+   "id": "c:curled-triangle",
+   "name": "Curled triangle",
+   "group": "shapes",
+   "keywords": [
+    "triangle",
+    "curl",
+    "swirl"
+   ],
+   "path": "M12 3 L22 21 H2 Z M7 18 Q15 19 15 15 Q15 11 12 12 Q10 13 12 15"
+  },
+  {
+   "id": "u:2615",
+   "char": "☕",
+   "name": "Hot drink",
+   "group": "signs",
+   "keywords": [
+    "coffee",
+    "cup",
+    "tea"
+   ]
+  },
+  {
+   "id": "u:2640",
+   "char": "♀",
+   "name": "Female sign",
+   "group": "signs",
+   "keywords": [
+    "female",
+    "venus"
+   ]
+  }
+ ]
+}
