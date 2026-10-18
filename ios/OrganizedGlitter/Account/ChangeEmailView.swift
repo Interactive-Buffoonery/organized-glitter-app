@@ -45,6 +45,7 @@ struct ChangeEmailView: View {
         NavigationLink("Reset password") {
           PasswordResetView(client: client, initialEmail: currentEmail)
         }
+        .disabled(isSending)
       }
       if !connectionAvailable { Section { NeedsConnectionHint() } }
       if let errorMessage {
