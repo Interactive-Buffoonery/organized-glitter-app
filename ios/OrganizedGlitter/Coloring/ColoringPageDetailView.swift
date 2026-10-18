@@ -72,10 +72,10 @@ struct ColoringPageDetailView: View {
               showingMediumEditor = true
             }
             .buttonStyle(.bordered)
-            .disabled(!connectionAvailable || model.isMutating || model.unresolvedWriteState != nil
+            .disabled((!connectionAvailable && !hasMediumRecovery) || model.isMutating || model.unresolvedWriteState != nil
               || pendingPhoto != nil || isPreparingPhoto)
             .accessibilityIdentifier("detail.page.mediums")
-            NeedsConnectionHint()
+            if !hasMediumRecovery { NeedsConnectionHint() }
           }
 
           VStack(alignment: .leading, spacing: 12) {

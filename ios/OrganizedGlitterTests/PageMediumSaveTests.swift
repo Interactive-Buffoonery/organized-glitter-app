@@ -59,6 +59,31 @@ struct PageMediumSaveTests {
       != MediumSaveProtocol.bodies[1]["operationId"] as? String)
   }
 
+  @Test
+  func conflictingDraftCanBeDiscardedWithoutAnotherRequest() async throws {
+    let library = try await makeLibrary(ids: ["a"])
+    defer { library.pauseWrites() }
+    MediumSaveProtocol.page["mediums"] = ["other-device"]
+    await #expect(throws: LocalSyncConflict.self) {
+      try await library.savePageMediums(
+        pageID: "page", baseline: ["a"], selection: ["mine"], connected: true)
+    }
+    let attempt = try #require(library.mediumAttempts.first)
+    #expect(attempt.state == .conflict)
+    await #expect(throws: APIError.offline) {
+      try await library.savePageMediums(
+        pageID: "page", baseline: ["other-device"], selection: ["mine"], connected: false,
+        replacing: attempt.id)
+    }
+    #expect(library.mediumAttempts.first == attempt)
+    try await library.discardPageMediums(attempt.id)
+    #expect(library.mediumAttempts.isEmpty)
+    #expect(try await library.store.mediumAttempts(scope: library.scope).isEmpty)
+    #expect(MediumSaveProtocol.bodies.count == 1)
+    let page: ColoringPageRecord = try library.record(collection: "coloring_pages", id: "page")
+    #expect(page.mediumIDs == ["other-device"])
+  }
+
   @Test(.timeLimit(.minutes(1)), arguments: [401, 403], [false, true])
   func authenticationFailureClosesSessionAndKeepsDraft(status: Int, recovering: Bool) async throws {
     let library = try await makeLibrary(ids: ["a"])

@@ -25,8 +25,10 @@ struct PageMediumRecovery: View {
         Button("Recover medium save") {
           run { _ = try await library.resumePageMediums(attempt.id, connected: connectionAvailable) }
         }
+        .buttonStyle(.borderless)
         .disabled(busy || !connectionAvailable)
         .accessibilityIdentifier("mediums.recover")
+        NeedsConnectionHint()
       } else {
         if attempt.state == .conflict, let baseline = attempt.current?.mediumIDs {
           Button("Reapply my selection") {
@@ -36,14 +38,17 @@ struct PageMediumRecovery: View {
                 connected: connectionAvailable, replacing: attempt.id)
             }
           }
+          .buttonStyle(.borderless)
           .disabled(busy || !connectionAvailable)
           .accessibilityIdentifier("mediums.reapply")
+          NeedsConnectionHint()
         }
         Button("Discard this draft", role: .destructive) { confirmingDiscard = true }
+          .buttonStyle(.borderless)
           .disabled(busy)
+          .accessibilityIdentifier("mediums.discard")
       }
       if busy { ProgressView("Checking medium save…") }
-      NeedsConnectionHint()
     }
     .confirmationDialog("Discard this medium selection?", isPresented: $confirmingDiscard) {
       Button("Discard draft", role: .destructive) {
