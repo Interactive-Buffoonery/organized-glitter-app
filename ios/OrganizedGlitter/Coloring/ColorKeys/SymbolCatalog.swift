@@ -36,13 +36,29 @@ enum ColorKeySymbol: Hashable, Sendable {
     }
   }
 
-  /// The text drawn for a `u:` symbol. Every renderer goes through here.
-  // ponytail: identity until Sarah confirms the emoji presentation rule
-  // (likely append U+FE0E here; never store it in IDs).
-  static func displayText(_ text: String) -> String { text }
+  private static let variationSelectors: Set<UInt32> = [0xFE0E, 0xFE0F]
+
+  /// The text drawn for a `u:` symbol. Every renderer goes through here. Requests
+  /// text presentation (U+FE0E) after each non-ASCII emoji-capable code point
+  /// that has no variation selector yet. Display only; never stored or copied.
+  static func displayText(_ text: String) -> String {
+    var output = String.UnicodeScalarView()
+    let scalars = Array(text.unicodeScalars)
+    for (index, scalar) in scalars.enumerated() {
+      output.append(scalar)
+      let next = scalars.indices.contains(index + 1) ? scalars[index + 1].value : nil
+      if scalar.value > 0x7F, scalar.properties.isEmoji,
+        next.map(variationSelectors.contains) != true
+      {
+        output.append("\u{FE0E}")
+      }
+    }
+    return String(output)
+  }
 
   static func unicodeID(for text: String) -> String {
-    "u:" + text.unicodeScalars.map { String(format: "%04X", $0.value) }.joined(separator: "-")
+    "u:" + text.unicodeScalars.filter { !variationSelectors.contains($0.value) }
+      .map { String(format: "%04X", $0.value) }.joined(separator: "-")
   }
 }
 
@@ -130,8 +146,11 @@ enum SymbolGlyphCoverage {
   private static var cache: [String: Bool] = [:]
 
   /// Whether a system font, including cascade fallbacks, has glyphs for `text`.
+  /// Variation selectors have no glyphs of their own, so only base code points are checked.
   static func isRenderable(_ text: String) -> Bool {
-    let text = ColorKeySymbol.displayText(text)
+    let text = String(String.UnicodeScalarView(text.unicodeScalars.filter {
+      $0.value != 0xFE0E && $0.value != 0xFE0F
+    }))
     if let cached = cache[text] { return cached }
     let base = UIFont.systemFont(ofSize: 17) as CTFont
     let length = (text as NSString).length

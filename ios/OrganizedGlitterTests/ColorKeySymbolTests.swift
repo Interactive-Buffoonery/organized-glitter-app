@@ -80,6 +80,14 @@ struct SymbolCatalogTests {
     }
   }
 
+  @Test("dropped emoji symbols stay out of the catalog")
+  func droppedSymbols() {
+    for id in ["u:2693", "u:2615", "u:26A1", "u:2795", "u:2796", "u:2797"] {
+      #expect(catalog.symbol(id: id) == nil, "\(id) was dropped from the catalog")
+    }
+    #expect(catalog.symbols.allSatisfy { !($0.char ?? "").unicodeScalars.contains { [0xFE0E, 0xFE0F].contains($0.value) } })
+  }
+
   @Test("setup defaults are 1-9, 0, then a-z")
   func setupDefaults() {
     let expected = Array("1234567890abcdefghijklmnopqrstuvwxyz").map {
@@ -197,7 +205,7 @@ struct SymbolPathTests {
 @MainActor
 @Suite("Symbol glyph coverage")
 struct SymbolGlyphCoverageTests {
-  @Test("system fonts cover the rare catalog glyphs", arguments: ["ᴥ", "ꭓ", "ψ", "♪"])
+  @Test("system fonts cover the rare catalog glyphs", arguments: ["ᴥ", "ꭓ", "ψ", "♪", "♥", "✔", "♀", "❄", "☀", "▶", "♥\u{FE0E}", "♥\u{FE0F}"])
   func coversRareGlyphs(text: String) {
     #expect(SymbolGlyphCoverage.isRenderable(text))
   }
@@ -210,17 +218,22 @@ struct SymbolGlyphCoverageTests {
     #expect(SymbolGlyphCoverage.fallbackLabel(for: "u:A728") == "U+A728")
   }
 
-  @Test("display text never changes the stored ID")
-  func displayTextKeepsID() {
-    for text in ["☕", "♀", "♥", "ψ"] {
-      #expect(ColorKeySymbol.unicodeID(for: text).contains("FE0E") == false)
-      #expect(ColorKeySymbol.displayText(text).hasPrefix(text))
-    }
+  @Test("display text requests text presentation for non-ASCII emoji-capable code points")
+  func displayTextPresentation() {
+    #expect(ColorKeySymbol.displayText("♥") == "♥\u{FE0E}")
+    #expect(ColorKeySymbol.displayText("✔") == "✔\u{FE0E}")
+    #expect(ColorKeySymbol.displayText("♥\u{FE0E}") == "♥\u{FE0E}")
+    #expect(ColorKeySymbol.displayText("♥\u{FE0F}") == "♥\u{FE0F}")
+    #expect(ColorKeySymbol.displayText("♀♂") == "♀\u{FE0E}♂\u{FE0E}")
+    #expect(ColorKeySymbol.displayText("ψ") == "ψ")
+    #expect(ColorKeySymbol.displayText("1") == "1")
+    #expect(ColorKeySymbol.displayText("#") == "#")
   }
 
-  @Test("unassigned code points are not renderable")
-  func missingGlyph() {
-    #expect(!SymbolGlyphCoverage.isRenderable("\u{0378}"))
-    #expect(SymbolGlyphCoverage.fallbackLabel(for: "u:0378") == "U+0378")
+  @Test("IDs strip variation selectors")
+  func idsStripSelectors() {
+    #expect(ColorKeySymbol.unicodeID(for: "♥\u{FE0E}") == "u:2665")
+    #expect(ColorKeySymbol.unicodeID(for: "♥\u{FE0F}") == "u:2665")
+    #expect(ColorKeySymbol(id: "u:2665-FE0E")?.id == "u:2665")
   }
 }

@@ -636,17 +636,6 @@
    "path": "M12 3 L22 21 H2 Z M7 18 Q15 19 15 15 Q15 11 12 12 Q10 13 12 15"
   },
   {
-   "id": "u:2615",
-   "char": "☕",
-   "name": "Hot drink",
-   "group": "signs",
-   "keywords": [
-    "coffee",
-    "cup",
-    "tea"
-   ]
-  },
-  {
    "id": "u:2640",
    "char": "♀",
    "name": "Female sign",
@@ -654,6 +643,50 @@
    "keywords": [
     "female",
     "venus"
+   ]
+  },
+  {
+   "id": "u:2714",
+   "char": "✔",
+   "name": "Check mark",
+   "group": "signs",
+   "keywords": [
+    "check",
+    "tick",
+    "yes"
+   ]
+  },
+  {
+   "id": "u:2744",
+   "char": "❄",
+   "name": "Snowflake",
+   "group": "signs",
+   "keywords": [
+    "snow",
+    "snowflake",
+    "star"
+   ]
+  },
+  {
+   "id": "u:2600",
+   "char": "☀",
+   "name": "Sun",
+   "group": "signs",
+   "keywords": [
+    "sun",
+    "rays",
+    "star"
+   ]
+  },
+  {
+   "id": "u:25B6",
+   "char": "▶",
+   "name": "Right triangle",
+   "group": "shapes",
+   "keywords": [
+    "triangle",
+    "play",
+    "arrow"
    ]
   }
  ]
