@@ -69,8 +69,8 @@ screen backgrounds. The Shelf redesign (Option B in
   nothing in progress, an empty state opens the stash shelf.
   Notes lives in its own tab and iPad sidebar destination.
 - **Notes.** Group progress notes by month, newest first, with craft, year,
-  and project or book filters. Each entry identifies its diamond project or coloring page above the
-  shared photo, date, and caption. Home and Create can open the Notes target
+  and project or book filters. Each entry identifies its diamond project or
+  coloring page above the shared photo, date, and caption. Home and Create can open the Notes target
   picker; it lists in-progress work first and can search older projects/pages.
   The Notes toolbar can open the same target picker. Notes has its own detail
   navigation and shares the account-scoped library with every log flow. Home

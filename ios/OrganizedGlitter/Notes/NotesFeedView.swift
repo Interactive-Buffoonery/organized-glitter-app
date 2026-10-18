@@ -395,9 +395,9 @@ struct NotesFeedView: View {
     } actions: {
       if filters.source != nil || filters.year != nil {
         Button("Show all notes") { filters.reset() }
-        .buttonStyle(.borderedProminent)
-        .tint(theme.primary)
-        .accessibilityIdentifier("notes.filters.clear")
+          .buttonStyle(.borderedProminent)
+          .tint(theme.primary)
+          .accessibilityIdentifier("notes.filters.clear")
       } else if !NotesCraft.available(for: verticals).isEmpty {
         Button("Add a progress note", action: onAddNote)
           .disabledWhileFormPresented(formDrawer)
