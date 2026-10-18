@@ -52,6 +52,7 @@ struct ColoringPageDetailView: View {
           VStack(alignment: .leading, spacing: 6) {
             if mystery.isMystery {
               mysteryTitle
+                .accessibilityAddTraits(.isHeader)
               if mystery.isRevealed, let date = page.revealedAt.flatMap({ DetailDateOnly.formatted($0) }) {
                 Text("Revealed \(date)")
                   .font(.karla(.subheadline))
@@ -289,6 +290,7 @@ struct ColoringPageDetailView: View {
             .accessibilityHidden(true)
         }
         .font(.karla(.title3).weight(.semibold))
+        .frame(minHeight: 44, alignment: .leading)
       }
       .disabled(revealControlsDisabled)
       .accessibilityIdentifier("detail.page.answerMenu")
