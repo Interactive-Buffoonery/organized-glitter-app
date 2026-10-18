@@ -75,10 +75,11 @@
         let year = Int(URLComponents(url: url, resolvingAgainstBaseURL: false)?
           .queryItems?.first(where: { $0.name == "year" })?.value ?? "") ?? 2026
         let coloring = url.path.contains("/coloring/")
+        let currentYear = Calendar(identifier: .gregorian).component(.year, from: .now)
         let metrics: [String: Int] = coloring
           ? ["totalBooks": 12, "completedPagesThisYear": 7, "activePages": 2,
             "inStash": 4, "allTimeCompletedPages": 19, "wishlistSize": 3]
-          : ["totalKits": 24, "completedThisYear": year == 2026 ? 5 : 2,
+          : ["totalKits": 24, "completedThisYear": year == currentYear ? 5 : 2,
             "inProgress": 3, "inStash": 8, "allTimeCompleted": 11, "wishlistSize": 4]
         var object: [String: Any] = [
           "generatedAt": "2026-10-10T12:00:00.000Z", "year": year, "metrics": metrics,

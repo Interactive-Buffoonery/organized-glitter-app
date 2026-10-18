@@ -76,9 +76,7 @@ final class LibrarySession {
       return snapshot
     } catch {
       try checkActive()
-      if error as? APIError == .unauthenticated {
-        await onAuthenticationFailure?()
-      }
+      await recoverHistoryAuthentication(after: error)
       throw error
     }
   }
