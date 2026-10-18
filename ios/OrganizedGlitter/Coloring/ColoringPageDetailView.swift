@@ -291,6 +291,7 @@ struct ColoringPageDetailView: View {
         }
         .font(.karla(.title3).weight(.semibold))
         .frame(minHeight: 44, alignment: .leading)
+        .contentShape(.rect)
       }
       .disabled(revealControlsDisabled)
       .accessibilityIdentifier("detail.page.answerMenu")
