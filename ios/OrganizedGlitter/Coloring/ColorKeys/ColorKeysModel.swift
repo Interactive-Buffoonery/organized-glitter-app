@@ -104,20 +104,21 @@ final class ColorKeysModel {
       let pending = unconfirmedCreate
       guard await confirmCreates() else { return .failure(Failure(message: unconfirmedMessage)) }
       if let pending, let landed = landedKey(pending, for: write) {
-        return await saveRecovered(write, over: landed)
+        return await saveRecovered(write, over: landed, pending: pending)
       }
     }
     let knownIDs = Set(keys.map(\.id))
+    let sent = library.connectionAvailable != false
     do {
       let saved = try await library.saveColorKey(write, original: original)
       accept(saved)
       return .success(saved)
     } catch {
-      if original == nil, Self.isUncertain(error) {
+      if original == nil, sent, Self.isUncertain(error) {
         let pending = (write: write, knownIDs: knownIDs)
         unconfirmedCreate = pending
         if await confirmCreates(), let landed = landedKey(pending, for: write) {
-          return await saveRecovered(write, over: landed)
+          return await saveRecovered(write, over: landed, pending: pending)
         }
       }
       return .failure(Failure(message: message(for: error)))
@@ -125,8 +126,10 @@ final class ColorKeysModel {
   }
 
   /// The create landed after all; any edits made since are sent as an update.
-  private func saveRecovered(_ write: ColorKeyWrite, over landed: ColorKeyRecord)
-    async -> Result<ColorKeyRecord, Failure> {
+  /// If that update fails, the sheet still has no ID, so the create stays
+  /// unconfirmed and the next try finds the landed key again.
+  private func saveRecovered(_ write: ColorKeyWrite, over landed: ColorKeyRecord,
+    pending: (write: ColorKeyWrite, knownIDs: Set<String>)) async -> Result<ColorKeyRecord, Failure> {
     var write = write
     if write.symbol.hasPrefix("r:") { write.symbol = landed.symbol }
     guard write != landed.write else {
@@ -138,6 +141,7 @@ final class ColorKeysModel {
       accept(saved)
       return .success(saved)
     } catch {
+      unconfirmedCreate = pending
       return .failure(Failure(message: message(for: error)))
     }
   }
@@ -168,10 +172,11 @@ final class ColorKeysModel {
     for write in ColorKeys.setupWrites(symbols: symbols, user: library.userID, page: pageID)
     where !saved.contains(write.symbol) {
       let knownIDs = Set(keys.map(\.id))
+      let sent = library.connectionAvailable != false
       do {
         accept(try await library.saveColorKey(write, original: nil))
       } catch {
-        if Self.isUncertain(error) {
+        if sent, Self.isUncertain(error) {
           unconfirmedCreate = (write, knownIDs)
           _ = await confirmCreates()
         }

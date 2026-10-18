@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Testing
 @testable import OrganizedGlitter
 
@@ -344,22 +345,39 @@ struct ColorKeysSessionTests {
     #expect(server.posts == 1)
   }
 
+  @Test("a failed update after a lost create response doesn't create the key again")
+  func lostCreateThenFailedUpdate() async throws {
+    let library = try await makeLibrary()
+    let server = ColorKeyServer(failingPost: 1)
+    // The double answers every non-POST with a list, so the follow-up update fails to decode.
+    ColorKeyProtocol.respond { request in server.handle(request, template: Self.saved) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    var write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    write.code = "PU306"
+    await #expect(throws: ColorKeysModel.Failure.self) { try await model.save(write, id: nil).get() }
+    await #expect(throws: ColorKeysModel.Failure.self) { try await model.save(write, id: nil).get() }
+    #expect(server.posts == 1)
+    #expect(ColorKeyProtocol.requests.filter { $0.method == "PATCH" }.count == 2)
+  }
+
   @Test("no new create is sent until the page shows whether the last one landed")
   func unconfirmedCreateBlocksRetry() async throws {
     let library = try await makeLibrary()
     let server = ColorKeyServer(failingPost: 1)
-    nonisolated(unsafe) var readable = true
+    let readable = OSAllocatedUnfairLock(initialState: true)
     ColorKeyProtocol.respond { request in
-      request.method == "GET" && !readable ? (500, #"{"message":"busy"}"#) : server.handle(request, template: Self.saved)
+      request.method == "GET" && !readable.withLock { $0 }
+        ? (500, #"{"message":"busy"}"#) : server.handle(request, template: Self.saved)
     }
     let model = ColorKeysModel(library: library, pageID: "page")
     await model.load()
-    readable = false
+    readable.withLock { $0 = false }
     let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
     await #expect(throws: ColorKeysModel.Failure.self) { try await model.save(write, id: nil).get() }
     #expect(await model.setUp(symbols: ["u:0031", "u:0032"]) != nil)
     #expect(server.posts == 1)
-    readable = true
+    readable.withLock { $0 = true }
     #expect(await model.setUp(symbols: ["u:0031", "u:0032"]) == nil)
     #expect(model.keys.map(\.symbol) == ["u:0031", "u:0032"])
     #expect(server.posts == 2)
