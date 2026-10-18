@@ -40,7 +40,8 @@ final class NotesFilterModel {
   }
 
   func reconcile(availableSources: [NotesSource], availableYears: [Int]) {
-    source = NotesFeed.resolvedSource(source, in: availableSources)
+    let resolved = NotesFeed.resolvedSource(source, in: availableSources)
+    if resolved != source { source = resolved }
     if let year, !availableYears.contains(year) { self.year = nil }
   }
 
@@ -393,10 +394,7 @@ struct NotesFeedView: View {
         .accessibilityIdentifier("notes.empty")
     } actions: {
       if filters.source != nil || filters.year != nil {
-        Button("Show all notes") {
-          filters.selectSource(nil)
-          filters.selectYear(nil)
-        }
+        Button("Show all notes") { filters.reset() }
         .buttonStyle(.borderedProminent)
         .tint(theme.primary)
         .accessibilityIdentifier("notes.filters.clear")

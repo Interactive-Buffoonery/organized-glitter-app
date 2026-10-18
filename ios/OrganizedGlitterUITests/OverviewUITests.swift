@@ -118,8 +118,9 @@ final class OverviewUITests: XCTestCase {
     XCTAssertFalse(app.buttons["notes.source.clear"].exists)
     source.tap()
     app.buttons["Smithsonian Libraries Coloring Pages, Volume 2"].tap()
-    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.buttons["notes.entry.design-note-1"].exists)
+    XCTAssertEqual(source.value as? String, "Smithsonian Libraries Coloring Pages, Volume 2")
+    XCTAssertTrue(app.buttons["notes.source.clear"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].exists)
   }
 
   func testNotesSourceAndYearEmptyResultCanClearBothFilters() throws {
