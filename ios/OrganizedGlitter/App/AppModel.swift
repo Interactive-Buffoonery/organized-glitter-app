@@ -152,6 +152,7 @@ final class AppModel {
     client = nil
     analytics = NativeAnalytics()
     sessionStore = nil
+    now = Date.init
     deletionPersistence = nil
     self.themeStore = themeStore
     phase = .configurationError(configurationError.localizedDescription)
