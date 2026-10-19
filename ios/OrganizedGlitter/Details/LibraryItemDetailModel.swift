@@ -565,6 +565,11 @@ final class LibraryItemDetailModel {
     return await reconcileUnresolvedWrite()
   }
 
+  func clearPhotoError() {
+    mutationErrorMessage = nil
+    photoMutationErrorMessage = nil
+  }
+
   func clearUnresolvedWriteRecovery() {
     guard unresolvedWriteState == .refreshed else { return }
     if unresolvedPhotoAction || unresolvedPagePhotoUpload, case .page(let page) = item {

@@ -32,6 +32,9 @@ struct PagePhotoActionTests {
     #expect(model.mutationErrorMessage == APIError.sessionExpiredMessage)
     #expect(model.photoMutationErrorMessage == APIError.sessionExpiredMessage)
     #expect(PhotoActionURLProtocol.mutations.isEmpty)
+    model.clearPhotoError()
+    #expect(model.mutationErrorMessage == nil)
+    #expect(model.photoMutationErrorMessage == nil)
     try await library.close(removingData: false)
   }
 

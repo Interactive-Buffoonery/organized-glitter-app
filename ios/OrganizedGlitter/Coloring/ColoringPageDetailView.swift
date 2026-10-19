@@ -347,7 +347,7 @@ struct ColoringPageDetailView: View {
     guard let selectedItem else { return }
     isPreparingPhoto = true
     photoErrorMessage = nil
-    model.mutationErrorMessage = nil
+    model.clearPhotoError()
     pendingPhoto = nil
     pendingPreview = nil
     AccessibilityNotification.Announcement("Preparing photo").post()
@@ -400,7 +400,7 @@ struct ColoringPageDetailView: View {
     if clearRecovery {
       model.clearUnresolvedWriteRecovery()
     } else {
-      model.mutationErrorMessage = nil
+      model.clearPhotoError()
     }
   }
 }
