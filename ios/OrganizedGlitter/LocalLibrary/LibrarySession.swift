@@ -359,6 +359,7 @@ final class LibrarySession {
 
   func changePagePhoto(id: String, filename: String, setMain: Bool) async throws -> ColoringPageRecord {
     var markedForReview = false
+    var serverAccepted = false
     do {
       guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
       try await beginOnlineWrite()
@@ -379,6 +380,12 @@ final class LibrarySession {
       } else {
         saved = try await client.removePagePhoto(pageID: id, filename: filename, userID: userID)
       }
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      guard saved.id == current.id, saved.book == current.book else { throw APIError.decoding }
+      serverAccepted = true
+      captureAnalytics(setMain ? .pageMainPhotoChanged : .pagePhotoDeleted,
+        properties: ["record_type": "coloring_pages", "save_destination": "server"])
       try await acceptPagePhoto(saved, replacing: current)
       try await finishPhotoReview(id: id)
       return saved
@@ -390,6 +397,10 @@ final class LibrarySession {
         default: break
         }
       }
+      if !serverAccepted {
+        captureOnlineFailure(error, operation: setMain ? .setMainPhoto : .deletePhoto,
+          collection: "coloring_pages")
+      }
       await recoverHistoryAuthentication(after: error)
       throw error
     }
@@ -397,6 +408,7 @@ final class LibrarySession {
 
   func appendPagePhoto(id: String, multipart: PocketBaseMultipartForm) async throws -> ColoringPageRecord {
     var markedForReview = false
+    var serverAccepted = false
     do {
       guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
       try await beginOnlineWrite()
@@ -411,13 +423,17 @@ final class LibrarySession {
       try await requirePhotoReview(id: id)
       markedForReview = true
       let saved: ColoringPageRecord = try await client.update(collection: "coloring_pages", id: id, multipart: multipart)
-      try await acceptPagePhoto(saved, replacing: current)
-      try await finishPhotoReview(id: id)
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      guard saved.id == current.id, saved.book == current.book else { throw APIError.decoding }
+      serverAccepted = true
       analytics?.record(.updated, collection: "coloring_pages", accountID: userID)
       if !multipart.files.isEmpty {
         analytics?.capture(.pagePhotoAdded,
           properties: ["record_type": "coloring_pages", "save_destination": "server"], accountID: userID)
       }
+      try await acceptPagePhoto(saved, replacing: current)
+      try await finishPhotoReview(id: id)
       return saved
     } catch {
       if markedForReview {
@@ -427,7 +443,9 @@ final class LibrarySession {
         default: break
         }
       }
-      captureOnlineFailure(error, operation: .addPhoto, collection: "coloring_pages")
+      if !serverAccepted {
+        captureOnlineFailure(error, operation: .addPhoto, collection: "coloring_pages")
+      }
       await recoverHistoryAuthentication(after: error)
       throw error
     }
