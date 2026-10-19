@@ -180,6 +180,8 @@ final class AccountDeletionModel {
       let started = now()
       try await operation(intent.proof)
       guard attempt == generation, isCurrent(), !Task.isCancelled else { return }
+      try await prepareRecoveryAuthentication()
+      guard attempt == generation, isCurrent(), !Task.isCancelled else { return }
       verificationStarted = started
       state = .resubmissionReady
     } catch {
@@ -272,7 +274,7 @@ final class AccountDeletionModel {
       return
     }
     verificationStarted = nil
-    await submit(completionOnly: false)
+    await submit(completionOnly: false, revalidateOriginalSession: true)
   }
 
   private func verificationError(_ error: Error) -> String {
@@ -295,7 +297,7 @@ final class AccountDeletionModel {
     await submit(completionOnly: true)
   }
 
-  private func submit(completionOnly: Bool) async {
+  private func submit(completionOnly: Bool, revalidateOriginalSession: Bool = false) async {
     guard let intent, isCurrent() else { return }
     let attempt = generation
     state = .submitting
@@ -303,6 +305,16 @@ final class AccountDeletionModel {
     do {
       try await lock()
       guard attempt == generation, isCurrent(), !Task.isCancelled else { state = .uncertain; return }
+      if revalidateOriginalSession {
+        do { try await prepareRecoveryAuthentication() }
+        catch {
+          guard attempt == generation, isCurrent() else { return }
+          state = .uncertain
+          errorMessage = verificationError(error)
+          return
+        }
+        guard attempt == generation, isCurrent(), !Task.isCancelled else { state = .uncertain; return }
+      }
       let receipt = try await client.deleteAccount(scope: scope, proof: intent.proof, completionOnly: completionOnly)
       guard attempt == generation, isCurrent() else { return }
       var confirmed = intent

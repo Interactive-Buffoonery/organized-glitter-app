@@ -43,6 +43,7 @@ final class AppModel {
   private var analyticsConsentAccountID: String?
   private var analyticsLocallyPausedAccountID: String?
   private let sessionStore: KeychainSessionStore?
+  @ObservationIgnored private let now: () -> Date
   @ObservationIgnored private let deletionPersistence: AccountDeletionPersistence?
   private(set) var deletion: AccountDeletionModel?
   private var removableLocalScopes: [LocalAccountScope] = []
@@ -86,10 +87,12 @@ final class AppModel {
   init(
     client: PocketBaseClient, sessionStore: KeychainSessionStore, themeStore: ThemeStore,
     localStore: LocalLibraryStore? = nil, analytics: NativeAnalytics? = nil,
-    deletionPersistence: AccountDeletionPersistence? = nil
+    deletionPersistence: AccountDeletionPersistence? = nil,
+    now: @escaping () -> Date = Date.init
   ) {
     self.client = client
     self.sessionStore = sessionStore
+    self.now = now
     self.deletionPersistence = deletionPersistence ?? sessionStore.deletionPersistence
     self.themeStore = themeStore
     self.analytics = analytics ?? NativeAnalytics()
@@ -725,13 +728,14 @@ final class AppModel {
   ) -> AccountDeletionModel {
     AccountDeletionModel(
       client: client!, scope: scope, persistence: persistence,
+      now: now,
       isCurrent: { [weak self] in self?.deletionIsCurrent(scope: scope, generation: generation) == true },
       prepareRecoveryAuthentication: { [weak self] in
         guard let self, self.deletionIsCurrent(scope: scope, generation: generation),
           let stored = try self.sessionStore?.load(), stored.userID == scope.userID else {
           throw APIError.unauthenticated
         }
-        if let expiration = JWTExpiration.date(for: stored.token), expiration <= .now {
+        if let expiration = JWTExpiration.date(for: stored.token), expiration <= self.now() {
           throw APIError.unauthenticated
         }
         await self.client!.prepareOfflineSession(stored)
