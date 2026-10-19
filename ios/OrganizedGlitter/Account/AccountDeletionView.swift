@@ -32,7 +32,12 @@ struct AccountDeletionView: View {
         if let error = model.errorMessage { Section { AccessibleErrorLabel(message: error) } }
       } else {
         Section {
-          Text("Verify your email address before deleting this account. Your data remains available while you complete verification.")
+          if case .signedIn(let user) = appModel.phase, user.verified == false {
+            Text("Verify your email address before deleting this account. Your data remains available while you complete verification.")
+          } else {
+            ProgressView("Preparing account deletion")
+            Text("Local data on this device is preserved. Contact support if this does not load.")
+          }
           Link("Contact support", destination: AccountLinks.accountDeletionSupport)
         }
       }
@@ -189,7 +194,7 @@ private struct AccountDeletionVerificationForm: View {
           .disabled(model.isBusy)
         Link("Contact support", destination: AccountLinks.accountDeletionSupport)
       } else if model.methodLoadFailed {
-        Text("Sign-in methods could not be checked. Account data has not been removed.")
+        Text("Sign-in methods could not be checked. Local data on this device is preserved.")
         Button("Retry Sign-In Methods") { Task { await model.loadMethods() } }
         Link("Contact support", destination: AccountLinks.accountDeletionSupport)
       } else {
