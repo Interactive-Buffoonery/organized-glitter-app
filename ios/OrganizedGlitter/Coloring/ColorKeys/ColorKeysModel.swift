@@ -13,6 +13,8 @@ final class ColorKeysModel {
   private(set) var history: [ColorKeyRecord] = []
   private(set) var loadState = LoadState.idle
   private(set) var isSaving = false
+  /// Symbol requests the keys point to, by `r:<id>`.
+  private(set) var requests: [String: SymbolRequestRecord] = [:]
   private var loadGeneration = 0
   private var revision = 0
   private var historyRequested = false
@@ -34,7 +36,7 @@ final class ColorKeysModel {
   }
 
   func copyText(catalog: SymbolCatalog = .bundled) -> String {
-    ColorKeys.copyText(keys, catalog: catalog)
+    ColorKeys.copyText(keys, catalog: catalog, requests: requests)
   }
 
   func newKey(symbol: String, position: Int? = nil) -> ColorKeyWrite {
@@ -60,6 +62,7 @@ final class ColorKeysModel {
       guard generation == loadGeneration else { return }
       if startRevision == revision { keys = fetched }
       loadState = .loaded
+      await loadRequests()
     } catch {
       guard generation == loadGeneration else { return }
       if Task.isCancelled {
@@ -82,12 +85,38 @@ final class ColorKeysModel {
       guard startRevision == revision else { return historyRequested = false }
       let fetchedIDs = Set(fetched.map(\.id))
       history = history.filter { !fetchedIDs.contains($0.id) } + fetched
+      await loadRequests()
     } catch {
       historyRequested = false
     }
   }
 
+  /// Requests are optional, so a failure leaves the placeholder showing.
+  private func loadRequests() async {
+    let ids = Set((keys + history).map(\.symbol).filter { $0.hasPrefix("r:") && requests[$0] == nil }.map { String($0.dropFirst(2)) })
+    guard !ids.isEmpty, let fetched = try? await library.symbolRequests(ids: ids.sorted()) else { return }
+    for request in fetched { requests[request.symbol] = request }
+  }
+
   struct Failure: Error { let message: String }
+
+  /// Sends a photo of a missing symbol and returns its placeholder symbol ID.
+  func sendRequest(_ draft: SymbolRequestDraft) async -> Result<String, Failure> {
+    if let message = draft.validationMessage { return .failure(Failure(message: message)) }
+    do {
+      let saved = try await library.createSymbolRequest(draft, page: pageID)
+      requests[saved.symbol] = saved
+      return .success(saved.symbol)
+    } catch {
+      if error as? APIError == .tryLater {
+        return .failure(Failure(message: "We’re busy right now. Try again in a few minutes."))
+      }
+      return .failure(Failure(message: error.userMessage(
+        permission: "You can only send symbols from your own pages.",
+        offline: APIError.needsConnection("Sending a symbol"),
+        fallback: "Couldn’t send your photo. Try again.")))
+    }
+  }
 
   /// Saves `write` and returns the stored record, whose symbol may differ from the one sent.
   /// An update sends only the fields that changed from the loaded key `id`.
@@ -131,7 +160,8 @@ final class ColorKeysModel {
   private func saveRecovered(_ write: ColorKeyWrite, over landed: ColorKeyRecord,
     pending: (write: ColorKeyWrite, knownIDs: Set<String>)) async -> Result<ColorKeyRecord, Failure> {
     var write = write
-    if write.symbol.hasPrefix("r:") { write.symbol = landed.symbol }
+    // A symbol changed since the create goes out as part of the update.
+    if write.symbol == pending.write.symbol, write.symbol.hasPrefix("r:") { write.symbol = landed.symbol }
     guard write != landed.write else {
       accept(landed)
       return .success(landed)
@@ -211,10 +241,11 @@ final class ColorKeysModel {
   /// may have swapped a request placeholder for its resolved symbol.
   private func landedKey(_ pending: (write: ColorKeyWrite, knownIDs: Set<String>),
     for write: ColorKeyWrite) -> ColorKeyRecord? {
-    guard pending.write.position == write.position, pending.write.symbol == write.symbol else { return nil }
+    guard pending.write.position == write.position else { return nil }
+    let sent = pending.write.symbol
     return keys.last {
       !pending.knownIDs.contains($0.id) && $0.position == write.position
-        && ($0.symbol == write.symbol || write.symbol.hasPrefix("r:"))
+        && ($0.symbol == sent || sent.hasPrefix("r:"))
     }
   }
 

@@ -113,6 +113,7 @@
 		916E856E98DD5B03FA3DCDF4 /* AccountDestinations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D3DB50E4F57B385875B6FF1 /* AccountDestinations.swift */; };
 		93395587CBC8A8386023D152 /* DiamondProjectEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD7BDF23879C0D2F6038DA2 /* DiamondProjectEditorTests.swift */; };
 		94E216D13A5F3BCDD2447A3B /* ColoringEditors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DBA3A97EB4A2243C50C449B /* ColoringEditors.swift */; };
+		96755743B04DE6EE32DF21F2 /* SymbolRequestSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAFBB8C5F9E9879CC5A0860 /* SymbolRequestSheet.swift */; };
 		989735742582B75F9F402B94 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1AC4F5A18671CC8570353D2 /* Assets.xcassets */; };
 		99314484D0CFB4AD1B9F4D28 /* PocketBaseDate.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA59ED683A06332B020CA9E /* PocketBaseDate.swift */; };
 		999DF1D20AD6C70A21CC9BE1 /* LocalLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB07F54D4A6281F1B7B94475 /* LocalLibraryStore.swift */; };
@@ -342,6 +343,7 @@
 		DCD3D05754AEB5E4718E7BD7 /* CoverUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverUpload.swift; sourceTree = "<group>"; };
 		DE47390D97D95727B7407B38 /* NotesFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesFeedView.swift; sourceTree = "<group>"; };
 		DE908FC7F918916A465558B7 /* PhotoViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewer.swift; sourceTree = "<group>"; };
+		DFAFBB8C5F9E9879CC5A0860 /* SymbolRequestSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolRequestSheet.swift; sourceTree = "<group>"; };
 		E05CD6F576A55CBFC96BBDE7 /* ProtectedFileAccessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtectedFileAccessTests.swift; sourceTree = "<group>"; };
 		E0CD4E065759D3DC0D45CF73 /* PrivateArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateArtworkStore.swift; sourceTree = "<group>"; };
 		E7EA344F5E1133CC94BAC6DB /* RecordStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordStatusTests.swift; sourceTree = "<group>"; };
@@ -575,6 +577,7 @@
 				BD36BB18169EC0014A6AC43A /* symbolCatalog.json */,
 				BDC427D4959FC41326C61059 /* SymbolCatalog.swift */,
 				67E2D56704398CEF36DB68F8 /* SymbolPath.swift */,
+				DFAFBB8C5F9E9879CC5A0860 /* SymbolRequestSheet.swift */,
 			);
 			path = ColorKeys;
 			sourceTree = "<group>";
@@ -1006,6 +1009,7 @@
 				5FF31BCB01DC93F920216046 /* SpinHistory.swift in Sources */,
 				AD44C19B07940B82138E6C3D /* SymbolCatalog.swift in Sources */,
 				D846233A6784C4D6B1CF77F0 /* SymbolPath.swift in Sources */,
+				96755743B04DE6EE32DF21F2 /* SymbolRequestSheet.swift in Sources */,
 				C2F7D24BC0886BA6EA933E66 /* TagLinks.swift in Sources */,
 				C2AA32251932FEF032C8070E /* Theme+Flavors.swift in Sources */,
 				05FEBA42EEF5E16E150CE2BC /* Theme.swift in Sources */,

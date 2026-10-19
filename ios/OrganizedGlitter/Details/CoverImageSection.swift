@@ -153,6 +153,10 @@ struct CoverImageSection: View {
 struct CoverCropView: View {
   @Environment(\.dismiss) private var dismiss
   let photo: ProcessedDetailPhoto
+  /// Width divided by height.
+  var aspectRatio: CGFloat = 0.8
+  var title = "Crop Cover"
+  var previewLabel = "Cover crop preview"
   let onChoose: (ProcessedDetailPhoto) -> Void
   @State private var zoom: CGFloat = 1
   @State private var offset: CGSize = .zero
@@ -180,8 +184,8 @@ struct CoverCropView: View {
   var body: some View {
     NavigationStack {
       GeometryReader { geometry in
-        let width = min(geometry.size.width - 32, max(80, (geometry.size.height - 180) * 0.8), 480)
-        let frame = CGSize(width: width, height: width * 1.25)
+        let width = min(geometry.size.width - 32, max(80, (geometry.size.height - 180) * aspectRatio), 480)
+        let frame = CGSize(width: width, height: width / aspectRatio)
         VStack(spacing: 16) {
           Spacer(minLength: 0)
           if let image = UIImage(data: photo.data) {
@@ -213,7 +217,7 @@ struct CoverCropView: View {
                 zoom = min(8, max(1, zoom * value.magnification))
                 clamp(imageSize: image.size, frame: frame)
               })
-              .accessibilityLabel("Cover crop preview")
+              .accessibilityLabel(previewLabel)
               .accessibilityAdjustableAction { direction in
                 zoom = min(8, max(1, zoom + (direction == .increment ? 0.25 : -0.25)))
                 clamp(imageSize: image.size, frame: frame)
@@ -249,7 +253,7 @@ struct CoverCropView: View {
       }
       .background(.black)
       .foregroundStyle(.white)
-      .navigationTitle("Crop Cover")
+      .navigationTitle(title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbarColorScheme(.dark, for: .navigationBar)
       .preferredColorScheme(.dark)

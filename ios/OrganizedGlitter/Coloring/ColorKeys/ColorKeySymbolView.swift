@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Draws one color key symbol in a square of `size` points.
 struct ColorKeySymbolView: View {
+  @Environment(\.symbolRequestThumbnails) private var requestThumbnails
   @Environment(\.theme) private var theme
 
   let id: String
@@ -38,7 +39,7 @@ struct ColorKeySymbolView: View {
         placeholder(label: nil)
       }
     case .request:
-      RemoteArtwork(url: requestThumbnailURL, maxPixelDimension: 96) { phase in
+      RemoteArtwork(url: requestThumbnailURL ?? requestThumbnails[id], maxPixelDimension: 96) { phase in
         if case .success(let image) = phase {
           image.resizable().scaledToFill().clipShape(.rect(cornerRadius: size / 8))
         } else {
@@ -67,6 +68,13 @@ struct ColorKeySymbolView: View {
       }
       .foregroundStyle(theme.mutedForeground)
   }
+}
+
+extension EnvironmentValues {
+  /// 96x96f photo thumbnails for `r:` symbols, by symbol ID.
+  @Entry var symbolRequestThumbnails: [String: URL] = [:]
+  /// The signed-in account's email, for prefilling contact fields.
+  @Entry var accountEmail = ""
 }
 
 /// Scales a 24x24 catalog path to fill its frame.

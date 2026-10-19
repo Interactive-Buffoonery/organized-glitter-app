@@ -63,6 +63,34 @@ struct ColorKeyLogicTests {
     #expect(ColorKeys.sorted(keys).map(\.id) == ["d", "b", "c", "a"])
   }
 
+  @Test("copy text uses a request's description, on one line")
+  func copyTextRequestDescription() {
+    let keys = [
+      key("a", position: 0, symbol: "r:abc123def456ghi", code: "P2"),
+      key("b", position: 1, symbol: "r:zzz123def456ghi", code: "P3"),
+    ]
+    let request = SymbolRequestRecord(id: "abc123def456ghi", user: "feature-user",
+      description: "Two w’s\nstacked", photo: "photo.jpg")
+    let text = ColorKeys.copyText(keys, catalog: .bundled, requests: [request.symbol: request])
+    #expect(text == "Two w’s stacked P2\nSent symbol P3")
+  }
+
+  @Test("a symbol request needs a photo, a book and page, and an email")
+  func requestValidation() {
+    let photo = ProcessedDetailPhoto(data: Data([1]), fileName: "symbol.jpg", contentType: "image/jpeg")
+    var draft = SymbolRequestDraft(bookLabel: " ", email: "me@example.com")
+    #expect(draft.validationMessage != nil)
+    draft.photo = photo
+    #expect(draft.validationMessage != nil)
+    draft.bookLabel = "Mystery Book · Page 3"
+    #expect(draft.validationMessage == nil)
+    draft.email = "not an email"
+    #expect(draft.validationMessage != nil)
+    draft.email = "me@example.com"
+    draft.description = String(repeating: "a", count: 501)
+    #expect(draft.validationMessage != nil)
+  }
+
   @Test("copy text is one symbol and code per line, in position order, without selectors")
   func copyText() {
     let keys = [
@@ -361,6 +389,24 @@ struct ColorKeysSessionTests {
     #expect(ColorKeyProtocol.requests.filter { $0.method == "PATCH" }.count == 2)
   }
 
+  @Test("changing the symbol after a lost create response updates the stored key")
+  func lostCreateThenChangedSymbol() async throws {
+    let library = try await makeLibrary()
+    let server = ColorKeyServer(failingPost: 1)
+    ColorKeyProtocol.respond { request in server.handle(request, template: Self.saved) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    var write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    write.code = "PU306"
+    await #expect(throws: ColorKeysModel.Failure.self) { try await model.save(write, id: nil).get() }
+    write.symbol = "u:0032"
+    await #expect(throws: ColorKeysModel.Failure.self) { try await model.save(write, id: nil).get() }
+    #expect(server.posts == 1)
+    let patch = try #require(ColorKeyProtocol.requests.last { $0.method == "PATCH" })
+    let body = try #require(JSONSerialization.jsonObject(with: patch.body) as? [String: Any])
+    #expect(body["symbol"] as? String == "u:0032")
+  }
+
   @Test("no new create is sent until the page shows whether the last one landed")
   func unconfirmedCreateBlocksRetry() async throws {
     let library = try await makeLibrary()
@@ -401,6 +447,92 @@ struct ColorKeysSessionTests {
     await loading.value
     #expect(model.keys.map(\.id) == [saved.id])
     #expect(model.loadState == .loaded)
+  }
+
+  nonisolated private static let request = #"{"id":"req123456789abc","user":"feature-user","page":"page","book_label":"Book · Page 3","description":"","email":"me@example.com","photo":"symbol_abc.jpg","status":"open","resolved_symbol":"","created":"2026-10-01 10:00:00.000Z","updated":"2026-10-01 10:00:00.000Z"}"#
+
+  private static func requestDraft(description: String = "") -> SymbolRequestDraft {
+    var draft = SymbolRequestDraft(bookLabel: "Book · Page 3", email: "me@example.com")
+    draft.description = description
+    draft.photo = ProcessedDetailPhoto(data: Data([0xFF, 0xD8]), fileName: "symbol.jpg", contentType: "image/jpeg")
+    return draft
+  }
+
+  @Test("a symbol request sends the form and never the fields the server owns")
+  func sendRequest() async throws {
+    let library = try await makeLibrary()
+    ColorKeyProtocol.respond { _ in (200, Self.request) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    let symbol = try await model.sendRequest(Self.requestDraft(description: "Two w’s stacked")).get()
+    #expect(symbol == "r:req123456789abc")
+    #expect(model.requests[symbol]?.photo == "symbol_abc.jpg")
+    let sent = try #require(ColorKeyProtocol.requests.last)
+    #expect(sent.method == "POST")
+    #expect(sent.url.path.hasSuffix("/collections/coloring_symbol_requests/records"))
+    let body = String(decoding: sent.body, as: UTF8.self)
+    for field in ["user", "page", "book_label", "description", "email"] {
+      #expect(body.contains("name=\"\(field)\""))
+    }
+    #expect(body.contains("name=\"photo\"; filename=\"symbol.jpg\""))
+    #expect(!body.contains("name=\"status\""))
+    #expect(!body.contains("name=\"resolved_symbol\""))
+  }
+
+  @Test("an empty description is left out of a symbol request")
+  func sendRequestWithoutDescription() async throws {
+    let library = try await makeLibrary()
+    ColorKeyProtocol.respond { _ in (200, Self.request) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    _ = try await model.sendRequest(Self.requestDraft()).get()
+    let body = String(decoding: try #require(ColorKeyProtocol.requests.last).body, as: UTF8.self)
+    #expect(!body.contains("name=\"description\""))
+  }
+
+  @Test("a busy server asks the user to try a symbol request later")
+  func busyRequest() async throws {
+    let library = try await makeLibrary()
+    ColorKeyProtocol.respond { _ in (429, #"{"message":"Too many requests."}"#) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    let result = await model.sendRequest(Self.requestDraft())
+    #expect(throws: ColorKeysModel.Failure.self) { try result.get() }
+    if case .failure(let failure) = result { #expect(failure.message.contains("Try again in a few minutes")) }
+    #expect(model.requests.isEmpty)
+  }
+
+  @Test("loading a page fetches the requests its keys point to")
+  func loadsRequests() async throws {
+    let library = try await makeLibrary()
+    let placeholder = Self.saved.replacingOccurrences(of: "u:0031", with: "r:req123456789abc")
+    ColorKeyProtocol.respond { request in
+      let item = request.url.path.contains("coloring_symbol_requests") ? Self.request : placeholder
+      return (200, #"{"page":1,"perPage":50,"totalPages":1,"totalItems":1,"items":[\#(item)]}"#)
+    }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    #expect(model.requests["r:req123456789abc"]?.photo == "symbol_abc.jpg")
+    let lookup = try #require(ColorKeyProtocol.requests.last { $0.url.path.contains("coloring_symbol_requests") })
+    let filter = URLComponents(url: lookup.url, resolvingAgainstBaseURL: false)?
+      .queryItems?.first { $0.name == "filter" }?.value ?? ""
+    #expect(filter.contains("user = \"feature-user\""))
+    #expect(filter.contains("id = \"req123456789abc\""))
+  }
+
+  @Test("recently used requests from other pages load their photos")
+  func loadsHistoryRequests() async throws {
+    let library = try await makeLibrary()
+    let placeholder = Self.saved.replacingOccurrences(of: "u:0031", with: "r:req123456789abc")
+      .replacingOccurrences(of: #""code":"""#, with: #""code":"654""#)
+    ColorKeyProtocol.respond { request in
+      let query = request.url.query?.removingPercentEncoding ?? ""
+      let item = request.url.path.contains("coloring_symbol_requests") ? Self.request
+        : query.contains("page = ") ? "" : placeholder
+      return (200, #"{"page":1,"perPage":50,"totalPages":1,"totalItems":1,"items":[\#(item)]}"#)
+    }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    #expect(model.requests.isEmpty)
+    await model.loadHistoryIfNeeded()
+    #expect(model.requests["r:req123456789abc"]?.photo == "symbol_abc.jpg")
   }
 
   private func makeLibrary(online: Bool = true) async throws -> LibrarySession {

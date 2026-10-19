@@ -2,6 +2,7 @@ import Foundation
 
 enum PocketBaseFilter {
   enum Field: String {
+    case id
     case user
     case status
     case title

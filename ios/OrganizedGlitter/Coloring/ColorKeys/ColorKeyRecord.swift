@@ -127,11 +127,12 @@ enum ColorKeys {
 
   /// One `<symbol> <code>` line per key. `u:` symbols copy their characters,
   /// custom shapes their catalog name, and requests "Sent symbol".
-  static func copyText(_ keys: [ColorKeyRecord], catalog: SymbolCatalog) -> String {
+  static func copyText(_ keys: [ColorKeyRecord], catalog: SymbolCatalog,
+    requests: [String: SymbolRequestRecord] = [:]) -> String {
     sorted(keys).map { key in
       let symbol = switch ColorKeySymbol(id: key.symbol) {
       case .unicode(let text): text
-      case .request: "Sent symbol"
+      case .request: requests[key.symbol]?.copyName ?? "Sent symbol"
       case .custom, nil: catalog.accessibilityName(for: key.symbol)
       }
       return key.code.isEmpty ? symbol : "\(symbol) \(key.code)"
@@ -198,5 +199,59 @@ enum ColorKeys {
     }
     if write.note.count > maxNoteLength { return "Keep the note to 2,000 characters or fewer." }
     return nil
+  }
+}
+
+/// A photo of a symbol missing from the catalog. Its `r:<id>` works as a key's
+/// symbol until the request is resolved.
+struct SymbolRequestRecord: Decodable, Identifiable, Hashable, Sendable {
+  let id: String
+  let user: String
+  let description: String
+  let photo: String
+
+  static let collection = "coloring_symbol_requests"
+
+  var symbol: String { "r:\(id)" }
+
+  /// The description on one line, or nil when there is none.
+  var copyName: String? {
+    let name = description.split(whereSeparator: \.isNewline).joined(separator: " ")
+      .trimmingCharacters(in: .whitespaces)
+    return name.isEmpty ? nil : name
+  }
+}
+
+/// What the user fills in to send a symbol request. The server sets `status`
+/// and `resolved_symbol`, so they are never sent.
+struct SymbolRequestDraft: Equatable, Sendable {
+  var bookLabel: String
+  var description = ""
+  var email: String
+  var photo: ProcessedDetailPhoto?
+
+  var validationMessage: String? {
+    let bookLabel = bookLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+    let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
+    if photo == nil { return "Add a photo of the symbol." }
+    if bookLabel.isEmpty { return "Add the book and page." }
+    if bookLabel.count > 200 { return "Keep the book and page under 200 characters." }
+    if description.count > 500 { return "Keep the description under 500 characters." }
+    // ponytail: the server validates the address; this only catches obvious typos.
+    if email.contains(where: \.isWhitespace) || !email.contains("@") { return "Enter your email address." }
+    return nil
+  }
+
+  func form(user: String, page: String) -> PocketBaseMultipartForm {
+    var fields = [
+      "user": user, "page": page,
+      "book_label": bookLabel.trimmingCharacters(in: .whitespacesAndNewlines),
+      "email": email.trimmingCharacters(in: .whitespacesAndNewlines),
+    ]
+    let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !description.isEmpty { fields["description"] = description }
+    return PocketBaseMultipartForm(fields: fields, files: photo.map {
+      [PocketBaseMultipartFile(fieldName: "photo", fileName: $0.fileName, contentType: $0.contentType, data: $0.data)]
+    } ?? [])
   }
 }

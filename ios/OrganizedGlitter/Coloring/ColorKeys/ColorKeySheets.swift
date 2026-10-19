@@ -5,8 +5,10 @@ struct SymbolPickerView: View {
   @Environment(\.theme) private var theme
   @ScaledMetric(relativeTo: .title) private var cellSize: CGFloat = 52
   @State private var query = ""
+  @State private var isRequesting = false
 
   let recentSymbols: [String]
+  var requester: SymbolRequester? = nil
   let onPick: (String) -> Void
   var catalog: SymbolCatalog = .bundled
 
@@ -33,12 +35,21 @@ struct SymbolPickerView: View {
         if results.isEmpty {
           ContentUnavailableView.search(text: query)
         }
-        Text("Can’t find your symbol? Send us a photo and we’ll add it.")
-          .font(.karla(.footnote))
-          .foregroundStyle(theme.mutedForeground)
-          .frame(maxWidth: .infinity, alignment: .center)
-          .multilineTextAlignment(.center)
-          .accessibilityIdentifier("symbolPicker.footer")
+        Group {
+          if requester != nil {
+            Button { isRequesting = true } label: {
+              Text("Can’t find your symbol? Send us a photo and we’ll add it.")
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+          } else {
+            Text("Can’t find your symbol? Send us a photo and we’ll add it.")
+              .foregroundStyle(theme.mutedForeground)
+          }
+        }
+        .font(.karla(.footnote))
+        .frame(maxWidth: .infinity, alignment: .center)
+        .multilineTextAlignment(.center)
+        .accessibilityIdentifier("symbolPicker.footer")
       }
       .padding(20)
     }
@@ -47,6 +58,9 @@ struct SymbolPickerView: View {
     .navigationTitle("Choose a symbol")
     .navigationBarTitleDisplayMode(.inline)
     .background(theme.themedBackground.ignoresSafeArea())
+    .sheet(isPresented: $isRequesting) {
+      if let requester { SymbolRequestSheet(requester: requester, onUse: onPick) }
+    }
   }
 
   private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
@@ -84,6 +98,7 @@ struct ColorKeySetupSheet: View {
   @ScaledMetric(relativeTo: .title) private var cellSize: CGFloat = 48
 
   let recentSymbols: [String]
+  var requester: SymbolRequester? = nil
   /// After a partial save, the choices are locked so a retry sends the same symbols.
   let hasSavedKeys: Bool
   let onSave: (_ symbols: [String]) async -> String?
@@ -168,7 +183,7 @@ struct ColorKeySetupSheet: View {
       }
       .sheet(isPresented: $isPickingExtra) {
         NavigationStack {
-          SymbolPickerView(recentSymbols: recentSymbols) { id in
+          SymbolPickerView(recentSymbols: recentSymbols, requester: requester) { id in
             if SymbolCatalog.setupDefaults.contains(id) {
               enabled.insert(id)
             } else if !extras.contains(id) {
@@ -221,17 +236,20 @@ struct ColorKeyEntrySheet: View {
 
   let model: ColorKeysModel
   let id: String?
+  let requester: SymbolRequester?
   let onSaved: (_ saved: ColorKeyRecord, _ advance: Bool) -> Void
 
   @State private var draft: ColorKeyWrite
   @State private var tried: [TriedColor]
   @State private var errorMessage: String?
   @State private var isConfirmingDelete = false
+  @State private var isChangingSymbol = false
 
-  init(model: ColorKeysModel, initial: ColorKeyWrite, id: String?,
+  init(model: ColorKeysModel, initial: ColorKeyWrite, id: String?, requester: SymbolRequester? = nil,
     onSaved: @escaping (_ saved: ColorKeyRecord, _ advance: Bool) -> Void) {
     self.model = model
     self.id = id
+    self.requester = requester
     self.onSaved = onSaved
     _draft = State(initialValue: initial)
     _tried = State(initialValue: initial.tried.map { TriedColor(text: $0) })
@@ -249,6 +267,10 @@ struct ColorKeyEntrySheet: View {
               .accessibilityHidden(true)
           }
           .frame(maxWidth: .infinity)
+          Button("Change Symbol") { isChangingSymbol = true }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .disabled(model.isSaving)
+            .accessibilityIdentifier("colorKeys.entry.changeSymbol")
         }
 
         Section("Color") {
@@ -324,6 +346,19 @@ struct ColorKeyEntrySheet: View {
           Button("Save") { Task { await save(advance: false) } }
             .disabled(!canSave)
             .accessibilityIdentifier("colorKeys.entry.save")
+        }
+      }
+      .sheet(isPresented: $isChangingSymbol) {
+        NavigationStack {
+          SymbolPickerView(recentSymbols: model.recentSymbols, requester: requester) { symbol in
+            draft.symbol = symbol
+            isChangingSymbol = false
+          }
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              Button("Cancel", role: .cancel) { isChangingSymbol = false }
+            }
+          }
         }
       }
       .confirmationDialog("Delete this color?", isPresented: $isConfirmingDelete,

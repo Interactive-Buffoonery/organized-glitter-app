@@ -465,6 +465,14 @@
           record["user"] = "preview-user"
           for field in ["code", "color_name", "swatch", "note"] { record[field] = record[field] ?? "" }
           record["tried"] = record["tried"] ?? []
+        case SymbolRequestRecord.collection:
+          // `r:` symbols need a real 15-character PocketBase ID.
+          record["id"] = String(format: "fixturereq%05d", sequence)
+          record["user"] = "preview-user"
+          record["description"] = record["description"] ?? ""
+          record["photo"] = upload.files["photo"]?.first ?? ""
+          record["status"] = "open"
+          record["resolved_symbol"] = ""
         default:
           return FixtureResponse(object: ["message": "Unsupported fixture create"], status: 400)
         }

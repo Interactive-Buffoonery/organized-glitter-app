@@ -54,7 +54,8 @@ struct ColoringPageDetailView: View {
             current: page.status, model: model, onCollectionChanged: onCollectionChanged)
           DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
-          ColorKeysSection(library: model.library, pageID: page.id)
+          ColorKeysSection(library: model.library, pageID: page.id,
+            bookLabel: "\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
 
           VStack(alignment: .leading, spacing: 12) {
             photoHeader

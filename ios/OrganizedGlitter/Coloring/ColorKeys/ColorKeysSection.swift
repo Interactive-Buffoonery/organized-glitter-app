@@ -3,23 +3,40 @@ import UIKit
 
 /// "Colors used" on a coloring page: the symbol key the user is coloring from.
 struct ColorKeysSection: View {
+  @Environment(\.accountEmail) private var accountEmail
   @Environment(\.connectionAvailable) private var connectionAvailable
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @ScaledMetric(relativeTo: .title) private var symbolSize: CGFloat = 40
 
   @State private var model: ColorKeysModel
   @State private var sheet: ColorKeySheet?
   @State private var copyCount = 0
+  /// Prefills a symbol request, such as "Book · Page 3".
+  let bookLabel: String
 
-  init(library: LibrarySession, pageID: String) {
+  init(library: LibrarySession, pageID: String, bookLabel: String) {
     _model = State(initialValue: ColorKeysModel(library: library, pageID: pageID))
+    self.bookLabel = bookLabel
   }
 
   var body: some View {
     // The section lives in a lazy stack, so load once rather than on every scroll back.
     content
+      .environment(\.symbolRequestThumbnails, requestThumbnails)
       .task { if model.loadState == .idle { await model.load() } }
+  }
+
+  private var requestThumbnails: [String: URL] {
+    model.requests.compactMapValues { request in
+      protectedFiles?.url(collection: SymbolRequestRecord.collection, recordID: request.id,
+        filename: request.photo, thumb: "96x96f")
+    }
+  }
+
+  private var requester: SymbolRequester {
+    SymbolRequester(bookLabel: bookLabel, email: accountEmail, send: model.sendRequest)
   }
 
   @ViewBuilder
@@ -53,6 +70,7 @@ struct ColorKeysSection: View {
     .sheet(item: $sheet) { sheet in
       sheetContent(sheet)
         .environment(\.connectionAvailable, connectionAvailable)
+        .environment(\.symbolRequestThumbnails, requestThumbnails)
     }
     .sensoryFeedback(.success, trigger: copyCount)
   }
@@ -124,13 +142,14 @@ struct ColorKeysSection: View {
   private func sheetContent(_ sheet: ColorKeySheet) -> some View {
     switch sheet {
     case .setup:
-      ColorKeySetupSheet(recentSymbols: model.recentSymbols, hasSavedKeys: !model.keys.isEmpty) {
+      ColorKeySetupSheet(recentSymbols: model.recentSymbols, requester: requester,
+        hasSavedKeys: !model.keys.isEmpty) {
         symbols in await model.setUp(symbols: symbols)
       }
       .task { await model.loadHistoryIfNeeded() }
     case .picker(let position):
       NavigationStack {
-        SymbolPickerView(recentSymbols: model.recentSymbols) { symbol in
+        SymbolPickerView(recentSymbols: model.recentSymbols, requester: requester) { symbol in
           self.sheet = .entry(model.newKey(symbol: symbol, position: position), id: nil)
         }
         .toolbar {
@@ -141,7 +160,7 @@ struct ColorKeysSection: View {
       }
       .task { await model.loadHistoryIfNeeded() }
     case .entry(let write, let id):
-      ColorKeyEntrySheet(model: model, initial: write, id: id) { saved, advance in
+      ColorKeyEntrySheet(model: model, initial: write, id: id, requester: requester) { saved, advance in
         guard advance else { return self.sheet = nil }
         if let next = model.key(after: saved) {
           self.sheet = .entry(next.write, id: next.id)

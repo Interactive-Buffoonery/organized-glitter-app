@@ -623,6 +623,42 @@ final class LibrarySession {
     }
   }
 
+  /// Sends a symbol request. A lost response isn't retried, so at worst the
+  /// same photo arrives twice.
+  func createSymbolRequest(_ draft: SymbolRequestDraft, page: String) async throws -> SymbolRequestRecord {
+    guard connectionAvailable != false else { throw APIError.offline }
+    do {
+      try await beginOnlineWrite()
+      defer { endOnlineWrite(refreshLibrary: false) }
+      let saved: SymbolRequestRecord = try await client.create(
+        collection: SymbolRequestRecord.collection, multipart: draft.form(user: userID, page: page))
+      try checkActive()
+      guard saved.user == userID else { throw APIError.decoding }
+      return saved
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
+  /// The user's requests with these IDs, for photo thumbnails and copy text.
+  func symbolRequests(ids: [String]) async throws -> [SymbolRequestRecord] {
+    try checkActive()
+    do {
+      let requests: [SymbolRequestRecord] = try await client.allRecords(
+        collection: SymbolRequestRecord.collection,
+        filter: PocketBaseFilter.all([
+          PocketBaseFilter.equals(.user, userID),
+          PocketBaseFilter.any(ids.map { PocketBaseFilter.equals(.id, $0) }),
+        ]))
+      try checkActive()
+      return requests.filter { $0.user == userID }
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
   private func recoverColorKeyAuthentication(after error: Error) async {
     guard !Task.isCancelled, error as? APIError == .unauthenticated else { return }
     await onAuthenticationFailure?()

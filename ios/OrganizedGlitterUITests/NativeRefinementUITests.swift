@@ -181,7 +181,8 @@ final class NativeRefinementUITests: XCTestCase {
       NSPredicate(format: "label BEGINSWITH %@", "Open progress photo from")
     ).firstMatch
     makeHittable(photo, in: app)
-    photo.tap()
+    // The out-of-process picker reports its cells as not hittable.
+    photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(button("photoViewer.next", in: app).isEnabled)
     button("photoViewer.next", in: app).tap()
@@ -209,7 +210,8 @@ final class NativeRefinementUITests: XCTestCase {
       pageScroll.swipeUp()
     }
     XCTAssertTrue(photo.isHittable)
-    photo.tap()
+    // The out-of-process picker reports its cells as not hittable.
+    photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
     button("photoViewer.close", in: app).tap()
     XCTAssertTrue(element("detail.page", in: app).exists)
@@ -343,6 +345,51 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(added.waitForExistence(timeout: 5))
     XCTAssertTrue(added.label.hasPrefix("Psi, No code yet"))
     try capture("colorkeys-05-rows")
+  }
+
+  func testColorKeysSendSymbolPhoto() throws {
+    let app = launchFixture()
+    openFirstDesignPage(in: app)
+
+    let addFirst = button("colorKeys.addFirst", in: app)
+    XCTAssertTrue(addFirst.waitForExistence(timeout: 5))
+    makeHittable(addFirst, in: app)
+    addFirst.tap()
+    let footer = button("symbolPicker.footer", in: app)
+    XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5))
+    for _ in 0..<30 where !(footer.exists && footer.isHittable) { app.swipeUp() }
+    footer.tap()
+
+    XCTAssertTrue(app.navigationBars["Send a symbol"].waitForExistence(timeout: 5))
+    XCTAssertTrue((app.textFields["symbolRequest.bookLabel"].value as? String ?? "").contains("· Page"))
+    XCTAssertFalse(button("symbolRequest.send", in: app).isEnabled)
+    button("symbolRequest.choosePhoto", in: app).tap()
+    // The system picker shows the simulator's sample library; any photo will do.
+    let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
+    XCTAssertTrue(photo.waitForExistence(timeout: 10))
+    // The out-of-process picker reports its cells as not hittable.
+    photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    XCTAssertTrue(app.images["Symbol photo"].waitForExistence(timeout: 15))
+    let description = app.textFields["symbolRequest.description"]
+    description.tap()
+    description.typeText("Two w’s stacked")
+    let email = app.textFields["symbolRequest.email"]
+    if (email.value as? String ?? "").contains("@") == false {
+      makeHittable(email, in: app)
+      email.tap()
+      email.typeText("crafter@example.com")
+    }
+    try capture("colorkeys-06-request")
+    button("symbolRequest.send", in: app).tap()
+
+    XCTAssertTrue(app.navigationBars["Add color"].waitForExistence(timeout: 10))
+    try capture("colorkeys-07-request-entry")
+    button("colorKeys.entry.save", in: app).tap()
+    let row = button("colorKeys.row.0", in: app)
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    XCTAssertTrue(row.label.hasPrefix("Requested symbol, No code yet"))
+    for _ in 0..<8 where !row.isHittable { app.swipeDown() }
+    try capture("colorkeys-08-request-row")
   }
 
   func testColorKeysAtLargestTextSize() throws {
