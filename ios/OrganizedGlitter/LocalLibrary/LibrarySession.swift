@@ -14,6 +14,7 @@ final class LibrarySession {
   private var retryTask: Task<Void, Never>?
   private var retryAttempt = 0
   private var loadGeneration = 0
+  private var appliedLoadGeneration = 0
   private var historyLoadGeneration = 0
   private var historyRevision = 0
   private var acknowledgedSpins: [(revision: Int, record: SpinHistoryRecord)] = []
@@ -119,7 +120,8 @@ final class LibrarySession {
     let projection = try await store.projection(scope: scope)
     let attempts = try await store.mediumAttempts(scope: scope)
     try checkActive()
-    guard requestedGeneration == loadGeneration else { return }
+    guard requestedGeneration > appliedLoadGeneration else { return }
+    appliedLoadGeneration = requestedGeneration
     entries = projection.entries
     rebuildRandomizerItems()
     items = entries.map(\.item)
@@ -243,6 +245,7 @@ final class LibrarySession {
       scope: scope, key: LocalRecordKey(kind: kind, id: id), patch: patch)
     try checkActive()
     loadGeneration &+= 1
+    appliedLoadGeneration = loadGeneration
     if let index = entries.firstIndex(where: { $0.item.localRecordKey == key }) {
       entries[index] = entry
     } else { entries.append(entry) }
