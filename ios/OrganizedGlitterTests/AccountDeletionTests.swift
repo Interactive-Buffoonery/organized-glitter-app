@@ -328,6 +328,80 @@ struct AccountDeletionTests {
     #expect(body["proof"] as? String == originalProof)
   }
 
+  @Test func recoveryRejectsMissingAndExpiredOriginalSessionsBeforeAppleStepUp() async throws {
+    let backend = URL(string: "https://example.test")!
+    let user = try JSONDecoder().decode(UserRecord.self,
+      from: Data(#"{"id":"user-a","verified":true}"#.utf8))
+    for token in [nil, deletionJWT(expiration: .now.addingTimeInterval(-60))] as [String?] {
+      DeletionWire.requests = []; DeletionWire.bodies = []
+      DeletionWire.responses = [(200, #"{"token":"discard-me","record":{"id":"user-a","verified":true}}"#)]
+      let store = KeychainSessionStore(service: "deletion.recovery-expiry.\(UUID().uuidString)")
+      defer { try? store.clear(); try? store.deletionPersistence.clear() }
+      if let token { try store.save(AuthenticatedSession(token: token, user: user)) }
+      let scope = LocalAccountScope(backendURL: backend, userID: user.id)
+      let local = try LocalLibraryStore.inMemory()
+      try await local.saveUser(user, scope: scope)
+      let project = featureProject("project-retained", title: "Fictional project", user: user.id)
+      try await local.ingest(.diamond(project), scope: scope)
+      try await local.queueEdit(scope: scope,
+        key: LocalRecordKey(kind: .project, id: project.id),
+        patch: ["title": .string("Unsent edit")])
+      let proof = try AccountDeletionIntent.makeProof()
+      try store.deletionPersistence.save(AccountDeletionIntent(
+        backendURL: backend, userID: user.id, proof: proof, stage: .submitted))
+      let config = URLSessionConfiguration.ephemeral
+      config.protocolClasses = [DeletionWire.self]
+      let client = PocketBaseClient(baseURL: backend, sessionStore: store,
+        urlSession: URLSession(configuration: config))
+      let app = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(), localStore: local)
+      #expect(app.phase == .accountDeletion)
+      let deletion = try #require(app.deletion)
+      await deletion.reverifyApple(code: "fictional", nonce: "fictional")
+      #expect(deletion.state == .uncertain)
+      #expect(deletion.errorMessage == "The original session is no longer available. Account access remains locked. Contact support.")
+      #expect(DeletionWire.requests.isEmpty)
+      #expect(try store.deletionPersistence.load()?.proof == proof)
+      #expect(try await local.pendingCount(scope: scope) == 1)
+    }
+  }
+
+  @Test func validOriginalSessionCanConfirmSameProofAfterAppleStepUp() async throws {
+    DeletionWire.requests = []; DeletionWire.bodies = []
+    DeletionWire.responses = [
+      (200, #"{"token":"discard-me","record":{"id":"user-a","verified":true}}"#),
+      (200, #"{"status":"deleted","cleanup":"pending"}"#),
+    ]
+    let backend = URL(string: "https://example.test")!
+    let user = try JSONDecoder().decode(UserRecord.self,
+      from: Data(#"{"id":"user-a","verified":true}"#.utf8))
+    let token = deletionJWT(expiration: .now.addingTimeInterval(3600))
+    let store = KeychainSessionStore(service: "deletion.recovery-valid.\(UUID().uuidString)")
+    defer { try? store.clear(); try? store.deletionPersistence.clear() }
+    try store.save(AuthenticatedSession(token: token, user: user))
+    let proof = try AccountDeletionIntent.makeProof()
+    try store.deletionPersistence.save(AccountDeletionIntent(
+      backendURL: backend, userID: user.id, proof: proof, stage: .submitted))
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [DeletionWire.self]
+    let client = PocketBaseClient(baseURL: backend, sessionStore: store,
+      urlSession: URLSession(configuration: config))
+    let app = AppModel(client: client, sessionStore: store, themeStore: ThemeStore())
+    #expect(app.phase == .accountDeletion)
+    let deletion = try #require(app.deletion)
+    await deletion.reverifyApple(code: "fictional", nonce: "fictional")
+    #expect(deletion.state == .resubmissionReady)
+    #expect(try store.deletionPersistence.load()?.proof == proof)
+    #expect(DeletionWire.requests.map(\.url?.path) == ["/api/auth/apple/native"])
+    await deletion.confirmResubmission()
+    #expect(deletion.state == .completed(.pending))
+    #expect(DeletionWire.requests.map(\.url?.path) == ["/api/auth/apple/native", "/api/account/delete"])
+    #expect(DeletionWire.requests[0].value(forHTTPHeaderField: "Authorization") == nil)
+    #expect(DeletionWire.requests[1].value(forHTTPHeaderField: "Authorization") == token)
+    let body = try #require(JSONSerialization.jsonObject(with: DeletionWire.bodies[1]) as? [String: Any])
+    #expect(body["proof"] as? String == proof)
+    #expect(!DeletionWire.requests.contains { $0.url?.path.contains("auth-refresh") == true })
+  }
+
   @Test func availableMethodsRequireProviderReadinessAndAccountConnection() async throws {
     let f = try await fixture()
     DeletionWire.responsesByPath = [
@@ -402,6 +476,13 @@ struct AccountDeletionTests {
   private func makeModel(client: PocketBaseClient, disk: DeletionDisk, now: @escaping () -> Date = Date.init) -> AccountDeletionModel {
     AccountDeletionModel(client: client, scope: LocalAccountScope(backendURL: client.baseURL, userID: "user-a"), persistence: AccountDeletionPersistence(load: { disk.intent }, save: { if disk.failSave || (disk.failConfirmedSave && $0.stage == .serverDeleted) { throw APIError.server }; disk.intent = $0 }, clear: { if disk.failClear { throw APIError.server }; disk.intent = nil }), now: now, lock: { if disk.failLock { throw APIError.server } }, cleanup: { _ in if disk.failCleanup { throw APIError.server }; disk.cleanupCount += 1 })
   }
+}
+
+private func deletionJWT(expiration: Date) -> String {
+  let claims = Data("{\"exp\":\(Int(expiration.timeIntervalSince1970))}".utf8)
+  let payload = claims.base64EncodedString().replacingOccurrences(of: "+", with: "-")
+    .replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+  return "header.\(payload).signature"
 }
 
 @MainActor private final class DeletionDisk {

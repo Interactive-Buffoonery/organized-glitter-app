@@ -731,6 +731,9 @@ final class AppModel {
           let stored = try self.sessionStore?.load(), stored.userID == scope.userID else {
           throw APIError.unauthenticated
         }
+        if let expiration = JWTExpiration.date(for: stored.token), expiration <= .now {
+          throw APIError.unauthenticated
+        }
         await self.client!.prepareOfflineSession(stored)
         guard self.deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
       },
