@@ -73,7 +73,7 @@ struct SymbolCatalogTests {
         #expect(symbol.path == nil)
       case .custom:
         #expect(symbol.char == nil)
-        #expect(symbol.path.flatMap(SymbolPath.parse) != nil, "\(symbol.id) path must parse")
+        #expect(catalog.path(id: symbol.id) != nil, "\(symbol.id) path must parse")
       default:
         Issue.record("\(symbol.id) is not a catalog ID")
       }

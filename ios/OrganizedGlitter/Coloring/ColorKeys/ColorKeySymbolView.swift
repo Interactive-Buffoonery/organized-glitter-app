@@ -29,7 +29,7 @@ struct ColorKeySymbolView: View {
     case .unicode:
       placeholder(label: SymbolGlyphCoverage.fallbackLabel(for: id))
     case .custom(let slug):
-      if let source = catalog.symbol(id: "c:\(slug)")?.path, let path = SymbolPath.parse(source) {
+      if let path = catalog.path(id: "c:\(slug)") {
         SymbolShape(path: path)
           .stroke(
             theme.foreground,

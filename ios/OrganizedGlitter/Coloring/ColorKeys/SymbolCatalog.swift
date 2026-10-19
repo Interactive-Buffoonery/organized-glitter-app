@@ -1,5 +1,6 @@
 import CoreText
 import Foundation
+import SwiftUI
 import UIKit
 
 /// A parsed color key symbol ID, as defined in the shared color keys contract.
@@ -10,6 +11,10 @@ enum ColorKeySymbol: Hashable, Sendable {
 
   init?(id: String) {
     // One valid ID per symbol: shortest uppercase hex scalar values, at least 4 digits.
+    // Each `u:` scalar is one of: a BMP value outside the surrogates (0000-D7FF,
+    // E000-FFFF), a 5-digit plane 1-15 value, or 10xxxx for plane 16. Scalars
+    // join with `-`. `c:` is a lowercase slug of 1-48 characters; `r:` is a
+    // 15-character PocketBase record ID.
     let pattern = #/\A(u:(?:[0-9A-CE-F][0-9A-F]{3}|D[0-7][0-9A-F]{2}|[1-9A-F][0-9A-F]{4}|10[0-9A-F]{4})(-(?:[0-9A-CE-F][0-9A-F]{3}|D[0-7][0-9A-F]{2}|[1-9A-F][0-9A-F]{4}|10[0-9A-F]{4}))*|c:[a-z0-9-]{1,48}|r:[a-z0-9]{15})\z/#
     guard id.wholeMatch(of: pattern) != nil else { return nil }
     let value = String(id.dropFirst(2))
@@ -36,7 +41,7 @@ enum ColorKeySymbol: Hashable, Sendable {
     }
   }
 
-  private static let variationSelectors: Set<UInt32> = [0xFE0E, 0xFE0F]
+  static let variationSelectors: Set<UInt32> = [0xFE0E, 0xFE0F]
 
   /// The text drawn for a `u:` symbol. Every renderer goes through here. Requests
   /// text presentation (U+FE0E) after each non-ASCII emoji-capable code point
@@ -89,6 +94,8 @@ struct SymbolCatalog: Decodable, Sendable {
   let groups: [Group]
   let symbols: [Symbol]
   private let symbolsByID: [String: Symbol]
+  /// Custom shapes, parsed once so views don't re-parse them on every render.
+  private let pathsByID: [String: Path]
 
   private enum CodingKeys: String, CodingKey { case version, groups, symbols }
 
@@ -98,6 +105,7 @@ struct SymbolCatalog: Decodable, Sendable {
     groups = try container.decode([Group].self, forKey: .groups)
     symbols = try container.decode([Symbol].self, forKey: .symbols)
     symbolsByID = Dictionary(symbols.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    pathsByID = symbolsByID.compactMapValues { $0.path.flatMap(SymbolPath.parse) }
   }
 
   static let bundled: SymbolCatalog = {
@@ -114,6 +122,8 @@ struct SymbolCatalog: Decodable, Sendable {
   }
 
   func symbol(id: String) -> Symbol? { symbolsByID[id] }
+
+  func path(id: String) -> Path? { pathsByID[id] }
 
   /// Matches ranked like the web app: the exact character, then name prefixes,
   /// keyword prefixes, then any substring. Ties keep catalog order.
@@ -153,13 +163,16 @@ struct SymbolCatalog: Decodable, Sendable {
 
 @MainActor
 enum SymbolGlyphCoverage {
+  // ponytail: unbounded, but keys are only symbols the app draws (the catalog
+  // plus the user's own keys), so it stays small. Bound it if callers ever pass
+  // arbitrary text.
   private static var cache: [String: Bool] = [:]
 
   /// Whether a system font, including cascade fallbacks, has glyphs for `text`.
   /// Variation selectors have no glyphs of their own, so only base code points are checked.
   static func isRenderable(_ text: String) -> Bool {
     let text = String(String.UnicodeScalarView(text.unicodeScalars.filter {
-      $0.value != 0xFE0E && $0.value != 0xFE0F
+      !ColorKeySymbol.variationSelectors.contains($0.value)
     }))
     if let cached = cache[text] { return cached }
     let base = UIFont.systemFont(ofSize: 17) as CTFont
