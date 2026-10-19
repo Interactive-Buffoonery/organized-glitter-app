@@ -27,7 +27,16 @@ final class NotesFilterModel {
   }
 
   func selectSource(_ source: NotesSourceID?) {
+    guard self.source != source else { return }
     self.source = source
+    let sourceKind = switch source {
+    case .project: "project"
+    case .book: "book"
+    case nil: "all"
+    }
+    library.captureAnalytics(.notesSourceFilterChanged, properties: [
+      "source_kind": sourceKind, "craft": craft.rawValue,
+    ])
   }
 
   func align(to verticals: VerticalPreferences) {
