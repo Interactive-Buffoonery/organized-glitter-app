@@ -232,8 +232,8 @@ final class LibrarySession {
       throw LocalLibraryError.unsupportedField
     }
     let key = LocalRecordKey(kind: kind, id: id)
-    guard !photoRecoveryRecords.contains(key) else { throw LibrarySessionError.photoActionNeedsReview }
     guard !onlineRecords.contains(key) else { throw LibrarySessionError.pendingChanges }
+    guard !photoRecoveryRecords.contains(key) else { throw LibrarySessionError.photoActionNeedsReview }
     let patch = try JSONDecoder().decode(
       [String: LocalJSONValue].self, from: JSONEncoder().encode(body))
     if patch.isEmpty { return try record(collection: collection, id: id) }
@@ -814,10 +814,10 @@ final class LibrarySession {
       return false
     }
     let keys = Set(affected.map { $0.item.localRecordKey })
-    guard keys.isDisjoint(with: photoRecoveryRecords) else { throw LibrarySessionError.photoActionNeedsReview }
     guard affected.allSatisfy({ !$0.pending }), keys.isDisjoint(with: onlineRecords) else {
       throw LibrarySessionError.pendingChanges
     }
+    guard keys.isDisjoint(with: photoRecoveryRecords) else { throw LibrarySessionError.photoActionNeedsReview }
     onlineRecords.formUnion(keys)
     return keys
   }
