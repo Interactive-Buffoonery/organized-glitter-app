@@ -77,6 +77,46 @@ struct AppModelTests {
   }
 
   @Test
+  func preparedIntentForDifferentAccountIsClearedBeforeRestoration() async throws {
+    let store = KeychainSessionStore(service: "deletion.prepared.\(UUID().uuidString)")
+    defer { try? store.clear() }
+    try store.save(AuthenticatedSession(token: "fictional", user: .preview))
+    let backend = URL(string: "https://example.test")!
+    var intent: AccountDeletionIntent? = AccountDeletionIntent(
+      backendURL: URL(string: "https://old.test")!, userID: "other-account",
+      proof: try AccountDeletionIntent.makeProof())
+    let persistence = AccountDeletionPersistence(load: { intent }, save: { intent = $0 }, clear: { intent = nil })
+    let model = AppModel(client: PocketBaseClient(baseURL: backend, sessionStore: store),
+      sessionStore: store, themeStore: ThemeStore(), deletionPersistence: persistence)
+    while model.phase == .restoring { await Task.yield() }
+    #expect(intent == nil)
+    #expect(model.phase != .accountDeletion)
+  }
+
+  @Test
+  func confirmedDeletionResumesLocalCleanupAfterRestart() async throws {
+    let backend = URL(string: "https://example.test")!
+    let local = try LocalLibraryStore.inMemory()
+    let scope = LocalAccountScope(backendURL: backend, userID: UserRecord.preview.id)
+    try await local.saveUser(.preview, scope: scope)
+    let store = KeychainSessionStore(service: "deletion.confirmed.\(UUID().uuidString)")
+    var intent: AccountDeletionIntent? = AccountDeletionIntent(
+      backendURL: backend, userID: scope.userID, proof: try AccountDeletionIntent.makeProof(),
+      stage: .serverDeleted, cleanup: .pending)
+    let persistence = AccountDeletionPersistence(load: { intent }, save: { intent = $0 }, clear: { intent = nil })
+    let model = AppModel(client: PocketBaseClient(baseURL: backend, sessionStore: store),
+      sessionStore: store, themeStore: ThemeStore(), localStore: local,
+      deletionPersistence: persistence)
+    let deadline = ContinuousClock.now + .seconds(5)
+    while model.deletion?.state != .completed(.pending) && ContinuousClock.now < deadline {
+      await Task.yield()
+    }
+    #expect(model.deletion?.state == .completed(.pending))
+    #expect(try await local.loadUser(scope: scope) == nil)
+    #expect(intent == nil)
+  }
+
+  @Test
   func appleSignInStartsAfterReadinessSucceeds() async throws {
     AppleReadinessURLProtocol.status = 200
     AppleReadinessURLProtocol.body = #"{"available":true}"#

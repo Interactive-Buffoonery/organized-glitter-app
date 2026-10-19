@@ -688,6 +688,10 @@ final class AppModel {
     do {
       guard let stored = try deletionPersistence.load() else { return false }
       try stored.validate()
+      if stored.stage == .prepared {
+        try deletionPersistence.clear()
+        return false
+      }
       guard stored.backendURL == client.baseURL else { throw APIError.forbidden }
       if let session = try sessionStore?.load(), session.userID != stored.userID { throw APIError.forbidden }
       let recovery = makeDeletionModel(scope: stored.scope, persistence: deletionPersistence, generation: generation)
@@ -696,6 +700,9 @@ final class AppModel {
       cleanupBlocked = true
       passwordResetDestination = nil
       phase = .accountDeletion
+      if stored.stage == .serverDeleted {
+        Task { await recovery.retry() }
+      }
       return true
     } catch {
       cleanupBlocked = true
