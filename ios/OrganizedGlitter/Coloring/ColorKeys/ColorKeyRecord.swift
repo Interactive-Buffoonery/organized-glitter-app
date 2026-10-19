@@ -172,6 +172,18 @@ enum ColorKeys {
     symbols.enumerated().map { ColorKeyWrite(user: user, page: page, position: $0, symbol: $1) }
   }
 
+  /// The rows whose position changes when `ordered` is saved as 0 to n-1.
+  static func reorderWrites(_ ordered: [ColorKeyRecord])
+    -> [(original: ColorKeyRecord, write: ColorKeyWrite)]
+  {
+    ordered.enumerated().compactMap { index, key in
+      guard key.position != index else { return nil }
+      var write = key.write
+      write.position = index
+      return (key, write)
+    }
+  }
+
   static func nextPosition(after keys: [ColorKeyRecord]) -> Int {
     (keys.map(\.position).max() ?? -1) + 1
   }

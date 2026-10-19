@@ -13,6 +13,8 @@ final class ColorKeysModel {
   private(set) var history: [ColorKeyRecord] = []
   private(set) var loadState = LoadState.idle
   private(set) var isSaving = false
+  /// Shown under the rows after a reorder fails.
+  private(set) var reorderError: String?
   /// Symbol requests the keys point to, by `r:<id>`.
   private(set) var requests: [String: SymbolRequestRecord] = [:]
   private var loadGeneration = 0
@@ -175,6 +177,44 @@ final class ColorKeysModel {
       return .failure(Failure(message: message(for: error)))
     }
   }
+
+  /// Saves `ordered` as positions 0 to n-1, writing only the rows that moved.
+  /// If a write fails, the previous order comes back and the page reloads.
+  func reorder(_ ordered: [ColorKeyRecord]) async {
+    reorderError = nil
+    guard ordered.map(\.id) != keys.map(\.id) else { return }
+    guard !isSaving else { return reorderError = Self.reorderFallback }
+    isSaving = true
+    defer { isSaving = false }
+    guard await confirmCreates() else { return reorderError = unconfirmedMessage }
+    // Confirming can reload a row the panel never showed.
+    guard Set(ordered.map(\.id)) == Set(keys.map(\.id)) else {
+      return reorderError = Self.reorderFallback
+    }
+    let previous = keys
+    revision &+= 1
+    keys = ordered
+    var saved: [String: ColorKeyRecord] = [:]
+    do {
+      for (original, write) in ColorKeys.reorderWrites(ordered) {
+        saved[original.id] = try await library.saveColorKey(write, original: original)
+      }
+    } catch {
+      revision &+= 1
+      keys = previous
+      reorderError = error.userMessage(
+        permission: "You can only change colors on your own pages.",
+        offline: APIError.needsConnection("Reordering colors"),
+        fallback: Self.reorderFallback)
+      await load()
+      return
+    }
+    revision &+= 1
+    keys = ColorKeys.sorted(ordered.map { saved[$0.id] ?? $0 })
+    history = history.map { saved[$0.id] ?? $0 }
+  }
+
+  private static let reorderFallback = "Couldn’t save the new order. Try again."
 
   func delete(id: String) async -> String? {
     guard !isSaving else { return Self.fallbackMessage }

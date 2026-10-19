@@ -142,6 +142,14 @@ struct ColorKeyLogicTests {
     #expect(writes.allSatisfy { $0.user == "u" && $0.page == "p" && $0.code.isEmpty })
   }
 
+  @Test("reordering rewrites positions 0 to n-1 only for rows that moved")
+  func reorderWrites() {
+    let ordered = [key("c", position: 2), key("b", position: 1), key("a", position: 0), key("d", position: 5)]
+    let writes = ColorKeys.reorderWrites(ordered)
+    #expect(writes.map(\.original.id) == ["c", "a", "d"])
+    #expect(writes.map(\.write.position) == [0, 2, 3])
+  }
+
   @Test("next position follows the highest position")
   func nextPosition() {
     #expect(ColorKeys.nextPosition(after: []) == 0)
@@ -533,6 +541,93 @@ struct ColorKeysSessionTests {
     #expect(model.requests.isEmpty)
     await model.loadHistoryIfNeeded()
     #expect(model.requests["r:req123456789abc"]?.photo == "symbol_abc.jpg")
+  }
+
+  nonisolated private static func page(_ ids: [String]) -> String {
+    let items = ids.enumerated().map { index, id in
+      Self.saved.replacingOccurrences(of: "key1234567890ab", with: id)
+        .replacingOccurrences(of: "\"position\":0", with: "\"position\":\(index)")
+    }
+    return #"{"page":1,"perPage":50,"totalPages":1,"totalItems":\#(ids.count),"items":[\#(items.joined(separator: ","))]}"#
+  }
+
+  nonisolated private static func echoPatch(_ request: ColorKeyProtocol.Request) -> (Int, String) {
+    let id = request.url.lastPathComponent
+    let body = (try? JSONSerialization.jsonObject(with: request.body) as? [String: Any]) ?? [:]
+    return (200, Self.saved.replacingOccurrences(of: "key1234567890ab", with: id)
+      .replacingOccurrences(of: "\"position\":0", with: "\"position\":\(body["position"] as? Int ?? 0)"))
+  }
+
+  @Test("reordering patches only the moved rows' positions and keeps the new order")
+  func reorder() async throws {
+    let library = try await makeLibrary()
+    let ids = ["keya00000000000", "keyb00000000000", "keyc00000000000"]
+    ColorKeyProtocol.respond { request in
+      request.method == "GET" ? (200, Self.page(ids)) : Self.echoPatch(request)
+    }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    let keys = model.keys
+    await model.reorder([keys[0], keys[2], keys[1]])
+    let patches = ColorKeyProtocol.requests.filter { $0.method == "PATCH" }
+    #expect(patches.map(\.url.lastPathComponent) == ["keyc00000000000", "keyb00000000000"])
+    let bodies = try patches.map { try #require(JSONSerialization.jsonObject(with: $0.body) as? [String: Int]) }
+    #expect(bodies == [["position": 1], ["position": 2]])
+    #expect(model.keys.map(\.id) == ["keya00000000000", "keyc00000000000", "keyb00000000000"])
+    #expect(model.keys.map(\.position) == [0, 1, 2])
+    #expect(model.reorderError == nil)
+
+    let sent = ColorKeyProtocol.requests.count
+    await model.reorder(model.keys)
+    #expect(ColorKeyProtocol.requests.count == sent)
+  }
+
+  @Test("a reorder stops when confirming a pending create turns up a row the panel never showed")
+  func reorderAfterRecoveredCreate() async throws {
+    let library = try await makeLibrary()
+    let ids = ["keya00000000000", "keyb00000000000"]
+    let state = OSAllocatedUnfairLock(initialState: (readable: true, landed: false))
+    ColorKeyProtocol.respond { request in
+      let now = state.withLock { $0 }
+      switch request.method {
+      case "GET" where !now.readable: return (500, #"{"message":"busy"}"#)
+      case "GET": return (200, Self.page(now.landed ? ids + ["keyn00000000000"] : ids))
+      case "POST": return (500, #"{"message":"busy"}"#)
+      default: return Self.echoPatch(request)
+      }
+    }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    let keys = model.keys
+    state.withLock { $0.readable = false }
+    let write = ColorKeyWrite(user: "feature-user", page: "page", position: 2, symbol: "u:0031")
+    await #expect(throws: ColorKeysModel.Failure.self) { try await model.save(write, id: nil).get() }
+    state.withLock { $0 = (readable: true, landed: true) }
+    await model.reorder([keys[1], keys[0]])
+    #expect(!ColorKeyProtocol.requests.contains { $0.method == "PATCH" })
+    #expect(model.keys.map(\.id) == ids + ["keyn00000000000"])
+    #expect(model.reorderError == "Couldn’t save the new order. Try again.")
+  }
+
+  @Test("a failed reorder restores the previous order, reloads and asks to try again")
+  func reorderFailure() async throws {
+    let library = try await makeLibrary()
+    let ids = ["keya00000000000", "keyb00000000000", "keyc00000000000"]
+    let patches = OSAllocatedUnfairLock(initialState: 0)
+    ColorKeyProtocol.respond { request in
+      guard request.method == "PATCH" else { return (200, Self.page(ids)) }
+      let count = patches.withLock { $0 += 1; return $0 }
+      return count == 2 ? (500, #"{"message":"busy"}"#) : Self.echoPatch(request)
+    }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    let keys = model.keys
+    let gets = ColorKeyProtocol.requests.filter { $0.method == "GET" }.count
+    await model.reorder([keys[2], keys[1], keys[0]])
+    #expect(patches.withLock { $0 } == 2)
+    #expect(ColorKeyProtocol.requests.filter { $0.method == "GET" }.count == gets + 1)
+    #expect(model.keys.map(\.id) == ids)
+    #expect(model.reorderError == "Couldn’t save the new order. Try again.")
   }
 
   private func makeLibrary(online: Bool = true) async throws -> LibrarySession {

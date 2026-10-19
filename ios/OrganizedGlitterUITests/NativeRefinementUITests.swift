@@ -347,6 +347,42 @@ final class NativeRefinementUITests: XCTestCase {
     try capture("colorkeys-05-rows")
   }
 
+  func testColorKeysReorderInPanel() throws {
+    let app = launchFixture()
+    openFirstDesignPage(in: app)
+
+    let setUp = button("colorKeys.setup", in: app)
+    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
+    makeHittable(setUp, in: app)
+    setUp.tap()
+    button("colorKeys.setup.save", in: app).tap()
+    XCTAssertTrue(button("colorKeys.row.0", in: app).waitForExistence(timeout: 10))
+
+    let reorder = button("colorKeys.reorder", in: app)
+    makeHittable(reorder, in: app)
+    reorder.tap()
+    XCTAssertTrue(app.navigationBars["Reorder"].waitForExistence(timeout: 5))
+    let rows = app.cells
+    XCTAssertTrue(rows.element(boundBy: 1).waitForExistence(timeout: 5))
+    try capture("colorkeys-09-reorder")
+
+    let handle = rows.element(boundBy: 1).buttons.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Reorder")).firstMatch
+    XCTAssertTrue(handle.exists)
+    handle.press(forDuration: 0.6, thenDragTo: rows.element(boundBy: 0))
+    let firstInPanel = rows.element(boundBy: 0).otherElements.matching(
+      NSPredicate(format: "identifier BEGINSWITH %@", "colorKeys.reorder.")).firstMatch
+    XCTAssertTrue(firstInPanel.label.hasPrefix("Two"))
+    button("colorKeys.reorder.done", in: app).tap()
+
+    XCTAssertTrue(app.navigationBars["Reorder"].waitForNonExistence(timeout: 5))
+    let first = button("colorKeys.row.0", in: app)
+    let moved = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "label BEGINSWITH %@", "Two"), object: first)
+    XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 10), .completed)
+    XCTAssertTrue(button("colorKeys.row.1", in: app).label.hasPrefix("One"))
+  }
+
   func testColorKeysSendSymbolPhoto() throws {
     let app = launchFixture()
     openFirstDesignPage(in: app)

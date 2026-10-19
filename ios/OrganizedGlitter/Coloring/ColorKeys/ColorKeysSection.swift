@@ -6,6 +6,7 @@ struct ColorKeysSection: View {
   @Environment(\.accountEmail) private var accountEmail
   @Environment(\.connectionAvailable) private var connectionAvailable
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.theme) private var theme
   @ScaledMetric(relativeTo: .title) private var symbolSize: CGFloat = 40
@@ -61,6 +62,7 @@ struct ColorKeysSection: View {
         }
         if !model.keys.isEmpty {
           rows
+          if let message = model.reorderError { AccessibleErrorLabel(message: message) }
         } else if model.loadState != .failed {
           emptyState
         }
@@ -97,8 +99,16 @@ struct ColorKeysSection: View {
           sheet = .picker(position: model.nextPosition)
         }
         .frame(minHeight: 44)
-        .disabled(!connectionAvailable || model.isSaving)
+        .disabledWhileFormPresented(formDrawer, or: !connectionAvailable || model.isSaving)
         .accessibilityIdentifier("colorKeys.add")
+        if model.keys.count > 1 {
+          Button("Reorder", systemImage: "arrow.up.arrow.down") {
+            formDrawer.present(detents: [.medium, .large]) { ColorKeyReorderPanel(model: model) }
+          }
+          .frame(minHeight: 44)
+          .disabledWhileFormPresented(formDrawer, or: !connectionAvailable || model.isSaving)
+          .accessibilityIdentifier("colorKeys.reorder")
+        }
       }
     }
     .font(.karla(.body))
@@ -129,6 +139,8 @@ struct ColorKeysSection: View {
           ColorKeyRow(key: key, symbolSize: symbolSize)
         }
         .buttonStyle(.plain)
+        // An editor opened mid-reorder would hold the row's old position.
+        .disabledWhileFormPresented(formDrawer, or: model.isSaving)
         .accessibilityHint("Edit color")
         .accessibilityIdentifier("colorKeys.row.\(key.position)")
         if key.id != model.keys.last?.id { Divider() }
@@ -184,6 +196,45 @@ enum ColorKeySheet: Identifiable {
     case .picker(let position): "picker-\(position)"
     case .entry(let write, let id): "entry-\(id ?? "new-\(write.position)")"
     }
+  }
+}
+
+/// "Reorder": the page's colors with system drag handles. The order saves when the panel closes.
+struct ColorKeyReorderPanel: View {
+  @Environment(FormDrawer.self) private var formDrawer
+  @Environment(\.theme) private var theme
+  @ScaledMetric(relativeTo: .title) private var symbolSize: CGFloat = 32
+
+  let model: ColorKeysModel
+  @State private var order: [ColorKeyRecord]
+
+  init(model: ColorKeysModel) {
+    self.model = model
+    _order = State(initialValue: model.keys)
+  }
+
+  var body: some View {
+    NavigationStack {
+      List {
+        ForEach(order) { key in
+          ColorKeyRow(key: key, symbolSize: symbolSize)
+            .accessibilityIdentifier("colorKeys.reorder.\(key.id)")
+        }
+        .onMove { order.move(fromOffsets: $0, toOffset: $1) }
+        .listRowBackground(theme.card)
+      }
+      .environment(\.editMode, .constant(.active))
+      .scrollContentBackground(.hidden)
+      .background(theme.themedBackground.ignoresSafeArea())
+      .navigationTitle("Reorder")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Done") { formDrawer.dismiss() }.accessibilityIdentifier("colorKeys.reorder.done")
+        }
+      }
+    }
+    .onDisappear { Task { await model.reorder(order) } }
   }
 }
 
