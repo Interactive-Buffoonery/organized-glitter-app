@@ -296,7 +296,8 @@ final class NativeRefinementUITests: XCTestCase {
     let delete = button("photoViewer.delete", in: app)
     XCTAssertTrue(delete.waitForExistence(timeout: 5))
     delete.tap()
-    let confirmation = confirmationButton(named: "Delete photo", in: app)
+    let confirmation = app.buttons.matching(NSPredicate(
+      format: "label == %@ AND identifier != %@", "Delete photo", "photoViewer.delete")).firstMatch
     XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
     confirmation.tap()
     XCTAssertTrue(element("photoViewer", in: app).waitForNonExistence(timeout: 5))
