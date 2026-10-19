@@ -97,10 +97,14 @@ struct ColoringPageDetailView: View {
                     if await model.refreshUnresolvedWriteStatus() { await onCollectionChanged() }
                   }
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
                 .disabled(model.isMutating || !connectionAvailable)
                 .accessibilityIdentifier("detail.page.photoActionRefresh")
               } else if model.unresolvedWriteState == .refreshed {
                 Button("Back to photos") { model.clearUnresolvedWriteRecovery() }
+                  .buttonStyle(.bordered)
+                  .controlSize(.large)
                   .disabled(model.isMutating)
                   .accessibilityIdentifier("detail.page.photoActionReview")
               }
