@@ -13,7 +13,7 @@ struct SymbolPickerView: View {
   var body: some View {
     let results = catalog.search(query)
     ScrollView {
-      LazyVStack(alignment: .leading, spacing: 20) {
+      VStack(alignment: .leading, spacing: 20) {
         if query.isEmpty, !recentSymbols.isEmpty {
           section("Recently used") {
             ScrollView(.horizontal) {
