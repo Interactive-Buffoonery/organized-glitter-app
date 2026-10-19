@@ -62,6 +62,18 @@
         ])
         return
       }
+      if url.path == "/api/auth/step-up/password" {
+        respond(object: [:], status: 204)
+        return
+      }
+      if url.path == "/api/account/delete" {
+        if ProcessInfo.processInfo.arguments.contains("-fixture-deletion-uncertain") {
+          client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+        } else {
+          respond(object: ["status": "deleted", "cleanup": "pending"])
+        }
+        return
+      }
       if Self.offlineSeedCompleted {
         client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
         return

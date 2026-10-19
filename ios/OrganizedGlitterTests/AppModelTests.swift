@@ -7,6 +7,76 @@ import Testing
 @Suite(.serialized)
 struct AppModelTests {
   @Test
+  func explicitLocalRemovalPreservesOtherBackendLibraries() async throws {
+    let local = try LocalLibraryStore.inMemory()
+    let backend = URL(string: "https://example.test")!
+    let scope = LocalAccountScope(backendURL: backend, userID: UserRecord.preview.id)
+    let other = LocalAccountScope(backendURL: URL(string: "https://other.test")!, userID: UserRecord.preview.id)
+    try await local.saveUser(.preview, scope: scope)
+    try await local.saveUser(.preview, scope: other)
+    let store = KeychainSessionStore(service: "deletion.explicit.\(UUID().uuidString)")
+    let client = PocketBaseClient(baseURL: backend, sessionStore: store)
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(), localStore: local)
+    while model.phase == .restoring { await Task.yield() }
+    await model.loadRemovableLocalScopes()
+    #expect(try await local.loadUser(scope: scope) != nil)
+    #expect(model.removableLocalScopeCount == 1)
+    await model.removeSavedLibrariesFromDevice()
+    #expect(try await local.loadUser(scope: scope) == nil)
+    #expect(try await local.loadUser(scope: other) != nil)
+    #expect(try await local.pendingRemovals().isEmpty)
+    #expect(model.phase == .signedOut)
+  }
+
+  @Test
+  func submittedDeletionRecoveryPrecedesSessionRestoration() async throws {
+    let store = KeychainSessionStore(service: "deletion.recovery.\(UUID().uuidString)")
+    let url = URL(string: "https://example.test")!
+    let client = PocketBaseClient(baseURL: url, sessionStore: store)
+    var intent = AccountDeletionIntent(backendURL: url, userID: "user-a", proof: try AccountDeletionIntent.makeProof())
+    intent.stage = .submitted
+    let persistence = AccountDeletionPersistence(load: { intent }, save: { _ in }, clear: {})
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(), deletionPersistence: persistence)
+    while model.phase == .restoring { await Task.yield() }
+    #expect(model.phase == .accountDeletion)
+    #expect(model.deletion?.state == .uncertain)
+    #expect(model.library == nil)
+    await model.signIn(identity: "example", password: "example")
+    #expect(model.phase == .accountDeletion)
+    await model.expireSession()
+    #expect(model.phase == .accountDeletion)
+  }
+
+  @Test
+  func recoveryRejectsCredentialsForADifferentAccount() throws {
+    let store = KeychainSessionStore(service: "deletion.identity.\(UUID().uuidString)")
+    defer { try? store.clear() }
+    try store.save(AuthenticatedSession(token: "fictional", user: .preview))
+    let url = URL(string: "https://example.test")!
+    let client = PocketBaseClient(baseURL: url, sessionStore: store)
+    var intent = AccountDeletionIntent(backendURL: url, userID: "different-account", proof: try AccountDeletionIntent.makeProof())
+    intent.stage = .submitted
+    let persistence = AccountDeletionPersistence(load: { intent }, save: { _ in }, clear: {})
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(), deletionPersistence: persistence)
+    #expect(model.phase == .accountDeletion)
+    #expect(model.deletion == nil)
+    #expect(try store.load()?.userID == UserRecord.preview.id)
+  }
+
+  @Test
+  func unreadableDeletionIntentBlocksLoginWithoutRemovingData() async throws {
+    let store = KeychainSessionStore(service: "deletion.read.\(UUID().uuidString)")
+    let client = PocketBaseClient(baseURL: URL(string: "https://example.test")!, sessionStore: store)
+    let persistence = AccountDeletionPersistence(load: { throw APIError.decoding }, save: { _ in }, clear: {})
+    let model = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(), deletionPersistence: persistence)
+    while model.phase == .restoring { await Task.yield() }
+    #expect(model.phase == .accountDeletion)
+    #expect(model.library == nil)
+    await model.signIn(identity: "example", password: "example")
+    #expect(model.phase == .accountDeletion)
+  }
+
+  @Test
   func appleSignInStartsAfterReadinessSucceeds() async throws {
     AppleReadinessURLProtocol.status = 200
     AppleReadinessURLProtocol.body = #"{"available":true}"#

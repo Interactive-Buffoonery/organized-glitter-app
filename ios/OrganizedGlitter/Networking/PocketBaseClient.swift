@@ -49,6 +49,102 @@ actor PocketBaseClient {
     self.urlSession = urlSession ?? Self.makeEphemeralURLSession()
   }
 
+  private func deletionAuthentication(scope: LocalAccountScope) throws -> AuthenticatedSession {
+    guard scope.backendURL == baseURL, let authentication, authentication.user.id == scope.userID else {
+      throw APIError.unauthenticated
+    }
+    return authentication
+  }
+
+  func verifyDeletionWithPassword(scope: LocalAccountScope, proof: String, password: String) async throws {
+    let auth = try deletionAuthentication(scope: scope)
+    struct Body: Encodable {
+      let action = "delete_account"
+      let targetProvider = "account"
+      let password: String
+      let proof: String
+    }
+    _ = try await deletionWire(path: "/api/auth/step-up/password", body: Body(password: password, proof: proof), token: auth.token)
+    _ = try deletionAuthentication(scope: scope)
+  }
+
+  func verifyDeletionWithApple(scope: LocalAccountScope, proof: String, code: String, nonce: String) async throws {
+    _ = try deletionAuthentication(scope: scope)
+    struct Body: Encodable {
+      let code: String
+      let nonce: String
+      let deletionUserId: String
+      let deletionProof: String
+    }
+    let data = try await deletionWire(path: "/api/auth/apple/native", body: Body(code: code, nonce: nonce, deletionUserId: scope.userID, deletionProof: proof))
+    _ = try deletionAuthentication(scope: scope)
+    let response = try JSONDecoder().decode(AuthResponse.self, from: data)
+    guard response.record.id == scope.userID, response.record.verified == true else { throw APIError.forbidden }
+  }
+
+  func verifyDeletionWithOAuth(
+    scope: LocalAccountScope, proof: String, providerName: String,
+    present: @MainActor @Sendable (URL, URL) async throws -> URL
+  ) async throws {
+    _ = try deletionAuthentication(scope: scope)
+    let generation = sessionGeneration
+    guard ["google", "discord"].contains(providerName),
+      let provider = try await oauthProviders().first(where: { $0.name == providerName }) else { throw OAuthError.unavailable }
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    _ = try deletionAuthentication(scope: scope)
+    let redirect = baseURL.appending(path: "/api/oauth2-redirect")
+    let callback = try await present(provider.authorizationURL(redirectURL: redirect), redirect)
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    _ = try deletionAuthentication(scope: scope)
+    struct Body: Encodable {
+      let provider: String
+      let code: String
+      let codeVerifier: String
+      let redirectURL: String
+      let createData: [String: String]
+    }
+    let data = try await deletionWire(path: "/api/collections/users/auth-with-oauth2", body: Body(
+      provider: providerName, code: try provider.authorizationCode(from: callback, redirectURL: redirect),
+      codeVerifier: provider.codeVerifier, redirectURL: redirect.absoluteString,
+      createData: ["og_step_up_action": "delete_account", "og_step_up_target_provider": "account",
+        "og_step_up_user_id": scope.userID, "og_step_up_proof": proof]))
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    _ = try deletionAuthentication(scope: scope)
+    let response = try JSONDecoder().decode(AuthResponse.self, from: data)
+    guard response.record.id == scope.userID, response.record.verified == true else { throw APIError.forbidden }
+  }
+
+  func deleteAccount(scope: LocalAccountScope, proof: String, completionOnly: Bool) async throws -> AccountDeletionReceipt {
+    guard scope.backendURL == baseURL else { throw APIError.forbidden }
+    let token = completionOnly ? nil : try deletionAuthentication(scope: scope).token
+    struct Body: Encodable { let proof: String; let confirmed = true }
+    let data = try await deletionWire(path: "/api/account/delete", body: Body(proof: proof), token: token)
+    let receipt = try JSONDecoder().decode(AccountDeletionReceipt.self, from: data)
+    guard receipt.status == "deleted" else { throw APIError.decoding }
+    return receipt
+  }
+
+  private func deletionWire(path: String, body: some Encodable, token: String? = nil) async throws -> Data {
+    try Task.checkCancellation()
+    let generation = sessionGeneration
+    var request = URLRequest(url: baseURL.appending(path: path))
+    request.httpMethod = "POST"
+    request.cachePolicy = .reloadIgnoringLocalCacheData
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
+    request.setValue(token, forHTTPHeaderField: "Authorization")
+    request.httpBody = try JSONEncoder().encode(body)
+    let (data, response): (Data, URLResponse)
+    do { (data, response) = try await urlSession.data(for: request) }
+    catch { throw APIError.from(error) }
+    guard generation == sessionGeneration else { throw APIError.cancelled }
+    guard let response = response as? HTTPURLResponse else { throw APIError.server }
+    guard response.statusCode == (path == "/api/auth/step-up/password" ? 204 : 200) else {
+      throw APIError.from(statusCode: response.statusCode, body: Data())
+    }
+    return data
+  }
+
   func signIn(identity: String, password: String) async throws -> AuthenticatedSession {
     sessionGeneration &+= 1
     let generation = sessionGeneration

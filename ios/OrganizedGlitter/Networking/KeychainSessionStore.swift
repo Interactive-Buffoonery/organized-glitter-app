@@ -11,6 +11,11 @@ struct KeychainSessionStore: Sendable {
     self.service = service
   }
 
+  @MainActor var deletionPersistence: AccountDeletionPersistence {
+    let store = KeychainDeletionIntentStore(service: service)
+    return AccountDeletionPersistence(load: store.load, save: store.save, clear: store.clear)
+  }
+
   func save(_ session: AuthenticatedSession) throws {
     let stored = StoredSession(token: session.token, userID: session.user.id)
     let data = try JSONEncoder().encode(stored)

@@ -8,6 +8,8 @@ struct RootView: View {
   var body: some View {
     Group {
       switch model.phase {
+      case .accountDeletion:
+        AccountDeletionRecoveryView(appModel: model)
       case .cleaningLocalData:
         ProgressView("Removing this account’s local data")
           .frame(maxWidth: .infinity, maxHeight: .infinity)

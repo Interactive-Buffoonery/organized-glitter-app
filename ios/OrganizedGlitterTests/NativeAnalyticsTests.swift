@@ -7,6 +7,66 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct NativeAnalyticsTests {
+  @Test func deletionPurgesRealSDKDiskQueueBeforeAnotherAccountCanFlush() async throws {
+    let fixture = makeFixture()
+    defer { fixture.close() }
+    fixture.analytics.setSession(accountID: "deleted-account", isActive: true, analyticsEnabled: true)
+    fixture.analytics.capture(.appOpened)
+    let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appending(path: Bundle.main.bundleIdentifier!)
+    let queue = root.appending(path: fixture.token).appending(path: "posthog.queueFolder.uuid")
+    #expect(FileManager.default.fileExists(atPath: queue.path))
+    #expect(try !FileManager.default.contentsOfDirectory(atPath: queue.path).isEmpty)
+    let unrelated = root.appending(path: "deletion-unrelated-\(UUID().uuidString)")
+    try Data("keep".utf8).write(to: unrelated)
+    defer { try? FileManager.default.removeItem(at: unrelated) }
+    try fixture.analytics.eraseDeletedAccountData()
+    #expect(!FileManager.default.fileExists(atPath: queue.path))
+    #expect(try Data(contentsOf: unrelated) == Data("keep".utf8))
+    #expect(AnalyticsWireProtocol.requests.isEmpty)
+    fixture.analytics.setSession(accountID: "next-account", isActive: true, analyticsEnabled: true)
+    fixture.analytics.capture(.appOpened)
+    fixture.sdk.flush()
+    let batch = try await waitForBatch(token: fixture.token)
+    let events = try #require(batch["batch"] as? [[String: Any]])
+    #expect(!events.contains { $0["distinct_id"] as? String == "deleted-account" })
+    #expect(events.contains { $0["event"] as? String == "app_opened" && $0["distinct_id"] as? String == "next-account" })
+  }
+
+  @Test func SDKCloseAloneLeavesPersistedQueueAndRecoveryPurgeRemovesIt() throws {
+    let fixture = makeFixture()
+    defer { fixture.close() }
+    fixture.analytics.setSession(accountID: "deleted-account", isActive: true, analyticsEnabled: true)
+    fixture.analytics.capture(.appOpened)
+    fixture.analytics.close()
+    let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appending(path: Bundle.main.bundleIdentifier!)
+    let queue = root.appending(path: fixture.token).appending(path: "posthog.queueFolder.uuid")
+    #expect(try !FileManager.default.contentsOfDirectory(atPath: queue.path).isEmpty)
+    try fixture.analytics.eraseDeletedAccountData()
+    #expect(!FileManager.default.fileExists(atPath: queue.path))
+    #expect(AnalyticsWireProtocol.requests.isEmpty)
+  }
+
+  @Test func unconfiguredRecoveryPurgesAuditedLegacyAndPreviousTokenFilesOnly() throws {
+    let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let oldToken = root.appending(path: "phc_previous")
+    let unrelatedDirectory = root.appending(path: "LocalLibrary")
+    try FileManager.default.createDirectory(at: oldToken, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: unrelatedDirectory, withIntermediateDirectories: true)
+    let queue = oldToken.appending(path: "posthog.queueFolder.uuid")
+    let legacy = root.appending(path: "posthog.queue.plist")
+    let unrelated = oldToken.appending(path: "keep-unrelated")
+    let library = unrelatedDirectory.appending(path: "library.store")
+    for file in [queue, legacy, unrelated, library] { try Data("fictional".utf8).write(to: file) }
+    try PostHogLocalStorage.erase(projectToken: nil, root: root)
+    #expect(!FileManager.default.fileExists(atPath: queue.path))
+    #expect(!FileManager.default.fileExists(atPath: legacy.path))
+    #expect(FileManager.default.fileExists(atPath: unrelated.path))
+    #expect(FileManager.default.fileExists(atPath: library.path))
+  }
+
   @Test func accountConsentMustBeFreshlyVerifiedBeforeCapture() {
     let analytics = NativeAnalytics()
     #expect(!analytics.isEnabled)

@@ -117,6 +117,17 @@ final class NativeAnalytics {
     }
   }
 
+  func eraseDeletedAccountData() throws {
+    gate?.stopForDeletion()
+    isEnabled = false
+    sessionActive = false
+    accountID = nil
+    identifiedAccountID = nil
+    if started { sdk.optOut() }
+    close()
+    try PostHogLocalStorage.erase(projectToken: configuration?.projectToken)
+  }
+
   func close() {
     gate?.setEnabled(false)
     if started { sdk.close() }

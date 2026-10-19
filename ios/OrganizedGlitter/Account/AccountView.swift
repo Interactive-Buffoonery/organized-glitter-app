@@ -187,8 +187,13 @@ struct AccountView: View {
           NavigationLink("Reset password") {
             PasswordResetView(client: client, initialEmail: preferences.user.email ?? "")
           }
-          Link("Account deletion help", destination: AccountLinks.accountDeletionSupport)
-            .accessibilityLabel("Email support about account deletion")
+          NavigationLink {
+            AccountDeletionView(appModel: appModel, pendingCount: library.pendingCount)
+          } label: {
+            Text("Delete Account").foregroundStyle(theme.destructive)
+          }
+          .accessibilityIdentifier("account.delete")
+          .disabled(!connectionAvailable || appModel.isSigningOut)
         }
 
         if let error = preferences.errorMessage {
