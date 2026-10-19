@@ -346,6 +346,7 @@ final class LibrarySession {
     localWrites += 1
     defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
     try await store.setPhotoReview(id: id, required: true, scope: scope)
+    loadGeneration &+= 1
     photoRecoveryRecords.insert(LocalRecordKey(kind: .page, id: id))
   }
 
@@ -354,6 +355,7 @@ final class LibrarySession {
     localWrites += 1
     defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
     try await store.setPhotoReview(id: id, required: false, scope: scope)
+    loadGeneration &+= 1
     photoRecoveryRecords.remove(LocalRecordKey(kind: .page, id: id))
   }
 
