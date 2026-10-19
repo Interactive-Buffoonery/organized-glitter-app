@@ -22,8 +22,10 @@ struct PageMediumRecovery: View {
       }
       if let errorMessage { AccessibleErrorLabel(message: errorMessage) }
       if attempt.state == .awaitingReceipt {
-        Button("Recover medium save") {
+        Button {
           run { _ = try await library.resumePageMediums(attempt.id, connected: connectionAvailable) }
+        } label: {
+          Text("Recover medium save").frame(minHeight: 44, alignment: .leading).contentShape(.rect)
         }
         .buttonStyle(.borderless)
         .disabled(busy || !connectionAvailable)
@@ -31,22 +33,26 @@ struct PageMediumRecovery: View {
         NeedsConnectionHint()
       } else {
         if attempt.state == .conflict, let baseline = attempt.current?.mediumIDs {
-          Button("Reapply my selection") {
+          Button {
             run {
               _ = try await library.savePageMediums(
                 pageID: attempt.pageID, baseline: baseline, selection: Set(attempt.patch.mediums),
                 connected: connectionAvailable, replacing: attempt.id)
             }
+          } label: {
+            Text("Reapply my selection").frame(minHeight: 44, alignment: .leading).contentShape(.rect)
           }
           .buttonStyle(.borderless)
           .disabled(busy || !connectionAvailable)
           .accessibilityIdentifier("mediums.reapply")
           NeedsConnectionHint()
         }
-        Button("Discard this draft", role: .destructive) { confirmingDiscard = true }
-          .buttonStyle(.borderless)
-          .disabled(busy)
-          .accessibilityIdentifier("mediums.discard")
+        Button(role: .destructive) { confirmingDiscard = true } label: {
+          Text("Discard this draft").frame(minHeight: 44, alignment: .leading).contentShape(.rect)
+        }
+        .buttonStyle(.borderless)
+        .disabled(busy)
+        .accessibilityIdentifier("mediums.discard")
       }
       if busy { ProgressView("Checking medium save…") }
     }
