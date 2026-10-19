@@ -63,6 +63,19 @@ enum LocalNoteKind: String, Sendable {
 }
 
 @Model
+final class LocalPhotoReview {
+  @Attribute(.unique) var key: String
+  var scope: String
+  var pageID: String
+
+  init(scope: String, pageID: String) {
+    self.key = "\(scope)|\(pageID)"
+    self.scope = scope
+    self.pageID = pageID
+  }
+}
+
+@Model
 final class LocalPendingRemoval {
   @Attribute(.unique) var scope: String
   var backendURL: String
@@ -87,7 +100,7 @@ struct LocalFullSnapshot: Decodable, Sendable {
 actor LocalLibraryStore: ModelActor {
   private static let schema = Schema([
     LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self,
-    LocalPendingRemoval.self,
+    LocalPendingRemoval.self, LocalPhotoReview.self,
   ])
   nonisolated let modelContainer: ModelContainer
   nonisolated let modelExecutor: any ModelExecutor
@@ -562,12 +575,34 @@ actor LocalLibraryStore: ModelActor {
     return try entry(stored)
   }
 
+  func photoReviews(scope: LocalAccountScope) throws -> Set<LocalRecordKey> {
+    let scopeKey = scope.storageKey
+    return Set(try context.fetch(FetchDescriptor<LocalPhotoReview>(
+      predicate: #Predicate { $0.scope == scopeKey }
+    )).map { LocalRecordKey(kind: .page, id: $0.pageID) })
+  }
+
+  func setPhotoReview(id: String, required: Bool, scope: LocalAccountScope) throws {
+    guard try !hasPendingRemoval(scope: scope) else { throw LocalLibraryError.storageUnavailable }
+    let key = "\(scope.storageKey)|\(id)"
+    let reviews = try context.fetch(FetchDescriptor<LocalPhotoReview>(
+      predicate: #Predicate { $0.key == key }))
+    if required, reviews.isEmpty {
+      context.insert(LocalPhotoReview(scope: scope.storageKey, pageID: id))
+    } else if !required {
+      for review in reviews { context.delete(review) }
+    }
+    try commit()
+  }
+
   func removeScope(_ scope: LocalAccountScope) throws {
     let key = scope.storageKey
     do {
       try context.transaction {
         for record in try storedRecords(key) { context.delete(record) }
         for note in try storedNotes(key) { context.delete(note) }
+        for review in try context.fetch(FetchDescriptor<LocalPhotoReview>(
+          predicate: #Predicate { $0.scope == key })) { context.delete(review) }
         if let account = try account(key) { context.delete(account) }
         try context.save()
       }

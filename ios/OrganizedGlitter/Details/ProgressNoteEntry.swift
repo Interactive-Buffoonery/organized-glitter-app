@@ -304,7 +304,7 @@ struct ProgressNotesSection: View {
         Label(message, systemImage: "checkmark.circle")
           .foregroundStyle(theme.foreground)
       }
-      Button("Done reviewing progress notes") { model.clearUnresolvedWriteRecovery() }
+      Button("Done reviewing progress notes") { Task { await model.clearUnresolvedWriteRecovery() } }
         .buttonStyle(.bordered)
     case nil:
       EmptyView()
@@ -436,7 +436,7 @@ struct ProgressNoteEditor: View {
             .accessibilityIdentifier("detail.progress.noteRefresh")
           case .refreshed:
             Button("Back to notes") {
-              model.clearUnresolvedWriteRecovery()
+              Task { await model.clearUnresolvedWriteRecovery() }
               dismiss()
             }
             .accessibilityIdentifier("detail.progress.noteReview")

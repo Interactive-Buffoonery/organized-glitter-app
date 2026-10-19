@@ -468,7 +468,7 @@ final class LibraryItemDetailModel {
         guard item.id == targetID, await load() else { throw APIError.server }
         mutationErrorMessage = "Photo list changed. Review the refreshed photos and try again."
       } catch {
-        library.requirePhotoReview(id: page.id)
+        try? await library.requirePhotoReview(id: page.id)
         unresolvedPhotoAction = true
         unresolvedWriteState = .needsRefresh
         _ = await reconcileUnresolvedWrite()
@@ -488,7 +488,7 @@ final class LibraryItemDetailModel {
         mutationErrorMessage = APIError.sessionExpiredMessage
         return false
       }
-      library.requirePhotoReview(id: page.id)
+      try? await library.requirePhotoReview(id: page.id)
       unresolvedPhotoAction = true
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -541,7 +541,7 @@ final class LibraryItemDetailModel {
         mutationErrorMessage = APIError.sessionExpiredMessage
         return false
       }
-      library.requirePhotoReview(id: page.id)
+      try? await library.requirePhotoReview(id: page.id)
       unresolvedPagePhotoUpload = true
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -570,10 +570,11 @@ final class LibraryItemDetailModel {
     photoMutationErrorMessage = nil
   }
 
-  func clearUnresolvedWriteRecovery() {
+  func clearUnresolvedWriteRecovery() async {
     guard unresolvedWriteState == .refreshed else { return }
     if unresolvedPhotoAction || unresolvedPagePhotoUpload, case .page(let page) = item {
-      library.finishPhotoReview(id: page.id)
+      do { try await library.finishPhotoReview(id: page.id) }
+      catch { return }
     }
     unresolvedWriteState = nil
     unresolvedPhotoAction = false
