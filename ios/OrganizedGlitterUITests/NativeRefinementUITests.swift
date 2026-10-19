@@ -306,7 +306,9 @@ final class NativeRefinementUITests: XCTestCase {
     name.tap()
     name.typeText("Pale porcelain")
     try capture("colorkeys-03-entry")
-    button("colorKeys.entry.saveNext", in: app).tap()
+    let saveNext = button("colorKeys.entry.saveNext", in: app)
+    makeHittable(saveNext, in: app)
+    saveNext.tap()
 
     XCTAssertTrue(app.navigationBars["Edit color"].waitForExistence(timeout: 5))
     let nextCode = app.textFields["colorKeys.entry.code"]
