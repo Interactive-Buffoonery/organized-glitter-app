@@ -29,11 +29,22 @@ malformed response leaves an uncertain, locked intent. Neither deletion nor an
 intact account is inferred. Retries use the same proof with no auth token and
 cannot authorize a new deletion. Receipt expiry can require support recovery.
 
+The screen checks configured sign-in methods and the original account's connected
+external identities before offering provider verification. A failed discovery
+offers retry or support. If a submitted request never reached the server,
+tokenless status checks remain uncertain. The user can separately verify the
+original account again with the same proof, then explicitly confirm a guarded
+retry using the retained original session. This does not open normal sign-in,
+create or link an account, refresh the session, or infer anything from a 401.
+An unavailable original session leaves recovery locked with a support route.
+
 ## Recovery and local removal
 
 Keychain recovery runs before ordinary or fixture login restoration. Prepared
 intents can be cancelled because no deletion was submitted. Submitted intents
-show the locked recovery screen. Confirmed intents retry only local cleanup.
+show the locked recovery screen. Confirmed intents automatically retry only
+local cleanup after a restart. An unreadable intent remains locked with retry
+and support routes.
 No other account can sign in during unresolved deletion or failed cleanup.
 
 The confirmed stage is persisted before cleanup. Existing LocalLibraryStore
@@ -72,7 +83,8 @@ Authentication expiry closes and locks access while preserving local edits.
 signed-out screen permits sign-in for recovery or an explicit confirmation to
 remove retained libraries for this server from this device. It does not remove
 other backend libraries or claim any server account status. Removal uses the
-same durable markers. This route is unavailable while a submitted deletion
+same durable markers and retries the audited PostHog disk purge before clearing
+the final marker or allowing sign-in. This route is unavailable while a submitted deletion
 intent is unresolved. Remote devices cannot automatically erase offline data;
 a trustworthy server deletion signal is still a release gap.
 

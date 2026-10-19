@@ -45,6 +45,56 @@ struct AccountDeletionTests {
     #expect(try await local.pendingRemovals().isEmpty)
   }
 
+  @Test func uncertainDeletionKeepsPendingEditsLockedAcrossRelaunchUntilSameProofSucceeds() async throws {
+    let f = try await fixture()
+    defer { try? f.store.clear(); try? f.store.deletionPersistence.clear() }
+    let local = try LocalLibraryStore.inMemory()
+    let scope = f.model.scope
+    let user = try JSONDecoder().decode(UserRecord.self,
+      from: Data(#"{"id":"user-a","verified":true}"#.utf8))
+    try await local.saveUser(user, scope: scope)
+    let project = featureProject("project-locked", title: "Fictional project", user: scope.userID)
+    try await local.ingest(.diamond(project), scope: scope)
+    try await local.queueEdit(scope: scope,
+      key: LocalRecordKey(kind: .project, id: project.id),
+      patch: ["title": .string("Unsent edit")])
+    let first = AppModel(client: f.client, sessionStore: f.store, themeStore: ThemeStore(), localStore: local)
+    while first.phase == .restoring { await Task.yield() }
+    DeletionWire.responses = [(200, #"{"token":"original","record":{"id":"user-a","verified":true}}"#)]
+    await first.signIn(identity: "fictional", password: "fictional")
+    first.beginAccountDeletion()
+    let deletion = try #require(first.deletion)
+    DeletionWire.responses = [(204, ""), (401, "{}")]
+    await deletion.verifyPassword("fictional")
+    let proof = try #require(f.store.deletionPersistence.load()?.proof)
+    await deletion.confirm()
+    #expect(first.phase == .accountDeletion)
+    #expect(deletion.state == .uncertain)
+    #expect(try await local.pendingCount(scope: scope) == 1)
+    #expect(try f.store.deletionPersistence.load()?.stage == .submitted)
+
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [DeletionWire.self]
+    let resumedClient = PocketBaseClient(baseURL: scope.backendURL, sessionStore: f.store,
+      urlSession: URLSession(configuration: config))
+    let resumed = AppModel(client: resumedClient, sessionStore: f.store,
+      themeStore: ThemeStore(), localStore: local)
+    #expect(resumed.phase == .accountDeletion)
+    #expect(try await local.pendingCount(scope: scope) == 1)
+    DeletionWire.responses = [(401, "{}")]
+    await resumed.deletion?.retry()
+    #expect(resumed.deletion?.state == .uncertain)
+    #expect(try f.store.deletionPersistence.load()?.proof == proof)
+
+    DeletionWire.responses = [(204, ""), (200, #"{"status":"deleted","cleanup":"pending"}"#)]
+    await resumed.deletion?.reverifyPassword("fictional")
+    #expect(resumed.deletion?.state == .resubmissionReady)
+    await resumed.deletion?.confirmResubmission()
+    #expect(resumed.deletion?.state == .completed(.pending))
+    #expect(try await local.pendingCount(scope: scope) == 0)
+    #expect(try await local.loadUser(scope: scope) == nil)
+  }
+
   @Test func keychainIntentRoundTripsAndDoesNotReplaceSessionCredentials() throws {
     let service = "deletion.keychain.\(UUID().uuidString)"
     let store = KeychainDeletionIntentStore(service: service)
@@ -249,6 +299,60 @@ struct AccountDeletionTests {
     #expect(DeletionWire.requests.count == count)
   }
 
+  @Test func neverDispatchedDeletionCanBeReverifiedWithSameProofAndExplicitlyRetried() async throws {
+    let f = try await fixture()
+    await f.model.verifyPassword("example")
+    let originalProof = try #require(f.disk.intent?.proof)
+    f.disk.failLock = true
+    await f.model.confirm()
+    #expect(f.model.state == .uncertain)
+    #expect(f.disk.intent?.stage == .submitted)
+    #expect(!DeletionWire.requests.contains { $0.url?.path == "/api/account/delete" })
+
+    f.disk.failLock = false
+    DeletionWire.responses = [(401, "{}")]
+    await f.model.retry()
+    #expect(f.model.state == .uncertain)
+    #expect(f.disk.intent?.proof == originalProof)
+    #expect(f.disk.cleanupCount == 0)
+
+    DeletionWire.responses = [(204, ""), (200, #"{"status":"deleted","cleanup":"pending"}"#)]
+    await f.model.reverifyPassword("example")
+    #expect(f.model.state == .resubmissionReady)
+    #expect(f.disk.intent?.proof == originalProof)
+    await f.model.confirmResubmission()
+    #expect(f.model.state == .completed(.pending))
+    let delete = try #require(DeletionWire.requests.last { $0.url?.path == "/api/account/delete" })
+    #expect(delete.value(forHTTPHeaderField: "Authorization") == "original")
+    let body = try #require(JSONSerialization.jsonObject(with: DeletionWire.bodies.last!) as? [String: Any])
+    #expect(body["proof"] as? String == originalProof)
+  }
+
+  @Test func availableMethodsRequireProviderReadinessAndAccountConnection() async throws {
+    let f = try await fixture()
+    DeletionWire.responsesByPath = [
+      "/api/collections/users/auth-methods": (200, #"{"password":{"enabled":true},"oauth2":{"enabled":true,"providers":[{"name":"google","state":"s","authURL":"https://example.test","codeVerifier":"v"}]}}"#),
+      "/api/collections/users/records/user-a/external-auths": (200, #"[{"provider":"google"},{"provider":"discord"}]"#),
+    ]
+    defer { DeletionWire.responsesByPath = [:] }
+    await f.model.loadMethods()
+    let methods = try #require(f.model.methods)
+    #expect(methods.passwordAvailable)
+    #expect(methods.socialProviders == [.google])
+    #expect(!methods.appleLinked)
+    #expect(!methods.appleAvailable)
+    #expect(!f.model.methodLoadFailed)
+    DeletionWire.responsesByPath = [
+      "/api/collections/users/auth-methods": (200, #"{"password":{"enabled":true},"oauth2":{"enabled":false,"providers":[]}}"#),
+      "/api/collections/users/records/user-a/external-auths": (200, #"[{"provider":"apple"}]"#),
+      "/api/auth/apple/native/readiness": (200, #"{"available":false}"#),
+    ]
+    await f.model.loadMethods()
+    #expect(f.model.methods?.appleLinked == true)
+    #expect(f.model.methods?.appleAvailable == false)
+    #expect(f.model.methods?.passwordAvailable == true)
+  }
+
   @Test func wrongBackendRecoveryFailsClosed() async throws {
     let f = try await fixture()
     f.disk.intent = AccountDeletionIntent(backendURL: URL(string: "https://other.test")!, userID: "user-a", proof: try AccountDeletionIntent.makeProof())
@@ -296,7 +400,7 @@ struct AccountDeletionTests {
   }
 
   private func makeModel(client: PocketBaseClient, disk: DeletionDisk, now: @escaping () -> Date = Date.init) -> AccountDeletionModel {
-    AccountDeletionModel(client: client, scope: LocalAccountScope(backendURL: client.baseURL, userID: "user-a"), persistence: AccountDeletionPersistence(load: { disk.intent }, save: { if disk.failSave || (disk.failConfirmedSave && $0.stage == .serverDeleted) { throw APIError.server }; disk.intent = $0 }, clear: { if disk.failClear { throw APIError.server }; disk.intent = nil }), now: now, lock: {}, cleanup: { _ in if disk.failCleanup { throw APIError.server }; disk.cleanupCount += 1 })
+    AccountDeletionModel(client: client, scope: LocalAccountScope(backendURL: client.baseURL, userID: "user-a"), persistence: AccountDeletionPersistence(load: { disk.intent }, save: { if disk.failSave || (disk.failConfirmedSave && $0.stage == .serverDeleted) { throw APIError.server }; disk.intent = $0 }, clear: { if disk.failClear { throw APIError.server }; disk.intent = nil }), now: now, lock: { if disk.failLock { throw APIError.server } }, cleanup: { _ in if disk.failCleanup { throw APIError.server }; disk.cleanupCount += 1 })
   }
 }
 
@@ -306,6 +410,7 @@ struct AccountDeletionTests {
   var failConfirmedSave = false
   var failClear = false
   var failCleanup = false
+  var failLock = false
   var cleanupCount = 0
 }
 
@@ -314,11 +419,16 @@ private final class DeletionWire: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) private static var savedRequests: [URLRequest] = []
   nonisolated(unsafe) private static var savedBodies: [Data] = []
   nonisolated(unsafe) private static var savedResponses: [(Int, String)] = []
+  nonisolated(unsafe) private static var savedResponsesByPath: [String: (Int, String)] = [:]
   nonisolated(unsafe) private static var savedHold = false
   nonisolated(unsafe) private static var savedPending: DeletionWire?
   static var requests: [URLRequest] { get { lock.withLock { savedRequests } } set { lock.withLock { savedRequests = newValue } } }
   static var bodies: [Data] { get { lock.withLock { savedBodies } } set { lock.withLock { savedBodies = newValue } } }
   static var responses: [(Int, String)] { get { lock.withLock { savedResponses } } set { lock.withLock { savedResponses = newValue } } }
+  static var responsesByPath: [String: (Int, String)] {
+    get { lock.withLock { savedResponsesByPath } }
+    set { lock.withLock { savedResponsesByPath = newValue } }
+  }
   static var holdDeletion: Bool { get { lock.withLock { savedHold } } set { lock.withLock { savedHold = newValue } } }
   static var pending: DeletionWire? { get { lock.withLock { savedPending } } set { lock.withLock { savedPending = newValue } } }
   override class func canInit(with request: URLRequest) -> Bool { true }
@@ -336,7 +446,10 @@ private final class DeletionWire: URLProtocol, @unchecked Sendable {
       Self.pending = self
       return
     }
-    let next = Self.lock.withLock { Self.savedResponses.isEmpty ? (500, "{}") : Self.savedResponses.removeFirst() }
+    let next = Self.lock.withLock {
+      if let path = request.url?.path, let response = Self.savedResponsesByPath[path] { return response }
+      return Self.savedResponses.isEmpty ? (500, "{}") : Self.savedResponses.removeFirst()
+    }
     finishPending(status: next.0, body: next.1)
   }
   func finishPending(status: Int, body: String) {

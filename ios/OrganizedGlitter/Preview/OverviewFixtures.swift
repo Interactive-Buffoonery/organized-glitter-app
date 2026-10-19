@@ -62,6 +62,19 @@
         ])
         return
       }
+      if url.path == "/api/collections/users/auth-methods" {
+        respond(object: ["password": ["enabled": true],
+          "oauth2": ["enabled": false, "providers": []]])
+        return
+      }
+      if url.path == "/api/collections/users/records/preview-user/external-auths" {
+        respond(data: Data("[]".utf8))
+        return
+      }
+      if url.path == "/api/auth/apple/native/readiness" {
+        respond(object: ["available": false])
+        return
+      }
       if url.path == "/api/auth/step-up/password" {
         respond(object: [:], status: 204)
         return

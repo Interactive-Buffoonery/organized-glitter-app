@@ -7,12 +7,16 @@ final class AccountDeletionUITests: XCTestCase {
     openDeletion(app)
     let password = app.secureTextFields["deletion.password"]
     XCTAssertTrue(password.waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["Verify with Google"].exists)
+    XCTAssertFalse(app.buttons["Verify with Discord"].exists)
+    XCTAssertFalse(app.buttons["Continue with Apple"].exists)
     XCTAssertFalse(app.buttons["deletion.review"].exists)
     password.tap()
     password.typeText("fictional")
     app.buttons["deletion.verifyPassword"].tap()
     let review = app.buttons["deletion.review"]
     XCTAssertTrue(review.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["deletion.ready"].exists)
     review.tap()
     XCTAssertTrue(app.buttons["Delete Account Permanently"].waitForExistence(timeout: 5))
     app.buttons["Cancel"].tap()
@@ -36,6 +40,7 @@ final class AccountDeletionUITests: XCTestCase {
     app.buttons["deletion.review"].tap()
     app.buttons["Delete Account Permanently"].tap()
     XCTAssertTrue(app.buttons["deletion.retry"].waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["deletion.uncertain"].exists)
     app.terminate()
     app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design", "-fixture-deletion"]
     app.launch()

@@ -2,6 +2,8 @@ import Foundation
 import Observation
 import Security
 
+enum AccountDeletionError: Error { case proofGenerationFailed }
+
 struct AccountDeletionIntent: Codable, Equatable, Sendable {
   enum Stage: String, Codable { case prepared, submitted, serverDeleted }
   let backendURL: URL
@@ -15,7 +17,7 @@ struct AccountDeletionIntent: Codable, Equatable, Sendable {
   static func makeProof() throws -> String {
     var bytes = [UInt8](repeating: 0, count: 32)
     guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
-      throw AppleSignInError.nonceGenerationFailed
+      throw AccountDeletionError.proofGenerationFailed
     }
     return Data(bytes).base64EncodedString().replacingOccurrences(of: "+", with: "-")
       .replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
@@ -28,6 +30,13 @@ struct AccountDeletionIntent: Codable, Equatable, Sendable {
 }
 
 enum AccountDeletionCleanup: String, Codable, Sendable { case pending, completed }
+
+struct AccountDeletionMethods: Sendable {
+  let passwordAvailable: Bool
+  let appleLinked: Bool
+  let appleAvailable: Bool
+  let socialProviders: [SocialProvider]
+}
 
 struct AccountDeletionReceipt: Decodable, Sendable {
   let status: String
@@ -45,7 +54,7 @@ struct AccountDeletionPersistence {
 @Observable
 final class AccountDeletionModel {
   enum State: Equatable {
-    case idle, verifying, ready, submitting, uncertain, blocked
+    case idle, verifying, ready, resubmissionReady, submitting, uncertain, blocked
     case localCleanupFailed(AccountDeletionCleanup)
     case completed(AccountDeletionCleanup)
   }
@@ -53,11 +62,14 @@ final class AccountDeletionModel {
   let scope: LocalAccountScope
   private(set) var state: State = .idle
   private(set) var errorMessage: String?
+  private(set) var methods: AccountDeletionMethods?
+  private(set) var methodLoadFailed = false
   @ObservationIgnored private let client: PocketBaseClient
   @ObservationIgnored private let persistence: AccountDeletionPersistence
   @ObservationIgnored private let now: () -> Date
   @ObservationIgnored private let isCurrent: () -> Bool
   @ObservationIgnored private let lock: () async throws -> Void
+  @ObservationIgnored private let prepareRecoveryAuthentication: () async throws -> Void
   @ObservationIgnored private let cleanup: (LocalAccountScope) async throws -> Void
   @ObservationIgnored private var intent: AccountDeletionIntent?
   @ObservationIgnored private var verificationStarted: Date?
@@ -69,6 +81,7 @@ final class AccountDeletionModel {
   init(
     client: PocketBaseClient, scope: LocalAccountScope, persistence: AccountDeletionPersistence,
     now: @escaping () -> Date = Date.init, isCurrent: @escaping () -> Bool = { true },
+    prepareRecoveryAuthentication: @escaping () async throws -> Void = {},
     lock: @escaping () async throws -> Void,
     cleanup: @escaping (LocalAccountScope) async throws -> Void
   ) {
@@ -77,6 +90,7 @@ final class AccountDeletionModel {
     self.persistence = persistence
     self.now = now
     self.isCurrent = isCurrent
+    self.prepareRecoveryAuthentication = prepareRecoveryAuthentication
     self.lock = lock
     self.cleanup = cleanup
   }
@@ -92,6 +106,22 @@ final class AccountDeletionModel {
     intent = stored
     state = stored.cleanup.map { .localCleanupFailed($0) } ?? .uncertain
     return true
+  }
+
+  func loadMethods() async {
+    guard isCurrent(), !isBusy, intent?.stage != .serverDeleted else { return }
+    methods = nil
+    methodLoadFailed = false
+    let attempt = generation
+    do {
+      if intent?.stage == .submitted { try await prepareRecoveryAuthentication() }
+      let available = try await client.deletionMethods(scope: scope)
+      guard attempt == generation, isCurrent() else { return }
+      methods = available
+    } catch {
+      guard attempt == generation, isCurrent() else { return }
+      methodLoadFailed = true
+    }
   }
 
   func verifyPassword(_ password: String) async {
@@ -112,6 +142,51 @@ final class AccountDeletionModel {
   ) async {
     await verify { proof in
       try await self.client.verifyDeletionWithOAuth(scope: self.scope, proof: proof, providerName: provider.rawValue, present: present)
+    }
+  }
+
+  func reverifyPassword(_ password: String) async {
+    await verifyForResubmission { proof in
+      try await self.client.verifyDeletionWithPassword(scope: self.scope, proof: proof, password: password)
+    }
+  }
+
+  func reverifyApple(code: String, nonce: String) async {
+    await verifyForResubmission { proof in
+      try await self.client.verifyDeletionWithApple(scope: self.scope, proof: proof, code: code, nonce: nonce)
+    }
+  }
+
+  func reverifyOAuth(
+    provider: SocialProvider,
+    present: @escaping @MainActor @Sendable (URL, URL) async throws -> URL
+  ) async {
+    await verifyForResubmission { proof in
+      try await self.client.verifyDeletionWithOAuth(scope: self.scope, proof: proof,
+        providerName: provider.rawValue, present: present)
+    }
+  }
+
+  private func verifyForResubmission(_ operation: (String) async throws -> Void) async {
+    guard state == .uncertain, !isBusy, isCurrent(),
+      let intent, intent.stage == .submitted else { return }
+    generation &+= 1
+    let attempt = generation
+    state = .verifying
+    errorMessage = nil
+    do {
+      try await prepareRecoveryAuthentication()
+      guard attempt == generation, isCurrent(), !Task.isCancelled else { return }
+      let started = now()
+      try await operation(intent.proof)
+      guard attempt == generation, isCurrent(), !Task.isCancelled else { return }
+      verificationStarted = started
+      state = .resubmissionReady
+    } catch {
+      guard attempt == generation, isCurrent() else { return }
+      verificationStarted = nil
+      state = .uncertain
+      errorMessage = verificationError(error)
     }
   }
 
@@ -141,7 +216,7 @@ final class AccountDeletionModel {
         intent = nil
         verificationStarted = nil
         state = .idle
-        errorMessage = "Identity verification could not finish. Use an existing connected sign-in method and try again."
+        errorMessage = verificationError(error)
       } catch {
         state = .blocked
         errorMessage = "Secure deletion recovery could not be saved. Try again before continuing."
@@ -185,6 +260,32 @@ final class AccountDeletionModel {
     }
     intent = submitted
     await submit(completionOnly: false)
+  }
+
+  func confirmResubmission() async {
+    guard state == .resubmissionReady, isCurrent(), intent?.stage == .submitted,
+      let started = verificationStarted else { return }
+    guard now().timeIntervalSince(started) >= 0, now().timeIntervalSince(started) < 300 else {
+      state = .uncertain
+      verificationStarted = nil
+      errorMessage = "Verification expired. Verify again or contact support."
+      return
+    }
+    verificationStarted = nil
+    await submit(completionOnly: false)
+  }
+
+  private func verificationError(_ error: Error) -> String {
+    if error as? OAuthError == .unavailable || error as? AppleSignInError == .unavailable {
+      return "This sign-in method is unavailable. Use another connected method or contact support."
+    }
+    if error as? APIError == .forbidden || error as? APIError == .conflict {
+      return "This sign-in method could not verify the original account. Use another connected method or contact support."
+    }
+    if error as? APIError == .unauthenticated {
+      return "The original session is no longer available. Account access remains locked. Contact support."
+    }
+    return "Identity verification could not finish. Use an existing connected sign-in method and try again."
   }
 
   func retry() async {

@@ -56,6 +56,38 @@ actor PocketBaseClient {
     return authentication
   }
 
+  func deletionMethods(scope: LocalAccountScope) async throws -> AccountDeletionMethods {
+    _ = try deletionAuthentication(scope: scope)
+    struct Methods: Decodable {
+      struct Password: Decodable { let enabled: Bool }
+      struct OAuth2: Decodable { let enabled: Bool; let providers: [OAuthProvider] }
+      let password: Password?
+      let oauth2: OAuth2
+    }
+    struct ExternalAuth: Decodable { let provider: String }
+    let methods: Methods = try await request(path: "/api/collections/users/auth-methods",
+      includesAuthentication: false)
+    guard scope.userID.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil else {
+      throw APIError.decoding
+    }
+    let links: [ExternalAuth] = try await request(
+      path: "/api/collections/users/records/\(scope.userID)/external-auths",
+      canRefreshAuthentication: false)
+    let linked = Set(links.map(\.provider))
+    let appleReady: Bool
+    if linked.contains("apple") { appleReady = (try? await appleNativeReadiness()) == true }
+    else { appleReady = false }
+    _ = try deletionAuthentication(scope: scope)
+    let configured = methods.oauth2.enabled ? Set(methods.oauth2.providers.map(\.name)) : []
+    return AccountDeletionMethods(
+      passwordAvailable: methods.password?.enabled == true,
+      appleLinked: linked.contains("apple"),
+      appleAvailable: appleReady && linked.contains("apple"),
+      socialProviders: [SocialProvider.google, .discord].filter {
+        configured.contains($0.rawValue) && linked.contains($0.rawValue)
+      })
+  }
+
   func verifyDeletionWithPassword(scope: LocalAccountScope, proof: String, password: String) async throws {
     let auth = try deletionAuthentication(scope: scope)
     struct Body: Encodable {

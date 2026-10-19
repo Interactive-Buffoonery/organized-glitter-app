@@ -726,6 +726,14 @@ final class AppModel {
     AccountDeletionModel(
       client: client!, scope: scope, persistence: persistence,
       isCurrent: { [weak self] in self?.deletionIsCurrent(scope: scope, generation: generation) == true },
+      prepareRecoveryAuthentication: { [weak self] in
+        guard let self, self.deletionIsCurrent(scope: scope, generation: generation),
+          let stored = try self.sessionStore?.load(), stored.userID == scope.userID else {
+          throw APIError.unauthenticated
+        }
+        await self.client!.prepareOfflineSession(stored)
+        guard self.deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+      },
       lock: { [weak self] in
         guard let self, self.deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
         self.cleanupBlocked = true
