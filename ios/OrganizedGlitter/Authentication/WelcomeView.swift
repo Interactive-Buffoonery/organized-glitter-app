@@ -94,7 +94,7 @@ struct WelcomeView: View {
         }
         Button("Keep Saved Libraries", role: .cancel) {}
       } message: {
-        Text("This removes \(model.removableLocalScopeCount) saved libraries and all their unsynced changes for this server on this device. It does not delete a server account or confirm whether any account was deleted. Sign in again to recover access instead.")
+        Text("This removes \(model.removableLocalScopeCount) saved \(model.removableLocalScopeCount == 1 ? "library" : "libraries") and all unsynced changes for this server on this device. It does not delete a server account or confirm whether any account was deleted. Sign in again to recover access instead.")
       }
       .navigationDestination(for: AccountEntryRoute.self) { route in
         switch route {
