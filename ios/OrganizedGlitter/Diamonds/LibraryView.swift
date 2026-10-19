@@ -269,7 +269,7 @@ struct LibraryView: View {
       .accessibilityIdentifier("library.heading")
   }
 
-  /// The controls stack when their full labels cannot fit across the screen.
+  /// The view picker drops to a second row first, then every control stacks.
   private var filterRow: some View {
     ViewThatFits(in: .horizontal) {
       HStack(spacing: 8) { filterControls }
