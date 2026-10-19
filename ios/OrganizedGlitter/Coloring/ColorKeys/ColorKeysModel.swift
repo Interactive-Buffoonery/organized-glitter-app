@@ -204,7 +204,7 @@ final class ColorKeysModel {
       keys = previous
       reorderError = error.userMessage(
         permission: "You can only change colors on your own pages.",
-        offline: APIError.needsConnection("Rearranging colors"),
+        offline: APIError.needsConnection("Sorting colors"),
         fallback: Self.reorderFallback)
       await load()
       return

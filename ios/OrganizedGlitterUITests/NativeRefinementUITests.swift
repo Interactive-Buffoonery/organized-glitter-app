@@ -361,7 +361,7 @@ final class NativeRefinementUITests: XCTestCase {
     let reorder = button("colorKeys.reorder", in: app)
     makeHittable(reorder, in: app)
     reorder.tap()
-    XCTAssertTrue(app.navigationBars["Rearrange"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.navigationBars["Sort Color Order"].waitForExistence(timeout: 5))
     let rows = app.cells
     XCTAssertTrue(rows.element(boundBy: 1).waitForExistence(timeout: 5))
     try capture("colorkeys-09-reorder")
@@ -375,7 +375,7 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(firstInPanel.label.hasPrefix("Two"))
     button("colorKeys.reorder.done", in: app).tap()
 
-    XCTAssertTrue(app.navigationBars["Rearrange"].waitForNonExistence(timeout: 5))
+    XCTAssertTrue(app.navigationBars["Sort Color Order"].waitForNonExistence(timeout: 5))
     let first = button("colorKeys.row.0", in: app)
     let moved = XCTNSPredicateExpectation(
       predicate: NSPredicate(format: "label BEGINSWITH %@", "Two"), object: first)

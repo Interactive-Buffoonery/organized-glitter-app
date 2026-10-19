@@ -199,7 +199,7 @@ enum ColorKeySheet: Identifiable {
   }
 }
 
-/// "Rearrange": the page's colors with system drag handles. The order saves when the panel closes.
+/// "Sort Color Order": the page's colors with system drag handles. The order saves when the panel closes.
 struct ColorKeyReorderPanel: View {
   @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.theme) private var theme
@@ -226,7 +226,7 @@ struct ColorKeyReorderPanel: View {
       .environment(\.editMode, .constant(.active))
       .scrollContentBackground(.hidden)
       .background(theme.themedBackground.ignoresSafeArea())
-      .navigationTitle("Rearrange")
+      .navigationTitle("Sort Color Order")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
