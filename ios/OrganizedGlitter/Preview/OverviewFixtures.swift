@@ -68,7 +68,8 @@
         return
       }
       if url.path == "/api/collections/users/records/preview-user/external-auths" {
-        respond(data: Data("[]".utf8))
+        let appleOnly = ProcessInfo.processInfo.arguments.contains("-fixture-deletion-apple-only-unavailable")
+        respond(data: Data((appleOnly ? #"[{"provider":"apple"}]"# : "[]").utf8))
         return
       }
       if url.path == "/api/auth/apple/native/readiness" {

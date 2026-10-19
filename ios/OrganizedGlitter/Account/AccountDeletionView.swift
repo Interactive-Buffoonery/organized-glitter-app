@@ -109,11 +109,11 @@ private struct AccountDeletionVerificationForm: View {
       if recovery {
         Text("If the first request never reached the server, verify the original account again to continue with the same deletion request. Your local data stays locked until deletion is confirmed.")
       } else {
-        Text("Only methods connected to this account and available now are shown. A different account cannot authorize deletion.")
+        Text("Available linked sign-in providers are shown below. Password verification may be tried if this account has a password. A different account cannot authorize deletion.")
       }
       if let methods = model.methods {
         if methods.passwordAvailable {
-          Text("Use your current password if this account has one.")
+          Text("If this account has a password, you can try it here.")
           SecureField("Current password", text: $password)
             .textContentType(.password)
             .accessibilityIdentifier("deletion.password")
@@ -160,7 +160,7 @@ private struct AccountDeletionVerificationForm: View {
           .disabled(model.isBusy)
           .accessibilityLabel("Continue with Apple to verify this account")
         } else if methods.appleLinked {
-          Text("Apple verification is unavailable now. Choose another method or refresh verification methods.")
+          Text("Apple verification is unavailable now. Refresh verification methods or contact support if no other method works.")
         }
         ForEach(methods.socialProviders, id: \.self) { provider in
           Button("Verify with \(provider.displayName)") {
@@ -180,12 +180,14 @@ private struct AccountDeletionVerificationForm: View {
           }
           .disabled(model.isBusy || anchor == nil)
         }
-        if !methods.passwordAvailable && !methods.appleAvailable && methods.socialProviders.isEmpty {
-          Text("No connected verification method is available now. Contact support for help.")
-          Link("Contact support", destination: AccountLinks.accountDeletionSupport)
+        if !methods.appleAvailable && methods.socialProviders.isEmpty {
+          Text(methods.passwordAvailable
+            ? "No linked provider is available now. If this account has no password, contact support."
+            : "No verification method is available now. Contact support for help.")
         }
         Button("Refresh Verification Methods") { Task { await model.loadMethods() } }
           .disabled(model.isBusy)
+        Link("Contact support", destination: AccountLinks.accountDeletionSupport)
       } else if model.methodLoadFailed {
         Text("Sign-in methods could not be checked. Account data has not been removed.")
         Button("Retry Sign-In Methods") { Task { await model.loadMethods() } }

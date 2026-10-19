@@ -9,7 +9,7 @@ final class AccountDeletionUITests: XCTestCase {
     XCTAssertTrue(password.waitForExistence(timeout: 5))
     XCTAssertFalse(app.buttons["Verify with Google"].exists)
     XCTAssertFalse(app.buttons["Verify with Discord"].exists)
-    XCTAssertFalse(app.buttons["Continue with Apple"].exists)
+    XCTAssertFalse(app.buttons["Continue with Apple to verify this account"].exists)
     XCTAssertFalse(app.buttons["deletion.review"].exists)
     password.tap()
     password.typeText("fictional")
@@ -49,6 +49,31 @@ final class AccountDeletionUITests: XCTestCase {
     app.buttons["deletion.retry"].tap()
     XCTAssertTrue(app.staticTexts["deletion.completed"].waitForExistence(timeout: 10))
     app.buttons["deletion.done"].tap()
+  }
+
+  func testUnavailableOnlyProviderOffersSupportDespiteGlobalPassword() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-ui-testing-authenticated", "-overview-fixture", "design", "-fixture-deletion",
+      "-fixture-deletion-reset", "-fixture-deletion-apple-only-unavailable",
+    ]
+    app.launch()
+    openDeletion(app)
+
+    let appleUnavailable = app.staticTexts.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Apple verification is unavailable now.")
+    ).firstMatch
+    XCTAssertTrue(appleUnavailable.waitForExistence(timeout: 5))
+    XCTAssertTrue(app.secureTextFields["deletion.password"].exists)
+    XCTAssertTrue(app.staticTexts["If this account has a password, you can try it here."].exists)
+    XCTAssertFalse(app.buttons["Continue with Apple to verify this account"].exists)
+    let support = app.descendants(matching: .any)["Contact support"]
+    for _ in 0..<4 {
+      if support.exists && support.isHittable { break }
+      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+    }
+    XCTAssertTrue(support.exists && support.isHittable)
+    XCTAssertFalse(app.buttons["deletion.review"].exists)
   }
 
   private func launchFixture(reset: Bool, uncertain: Bool = false) -> XCUIApplication {
