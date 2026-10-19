@@ -204,7 +204,7 @@ final class ColorKeysModel {
       keys = previous
       reorderError = error.userMessage(
         permission: "You can only change colors on your own pages.",
-        offline: APIError.needsConnection("Reordering colors"),
+        offline: APIError.needsConnection("Rearranging colors"),
         fallback: Self.reorderFallback)
       await load()
       return
@@ -214,7 +214,7 @@ final class ColorKeysModel {
     history = history.map { saved[$0.id] ?? $0 }
   }
 
-  private static let reorderFallback = "Couldn’t save the new order. Try again."
+  private static let reorderFallback = "Couldn’t save the updated order. Please try again."
 
   func delete(id: String) async -> String? {
     guard !isSaving else { return Self.fallbackMessage }

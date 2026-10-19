@@ -606,7 +606,7 @@ struct ColorKeysSessionTests {
     await model.reorder([keys[1], keys[0]])
     #expect(!ColorKeyProtocol.requests.contains { $0.method == "PATCH" })
     #expect(model.keys.map(\.id) == ids + ["keyn00000000000"])
-    #expect(model.reorderError == "Couldn’t save the new order. Try again.")
+    #expect(model.reorderError == "Couldn’t save the updated order. Please try again.")
   }
 
   @Test("a failed reorder restores the previous order, reloads and asks to try again")
@@ -627,7 +627,7 @@ struct ColorKeysSessionTests {
     #expect(patches.withLock { $0 } == 2)
     #expect(ColorKeyProtocol.requests.filter { $0.method == "GET" }.count == gets + 1)
     #expect(model.keys.map(\.id) == ids)
-    #expect(model.reorderError == "Couldn’t save the new order. Try again.")
+    #expect(model.reorderError == "Couldn’t save the updated order. Please try again.")
   }
 
   private func makeLibrary(online: Bool = true) async throws -> LibrarySession {

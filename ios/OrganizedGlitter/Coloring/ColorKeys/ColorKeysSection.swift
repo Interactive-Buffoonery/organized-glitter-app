@@ -102,7 +102,7 @@ struct ColorKeysSection: View {
         .disabledWhileFormPresented(formDrawer, or: !connectionAvailable || model.isSaving)
         .accessibilityIdentifier("colorKeys.add")
         if model.keys.count > 1 {
-          Button("Reorder", systemImage: "arrow.up.arrow.down") {
+          Button("Rearrange", systemImage: "arrow.up.arrow.down") {
             formDrawer.present(detents: [.medium, .large]) { ColorKeyReorderPanel(model: model) }
           }
           .frame(minHeight: 44)
@@ -199,7 +199,7 @@ enum ColorKeySheet: Identifiable {
   }
 }
 
-/// "Reorder": the page's colors with system drag handles. The order saves when the panel closes.
+/// "Rearrange": the page's colors with system drag handles. The order saves when the panel closes.
 struct ColorKeyReorderPanel: View {
   @Environment(FormDrawer.self) private var formDrawer
   @Environment(\.theme) private var theme
@@ -226,7 +226,7 @@ struct ColorKeyReorderPanel: View {
       .environment(\.editMode, .constant(.active))
       .scrollContentBackground(.hidden)
       .background(theme.themedBackground.ignoresSafeArea())
-      .navigationTitle("Reorder")
+      .navigationTitle("Rearrange")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
