@@ -364,10 +364,16 @@ final class LibrarySession {
 
   func mediumOptions() async throws -> [NamedRelationRecord] {
     try checkActive()
-    let options: [NamedRelationRecord] = try await client.allRecords(
-      collection: "coloring_mediums", filter: PocketBaseFilter.equals(.user, userID), sort: "+name")
-    try checkActive()
-    return options
+    do {
+      let options: [NamedRelationRecord] = try await client.allRecords(
+        collection: "coloring_mediums", filter: PocketBaseFilter.equals(.user, userID), sort: "+name")
+      try checkActive()
+      return options
+    } catch {
+      try checkActive()
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
   }
 
   func resumePageMediums(_ attemptID: UUID, connected: Bool) async throws -> ColoringPageRecord {

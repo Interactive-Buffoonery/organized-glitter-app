@@ -119,6 +119,24 @@ struct PageMediumSaveTests {
     #expect(attempts.first?.patch.mediums == ["mine"])
   }
 
+  @Test(.timeLimit(.minutes(1)), arguments: [401, 403])
+  func rejectedMediumListClosesSession(status: Int) async throws {
+    let library = try await makeLibrary(ids: ["a"])
+    defer { library.onAuthenticationFailure = nil; library.pauseWrites() }
+    var closed = false
+    library.onAuthenticationFailure = {
+      do {
+        try await library.close(removingData: false)
+        closed = true
+      } catch { Issue.record("Session close failed") }
+    }
+    MediumSaveProtocol.overrideStatus = status
+    await #expect(throws: status == 401 ? APIError.unauthenticated : .forbidden) {
+      try await library.mediumOptions()
+    }
+    #expect(closed)
+  }
+
   @Test(arguments: [URLError.Code.networkConnectionLost, .cancelled])
   func ambiguousResultReplaysSameAttemptAndUsesCurrentRecord(code: URLError.Code) async throws {
     let library = try await makeLibrary(ids: ["a"])
@@ -391,6 +409,8 @@ private final class MediumSaveProtocol: URLProtocol, @unchecked Sendable {
       if Self.returnForeignBook { record["book"] = "foreign-book" }
       respond(Self.malformedResponse ? ["outcome": "updated"]
         : ["outcome": replay ? "replayed" : "updated", "record": record])
+    } else if path.hasSuffix("/coloring_mediums/records"), let status = Self.overrideStatus {
+      respond(["message": "Fictional failure"], status: status)
     } else if path == "/api/mobile/sync/snapshot" {
       let book = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(featureBook("book", title: "Book")))
       respond(["version": 1, "projects": [], "coloringBooks": [book], "coloringPages": [Self.page],
