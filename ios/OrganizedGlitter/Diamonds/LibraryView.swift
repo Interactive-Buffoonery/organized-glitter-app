@@ -273,6 +273,10 @@ struct LibraryView: View {
   private var filterRow: some View {
     ViewThatFits(in: .horizontal) {
       HStack(spacing: 8) { filterControls }
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 8) { filterMenus }
+        viewModePicker
+      }
       VStack(alignment: .leading, spacing: 8) { filterControls }
     }
     .buttonStyle(.bordered)
@@ -283,12 +287,17 @@ struct LibraryView: View {
 
   @ViewBuilder
   private var filterControls: some View {
+    filterMenus
+    viewModePicker
+  }
+
+  @ViewBuilder
+  private var filterMenus: some View {
     if presentation.showsStatusFilter {
       statusMenu
     }
     sortMenu
     filtersButton
-    viewModePicker
   }
 
   private var filtersButton: some View {

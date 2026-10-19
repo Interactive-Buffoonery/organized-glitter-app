@@ -32,6 +32,7 @@ struct LibraryFilterSheet: View {
                 }
               }
               .pickerStyle(.inline)
+              .labelsHidden()
               .accessibilityIdentifier("library.filter.year")
             }
           }
@@ -101,6 +102,7 @@ struct LibraryFilterSheet: View {
           }
         }
         .pickerStyle(.inline)
+        .labelsHidden()
         .accessibilityIdentifier("library.filter.\(title)")
       }
     }
