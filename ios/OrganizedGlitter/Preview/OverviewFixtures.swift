@@ -478,6 +478,8 @@
           if let image = upload.files["image"]?.first {
             record["image"] = image
           }
+        case "coloring_mediums":
+          record["user"] = "preview-user"
         case "user_dashboard_settings", "randomizer_spins":
           break
         default:
