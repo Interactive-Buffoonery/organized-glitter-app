@@ -10,6 +10,7 @@ final class NativeAnalytics {
   @ObservationIgnored private let gate: AnalyticsNetworkGate?
   @ObservationIgnored private let compression: PostHogCompression
   @ObservationIgnored private let eventHandler: ((AnalyticsEvent, [String: Any]) -> Void)?
+  @ObservationIgnored private let storageErase: (String?) throws -> Void
   @ObservationIgnored private var started = false
   @ObservationIgnored private var accountID: String?
   @ObservationIgnored private var identifiedAccountID: String?
@@ -25,9 +26,11 @@ final class NativeAnalytics {
     sdk: PostHogSDK = .shared,
     sessionConfiguration: URLSessionConfiguration = .ephemeral,
     compression: PostHogCompression = .gzip,
-    eventHandler: ((AnalyticsEvent, [String: Any]) -> Void)? = nil
+    eventHandler: ((AnalyticsEvent, [String: Any]) -> Void)? = nil,
+    storageErase: @escaping (String?) throws -> Void = { try PostHogLocalStorage.erase(projectToken: $0) }
   ) {
     self.eventHandler = eventHandler
+    self.storageErase = storageErase
     self.configuration = configuration
     self.sdk = sdk
     self.compression = compression
@@ -125,7 +128,7 @@ final class NativeAnalytics {
     identifiedAccountID = nil
     if started { sdk.optOut() }
     close()
-    try PostHogLocalStorage.erase(projectToken: configuration?.projectToken)
+    try storageErase(configuration?.projectToken)
   }
 
   func close() {

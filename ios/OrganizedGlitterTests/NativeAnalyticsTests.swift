@@ -7,6 +7,43 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct NativeAnalyticsTests {
+  @Test func explicitRemovalRetriesRealSDKPurgeAfterRelaunchBeforeSignIn() async throws {
+    let fixture = makeFixture(storageErase: { _ in throw APIError.server })
+    defer { fixture.close() }
+    fixture.analytics.setSession(accountID: "old-account", isActive: true, analyticsEnabled: true)
+    fixture.analytics.capture(.appOpened)
+    let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+      .appending(path: Bundle.main.bundleIdentifier!)
+    let queue = root.appending(path: fixture.token).appending(path: "posthog.queueFolder.uuid")
+    #expect(try !FileManager.default.contentsOfDirectory(atPath: queue.path).isEmpty)
+
+    let backend = URL(string: "https://example.test")!
+    let local = try LocalLibraryStore.inMemory()
+    let scope = LocalAccountScope(backendURL: backend, userID: UserRecord.preview.id)
+    try await local.saveUser(.preview, scope: scope)
+    let store = KeychainSessionStore(service: "deletion.disk.\(UUID().uuidString)")
+    let client = PocketBaseClient(baseURL: backend, sessionStore: store)
+    let first = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(),
+      localStore: local, analytics: fixture.analytics)
+    while first.phase == .restoring { await Task.yield() }
+    await first.loadRemovableLocalScopes()
+    await first.removeSavedLibrariesFromDevice()
+    #expect(first.phase == .cleanupFailed)
+    #expect(try await local.pendingRemovals() == [scope])
+    #expect(FileManager.default.fileExists(atPath: queue.path))
+
+    let resumedAnalytics = NativeAnalytics(configuration: configuration(token: fixture.token),
+      sdk: fixture.sdk, compression: .none)
+    let resumed = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(),
+      localStore: local, analytics: resumedAnalytics)
+    while resumed.phase == .restoring || resumed.phase == .cleaningLocalData { await Task.yield() }
+    #expect(resumed.phase == .signedOut)
+    #expect(try await local.pendingRemovals().isEmpty)
+    #expect(!FileManager.default.fileExists(atPath: queue.path))
+    #expect(AnalyticsWireProtocol.requests.isEmpty)
+    resumedAnalytics.close()
+  }
+
   @Test func deletionPurgesRealSDKDiskQueueBeforeAnotherAccountCanFlush() async throws {
     let fixture = makeFixture()
     defer { fixture.close() }
@@ -329,7 +366,7 @@ struct NativeAnalyticsTests {
     AnalyticsConfiguration.parse(projectToken: token, host: host, environment: environment, appVersion: "0.1.0", isDebug: isDebug)
   }
 
-  private func makeFixture() -> AnalyticsFixture {
+  private func makeFixture(storageErase: ((String?) throws -> Void)? = nil) -> AnalyticsFixture {
     AnalyticsWireProtocol.reset()
     let token = "phc_test_\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: token)!
@@ -338,7 +375,8 @@ struct NativeAnalyticsTests {
     let sdk = PostHogSDK.shared
     let analytics = NativeAnalytics(
       configuration: configuration(token: token), sdk: sdk,
-      sessionConfiguration: session, compression: .none
+      sessionConfiguration: session, compression: .none,
+      storageErase: storageErase ?? { try PostHogLocalStorage.erase(projectToken: $0) }
     )
     return AnalyticsFixture(token: token, defaults: defaults, sdk: sdk, analytics: analytics)
   }

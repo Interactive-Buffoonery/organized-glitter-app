@@ -664,7 +664,6 @@ final class AppModel {
         try await localStore.beginRemoval(scope: scope)
         guard generation == sessionGeneration else { return }
       }
-      try analytics.eraseDeletedAccountData()
       try await finishPendingLocalRemoval()
       guard generation == sessionGeneration else { return }
       removableLocalScopes = []
@@ -770,6 +769,7 @@ final class AppModel {
     cleanupBlocked = true
     phase = .cleaningLocalData
     await drainUserSave()
+    try analytics.eraseDeletedAccountData()
     try sessionStore?.clear()
     await client.signOut()
     for scope in scopes {
