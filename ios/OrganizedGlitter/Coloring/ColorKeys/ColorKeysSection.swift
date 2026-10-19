@@ -102,7 +102,7 @@ struct ColorKeysSection: View {
         .disabledWhileFormPresented(formDrawer, or: !connectionAvailable || model.isSaving)
         .accessibilityIdentifier("colorKeys.add")
         if model.keys.count > 1 {
-          Button("Rearrange", systemImage: "arrow.up.arrow.down") {
+          Button("Sort", systemImage: "arrow.up.arrow.down") {
             formDrawer.present(detents: [.medium, .large]) { ColorKeyReorderPanel(model: model) }
           }
           .frame(minHeight: 44)
