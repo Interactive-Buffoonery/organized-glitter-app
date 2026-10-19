@@ -51,7 +51,12 @@ final class LibraryItemDetailModel {
   var isLoadingMore = false
   var isMutating = false
   var errorMessage: String?
-  var mutationErrorMessage: String?
+  var mutationErrorMessage: String? {
+    didSet { photoMutationErrorMessage = nil }
+  }
+  var noteMutationErrorMessage: String? {
+    photoMutationErrorMessage == nil ? mutationErrorMessage : nil
+  }
   private(set) var editErrorMessage: String?
   private(set) var unresolvedWriteState: DetailUnresolvedWriteState?
   private(set) var unresolvedStatusWrite = false

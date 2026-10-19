@@ -291,7 +291,7 @@ struct ProgressNotesSection: View {
   private var recovery: some View {
     switch model.unresolvedWriteState {
     case .needsRefresh:
-      if let message = model.mutationErrorMessage { AccessibleErrorLabel(message: message) }
+      if let message = model.noteMutationErrorMessage { AccessibleErrorLabel(message: message) }
       Button("Refresh note status") {
         Task {
           if await model.refreshUnresolvedWriteStatus() { await onCollectionChanged() }
@@ -300,7 +300,7 @@ struct ProgressNotesSection: View {
       .buttonStyle(.bordered)
       .disabled(model.isMutating)
     case .refreshed:
-      if let message = model.mutationErrorMessage {
+      if let message = model.noteMutationErrorMessage {
         Label(message, systemImage: "checkmark.circle")
           .foregroundStyle(theme.foreground)
       }
@@ -403,7 +403,7 @@ struct ProgressNoteEditor: View {
             Section {
               AccessibleErrorLabel(message: message)
             }
-          } else if let message = model.mutationErrorMessage {
+          } else if let message = model.noteMutationErrorMessage {
             Section {
               if model.unresolvedWriteState == .refreshed {
                 Label(message, systemImage: "checkmark.circle")
@@ -441,12 +441,12 @@ struct ProgressNoteEditor: View {
             }
             .accessibilityIdentifier("detail.progress.noteReview")
           case nil:
-            Button(model.mutationErrorMessage == nil ? "Add" : "Try again") {
+            Button(model.noteMutationErrorMessage == nil ? "Add" : "Try again") {
               Task { await submit() }
             }
             .disabled(!canSubmit || isPreparingPhoto || model.isMutating)
             .accessibilityIdentifier(
-              model.mutationErrorMessage == nil
+              model.noteMutationErrorMessage == nil
                 ? "detail.progress.noteSubmit" : "detail.progress.noteRetry"
             )
           }

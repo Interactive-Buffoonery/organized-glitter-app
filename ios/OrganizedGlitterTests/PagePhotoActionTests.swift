@@ -129,6 +129,10 @@ struct PagePhotoActionTests {
     PhotoActionURLProtocol.files = ["first.jpg", "new.jpg"]
     #expect(!(await model.setMainPagePhoto("second.jpg")))
     #expect(model.mutationErrorMessage?.contains("Photo list changed") == true)
+    #expect(model.photoMutationErrorMessage == model.mutationErrorMessage)
+    #expect(model.noteMutationErrorMessage == nil)
+    model.mutationErrorMessage = "Note failure"
+    #expect(model.noteMutationErrorMessage == "Note failure")
     #expect(model.unresolvedWriteState == nil)
     guard case .page(let page) = model.item else { Issue.record("Expected page"); return }
     #expect(page.photos == ["first.jpg", "new.jpg"])
