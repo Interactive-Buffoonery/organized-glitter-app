@@ -199,10 +199,21 @@ struct ProgressNotesSection: View {
       VStack(alignment: .leading, spacing: 12) {
         header
         if model.progressNotes.isEmpty {
-          ContentUnavailableView(
-            "No progress notes", systemImage: "note.text",
-            description: Text("Log a photo, a caption, or both as your work changes."))
-            .frame(maxWidth: .infinity)
+          // ponytail: ContentUnavailableView forces the system title font.
+          VStack(spacing: 8) {
+            Image(systemName: "note.text")
+              .font(.karla(.largeTitle))
+              .accessibilityHidden(true)
+            Text("No progress notes")
+              .font(.karla(.title2).bold())
+              .foregroundStyle(theme.foreground)
+            Text("Log a photo, a caption, or both as your work changes.")
+              .font(.karla(.subheadline))
+          }
+          .foregroundStyle(theme.pageSecondaryForeground)
+          .multilineTextAlignment(.center)
+          .padding(.vertical, 24)
+          .frame(maxWidth: .infinity)
         } else {
           LazyVStack(alignment: .leading, spacing: 12) {
             ForEach(model.progressNotes) { note in
