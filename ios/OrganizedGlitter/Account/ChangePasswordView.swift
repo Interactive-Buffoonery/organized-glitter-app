@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChangePasswordView: View {
   @Environment(\.connectionAvailable) private var connectionAvailable
+  @Environment(\.theme) private var theme
   let appModel: AppModel
   let library: LibrarySession
   let client: PocketBaseClient
@@ -18,57 +19,79 @@ struct ChangePasswordView: View {
 
   var body: some View {
     Form {
-      if didChange {
-        Section {
-          Label("Password changed", systemImage: "checkmark.circle")
-            .accessibilityIdentifier("account.passwordChanged")
-        }
-      } else {
-        Section("Password") {
-          SecureField("Current password", text: $currentPassword)
-            .textContentType(.password)
-            .accessibilityIdentifier("account.currentPassword")
-          SecureField("New password", text: $password)
-            .textContentType(.newPassword)
-            .accessibilityIdentifier("account.newPassword")
-          SecureField("Confirm new password", text: $confirmation)
-            .textContentType(.newPassword)
-            .accessibilityIdentifier("account.confirmPassword")
-          if !password.isEmpty, let validationMessage {
-            Text(validationMessage).fixedSize(horizontal: false, vertical: true)
+      Group {
+        if didChange {
+          Section {
+            Label("Password changed", systemImage: "checkmark.circle")
+              .accessibilityIdentifier("account.passwordChanged")
           }
-          Button("Change password", action: save)
-            .disabled(isSaving || !connectionAvailable || currentPassword.isEmpty
-              || validationMessage != nil || appModel.isSigningOut
-              || appModel.isChangingPassword || outcomeUnknown)
-            .accessibilityIdentifier("account.savePassword")
-          if isSaving { ProgressView("Changing password") }
+        } else {
+          Section("Password") {
+            labeledField("Current password") {
+              SecureField("Current password", text: $currentPassword, prompt: Text(""))
+                .textContentType(.password)
+                .accessibilityIdentifier("account.currentPassword")
+            }
+            labeledField("New password") {
+              SecureField("New password", text: $password, prompt: Text(""))
+                .textContentType(.newPassword)
+                .accessibilityIdentifier("account.newPassword")
+            }
+            labeledField("Confirm new password") {
+              SecureField("Confirm new password", text: $confirmation, prompt: Text(""))
+                .textContentType(.newPassword)
+                .accessibilityIdentifier("account.confirmPassword")
+            }
+            if !password.isEmpty, let validationMessage {
+              Label(validationMessage, systemImage: "exclamationmark.circle")
+                .foregroundStyle(theme.destructive)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            Button("Change password", action: save)
+              .disabled(isSaving || !connectionAvailable || currentPassword.isEmpty
+                || validationMessage != nil || appModel.isSigningOut
+                || appModel.isChangingPassword || outcomeUnknown)
+              .buttonStyle(AuthPrimaryButtonStyle())
+              .accessibilityIdentifier("account.savePassword")
+            if !connectionAvailable { NeedsConnectionHint() }
+            if isSaving { ProgressView("Changing password") }
+          }
+          .disabled(isSaving)
         }
-        .disabled(isSaving)
-      }
-      Section {
-        Text("Use your current password. If you usually sign in with Apple, Google, or Discord and don't know a password, reset it first.")
-          .fixedSize(horizontal: false, vertical: true)
-        NavigationLink("Reset password") {
-          PasswordResetView(client: client, initialEmail: currentEmail)
-        }
-        .disabled(isSaving)
-      }
-      if !connectionAvailable { Section { NeedsConnectionHint() } }
-      if let errorMessage {
         Section {
-          AccessibleErrorLabel(message: errorMessage)
-            .accessibilityIdentifier("account.passwordChangeError")
+          Text("Use your current password. If you usually sign in with Apple, Google, or Discord and don't know a password, reset it first.")
+            .fixedSize(horizontal: false, vertical: true)
+          NavigationLink("Reset password") {
+            PasswordResetView(client: client, initialEmail: currentEmail)
+          }
+          .disabled(isSaving)
+        }
+        if let errorMessage {
+          Section {
+            AccessibleErrorLabel(message: errorMessage)
+              .accessibilityIdentifier("account.passwordChangeError")
+          }
         }
       }
+      .listRowBackground(theme.card)
     }
     .font(.karla(.body))
     .themedScrollBackground()
-    .navigationTitle("Change password")
+    .scrollEdgeEffectStyle(.hard, for: .top)
+    .wrappingLargeTitle("Change password")
     .onDisappear {
       generation &+= 1
       isSaving = false
       clearPasswords()
+    }
+  }
+
+  private func labeledField(_ title: String, @ViewBuilder field: () -> some View) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(title)
+        .font(.karla(.subheadline).weight(.medium))
+        .accessibilityHidden(true)
+      field()
     }
   }
 
