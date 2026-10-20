@@ -57,9 +57,15 @@ struct LibraryFilterSheet: View {
       .font(.karla(.body))
       .scrollContentBackground(.hidden)
       .background(theme.themedBackground.ignoresSafeArea())
-      .navigationTitle(section == .diamonds ? "Filter diamond art" : "Filter coloring books")
+      .navigationTitle(title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
+        ToolbarItem(placement: .principal) {
+          Text(title)
+            .font(.karla(.headline))
+            .foregroundStyle(theme.foreground)
+            .accessibilityAddTraits(.isHeader)
+        }
         ToolbarItem(placement: .cancellationAction) {
           Button("Reset") {
             filters = LibraryFilters()
@@ -79,6 +85,10 @@ struct LibraryFilterSheet: View {
     }
     .tint(theme.primary)
     .presentationSizing(.form)
+  }
+
+  private var title: String {
+    section == .diamonds ? "Filter diamond art" : "Filter coloring books"
   }
 
   private var years: [Int] {
