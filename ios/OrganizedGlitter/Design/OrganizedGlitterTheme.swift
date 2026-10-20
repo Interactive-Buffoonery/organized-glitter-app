@@ -43,6 +43,40 @@ extension UINavigationBar {
   }
 }
 
+/// The bar's Caveat large title truncates at accessibility sizes, so those
+/// sizes draw a wrapping title in the iOS 26 large-title slot instead. The
+/// slot caps Dynamic Type, so the size is scaled the same way as the bar's.
+struct WrappingLargeTitle: ViewModifier {
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.theme) private var theme
+
+  let title: String
+
+  func body(content: Content) -> some View {
+    content
+      .navigationTitle(title)
+      .toolbar {
+        if dynamicTypeSize.isAccessibilitySize {
+          ToolbarItem(placement: .largeTitle) {
+            // Caveat's final stroke can extend beyond the measured text width.
+            Text(title + "\u{2002}")
+              .font(.custom("Caveat", fixedSize: UIFontMetrics(forTextStyle: .largeTitle).scaledValue(for: 44)))
+              .foregroundStyle(theme.foreground)
+              .fixedSize(horizontal: false, vertical: true)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .accessibilityAddTraits(.isHeader)
+          }
+        }
+      }
+  }
+}
+
+extension View {
+  func wrappingLargeTitle(_ title: String) -> some View {
+    modifier(WrappingLargeTitle(title: title))
+  }
+}
+
 /// The page background. Light paints the palette's `backgroundGradient`.
 /// Dark paints a flat navy base with the palette's `backgroundBloom` over it. The opaque base keeps nested
 /// backgrounds from doubling up the bloom.
