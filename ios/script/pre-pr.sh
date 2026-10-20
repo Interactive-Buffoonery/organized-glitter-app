@@ -1,26 +1,22 @@
 #!/bin/sh
-
 set -eu
-
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-
 cd "$repo_root"
-
-for tool in xcodebuild xcodegen xcrun python3; do
+for tool in heavy-gate xcodebuild xcodegen xcrun python3; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "Missing prerequisite: $tool" >&2
     exit 1
   fi
 done
-
+if [ -n "${HEAVY_GATE_LEASE_TOKEN:-}" ]; then
+  echo "Run pre-pr.sh directly; it queues two sequential simulator sessions." >&2
+  exit 75
+fi
 if [ -n "${DESTINATION:-}" ]; then
   echo "Use IPHONE_SIMULATOR_ID and IPAD_SIMULATOR_ID instead of DESTINATION." >&2
   exit 1
 fi
-
 git diff --check
-xcodegen generate
-
 simulator_ids=$(python3 <<'PY'
 import json
 import os
@@ -44,6 +40,7 @@ for family, variable in [("iPhone", "IPHONE_SIMULATOR_ID"), ("iPad", "IPAD_SIMUL
         for runtime in runtimes
         for device in devices[runtime]
         if device.get("isAvailable")
+        and device.get("state") == "Shutdown"
         and device.get("deviceTypeIdentifier", "").startswith(
             "com.apple.CoreSimulator.SimDeviceType." + family
         )
@@ -71,71 +68,22 @@ mkdir -p .derived-data/pre-pr
 run_dir=$(mktemp -d "$repo_root/.derived-data/pre-pr/run.XXXXXX")
 summary_file="$run_dir/summary.txt"
 overall_status=0
-
-echo "Local pre-PR results: $run_dir"
-echo "Unit tests run on iPhone; fixture UI tests run on iPhone and iPad."
-echo "Seeded PocketBase tests are excluded. Screenshot, system accessibility, and"
-echo "photo-picker checks remain opt-in; device-specific tests may also skip."
-
-run_suite() {
-  suite_name=$1
-  simulator_id=$2
-  test_target=$3
-  result_bundle="$run_dir/$suite_name.xcresult"
-  log_file="$run_dir/$suite_name.log"
-
-  echo "Running $suite_name (log: $log_file)..."
-  if xcodebuild test \
-    -project OrganizedGlitter.xcodeproj \
-    -scheme OrganizedGlitter \
-    -destination "platform=iOS Simulator,id=$simulator_id" \
-    -derivedDataPath "$run_dir/DerivedData" \
-    -resultBundlePath "$result_bundle" \
-    -parallel-testing-enabled NO \
-    -only-testing:"$test_target" \
-    -skip-testing:OrganizedGlitterUITests/OrganizedGlitterUITests/testSeededBackendLoadsOverviewAndLibrary \
-    -skip-testing:OrganizedGlitterUITests/OrganizedGlitterUITests/testSeededBackendCreatesEditsAndDeletesDiamondProject \
-    >"$log_file" 2>&1; then
-    suite_status=PASS
+for family in iphone ipad; do
+  if [ "$family" = iphone ]; then simulator_id=$iphone_id; else simulator_id=$ipad_id; fi
+  if heavy-gate --simulator-session "$simulator_id" -- \
+    sh "$repo_root/script/pre-pr-device.sh" "$run_dir" "$family" "$simulator_id"; then
+    :
   else
-    suite_status=FAIL
-    overall_status=1
-  fi
-
-  if xcrun xcresulttool get test-results summary --path "$result_bundle" \
-    >"$run_dir/$suite_name.json" 2>>"$log_file"; then
-    if counts=$(python3 - "$run_dir/$suite_name.json" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1]) as report:
-    summary = json.load(report)
-print(f"{summary['passedTests']} passed, {summary['failedTests']} failed, "
-      f"{summary['skippedTests']} skipped")
-sys.exit(0 if summary["passedTests"] > 0 and summary["failedTests"] == 0 else 1)
-PY
-    ); then
-      :
-    else
-      suite_status=FAIL
-      overall_status=1
+    status=$?
+    printf '%s session: FAIL (exit %s)\n' "$family" "$status" | tee -a "$summary_file"
+    if [ "$status" -eq 75 ]; then
+      echo "Session did not complete. Inspect the gate or worker diagnostic above." >&2
+      echo "Check heavy-gate --status and --help; simulator-session and lease-token support are required." >&2
     fi
-  else
-    counts="test summary unavailable; inspect the log"
-    suite_status=FAIL
+    case "$status" in 74|75|129|130|143) exit "$status" ;; esac
     overall_status=1
   fi
-
-  printf '%s: %s (%s)\n' "$suite_name" "$suite_status" "$counts" | tee -a "$summary_file"
-  sed -n '/Test Case .* skipped/p' "$log_file"
-}
-
-run_suite unit-tests "$iphone_id" OrganizedGlitterTests
-run_suite iphone-ui "$iphone_id" OrganizedGlitterUITests
-run_suite ipad-ui "$ipad_id" OrganizedGlitterUITests
-
-echo ""
-echo "Local pre-PR summary:"
+done
 cat "$summary_file"
 echo "Logs and Xcode result bundles: $run_dir"
 exit "$overall_status"
