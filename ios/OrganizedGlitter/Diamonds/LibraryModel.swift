@@ -247,6 +247,8 @@ final class LibraryModel {
 
   private(set) var displayedItems: [LibraryItem] = []
   private(set) var shelfCounts: [String: Int] = [:]
+  /// Matches for every status under the current filters and search.
+  private(set) var statusCounts: [String: Int] = [:]
   private var currentPage = 0
   private var totalPages = 0
   private var generation = 0
@@ -440,6 +442,9 @@ final class LibraryModel {
       let matching = library.items.filter { matchesCurrentListing($0, bookTitles: bookTitles) }
         .sorted(by: precedes)
       shelfCounts = matching.reduce(into: [:]) { $0[$1.status, default: 0] += 1 }
+      statusCounts = library.items
+        .filter { matchesCurrentListing($0, bookTitles: bookTitles, ignoringStatus: true) }
+        .reduce(into: [:]) { $0[$1.status, default: 0] += 1 }
       totalPages = (matching.count + Self.pageSize - 1) / Self.pageSize
       currentPage = min(requestedPage, totalPages)
       displayedItems = Array(matching.prefix(requestedPage * Self.pageSize))
@@ -545,7 +550,7 @@ final class LibraryModel {
   }
 
   private func matchesCurrentListing(
-    _ item: LibraryItem, bookTitles: [String: String]
+    _ item: LibraryItem, bookTitles: [String: String], ignoringStatus: Bool = false
   ) -> Bool {
     let includesPage = searchesColoringPages && section == .books && !committedSearch.isEmpty
       && item.belongs(to: .pages, userID: userID, bookTitles: bookTitles)
@@ -555,7 +560,7 @@ final class LibraryModel {
 
     guard filters.matches(item) else { return false }
 
-    if let statusFilter, item.status != statusFilter {
+    if !ignoringStatus, let statusFilter, item.status != statusFilter {
       return false
     }
 

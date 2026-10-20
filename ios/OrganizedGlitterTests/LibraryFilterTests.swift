@@ -19,9 +19,11 @@ struct LibraryFilterTests {
     #expect(model.items.map(\.recordID) == ["first"])
     #expect(model.shelves.map(\.status) == ["wishlist"])
     #expect(model.library.shelfCounts(for: .diamonds) == ["wishlist": 2])
+    #expect(model.statusCounts == ["wishlist": 1])
     model.filters.artistID = "missing"
     await model.load()
     #expect(model.items.isEmpty)
+    #expect(model.statusCounts.isEmpty)
     #expect(model.filters.artistID == "missing")
     model.resetFilters()
     await model.load()

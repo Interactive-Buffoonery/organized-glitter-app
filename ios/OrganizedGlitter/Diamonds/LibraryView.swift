@@ -356,7 +356,7 @@ struct LibraryView: View {
   }
 
   private var statusMenu: some View {
-    let counts = model.library.shelfCounts(for: model.section)
+    let counts = model.statusCounts
     let total = counts.values.reduce(0, +)
     let selection = model.statusFilter
     let title = selection.map(model.section.statusLabel) ?? "All"
