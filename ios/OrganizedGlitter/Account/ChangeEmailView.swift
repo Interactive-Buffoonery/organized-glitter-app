@@ -62,7 +62,7 @@ struct ChangeEmailView: View {
     .font(.karla(.body))
     .themedScrollBackground()
     .scrollEdgeEffectStyle(.hard, for: .top)
-    .wrappingLargeTitle("Change email")
+    .fittingLargeTitle("Change email")
     .onDisappear {
       generation &+= 1
       sendTask?.cancel()

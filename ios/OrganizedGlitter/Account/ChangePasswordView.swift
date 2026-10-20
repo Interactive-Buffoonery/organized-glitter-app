@@ -78,7 +78,7 @@ struct ChangePasswordView: View {
     .font(.karla(.body))
     .themedScrollBackground()
     .scrollEdgeEffectStyle(.hard, for: .top)
-    .wrappingLargeTitle("Change password")
+    .fittingLargeTitle("Change password")
     .onDisappear {
       generation &+= 1
       isSaving = false

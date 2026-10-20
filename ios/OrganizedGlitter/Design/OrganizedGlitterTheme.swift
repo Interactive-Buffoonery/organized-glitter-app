@@ -44,9 +44,10 @@ extension UINavigationBar {
 }
 
 /// The bar's Caveat large title truncates at accessibility sizes, so those
-/// sizes draw a wrapping title in the iOS 26 large-title slot instead. The
-/// slot caps Dynamic Type, so the size is scaled the same way as the bar's.
-struct WrappingLargeTitle: ViewModifier {
+/// sizes draw a one-line title that shrinks to fit in the iOS 26 large-title
+/// slot instead. The slot caps Dynamic Type, so the size is scaled the same
+/// way as the bar's. A two-line title collapses the slot.
+struct FittingLargeTitle: ViewModifier {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.theme) private var theme
 
@@ -62,6 +63,8 @@ struct WrappingLargeTitle: ViewModifier {
             Text(title + "\u{2002}")
               .font(.custom("Caveat", fixedSize: UIFontMetrics(forTextStyle: .largeTitle).scaledValue(for: 44)))
               .foregroundStyle(theme.foreground)
+              .lineLimit(1)
+              .minimumScaleFactor(0.5)
               .fixedSize(horizontal: false, vertical: true)
               .frame(maxWidth: .infinity, alignment: .leading)
               .accessibilityAddTraits(.isHeader)
@@ -72,8 +75,8 @@ struct WrappingLargeTitle: ViewModifier {
 }
 
 extension View {
-  func wrappingLargeTitle(_ title: String) -> some View {
-    modifier(WrappingLargeTitle(title: title))
+  func fittingLargeTitle(_ title: String) -> some View {
+    modifier(FittingLargeTitle(title: title))
   }
 }
 
