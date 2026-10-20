@@ -69,16 +69,13 @@ struct LibraryFilterSheet: View {
         ToolbarItem(placement: .cancellationAction) {
           Button("Reset") {
             filters = LibraryFilters()
-            AccessibilityNotification.Announcement("Filters reset").post()
+            AccessibilityNotification.Announcement("Filters cleared").post()
           }
             .disabled(filters.isEmpty)
             .accessibilityIdentifier("library.filters.reset")
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
-            AccessibilityNotification.Announcement("Filters applied").post()
-            dismiss()
-          }
+          Button("Done") { dismiss() }
             .accessibilityIdentifier("library.filters.done")
         }
       }
