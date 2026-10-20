@@ -84,12 +84,21 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(app.buttons["Pencils"].waitForExistence(timeout: 5))
     app.buttons["Pencils"].tap()
     app.buttons["Markers"].tap()
+    XCTAssertTrue(app.buttons["Pencils"].isSelected)
+    XCTAssertTrue(app.buttons["Markers"].isSelected)
+    XCTAssertTrue(app.buttons["mediums.clear"].isEnabled)
+    try capture(app, "mediums-selected")
     XCTAssertTrue(done.isEnabled)
     done.tap()
     let names = app.staticTexts["detail.page.mediumNames"]
     let hasNames = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Pencils", "Markers")
     expectation(for: hasNames, evaluatedWith: names)
     waitForExpectations(timeout: 8)
+    let noNotes = app.staticTexts["No progress notes"]
+    for _ in 0..<3 where !noNotes.isHittable { app.swipeUp() }
+    XCTAssertTrue(noNotes.isHittable)
+    try capture(app, "page-notes-empty")
+    for _ in 0..<3 where !edit.isHittable { app.swipeDown() }
     edit.tap()
     XCTAssertTrue(app.buttons["Pencils"].waitForExistence(timeout: 5))
     app.buttons["Pencils"].tap()
