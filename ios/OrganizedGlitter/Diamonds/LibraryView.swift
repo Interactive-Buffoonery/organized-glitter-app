@@ -494,12 +494,9 @@ struct LibraryView: View {
     if !model.filters.isEmpty {
       ContentUnavailableView {
         Label("No matches", systemImage: "line.3.horizontal.decrease.circle")
+          .font(.karla(.title2).bold())
       } description: {
         Text("Try changing or clearing your filters.")
-      } actions: {
-        Button("Clear filters", action: clearFilters)
-          .buttonStyle(QuietActionStyle())
-          .accessibilityIdentifier("library.filters.emptyClear")
       }
     } else if !model.committedSearch.isEmpty {
       ContentUnavailableView.search(text: model.committedSearch)
