@@ -70,7 +70,7 @@ struct ColoringPageDetailView: View {
                 model: model,
                 onCollectionChanged: onCollectionChanged)
             }
-            Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
+            Text(subtitle)
               .font(.karla(.body))
               .foregroundStyle(theme.pageSecondaryForeground)
           }
@@ -268,6 +268,11 @@ struct ColoringPageDetailView: View {
     } message: {
       Text("The page goes back to being a mystery.")
     }
+  }
+
+  private var subtitle: String {
+    let bookTitle = page.expand?.book?.title ?? "Coloring book"
+    return mystery.isRevealed ? "\(bookTitle) · Page \(page.pageNumber)" : bookTitle
   }
 
   @ViewBuilder
