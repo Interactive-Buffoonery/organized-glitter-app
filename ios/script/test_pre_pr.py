@@ -11,7 +11,7 @@ SCRIPT = Path(__file__).with_name('pre-pr.sh')
 
 
 class PrePRTests(unittest.TestCase):
-    def run_job(self, failed='', gate_status=''):
+    def run_job(self, failed='', gate_status='', diff_failure=''):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'script').mkdir()
@@ -20,7 +20,7 @@ class PrePRTests(unittest.TestCase):
             tools = root / 'bin'
             tools.mkdir()
             programs = {
-                'git': 'exit 0',
+                'git': '[ -z "$HEAVY_GATE_LEASE_TOKEN" ] || [ -z "$DIFF_FAILURE" ]',
                 'xcodegen': 'echo generate >> "$TRACE"',
                 'xcodebuild': 'echo "test:$HEAVY_GATE_DEVICE" >> "$TRACE"; [ "$FAIL_DEVICE" != "$HEAVY_GATE_DEVICE" ]',
                 'heavy-gate': '''[ "$#" -eq 8 ] && [ "$1" = --simulator-session ] && [ "$3" = -- ] && [ "$4" = sh ] || exit 64
@@ -49,8 +49,9 @@ fi''',
                 for family in ('iPhone', 'iPad')]}}))
             env = {k: v for k, v in os.environ.items() if not k.startswith('HEAVY_GATE_')}
             env.update(PATH=str(tools) + ':' + env['PATH'], TRACE=str(root / 'trace'),
-                       DEVICES=str(devices), FAIL_DEVICE=failed, GATE_STATUS=gate_status,
+                       DEVICES=str(devices), FAIL_DEVICE=failed, GATE_STATUS=gate_status, DIFF_FAILURE=diff_failure,
                        EXPECTED_WORKER=str(root / "script/pre-pr-device.sh"))
+            (root / 'trace').write_text('')
             result = subprocess.run(['sh', str(root / 'script/pre-pr.sh')], env=env,
                                     capture_output=True, text=True)
             return result, (root / 'trace').read_text().splitlines()
@@ -72,6 +73,14 @@ fi''',
         self.assertEqual(result.returncode, 75)
         self.assertEqual(trace, ['refused'])
         self.assertIn('heavy-gate --status and --help', result.stderr)
+
+    def test_whitespace_failure_is_not_gate_refusal(self):
+        result, trace = self.run_job(diff_failure='1')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Workspace has whitespace errors', result.stderr)
+        self.assertNotIn('heavy-gate --status and --help', result.stderr)
+        self.assertFalse(any(event.startswith('test:') for event in trace))
+        self.assertEqual(trace[-1], 'shutdown:iPad')
 
 
 if __name__ == '__main__':

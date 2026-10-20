@@ -14,7 +14,10 @@ overall_status=0
 if [ "$family" = iphone ]; then
   xcodegen generate || exit 75
 fi
-git diff --check || exit 75
+if ! git diff --check; then
+  echo "Workspace has whitespace errors; see git diff --check output above." >&2
+  exit 1
+fi
 
 run_suite() {
   suite_name=$1
