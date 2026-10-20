@@ -118,7 +118,7 @@ struct PageMediumEditor: View {
       errorMessage = error.userMessage(
         permission: "Your account cannot view these mediums.",
         offline: baseline == nil ? "Mediums could not be loaded. Try again."
-          : "Showing downloaded mediums. Reconnect to see the full list and save.",
+          : "Reconnect to the internet to see all of your mediums.",
         fallback: "Mediums could not be loaded. Try again.")
     }
   }
