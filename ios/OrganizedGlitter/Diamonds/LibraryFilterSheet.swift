@@ -123,26 +123,39 @@ struct LibraryFilterSheet: View {
   private func selectionRows(options: [LibraryFilterOption], selection: Binding<Set<String>>,
     facet: String) -> some View
   {
-    ForEach(options) { option in
-      let selected = selection.wrappedValue.contains(option.id)
-      Button {
-        if selected { selection.wrappedValue.remove(option.id) }
-        else { selection.wrappedValue.insert(option.id) }
-      } label: {
-        HStack(alignment: .firstTextBaseline) {
-          Text(option.name)
-            .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(theme.foreground)
-          Spacer(minLength: 12)
-          if selected { Image(systemName: "checkmark").foregroundStyle(theme.primary) }
+    Group {
+      selectionRow("Any", selected: selection.wrappedValue.isEmpty,
+        identifier: "library.filter.\(facet).any") { selection.wrappedValue.removeAll() }
+      ForEach(options) { option in
+        let selected = selection.wrappedValue.contains(option.id)
+        selectionRow(option.name, selected: selected,
+          identifier: "library.filter.\(facet).\(option.id)")
+        {
+          if selected { selection.wrappedValue.remove(option.id) }
+          else { selection.wrappedValue.insert(option.id) }
         }
-        .frame(minHeight: 44)
-        .contentShape(Rectangle())
       }
-      .accessibilityLabel(option.name)
-      .accessibilityValue(selected ? "Selected" : "Not selected")
-      .accessibilityIdentifier("library.filter.\(facet).\(option.id)")
     }
+  }
+
+  private func selectionRow(_ name: String, selected: Bool, identifier: String,
+    action: @escaping () -> Void) -> some View
+  {
+    Button(action: action) {
+      HStack(alignment: .firstTextBaseline) {
+        Text(name)
+          .fixedSize(horizontal: false, vertical: true)
+          .foregroundStyle(theme.foreground)
+        Spacer(minLength: 12)
+        if selected { Image(systemName: "checkmark").foregroundStyle(theme.primary) }
+      }
+      .frame(minHeight: 44)
+      .contentShape(Rectangle())
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(name)
+    .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    .accessibilityIdentifier(identifier)
   }
 
   private func includingUnavailable(_ options: [LibraryFilterOption], selected: Set<String>,
