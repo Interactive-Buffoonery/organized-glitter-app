@@ -86,7 +86,13 @@ sequentially:
 2. Fixture UI tests on an iPhone simulator.
 3. Fixture UI tests on an iPad simulator.
 
-The script selects available iOS 26 simulators and prints their names, runtime
+The script requires the machine-wide `heavy-gate` command. Run it directly; it
+queues an iPhone session followed by an iPad session. Each session boots one
+initially shut-down simulator and shuts it down before releasing the lease,
+including after failures or cancellation. Other booted devices are preserved
+and block a session from starting.
+
+The script selects shut-down iOS 26 simulators and prints their names, runtime
 versions, and IDs. To use specific simulators, get their IDs with
 `xcrun simctl list devices available` and pass both overrides:
 
