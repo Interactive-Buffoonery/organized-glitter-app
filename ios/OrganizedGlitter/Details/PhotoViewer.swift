@@ -148,7 +148,7 @@ struct PhotoViewer: View {
       Color.black.opacity(1 - min(pullDistance / 400, 0.7))
         .ignoresSafeArea()
     }
-    .overlay(alignment: .top) {
+    .safeAreaInset(edge: .top) {
       topBar
         .padding(.top, isPad ? 48 : 0)
         .opacity(pullDistance > 12 ? 0 : 1)
