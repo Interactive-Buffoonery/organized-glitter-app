@@ -235,15 +235,16 @@ struct ColoringPageDetailView: View {
       .refreshable { await model.refresh() }
       .photoViewer(photos, library: model.library, surface: .coloringPageGallery,
         actions: viewerPhotoActions)
-      .confirmationDialog("Delete this photo?", isPresented: Binding(
+      .alert("Delete this photo?", isPresented: Binding(
         get: { deletingPhoto != nil }, set: { if !$0 { deletingPhoto = nil } }
-      ), titleVisibility: .visible) {
+      )) {
         if let deletingPhoto {
           Button("Delete photo", role: .destructive) {
             Task { await changePhoto(deletingPhoto, setMain: false) }
           }
           .disabled(!photoActionsEnabled)
         }
+        Button("Cancel", role: .cancel) {}
       } message: {
         Text("This can’t be undone.")
       }

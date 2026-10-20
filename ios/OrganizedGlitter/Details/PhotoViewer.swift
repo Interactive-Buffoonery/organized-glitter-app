@@ -270,12 +270,13 @@ private struct PhotoViewerActionBar: View {
     .frame(maxWidth: .infinity)
     .background(.regularMaterial)
     .disabled(!actions.isEnabled)
-    .confirmationDialog("Delete this photo?", isPresented: $confirmsDelete, titleVisibility: .visible) {
+    .alert("Delete this photo?", isPresented: $confirmsDelete) {
       Button("Delete photo", role: .destructive) {
         actions.delete(selection)
         onMutation()
       }
       .disabled(!actions.isEnabled)
+      Button("Cancel", role: .cancel) {}
     } message: {
       Text("This can’t be undone.")
     }
