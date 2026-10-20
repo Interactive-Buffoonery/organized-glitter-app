@@ -11,7 +11,10 @@ family=$2
 simulator_id=$3
 summary_file="$run_dir/summary.txt"
 overall_status=0
-xcodegen generate
+if [ "$family" = iphone ]; then
+  xcodegen generate || exit 75
+fi
+git diff --check || exit 75
 
 run_suite() {
   suite_name=$1
@@ -25,7 +28,7 @@ run_suite() {
     -project OrganizedGlitter.xcodeproj \
     -scheme OrganizedGlitter \
     -destination "platform=iOS Simulator,id=$simulator_id" \
-    -derivedDataPath "$run_dir/DerivedData" \
+    -derivedDataPath "$run_dir/DerivedData-$family" \
     -resultBundlePath "$result_bundle" \
     -parallel-testing-enabled NO \
     -only-testing:"$test_target" \

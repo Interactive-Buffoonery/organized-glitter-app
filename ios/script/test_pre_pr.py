@@ -11,7 +11,7 @@ SCRIPT = Path(__file__).with_name('pre-pr.sh')
 
 
 class PrePRTests(unittest.TestCase):
-    def run_job(self, failed=''):
+    def run_job(self, failed='', gate_status=''):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'script').mkdir()
@@ -21,9 +21,13 @@ class PrePRTests(unittest.TestCase):
             tools.mkdir()
             programs = {
                 'git': 'exit 0',
-                'xcodegen': 'exit 0',
+                'xcodegen': 'echo generate >> "$TRACE"',
                 'xcodebuild': 'echo "test:$HEAVY_GATE_DEVICE" >> "$TRACE"; [ "$FAIL_DEVICE" != "$HEAVY_GATE_DEVICE" ]',
-                'heavy-gate': '''id=$2
+                'heavy-gate': '''[ "$#" -eq 8 ] && [ "$1" = --simulator-session ] && [ "$3" = -- ] && [ "$4" = sh ] || exit 64
+[ "$5" = "$EXPECTED_WORKER" ] && [ "$2" = "$8" ] || exit 64
+case "$7:$8" in iphone:iPhone|ipad:iPad) ;; *) exit 64 ;; esac
+if [ -n "$GATE_STATUS" ]; then echo refused >> "$TRACE"; exit "$GATE_STATUS"; fi
+id=$2
 shift 3
 echo "boot:$id" >> "$TRACE"
 HEAVY_GATE_LEASE_TOKEN=test HEAVY_GATE_DEVICE=$id "$@"
@@ -45,7 +49,8 @@ fi''',
                 for family in ('iPhone', 'iPad')]}}))
             env = {k: v for k, v in os.environ.items() if not k.startswith('HEAVY_GATE_')}
             env.update(PATH=str(tools) + ':' + env['PATH'], TRACE=str(root / 'trace'),
-                       DEVICES=str(devices), FAIL_DEVICE=failed)
+                       DEVICES=str(devices), FAIL_DEVICE=failed, GATE_STATUS=gate_status,
+                       EXPECTED_WORKER=str(root / "script/pre-pr-device.sh"))
             result = subprocess.run(['sh', str(root / 'script/pre-pr.sh')], env=env,
                                     capture_output=True, text=True)
             return result, (root / 'trace').read_text().splitlines()
@@ -53,7 +58,7 @@ fi''',
     def test_sessions_finish_in_order(self):
         result, trace = self.run_job()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(trace, ['boot:iPhone', 'test:iPhone', 'test:iPhone',
+        self.assertEqual(trace, ['boot:iPhone', 'generate', 'test:iPhone', 'test:iPhone',
                                  'shutdown:iPhone', 'boot:iPad', 'test:iPad', 'shutdown:iPad'])
 
     def test_failed_tests_still_release_device(self):
@@ -61,6 +66,12 @@ fi''',
         self.assertEqual(result.returncode, 1)
         self.assertLess(trace.index('shutdown:iPhone'), trace.index('boot:iPad'))
         self.assertEqual(trace[-1], 'shutdown:iPad')
+
+    def test_gate_refusal_stops_before_tests(self):
+        result, trace = self.run_job(gate_status='75')
+        self.assertEqual(result.returncode, 75)
+        self.assertEqual(trace, ['refused'])
+        self.assertIn('heavy-gate --status and --help', result.stderr)
 
 
 if __name__ == '__main__':

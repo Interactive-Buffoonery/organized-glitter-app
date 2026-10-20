@@ -70,11 +70,16 @@ summary_file="$run_dir/summary.txt"
 overall_status=0
 for family in iphone ipad; do
   if [ "$family" = iphone ]; then simulator_id=$iphone_id; else simulator_id=$ipad_id; fi
-  if heavy-gate --simulator-session "$simulator_id" --     sh "$repo_root/script/pre-pr-device.sh" "$run_dir" "$family" "$simulator_id"; then
+  if heavy-gate --simulator-session "$simulator_id" -- \
+    sh "$repo_root/script/pre-pr-device.sh" "$run_dir" "$family" "$simulator_id"; then
     :
   else
     status=$?
     printf '%s session: FAIL (exit %s)\n' "$family" "$status" | tee -a "$summary_file"
+    if [ "$status" -eq 75 ]; then
+      echo "Session did not complete. Inspect the gate or worker diagnostic above." >&2
+      echo "Check heavy-gate --status and --help; simulator-session and lease-token support are required." >&2
+    fi
     case "$status" in 74|75|129|130|143) exit "$status" ;; esac
     overall_status=1
   fi
