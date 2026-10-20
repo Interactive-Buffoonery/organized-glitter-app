@@ -29,21 +29,20 @@ struct DetailPhotoGallery: View {
 
   var body: some View {
     ScrollView(.horizontal) {
-      LazyHStack(spacing: 12) {
+      LazyHStack(alignment: .top, spacing: 12) {
         ForEach(photos) { photo in
-          DetailPhotoTile(photo: photo, contentMode: .fit, maxPixelDimension: thumbnailSize * 3)
-            .frame(width: thumbnailSize, height: thumbnailSize)
-            .overlay(alignment: .bottomLeading) {
-              if actions?.mainID == photo.id {
-                Label("Main", systemImage: "star.fill")
-                  .font(.karla(.caption).weight(.semibold))
-                  .padding(6)
-                  .foregroundStyle(theme.cardForeground)
-                  .background(theme.card, in: .capsule)
-                  .padding(4)
-                  .accessibilityHidden(true)
-              }
+          VStack(alignment: .leading, spacing: 6) {
+            DetailPhotoTile(photo: photo, contentMode: .fill, maxPixelDimension: thumbnailSize * 3)
+              .frame(width: thumbnailSize, height: thumbnailSize)
+            if actions?.mainID == photo.id {
+              Label("Main", systemImage: "star.fill")
+                .font(.karla(.caption).weight(.semibold))
+                .padding(6)
+                .foregroundStyle(theme.cardForeground)
+                .background(theme.card, in: .capsule)
+                .accessibilityHidden(true)
             }
+          }
             .photoViewerSource(
               photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen"
                 + (actions?.mainID == photo.id ? ", Main photo" : ""))
