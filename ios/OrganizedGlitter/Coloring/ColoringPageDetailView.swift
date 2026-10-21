@@ -71,6 +71,7 @@ struct ColoringPageDetailView: View {
                 onCollectionChanged: onCollectionChanged)
             }
             Text(subtitle)
+              .accessibilityIdentifier("detail.page.subtitle")
               .font(.karla(.body))
               .foregroundStyle(theme.pageSecondaryForeground)
           }

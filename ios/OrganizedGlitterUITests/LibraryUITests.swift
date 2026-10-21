@@ -45,8 +45,9 @@ final class LibraryUITests: XCTestCase {
     let status = app.buttons["detail.status"]
     XCTAssertTrue(status.waitForExistence(timeout: 3))
     let originalStatus = status.label
-    let pageSubtitle = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "· Page")).firstMatch
-    XCTAssertFalse(pageSubtitle.exists)
+    let pageSubtitle = app.staticTexts["detail.page.subtitle"]
+    XCTAssertTrue(pageSubtitle.waitForExistence(timeout: 3))
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows")
     try capture(app, "mystery-hidden")
     let reveal = app.buttons["detail.page.reveal"]
     if !reveal.waitForExistence(timeout: 2) { app.swipeUp() }
@@ -60,7 +61,7 @@ final class LibraryUITests: XCTestCase {
     let answer = app.buttons["detail.page.answerMenu"]
     XCTAssertTrue(answer.waitForExistence(timeout: 5))
     XCTAssertTrue(answer.label.contains("Garden"))
-    XCTAssertTrue(pageSubtitle.waitForExistence(timeout: 3))
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows · Page 12")
     let date = app.staticTexts["detail.page.revealedDate"]
     XCTAssertTrue(date.waitForExistence(timeout: 3))
     let originalDate = date.label
@@ -88,6 +89,7 @@ final class LibraryUITests: XCTestCase {
     XCTAssertFalse(answer.exists)
     XCTAssertFalse(date.exists)
     XCTAssertEqual(status.label, originalStatus)
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows")
     try capture(app, "mystery-hidden-again")
   }
 
