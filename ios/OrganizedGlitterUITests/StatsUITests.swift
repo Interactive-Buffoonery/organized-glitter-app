@@ -42,6 +42,6 @@ final class StatsUITests: XCTestCase {
     XCTAssertTrue(more.waitForExistence(timeout: 5))
     more.tap()
     app.buttons["library.stats"].tap()
-    XCTAssertTrue(app.navigationBars["Stats"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["stats.year"].waitForExistence(timeout: 5))
   }
 }

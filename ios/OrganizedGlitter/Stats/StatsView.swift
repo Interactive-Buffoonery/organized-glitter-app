@@ -26,6 +26,11 @@ struct StatsView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+        if sizeClass == .regular {
+          Text("Stats")
+            .font(.caveat(size: 44))
+            .accessibilityAddTraits(.isHeader)
+        }
         if let snapshot = model.snapshot(for: library, year: year) {
           if let error = model.errorMessage {
             AccessibleErrorLabel(message: error)
@@ -72,6 +77,7 @@ struct StatsView: View {
     }
     .background { theme.themedBackground.ignoresSafeArea() }
     .navigationTitle("Stats")
+    .toolbar(removing: sizeClass == .regular ? .title : nil)
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
