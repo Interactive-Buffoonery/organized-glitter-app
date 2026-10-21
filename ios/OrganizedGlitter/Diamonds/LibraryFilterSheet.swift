@@ -3,6 +3,7 @@ import SwiftUI
 struct LibraryFilterSheet: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Binding var filters: LibraryFilters
   let section: LibrarySection
   let options: LibraryFilterOptions
@@ -10,6 +11,9 @@ struct LibraryFilterSheet: View {
   var body: some View {
     NavigationStack {
       Form {
+        if !filters.isEmpty {
+          Section { activeSummary }
+        }
         Section {
           Text("Different filters narrow the results together. Multiple selections within one filter match any selection.")
             .fixedSize(horizontal: false, vertical: true)
@@ -66,14 +70,6 @@ struct LibraryFilterSheet: View {
             .foregroundStyle(theme.foreground)
             .accessibilityAddTraits(.isHeader)
         }
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Reset") {
-            filters = LibraryFilters()
-            AccessibilityNotification.Announcement("Filters cleared").post()
-          }
-            .disabled(filters.isEmpty)
-            .accessibilityIdentifier("library.filters.reset")
-        }
         ToolbarItem(placement: .confirmationAction) {
           Button("Done") { dismiss() }
             .accessibilityIdentifier("library.filters.done")
@@ -82,6 +78,28 @@ struct LibraryFilterSheet: View {
     }
     .tint(theme.primary)
     .presentationSizing(.form)
+  }
+
+  /// Stacks at accessibility sizes so the summary keeps its two lines.
+  private var activeSummary: some View {
+    let layout = dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+      : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+    return layout {
+      Text("Filtered: \(filters.activeFacets.joined(separator: ", "))")
+        .lineLimit(2)
+        .truncationMode(.tail)
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("library.filters.sheetSummary")
+      Button("Clear filters") {
+        filters = LibraryFilters()
+        AccessibilityNotification.Announcement("Filters cleared").post()
+      }
+      .buttonStyle(.borderless)
+      .fixedSize()
+      .accessibilityIdentifier("library.filters.sheetClear")
+    }
   }
 
   private var title: String {

@@ -155,6 +155,30 @@ final class LibraryUITests: XCTestCase {
     XCTAssertFalse(app.staticTexts["library.filters.summary"].exists)
   }
 
+  func testFilterSheetSummaryClearsAndStaysOpen() throws {
+    let app = launch("design")
+    openLibrary(app)
+    let filters = app.buttons["library.filters"]
+    XCTAssertTrue(filters.waitForExistence(timeout: 5))
+    filters.tap()
+    let summary = app.staticTexts["library.filters.sheetSummary"]
+    let clear = app.buttons["library.filters.sheetClear"]
+    XCTAssertTrue(app.buttons["library.filters.done"].waitForExistence(timeout: 5))
+    XCTAssertFalse(summary.exists)
+    XCTAssertFalse(clear.exists)
+
+    app.buttons["Example Atelier"].tap()
+    XCTAssertTrue(summary.waitForExistence(timeout: 5))
+    XCTAssertEqual(summary.label, "Filtered: Company")
+
+    clear.tap()
+    XCTAssertTrue(app.buttons["library.filters.done"].exists)
+    XCTAssertFalse(summary.waitForExistence(timeout: 2))
+    XCTAssertFalse(clear.exists)
+    app.buttons["library.filters.done"].tap()
+    XCTAssertEqual(filters.label, "Filters, 0 active")
+  }
+
   func testLoadingEmptyAndErrorStates() throws {
     for (scenario, label) in [
       ("loading", "Loading diamond projects"),
