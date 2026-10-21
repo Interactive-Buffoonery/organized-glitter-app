@@ -13,7 +13,7 @@ struct AccountView: View {
   @Binding var showCraftingStreak: Bool
 
   var body: some View {
-    // ponytail: a List here trips a UIKit focus assertion on iPad once the content
+    // A List here trips a UIKit focus assertion on iPad once the content
     // passes a certain height (Apple r.154431813); return to List when Apple fixes it.
     ScrollView {
       VStack(spacing: 24) {
@@ -409,6 +409,6 @@ private struct AccountRowStyle: ButtonStyle {
       .foregroundStyle(theme.foreground)
       .frame(maxWidth: .infinity, alignment: .leading)
       .contentShape(.rect)
-      .opacity(isEnabled && !configuration.isPressed ? 1 : 0.5)
+      .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.5)
   }
 }
