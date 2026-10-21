@@ -82,7 +82,7 @@ struct StatsView: View {
         } label: {
           Label(String(year), systemImage: "calendar")
         }
-        .accessibilityLabel("Stats year, \(year)")
+        .accessibilityLabel("Stats year, \(String(year))")
         .accessibilityIdentifier("stats.year")
       }
     }

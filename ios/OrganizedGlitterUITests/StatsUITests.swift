@@ -11,6 +11,7 @@ final class StatsUITests: XCTestCase {
     let year = Calendar(identifier: .gregorian).component(.year, from: .now)
     let finished = app.otherElements.matching(NSPredicate(format: "label == %@", "Finished in \(year)")).firstMatch
     XCTAssertEqual(finished.value as? String, "5")
+    XCTAssertEqual(app.buttons["stats.year"].label, "Stats year, \(String(year))")
     app.buttons["stats.year"].tap()
     app.buttons[String(year - 1)].tap()
     let previous = app.otherElements.matching(NSPredicate(format: "label == %@", "Finished in \(year - 1)")).firstMatch
