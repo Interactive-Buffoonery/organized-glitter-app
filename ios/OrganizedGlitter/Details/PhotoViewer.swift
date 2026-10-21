@@ -244,7 +244,7 @@ private struct PhotoViewerActionBar: View {
   let actions: DetailPhotoActions
   let selection: DetailPhoto.ID
   let onMutation: () -> Void
-  @State private var confirmsDelete = false
+  @State private var deletingPhoto: DetailPhoto.ID?
 
   var body: some View {
     let layout = dynamicTypeSize.isAccessibilitySize
@@ -261,7 +261,7 @@ private struct PhotoViewerActionBar: View {
         Label("Main photo", systemImage: "star.fill")
           .fixedSize(horizontal: false, vertical: true)
       }
-      Button("Delete photo", systemImage: "trash", role: .destructive) { confirmsDelete = true }
+      Button("Delete photo", systemImage: "trash", role: .destructive) { deletingPhoto = selection }
         .frame(minHeight: 44)
         .accessibilityIdentifier("photoViewer.delete")
     }
@@ -270,15 +270,9 @@ private struct PhotoViewerActionBar: View {
     .frame(maxWidth: .infinity)
     .background(.regularMaterial)
     .disabled(!actions.isEnabled)
-    .alert("Delete this photo?", isPresented: $confirmsDelete) {
-      Button("Delete photo", role: .destructive) {
-        actions.delete(selection)
-        onMutation()
-      }
-      .disabled(!actions.isEnabled)
-      Button("Cancel", role: .cancel) {}
-    } message: {
-      Text("This can’t be undone.")
+    .photoDeleteConfirmation($deletingPhoto, isEnabled: actions.isEnabled) { id in
+      actions.delete(id)
+      onMutation()
     }
   }
 }
