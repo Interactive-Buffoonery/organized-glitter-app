@@ -214,7 +214,7 @@ final class OrganizedGlitterUITests: XCTestCase {
 
     app.buttons["account.open"].tap()
     XCTAssertTrue(app.staticTexts["Profile name"].waitForExistence(timeout: 3))
-    app.buttons["Done"].tap()
+    app.closeAccount()
   }
 
   func testSeededBackendLoadsOverviewAndLibrary() throws {

@@ -7,7 +7,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     let toggle = openPrivacy(app)
     let initialValue = toggle.value as? String
     XCTAssertNotNil(initialValue)
-    toggleControl(toggle).tap()
+    toggle.switchControl.tap()
     let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value != %@", initialValue ?? ""), object: toggle)
     XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed)
     let changedValue = toggle.value as? String
@@ -16,7 +16,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     XCTAssertEqual(XCTWaiter.wait(for: [saved], timeout: 5), .completed)
     let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: toggle)
     XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
-    toggleControl(toggle).tap()
+    toggle.switchControl.tap()
     let reset = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", initialValue ?? ""), object: toggle)
     XCTAssertEqual(XCTWaiter.wait(for: [reset], timeout: 5), .completed)
     XCTAssertEqual(toggle.value as? String, initialValue)
@@ -57,7 +57,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
   func testPrivacyPreferenceIsReachableAtLargestDynamicType() {
     let app = launchFixture(largeText: true)
     let toggle = openPrivacy(app)
-    XCTAssertTrue(toggleControl(toggle).isHittable)
+    XCTAssertTrue(toggle.switchControl.isHittable)
     XCTAssertEqual(toggle.label, "Share usage analytics")
     let disclosure = app.descendants(matching: .any).matching(
       NSPredicate(format: "label CONTAINS %@", "applies anywhere you sign in")
@@ -91,16 +91,12 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     XCTAssertTrue(list.waitForExistence(timeout: 5))
     let toggle = app.switches["account.usageAnalytics"]
     for _ in 0..<8 {
-      if toggle.exists && toggleControl(toggle).isHittable { return toggle }
+      if toggle.exists && toggle.switchControl.isHittable { return toggle }
       list.swipeUp(velocity: .slow)
     }
     XCTAssertTrue(toggle.exists)
-    XCTAssertTrue(toggleControl(toggle).isHittable)
+    XCTAssertTrue(toggle.switchControl.isHittable)
     return toggle
   }
 
-  private func toggleControl(_ element: XCUIElement) -> XCUIElement {
-    let control = element.switches.firstMatch
-    return control.exists ? control : element
-  }
 }
