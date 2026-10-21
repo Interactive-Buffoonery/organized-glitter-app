@@ -13,28 +13,32 @@ struct AccountView: View {
   @Binding var showCraftingStreak: Bool
 
   var body: some View {
-    List {
-      Group {
+    // ponytail: a List here trips a UIKit focus assertion on iPad once the content
+    // passes a certain height (Apple r.154431813); return to List when Apple fixes it.
+    ScrollView {
+      VStack(spacing: 24) {
         if !connectionAvailable {
-          Section {
+          AccountSection {
             NeedsConnectionHint()
           }
         }
 
-        Section("Profile") {
+        AccountSection(title: "Profile") {
           NavigationLink {
             ProfileNameView(preferences: preferences)
           } label: {
-            LabeledContent(
-              "Profile name",
-              value: preferences.user.username ?? preferences.user.name ?? "Not set")
+            AccountNavigationRow {
+              LabeledContent(
+                "Profile name",
+                value: preferences.user.username ?? preferences.user.name ?? "Not set")
+            }
           }
           .accessibilityLabel("Edit profile name")
 
           LabeledContent("Email", value: preferences.user.email ?? "Hidden")
         }
 
-        Section("Appearance") {
+        AccountSection(title: "Appearance") {
           AccountAppearancePicker(
             title: "Theme",
             value: selectedFlavor.label,
@@ -81,11 +85,16 @@ struct AccountView: View {
             .accessibilityValue(selectedTimezone)
             .disabled(preferences.isBusy)
           } else {
-            timezonePicker
+            LabeledContent("Time zone") {
+              timezonePicker.labelsHidden()
+            }
           }
         }
 
-        Section {
+        AccountSection(
+          title: "Crafts",
+          footer: "At least one craft stays enabled. Turning one off hides its Library and Create choices without deleting anything."
+        ) {
           Toggle(
             "Diamond painting",
             isOn: verticalBinding(\.diamondPainting)
@@ -99,23 +108,21 @@ struct AccountView: View {
           )
           .disabled(preferences.isBusy || (preferences.verticals.coloringBooks && !preferences.verticals.diamondPainting))
           .accessibilityLabel("Enable coloring")
-        } header: {
-          Text("Crafts")
-        } footer: {
-          Text("At least one craft stays enabled. Turning one off hides its Library and Create choices without deleting anything.")
         }
 
-        Section {
+        AccountSection {
           NavigationLink {
             ManageListsView(
               library: library, userID: preferences.user.id,
               verticals: preferences.verticals)
           } label: {
-            Label("Manage lists", systemImage: "list.bullet")
+            AccountNavigationRow {
+              Label("Manage lists", systemImage: "list.bullet")
+            }
           }
         }
 
-        Section("Home") {
+        AccountSection(title: "Home") {
           Toggle("Show crafting streak", isOn: Binding(
             get: { showCraftingStreak },
             set: { enabled in
@@ -131,7 +138,10 @@ struct AccountView: View {
             .accessibilityIdentifier("account.showCraftingStreak")
         }
 
-        Section {
+        AccountSection(
+          title: "Privacy",
+          footer: "Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Your account choice applies anywhere you sign in and requires a connection to save. Turning this off stops new collection here right away. You can also pause collection on this device for this session, even offline. Other open apps and browsers will pick up the change after they refresh your account. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity."
+        ) {
           Toggle(
             "Share usage analytics",
             isOn: Binding(
@@ -162,14 +172,9 @@ struct AccountView: View {
             }
             .accessibilityIdentifier("account.pauseAnalytics")
           }
-        } header: {
-          Text("Privacy")
-        } footer: {
-          Text("Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Your account choice applies anywhere you sign in and requires a connection to save. Turning this off stops new collection here right away. You can also pause collection on this device for this session, even offline. Other open apps and browsers will pick up the change after they refresh your account. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity.")
-            .fixedSize(horizontal: false, vertical: true)
         }
 
-        Section("Help and legal") {
+        AccountSection(title: "Help and legal") {
           Link("Support", destination: AccountLinks.support)
             .accessibilityLabel("Email Organized Glitter support")
           Link("Send feedback", destination: AccountLinks.feedback)
@@ -178,28 +183,32 @@ struct AccountView: View {
             .accessibilityLabel("Open privacy policy")
           Link("Terms", destination: AccountLinks.terms)
             .accessibilityLabel("Open terms of service")
-          NavigationLink("App information") {
+          NavigationLink {
             AppInformationView()
+          } label: {
+            AccountNavigationRow { Text("App information") }
           }
         }
 
-        Section("Security") {
-          NavigationLink("Reset password") {
+        AccountSection(title: "Security") {
+          NavigationLink {
             PasswordResetView(client: client, initialEmail: preferences.user.email ?? "")
+          } label: {
+            AccountNavigationRow { Text("Reset password") }
           }
           Link("Account deletion help", destination: AccountLinks.accountDeletionSupport)
             .accessibilityLabel("Email support about account deletion")
         }
 
         if let error = preferences.errorMessage {
-          Section {
+          AccountSection {
             Label(error, systemImage: "exclamationmark.circle")
               .foregroundStyle(theme.destructive)
               .accessibilityLabel("Account error: \(error)")
           }
         }
 
-        Section {
+        AccountSection {
           Button("Sign Out", role: .destructive) {
             appModel.signOut()
           }
@@ -208,8 +217,10 @@ struct AccountView: View {
           if let message = appModel.sessionError { Text(message) }
         }
       }
-      .listRowBackground(theme.card)
+      .buttonStyle(AccountRowStyle())
+      .padding(.vertical, 20)
     }
+    .accessibilityIdentifier("account.list")
     .themedScrollBackground()
     .navigationTitle("Account")
     .confirmationDialog(
@@ -330,5 +341,74 @@ private struct AccountAppearancePicker<Selection: Hashable, Options: View>: View
 
   private var picker: some View {
     Picker(title, selection: $selection) { options }
+  }
+}
+
+private struct AccountSection<Content: View>: View {
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+  @Environment(\.theme) private var theme
+
+  var title: String?
+  var footer: String?
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+      if let title {
+        Text(title)
+          .accessibilityAddTraits(.isHeader)
+          .padding(.horizontal, inset)
+      }
+      VStack(spacing: 0) {
+        Group(subviews: content) { rows in
+          ForEach(rows) { row in
+            if row.id != rows.first?.id { Divider() }
+            row
+              .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+              .padding(.vertical, 6)
+          }
+        }
+      }
+      .padding(.horizontal, inset)
+      .background(theme.card, in: .rect(cornerRadius: 26))
+      if let footer {
+        Text(footer)
+          .fixedSize(horizontal: false, vertical: true)
+          .padding(.horizontal, inset)
+      }
+    }
+    .padding(.horizontal, inset)
+  }
+
+  /// The inset grouped List's margins.
+  private var inset: CGFloat { horizontalSizeClass == .regular ? 20 : 16 }
+}
+
+private struct AccountNavigationRow<Label: View>: View {
+  @ViewBuilder let label: Label
+
+  var body: some View {
+    HStack(spacing: Theme.Spacing.sm) {
+      label
+      Spacer(minLength: 0)
+      Image(systemName: "chevron.right")
+        .imageScale(.small)
+        .foregroundStyle(.tertiary)
+        .accessibilityHidden(true)
+    }
+  }
+}
+
+/// Plain full-width rows, matching how the inset grouped List drew links and buttons.
+private struct AccountRowStyle: ButtonStyle {
+  @Environment(\.theme) private var theme
+  @Environment(\.isEnabled) private var isEnabled
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .foregroundStyle(theme.foreground)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(.rect)
+      .opacity(isEnabled && !configuration.isPressed ? 1 : 0.5)
   }
 }
