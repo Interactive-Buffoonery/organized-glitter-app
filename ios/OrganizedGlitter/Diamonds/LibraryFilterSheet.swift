@@ -14,11 +14,6 @@ struct LibraryFilterSheet: View {
         if !filters.isEmpty {
           Section { activeSummary }
         }
-        Section {
-          Text("Different filters narrow the results together. Multiple selections within one filter match any selection.")
-            .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(theme.pageSecondaryForeground)
-        }
         if section == .diamonds {
           singleSelection("Company", options: options.companies,
             selection: $filters.companyID, unavailable: "Unavailable company")
