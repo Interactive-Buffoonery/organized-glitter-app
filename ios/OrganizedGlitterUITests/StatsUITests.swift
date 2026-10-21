@@ -24,6 +24,7 @@ final class StatsUITests: XCTestCase {
     openStats(app)
     XCTAssertTrue(app.staticTexts["Stats need a connection"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["Retry"].exists)
+    XCTAssertFalse(app.buttons["stats.year"].isEnabled)
     app.buttons["Retry"].tap()
     XCTAssertTrue(app.staticTexts["Stats need a connection"].waitForExistence(timeout: 5))
   }

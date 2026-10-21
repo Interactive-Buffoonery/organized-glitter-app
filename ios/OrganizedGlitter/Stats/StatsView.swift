@@ -30,6 +30,7 @@ struct StatsView: View {
           if let error = model.errorMessage {
             AccessibleErrorLabel(message: error)
             Button("Retry") { refreshID &+= 1 }
+              .buttonStyle(QuietActionStyle())
           }
           if model.isStale {
             Label("Showing the last server result", systemImage: "clock")
@@ -54,10 +55,12 @@ struct StatsView: View {
           ContentUnavailableView {
             Label(model.needsConnection ? "Stats need a connection" : "Couldn’t load stats",
               systemImage: model.needsConnection ? "wifi.slash" : "chart.bar")
+              .font(.karla(.title2).weight(.semibold))
           } description: {
-            Text(model.errorMessage ?? "Connect to load your server stats.")
+            Text(model.needsConnection ? "Reconnect and try again." : model.errorMessage ?? "Connect to load your server stats.")
           } actions: {
             Button("Retry") { refreshID &+= 1 }
+              .buttonStyle(QuietActionStyle())
           }
           .frame(maxWidth: .infinity, minHeight: 280)
         }
@@ -82,6 +85,7 @@ struct StatsView: View {
         } label: {
           Label(String(year), systemImage: "calendar")
         }
+        .disabled(model.needsConnection)
         .accessibilityLabel("Stats year, \(String(year))")
         .accessibilityIdentifier("stats.year")
       }
