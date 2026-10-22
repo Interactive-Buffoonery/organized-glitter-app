@@ -66,10 +66,10 @@ ipad_id=$(printf '%s\n' "$simulator_ids" | sed -n '2p')
 
 mkdir -p .derived-data/pre-pr
 run_dir=$(mktemp -d "$repo_root/.derived-data/pre-pr/run.XXXXXX")
-summary_file="$run_dir/summary.txt"
 overall_status=0
 for family in iphone ipad; do
   if [ "$family" = iphone ]; then simulator_id=$iphone_id; else simulator_id=$ipad_id; fi
+  summary_file="$run_dir/summary-$family.txt"
   if heavy-gate --simulator-session "$simulator_id" -- \
     sh "$repo_root/script/pre-pr-device.sh" "$run_dir" "$family" "$simulator_id"; then
     :
@@ -84,6 +84,8 @@ for family in iphone ipad; do
     overall_status=1
   fi
 done
-cat "$summary_file"
+for family in iphone ipad; do
+  if [ -f "$run_dir/summary-$family.txt" ]; then cat "$run_dir/summary-$family.txt"; fi
+done
 echo "Logs and Xcode result bundles: $run_dir"
 exit "$overall_status"

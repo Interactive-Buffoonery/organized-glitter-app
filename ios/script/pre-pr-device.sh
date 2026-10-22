@@ -9,7 +9,8 @@ cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 run_dir=$1
 family=$2
 simulator_id=$3
-summary_file="$run_dir/summary.txt"
+summary_file="$run_dir/summary-$family.txt"
+mkdir -p "$run_dir"
 overall_status=0
 if [ "$family" = iphone ]; then
   xcodegen generate || exit 75
