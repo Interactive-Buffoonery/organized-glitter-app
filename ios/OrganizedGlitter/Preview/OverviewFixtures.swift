@@ -62,6 +62,32 @@
         ])
         return
       }
+      if url.path == "/api/collections/users/auth-methods" {
+        respond(object: ["password": ["enabled": true],
+          "oauth2": ["enabled": false, "providers": []]])
+        return
+      }
+      if url.path == "/api/collections/users/records/preview-user/external-auths" {
+        let appleOnly = ProcessInfo.processInfo.arguments.contains("-fixture-deletion-apple-only-unavailable")
+        respond(data: Data((appleOnly ? #"[{"provider":"apple"}]"# : "[]").utf8))
+        return
+      }
+      if url.path == "/api/auth/apple/native/readiness" {
+        respond(object: ["available": false])
+        return
+      }
+      if url.path == "/api/auth/step-up/password" {
+        respond(object: [:], status: 204)
+        return
+      }
+      if url.path == "/api/account/delete" {
+        if ProcessInfo.processInfo.arguments.contains("-fixture-deletion-uncertain") {
+          client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+        } else {
+          respond(object: ["status": "deleted", "cleanup": "pending"])
+        }
+        return
+      }
       if Self.offlineSeedCompleted {
         client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
         return

@@ -140,18 +140,30 @@ and verified. Do not update `BackendContract.json` or claim production link
 handling before that deployed revision is known. Email-verification
 confirmation remains blocked on its own universal-link contract.
 
-Account deletion is a backend-first App Store release blocker. The existing web
-flow lets the client write its own audit record and then delete the user, so the
-iOS app must not reuse it. The backend must add one authenticated deletion
-endpoint or hook that derives the user ID, email, signup method, timestamp, and
-usage snapshot from the authenticated server context; writes an immutable audit
-record that clients cannot create or change; deletes the account and owned data
-with defined all-or-nothing or retry-safe behavior; revokes active sessions and
-OAuth grants; returns only a completion result; and has cross-client tests for
-authorization, cascades, partial failure, retries, and older web/iOS clients.
-After that backend revision is deployed and pinned, the app must add a clear
-in-app deletion action with confirmation and reauthentication where required.
+The native account-deletion flow uses the guarded backend contract in
+[`account-deletion/contract.md`](account-deletion/contract.md). Account settings
+opens a native deletion screen. A verified existing password, Apple, Google or
+Discord identity must authorize a new proof before a separate destructive
+confirmation. Step-up responses never replace the app session or link accounts.
+The Keychain intent is scoped to backend and account and is saved before
+verification and again before the destructive request. Ambiguous outcomes lock
+account access and retain local edits. Recovery precedes session restoration.
 
-Privacy Policy and Terms use the live public web pages. Support and account-
-deletion help use `support@organizedglitter.app`; support contact is not a
-substitute for the required in-app deletion flow.
+A validated deletion response starts durable local removal using the existing
+library markers. Credentials, library records and pending edits, artwork,
+in-memory caches and the audited PostHog SDK disk queues are removed. Local
+cleanup and vendor cleanup are separate states. A server receipt with pending
+vendor cleanup is never presented as vendor erasure. The native backend pin
+remains unchanged until the deployed contract is verified.
+
+A normal authentication failure preserves downloaded libraries and pending
+edits. The backend has no trustworthy remote-deletion signal for other devices;
+401 alone never proves deletion. The signed-out screen offers explicit,
+confirmed device-only removal of retained libraries for the configured server.
+It also offers sign-in to recover access. This action uses removal markers and
+never calls server deletion. It cannot resolve a submitted deletion intent;
+that flow stays locked until a valid same-proof receipt confirms deletion.
+
+Privacy Policy and Terms use the live public web pages. Support uses
+`support@organizedglitter.app`; account-deletion support is recovery help after
+an unresolved result, rather than the normal in-app deletion route.

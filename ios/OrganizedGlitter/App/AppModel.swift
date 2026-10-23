@@ -22,6 +22,7 @@ final class AppModel {
 
   enum Phase: Equatable {
     case restoring
+    case accountDeletion
     case cleaningLocalData
     case cleanupFailed
     case signedOut
@@ -42,6 +43,11 @@ final class AppModel {
   private var analyticsConsentAccountID: String?
   private var analyticsLocallyPausedAccountID: String?
   private let sessionStore: KeychainSessionStore?
+  @ObservationIgnored private let now: () -> Date
+  @ObservationIgnored private let deletionPersistence: AccountDeletionPersistence?
+  private(set) var deletion: AccountDeletionModel?
+  private var removableLocalScopes: [LocalAccountScope] = []
+  var removableLocalScopeCount: Int { removableLocalScopes.count }
   private let themeStore: ThemeStore?
   @ObservationIgnored private var sessionGeneration = 0
   private var localStore: LocalLibraryStore?
@@ -80,10 +86,14 @@ final class AppModel {
 
   init(
     client: PocketBaseClient, sessionStore: KeychainSessionStore, themeStore: ThemeStore,
-    localStore: LocalLibraryStore? = nil, analytics: NativeAnalytics? = nil
+    localStore: LocalLibraryStore? = nil, analytics: NativeAnalytics? = nil,
+    deletionPersistence: AccountDeletionPersistence? = nil,
+    now: @escaping () -> Date = Date.init
   ) {
     self.client = client
     self.sessionStore = sessionStore
+    self.now = now
+    self.deletionPersistence = deletionPersistence ?? sessionStore.deletionPersistence
     self.themeStore = themeStore
     self.analytics = analytics ?? NativeAnalytics()
     phase = .restoring
@@ -93,6 +103,8 @@ final class AppModel {
       phase = .configurationError("The local library could not be opened.")
       return
     }
+
+    if recoverAccountDeletion(generation: sessionGeneration) { return }
 
     #if DEBUG
       if ProcessInfo.processInfo.arguments.contains("-ui-testing-restoring") {
@@ -140,6 +152,8 @@ final class AppModel {
     client = nil
     analytics = NativeAnalytics()
     sessionStore = nil
+    now = Date.init
+    deletionPersistence = nil
     self.themeStore = themeStore
     phase = .configurationError(configurationError.localizedDescription)
   }
@@ -163,6 +177,7 @@ final class AppModel {
   func restoreSession() async {
     guard !isSigningOut, let client, let sessionStore, let localStore else { return }
     let generation = beginSessionTransition()
+    if recoverAccountDeletion(generation: generation) { return }
     do { try await finishPendingLocalRemoval() }
     catch {
       guard generation == sessionGeneration else { return }
@@ -543,7 +558,7 @@ final class AppModel {
   }
 
   func expireSession() async {
-    guard !isSigningOut else { return }
+    guard !isSigningOut, !cleanupBlocked, deletion?.isLocked != true else { return }
     isSigningOut = true
     defer { isSigningOut = false }
     sessionGeneration &+= 1
@@ -557,7 +572,7 @@ final class AppModel {
   }
 
   func signOut(discardPending: Bool = false) {
-    guard !isSigningOut else { return }
+    guard !isSigningOut, !cleanupBlocked, deletion?.isLocked != true else { return }
     if !requiresDiscardConfirmation { analytics.capture(.signOutRequested) }
     isSigningOut = true
     sessionGeneration &+= 1
@@ -609,7 +624,7 @@ final class AppModel {
   }
 
   private func routePendingPasswordReset() {
-    guard phase != .restoring else { return }
+    guard phase != .restoring, phase != .accountDeletion, !cleanupBlocked else { return }
     if case .signedIn = phase {
       guard pendingPasswordResetLink != nil || passwordResetDestination != nil else { return }
       pendingPasswordResetLink = nil
@@ -628,6 +643,148 @@ final class AppModel {
     await expireSession()
   }
 
+  func loadRemovableLocalScopes() async {
+    guard case .signedOut = phase, let client, let localStore, !cleanupBlocked else { return }
+    let generation = sessionGeneration
+    do {
+      let scopes = try await localStore.retainedScopes(backendURL: client.baseURL)
+      guard generation == sessionGeneration, phase == .signedOut else { return }
+      removableLocalScopes = scopes
+    } catch {
+      guard generation == sessionGeneration, phase == .signedOut else { return }
+      sessionError = "Saved libraries could not be checked on this device."
+    }
+  }
+
+  func removeSavedLibrariesFromDevice() async {
+    guard phase == .signedOut, !cleanupBlocked, !isSigningOut, let localStore else { return }
+    let scopes = removableLocalScopes
+    guard !scopes.isEmpty else { return }
+    let generation = beginSessionTransition()
+    cleanupBlocked = true
+    phase = .cleaningLocalData
+    do {
+      for scope in scopes {
+        try await localStore.beginRemoval(scope: scope)
+        guard generation == sessionGeneration else { return }
+      }
+      try await finishPendingLocalRemoval()
+      guard generation == sessionGeneration else { return }
+      removableLocalScopes = []
+      phase = .signedOut
+    } catch {
+      guard generation == sessionGeneration else { return }
+      phase = .cleanupFailed
+    }
+  }
+
+  func beginAccountDeletion() {
+    guard !isSigningOut, !cleanupBlocked, case .signedIn(let user) = phase,
+      user.verified == true, let client, let deletionPersistence else { return }
+    deletion?.cancelPreparation()
+    deletion = makeDeletionModel(
+      scope: LocalAccountScope(backendURL: client.baseURL, userID: user.id),
+      persistence: deletionPersistence, generation: sessionGeneration)
+  }
+
+  private func recoverAccountDeletion(generation: Int) -> Bool {
+    guard let client, let deletionPersistence else { return false }
+    do {
+      guard let stored = try deletionPersistence.load() else { return false }
+      try stored.validate()
+      if stored.stage == .prepared {
+        try deletionPersistence.clear()
+        return false
+      }
+      guard stored.backendURL == client.baseURL else { throw APIError.forbidden }
+      if let session = try sessionStore?.load(), session.userID != stored.userID { throw APIError.forbidden }
+      let recovery = makeDeletionModel(scope: stored.scope, persistence: deletionPersistence, generation: generation)
+      if try !recovery.recover() { return false }
+      deletion = recovery
+      cleanupBlocked = true
+      passwordResetDestination = nil
+      phase = .accountDeletion
+      if stored.stage == .serverDeleted {
+        Task { await recovery.retry() }
+      }
+      return true
+    } catch {
+      cleanupBlocked = true
+      phase = .accountDeletion
+      return true
+    }
+  }
+
+  private func deletionIsCurrent(scope: LocalAccountScope, generation: Int) -> Bool {
+    guard generation == sessionGeneration, client?.baseURL == scope.backendURL else { return false }
+    switch phase {
+    case .signedIn(let user): return user.id == scope.userID
+    case .accountDeletion: return deletion?.scope == scope
+    default: return false
+    }
+  }
+
+  private func makeDeletionModel(
+    scope: LocalAccountScope, persistence: AccountDeletionPersistence, generation: Int
+  ) -> AccountDeletionModel {
+    AccountDeletionModel(
+      client: client!, scope: scope, persistence: persistence,
+      now: now,
+      isCurrent: { [weak self] in self?.deletionIsCurrent(scope: scope, generation: generation) == true },
+      prepareRecoveryAuthentication: { [weak self] in
+        guard let self, self.deletionIsCurrent(scope: scope, generation: generation),
+          let stored = try self.sessionStore?.load(), stored.userID == scope.userID else {
+          throw APIError.unauthenticated
+        }
+        if let expiration = JWTExpiration.date(for: stored.token), expiration <= self.now() {
+          throw APIError.unauthenticated
+        }
+        await self.client!.prepareOfflineSession(stored)
+        guard self.deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+      },
+      lock: { [weak self] in
+        guard let self, self.deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+        self.cleanupBlocked = true
+        self.library?.pauseWrites()
+        self.passwordResetDestination = nil
+        self.phase = .accountDeletion
+        await self.drainUserSave()
+        guard self.deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+        try await self.library?.close(removingData: false)
+        guard self.deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+      }, cleanup: { [weak self] scope in
+        guard let self else { throw APIError.cancelled }
+        try await self.removeDeletedAccount(scope: scope, generation: generation)
+      })
+  }
+
+  private func removeDeletedAccount(scope: LocalAccountScope, generation: Int) async throws {
+    guard deletionIsCurrent(scope: scope, generation: generation), let localStore, let client else { throw APIError.cancelled }
+    try await localStore.beginRemoval(scope: scope)
+    guard deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+    if let session = try sessionStore?.load(), session.userID != scope.userID { throw APIError.forbidden }
+    try sessionStore?.clear()
+    await client.signOut()
+    guard deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+    try analytics.eraseDeletedAccountData()
+    try await localStore.removeScope(scope)
+    guard deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+    try await client.removeDownloadedArtwork(scope: scope)
+    guard deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+    library = nil
+    await RemoteArtworkLoader.shared.purgeMemoryCache()
+    guard deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+    try await localStore.finishRemoval(scope: scope)
+    guard deletionIsCurrent(scope: scope, generation: generation) else { throw APIError.cancelled }
+  }
+
+  func finishAccountDeletion() {
+    guard case .completed = deletion?.state else { return }
+    deletion = nil
+    cleanupBlocked = false
+    phase = .signedOut
+  }
+
   private func finishPendingLocalRemoval() async throws {
     guard let localStore, let client else { return }
     let scopes = try await localStore.pendingRemovals()
@@ -635,6 +792,7 @@ final class AppModel {
     cleanupBlocked = true
     phase = .cleaningLocalData
     await drainUserSave()
+    try analytics.eraseDeletedAccountData()
     try sessionStore?.clear()
     await client.signOut()
     for scope in scopes {
@@ -708,6 +866,7 @@ final class AppModel {
   }
 
   private func beginSessionTransition() -> Int {
+    deletion?.invalidate()
     oauthTask?.cancel()
     if let attemptID = oauthAttemptID {
       Task { await client?.cancelExternalAuthAttempt(id: attemptID) }
@@ -725,6 +884,7 @@ final class AppModel {
     appleAttempt = nil
     analyticsConsentAccountID = nil
     analyticsLocallyPausedAccountID = nil
+    removableLocalScopes = []
     updateAnalyticsSession()
     sessionGeneration &+= 1
     return sessionGeneration

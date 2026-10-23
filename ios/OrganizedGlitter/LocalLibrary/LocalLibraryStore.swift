@@ -136,6 +136,15 @@ actor LocalLibraryStore: ModelActor {
     try commit()
   }
 
+  func retainedScopes(backendURL: URL) throws -> [LocalAccountScope] {
+    try context.fetch(FetchDescriptor<LocalStoredAccount>()).compactMap { account in
+      guard !account.userData.isEmpty else { return nil }
+      let user = try decoder.decode(UserRecord.self, from: account.userData)
+      let scope = LocalAccountScope(backendURL: backendURL, userID: user.id)
+      return account.scope == scope.storageKey ? scope : nil
+    }
+  }
+
   func loadUser(scope: LocalAccountScope) throws -> UserRecord? {
     guard let stored = try account(scope.storageKey) else { return nil }
     guard !stored.userData.isEmpty else { return nil }

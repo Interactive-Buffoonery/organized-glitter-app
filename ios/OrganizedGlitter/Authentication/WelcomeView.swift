@@ -13,6 +13,7 @@ struct WelcomeView: View {
   @State private var path: [AccountEntryRoute] = []
   @State private var coversBackground: Bool
   @State private var methodMode: AccountMethodView.Mode = .signIn
+  @State private var confirmsLocalRemoval = false
 
   init(model: AppModel) {
     self.model = model
@@ -67,6 +68,15 @@ struct WelcomeView: View {
             .buttonStyle(AuthSecondaryButtonStyle())
             .accessibilityIdentifier("welcomeSignIn")
           }
+          .safeAreaInset(edge: .bottom) {
+            if !isRestoring, model.removableLocalScopeCount > 0 {
+              Button("Remove Saved Libraries From This Device", role: .destructive) {
+                confirmsLocalRemoval = true
+              }
+              .font(.footnote)
+              .accessibilityIdentifier("session.removeLocalData")
+            }
+          }
           .padding(.bottom, AccountEntryLayout.actionsBottomPadding)
           .opacity(isRestoring ? 0 : 1)
           .allowsHitTesting(!isRestoring)
@@ -77,6 +87,15 @@ struct WelcomeView: View {
         withAnimation(.easeOut(duration: 0.4)) { coversBackground = false }
       }
       .toolbar(.hidden, for: .navigationBar)
+      .task(id: model.phase) { await model.loadRemovableLocalScopes() }
+      .alert("Remove saved libraries from this device?", isPresented: $confirmsLocalRemoval) {
+        Button("Remove Saved Libraries", role: .destructive) {
+          Task { await model.removeSavedLibrariesFromDevice() }
+        }
+        Button("Keep Saved Libraries", role: .cancel) {}
+      } message: {
+        Text("This removes \(model.removableLocalScopeCount) saved \(model.removableLocalScopeCount == 1 ? "library" : "libraries") and all unsynced changes for this server on this device. It does not delete a server account or confirm whether any account was deleted. Sign in again to recover access instead.")
+      }
       .navigationDestination(for: AccountEntryRoute.self) { route in
         switch route {
         case .methods:

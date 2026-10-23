@@ -54,23 +54,56 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     if resume.exists { XCTAssertFalse(resume.isEnabled) }
   }
 
+  func testAnalyticsDetailsAreCollapsedUntilOpened() {
+    assertAnalyticsDetails(largeText: false)
+  }
+
   func testPrivacyPreferenceIsReachableAtLargestDynamicType() {
-    let app = launchFixture(largeText: true)
+    assertAnalyticsDetails(largeText: true)
+  }
+
+  private func assertAnalyticsDetails(largeText: Bool) {
+    let app = launchFixture(largeText: largeText)
     let toggle = openPrivacy(app)
     XCTAssertTrue(toggleControl(toggle).isHittable)
     XCTAssertEqual(toggle.label, "Share usage analytics")
-    let disclosure = app.descendants(matching: .any).matching(
-      NSPredicate(format: "label CONTAINS %@", "applies anywhere you sign in")
-    ).firstMatch
-    for _ in 0..<4 {
-      if disclosure.exists { break }
+    let summary = app.staticTexts["account.analyticsSummary"]
+    let details = app.buttons["How analytics works"]
+    let history = app.staticTexts["account.analyticsHistory"]
+    for _ in 0..<6 {
+      if summary.exists && summary.isHittable { break }
       app.collectionViews.firstMatch.swipeUp(velocity: .slow)
     }
-    XCTAssertTrue(disclosure.exists)
-    let attachment = XCTAttachment(screenshot: app.screenshot())
-    attachment.name = "Account analytics privacy at largest Dynamic Type"
-    attachment.lifetime = .keepAlways
-    add(attachment)
+    XCTAssertTrue(summary.isHittable)
+    XCTAssertTrue(summary.label.contains("linked to your account"))
+    for _ in 0..<6 {
+      if details.exists && details.isHittable { break }
+      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+    }
+    XCTAssertTrue(details.isHittable)
+    XCTAssertFalse(history.exists)
+    let collapsed = XCTAttachment(screenshot: app.screenshot())
+    collapsed.name = largeText ? "Analytics collapsed at largest Dynamic Type" : "Analytics collapsed"
+    collapsed.lifetime = .keepAlways
+    add(collapsed)
+    details.tap()
+    for _ in 0..<6 {
+      if history.exists && history.isHittable { break }
+      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+    }
+    XCTAssertTrue(history.isHittable)
+    XCTAssertTrue(history.label.contains("does not delete past activity"))
+    let expanded = XCTAttachment(screenshot: app.screenshot())
+    expanded.name = largeText ? "Analytics expanded at largest Dynamic Type" : "Analytics expanded"
+    expanded.lifetime = .keepAlways
+    add(expanded)
+    for _ in 0..<6 {
+      if details.isHittable { break }
+      app.collectionViews.firstMatch.swipeDown(velocity: .slow)
+    }
+    XCTAssertTrue(details.isHittable)
+    details.tap()
+    XCTAssertFalse(history.exists)
   }
 
   private func launchFixture(largeText: Bool = false, offline: Bool = false) -> XCUIApplication {
