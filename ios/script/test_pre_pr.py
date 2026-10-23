@@ -61,6 +61,9 @@ fi''',
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(trace, ['boot:iPhone', 'generate', 'test:iPhone', 'test:iPhone',
                                  'shutdown:iPhone', 'boot:iPad', 'test:iPad', 'shutdown:iPad'])
+        report = result.stdout.split('Logs and Xcode result bundles')[0]
+        summaries = [line for line in report.splitlines() if ': PASS (' in line][-3:]
+        self.assertEqual([line.split(':')[0] for line in summaries], ['unit-tests', 'iphone-ui', 'ipad-ui'])
 
     def test_failed_tests_still_release_device(self):
         result, trace = self.run_job('iPhone')
