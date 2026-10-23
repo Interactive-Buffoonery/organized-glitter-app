@@ -850,6 +850,7 @@
         } else if pair.1 == "completed" {
           project["date_completed"] = "2026-09-17"
         }
+        var expand = project["expand"] as! [String: Any]
         if index == 0 {
           project["general_notes"] =
             "<p>Bright summer blooms in every <strong>color</strong>.</p><p>Save the AB drills for the petals.</p>"
@@ -860,19 +861,16 @@
           project["date_received"] = "2026-07-11"
           project["date_started"] = "2026-08-14"
           project["source_url"] = "https://unsplash.com/photos/MRjuroFzfQw"
-          var expand = project["expand"] as! [String: Any]
           expand["project_tags_via_project"] = [("Gardens", "tag-gardens"), ("Florals", "tag-florals")].map {
             ["id": "pt-\($0.1)", "expand": ["tag": ["id": $0.1, "name": $0.0]]]
           }
-          project["expand"] = expand
         }
         if ProcessInfo.processInfo.arguments.contains("-fixture-long-library-text") {
           project["title"] = "A Garden of Wildflowers Beneath the Moon and Stars"
-          var expand = project["expand"] as! [String: Any]
           expand["company"] = ["id": "design-company", "name": "The Example Diamond Painting Company"]
           expand["artist"] = ["id": "design-artist-\(index)", "name": "Alexandra Example and the Garden Illustration Studio"]
-          project["expand"] = expand
         }
+        project["expand"] = expand
         return project
       }
       let extraKits = [

@@ -34,8 +34,7 @@ struct StatsView: View {
         if let snapshot = model.snapshot(for: library, year: year) {
           if let error = model.errorMessage {
             AccessibleErrorLabel(message: error)
-            Button("Retry") { refreshID &+= 1 }
-              .buttonStyle(QuietActionStyle())
+            retryButton
           }
           if model.isStale {
             Label("Showing the last server result", systemImage: "clock")
@@ -64,8 +63,7 @@ struct StatsView: View {
           } description: {
             Text(model.needsConnection ? "Reconnect and try again." : model.errorMessage ?? "Connect to load your server stats.")
           } actions: {
-            Button("Retry") { refreshID &+= 1 }
-              .buttonStyle(QuietActionStyle())
+            retryButton
           }
           .frame(maxWidth: .infinity, minHeight: 280)
         }
@@ -101,6 +99,11 @@ struct StatsView: View {
     }
     .onDisappear { model.clear() }
     .refreshable { await model.load(library: library, year: year) }
+  }
+
+  private var retryButton: some View {
+    Button("Retry") { refreshID &+= 1 }
+      .buttonStyle(QuietActionStyle())
   }
 
   private var recentYears: [Int] {

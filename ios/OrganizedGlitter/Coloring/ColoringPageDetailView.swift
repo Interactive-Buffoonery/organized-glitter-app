@@ -285,14 +285,7 @@ struct ColoringPageDetailView: View {
             }
           }
 
-          if let errorMessage = model.errorMessage {
-            VStack(alignment: .leading, spacing: 12) {
-              AccessibleErrorLabel(message: errorMessage)
-              Button("Try again") {
-                Task { await model.load() }
-              }
-            }
-          }
+          DetailLoadError(model: model)
         }
         .frame(maxWidth: 760, alignment: .leading)
         .padding(.horizontal, 20)
