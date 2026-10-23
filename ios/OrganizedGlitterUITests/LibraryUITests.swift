@@ -128,6 +128,52 @@ final class LibraryUITests: XCTestCase {
         .waitForExistence(timeout: 3))
   }
 
+  func testPageMediumsSaveOnceAndClearSelection() throws {
+    let app = launch("populated")
+    openLibrary(app)
+    XCTAssertTrue(app.openCraft("Coloring"))
+    let book = app.buttons.matching(NSPredicate(
+      format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@", "Moonlit meadows", "24 pages")).firstMatch
+    XCTAssertTrue(book.waitForExistence(timeout: 5))
+    book.tap()
+    let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden")).firstMatch
+    if !page.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(page.waitForExistence(timeout: 5))
+    page.tap()
+    let edit = app.buttons["detail.page.mediums"]
+    if !edit.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(edit.waitForExistence(timeout: 5))
+    edit.tap()
+    let done = app.buttons["mediums.done"]
+    XCTAssertTrue(done.waitForExistence(timeout: 5))
+    XCTAssertFalse(done.isEnabled)
+    XCTAssertTrue(app.buttons["Pencils"].waitForExistence(timeout: 5))
+    app.buttons["Pencils"].tap()
+    app.buttons["Markers"].tap()
+    XCTAssertTrue(app.buttons["Pencils"].isSelected)
+    XCTAssertTrue(app.buttons["Markers"].isSelected)
+    XCTAssertTrue(app.buttons["mediums.clear"].isEnabled)
+    try capture(app, "mediums-selected")
+    XCTAssertTrue(done.isEnabled)
+    done.tap()
+    let names = app.staticTexts["detail.page.mediumNames"]
+    let hasNames = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Pencils", "Markers")
+    expectation(for: hasNames, evaluatedWith: names)
+    waitForExpectations(timeout: 8)
+    let noNotes = app.staticTexts["No progress notes"]
+    for _ in 0..<3 where !noNotes.isHittable { app.swipeUp() }
+    XCTAssertTrue(noNotes.isHittable)
+    try capture(app, "page-notes-empty")
+    for _ in 0..<3 where !edit.isHittable { app.swipeDown() }
+    edit.tap()
+    XCTAssertTrue(app.buttons["Pencils"].waitForExistence(timeout: 5))
+    app.buttons["Pencils"].tap()
+    app.buttons["Markers"].tap()
+    done.tap()
+    expectation(for: NSPredicate(format: "label == %@", "None"), evaluatedWith: names)
+    waitForExpectations(timeout: 8)
+  }
+
   func testColoringSearchFindsPagesAndCreateChoosesTheirBook() throws {
     let app = launch("populated")
     openLibrary(app)

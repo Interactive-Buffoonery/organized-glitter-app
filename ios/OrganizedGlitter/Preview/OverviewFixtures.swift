@@ -345,7 +345,16 @@
               : OverviewFixtureProtocol.progressNoteItems) : [],
           "coloring_page_progress_notes": hasContent && usesDesignData
             ? OverviewFixtureProtocol.designPageProgressNotes : [],
+          "coloring_mediums": [
+            ["id": "fixturepencil01", "user": "preview-user", "name": "Pencils", "type": "colored_pencil"],
+            ["id": "fixturemarker01", "user": "preview-user", "name": "Markers", "type": "alcohol_marker"],
+          ],
         ]
+        collections["coloring_pages"] = (collections["coloring_pages"] ?? []).map { page in
+          var page = page
+          page["mediums"] = [] as [String]
+          return page
+        }
         if ProcessInfo.processInfo.arguments.contains("-fixture-page-photo-actions"),
           var pages = collections["coloring_pages"], !pages.isEmpty {
           pages[0]["photos"] = ["design-page-1.jpg", "design-page-2.jpg"]
@@ -390,6 +399,7 @@
             pages.append([
               "id": "design-page-\(index)", "book": "design-book-0",
               "page_number": index + 1, "status": "not_started", "photos": [],
+              "mediums": [] as [String],
               "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
               "expand": ["book": firstBook],
             ])
@@ -420,7 +430,16 @@
         for (field, value) in patch { record[field] = value }
         record["updated"] = "2026-09-19 15:00:00"
         collections[collection]![index] = record
-        return FixtureResponse(object: ["record": record], status: 200)
+        if collection == "coloring_pages", patch["mediums"] != nil {
+          var expansion = record["expand"] as? [String: Any] ?? [:]
+          let selected = Set(record["mediums"] as? [String] ?? [])
+          expansion["mediums"] = (collections["coloring_mediums"] ?? []).filter {
+            selected.contains($0["id"] as? String ?? "")
+          }
+          record["expand"] = expansion
+          collections[collection]![index] = record
+        }
+        return FixtureResponse(object: ["outcome": "updated", "record": record], status: 200)
       }
 
       private func latestNotes(request: URLRequest) -> FixtureResponse {
@@ -504,6 +523,8 @@
           if let image = upload.files["image"]?.first {
             record["image"] = image
           }
+        case "coloring_mediums":
+          record["user"] = "preview-user"
         case "user_dashboard_settings", "randomizer_spins":
           break
         default:

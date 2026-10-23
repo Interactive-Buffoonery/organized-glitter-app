@@ -8,6 +8,7 @@ struct ColoringPageDetailView: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
+  @Environment(\.connectionAvailable) private var connectionAvailable
 
   let page: ColoringPageRecord
   let model: LibraryItemDetailModel
@@ -31,7 +32,13 @@ struct ColoringPageDetailView: View {
   }
 
   private var revealControlsDisabled: Bool {
-    model.isMutating || model.unresolvedWriteState != nil || isPreparingPhoto || pendingPhoto != nil
+    model.isMutating || model.unresolvedWriteState != nil || isPreparingPhoto || pendingPhoto != nil || hasMediumRecovery
+  }
+
+  @State private var showingMediumEditor = false
+
+  private var hasMediumRecovery: Bool {
+    model.library.mediumAttempts.contains { $0.pageID == page.id }
   }
 
   var body: some View {
@@ -71,6 +78,7 @@ struct ColoringPageDetailView: View {
                 allowsEmpty: true,
                 model: model,
                 onCollectionChanged: onCollectionChanged)
+                .disabled(hasMediumRecovery)
             }
             Text(subtitle)
               .accessibilityIdentifier("detail.page.subtitle")
@@ -80,6 +88,7 @@ struct ColoringPageDetailView: View {
 
           DetailStatusMenu<PageStatus>(
             current: page.status, model: model, onCollectionChanged: onCollectionChanged)
+            .disabled(hasMediumRecovery)
           DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
 
           if mystery.isMystery && !mystery.isRevealed {
@@ -101,6 +110,22 @@ struct ColoringPageDetailView: View {
             .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
           }
           if let revealErrorMessage { AccessibleErrorLabel(message: revealErrorMessage) }
+
+          VStack(alignment: .leading, spacing: 12) {
+            Label("Mediums", systemImage: "pencil.tip")
+              .font(.karla(.headline))
+            Text(MediumNames.summary(ids: page.selectedMediumIDs, options: page.expand?.mediums ?? []))
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("detail.page.mediumNames")
+            Button(hasMediumRecovery ? "Review medium save" : page.selectedMediumIDs.isEmpty ? "Add mediums" : "Edit mediums") {
+              showingMediumEditor = true
+            }
+            .buttonStyle(.bordered)
+            .disabled((!connectionAvailable && !hasMediumRecovery) || model.isMutating || model.unresolvedWriteState != nil
+              || pendingPhoto != nil || isPreparingPhoto)
+            .accessibilityIdentifier("detail.page.mediums")
+            if !hasMediumRecovery { NeedsConnectionHint() }
+          }
 
           VStack(alignment: .leading, spacing: 12) {
             photoHeader
@@ -240,7 +265,7 @@ struct ColoringPageDetailView: View {
               DetailDateRow(
                 label: "Started",
                 value: page.startedAt,
-                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil || hasMediumRecovery,
                 maximumDate: min(completedDate ?? today, today)
               ) { date in
                 saveDetailChange(
@@ -250,7 +275,7 @@ struct ColoringPageDetailView: View {
               DetailDateRow(
                 label: "Completed",
                 value: page.completedAt,
-                isDisabled: model.isMutating || model.unresolvedWriteState != nil,
+                isDisabled: model.isMutating || model.unresolvedWriteState != nil || hasMediumRecovery,
                 minimumDate: startedDate,
                 maximumDate: today
               ) { date in
@@ -300,6 +325,9 @@ struct ColoringPageDetailView: View {
       Button("Cancel", role: .cancel) {}
     } message: {
       Text("The page goes back to being a mystery.")
+    }
+    .sheet(isPresented: $showingMediumEditor) {
+      PageMediumEditor(page: page, model: model, onCollectionChanged: onCollectionChanged)
     }
   }
 
@@ -449,7 +477,7 @@ struct ColoringPageDetailView: View {
               .contentShape(.rect)
           }
           .buttonStyle(.bordered)
-          .disabled(isPreparingPhoto || model.isMutating || model.unresolvedWriteState != nil || !connectionAvailable)
+          .disabled(isPreparingPhoto || model.isMutating || model.unresolvedWriteState != nil || !connectionAvailable || hasMediumRecovery)
           .accessibilityIdentifier("detail.page.addPhoto")
           NeedsConnectionHint()
         }
