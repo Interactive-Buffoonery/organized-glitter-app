@@ -80,7 +80,7 @@ final class AccountActionsUITests: XCTestCase {
   private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
     for _ in 0..<8 {
       if element.exists && element.isHittable { return }
-      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+      app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     XCTAssertTrue(element.isHittable)
   }
