@@ -3,6 +3,7 @@ import SwiftUI
 struct LibraryFilterSheet: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.theme) private var theme
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Binding var filters: LibraryFilters
   let section: LibrarySection
   let options: LibraryFilterOptions
@@ -10,10 +11,8 @@ struct LibraryFilterSheet: View {
   var body: some View {
     NavigationStack {
       Form {
-        Section {
-          Text("Different filters narrow the results together. Multiple selections within one filter match any selection.")
-            .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(theme.pageSecondaryForeground)
+        if !filters.isEmpty {
+          Section { activeSummary }
         }
         if section == .diamonds {
           singleSelection("Company", options: options.companies,
@@ -57,28 +56,49 @@ struct LibraryFilterSheet: View {
       .font(.karla(.body))
       .scrollContentBackground(.hidden)
       .background(theme.themedBackground.ignoresSafeArea())
-      .navigationTitle(section == .diamonds ? "Filter diamond art" : "Filter coloring books")
+      .navigationTitle(title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Reset") {
-            filters = LibraryFilters()
-            AccessibilityNotification.Announcement("Filters reset").post()
-          }
-            .disabled(filters.isEmpty)
-            .accessibilityIdentifier("library.filters.reset")
+        ToolbarItem(placement: .principal) {
+          Text(title)
+            .font(.karla(.headline))
+            .foregroundStyle(theme.foreground)
+            .accessibilityAddTraits(.isHeader)
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
-            AccessibilityNotification.Announcement("Filters applied").post()
-            dismiss()
-          }
+          Button("Done") { dismiss() }
             .accessibilityIdentifier("library.filters.done")
         }
       }
     }
     .tint(theme.primary)
     .presentationSizing(.form)
+  }
+
+  /// Stacks at accessibility sizes so the summary keeps its two lines.
+  private var activeSummary: some View {
+    let layout = dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+      : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+    return layout {
+      Text("Filtered: \(filters.activeFacets.joined(separator: ", "))")
+        .lineLimit(2)
+        .truncationMode(.tail)
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("library.filters.sheetSummary")
+      Button("Clear filters") {
+        filters = LibraryFilters()
+        AccessibilityNotification.Announcement("Filters cleared").post()
+      }
+      .buttonStyle(.borderless)
+      .fixedSize()
+      .accessibilityIdentifier("library.filters.sheetClear")
+    }
+  }
+
+  private var title: String {
+    section == .diamonds ? "Filter diamond art" : "Filter coloring books"
   }
 
   private var years: [Int] {
@@ -123,26 +143,39 @@ struct LibraryFilterSheet: View {
   private func selectionRows(options: [LibraryFilterOption], selection: Binding<Set<String>>,
     facet: String) -> some View
   {
-    ForEach(options) { option in
-      let selected = selection.wrappedValue.contains(option.id)
-      Button {
-        if selected { selection.wrappedValue.remove(option.id) }
-        else { selection.wrappedValue.insert(option.id) }
-      } label: {
-        HStack(alignment: .firstTextBaseline) {
-          Text(option.name)
-            .fixedSize(horizontal: false, vertical: true)
-            .foregroundStyle(theme.foreground)
-          Spacer(minLength: 12)
-          if selected { Image(systemName: "checkmark").foregroundStyle(theme.primary) }
+    Group {
+      selectionRow("Any", selected: selection.wrappedValue.isEmpty,
+        identifier: "library.filter.\(facet).any") { selection.wrappedValue.removeAll() }
+      ForEach(options) { option in
+        let selected = selection.wrappedValue.contains(option.id)
+        selectionRow(option.name, selected: selected,
+          identifier: "library.filter.\(facet).\(option.id)")
+        {
+          if selected { selection.wrappedValue.remove(option.id) }
+          else { selection.wrappedValue.insert(option.id) }
         }
-        .frame(minHeight: 44)
-        .contentShape(Rectangle())
       }
-      .accessibilityLabel(option.name)
-      .accessibilityValue(selected ? "Selected" : "Not selected")
-      .accessibilityIdentifier("library.filter.\(facet).\(option.id)")
     }
+  }
+
+  private func selectionRow(_ name: String, selected: Bool, identifier: String,
+    action: @escaping () -> Void) -> some View
+  {
+    Button(action: action) {
+      HStack(alignment: .firstTextBaseline) {
+        Text(name)
+          .fixedSize(horizontal: false, vertical: true)
+          .foregroundStyle(theme.foreground)
+        Spacer(minLength: 12)
+        if selected { Image(systemName: "checkmark").foregroundStyle(theme.primary) }
+      }
+      .frame(minHeight: 44)
+      .contentShape(Rectangle())
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(name)
+    .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    .accessibilityIdentifier(identifier)
   }
 
   private func includingUnavailable(_ options: [LibraryFilterOption], selected: Set<String>,

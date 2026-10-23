@@ -305,7 +305,7 @@ struct LibraryView: View {
     return Button { showsFilters = true } label: {
       filterLabel(count == 0 ? "Filters" : "Filters (\(count))",
         systemImage: count == 0 ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill",
-        hue: theme.primary)
+        hue: theme.primary, presentsMenu: false)
         .fixedSize(horizontal: false, vertical: true)
     }
     .accessibilityLabel("Filters, \(count) active")
@@ -356,7 +356,7 @@ struct LibraryView: View {
   }
 
   private var statusMenu: some View {
-    let counts = model.library.shelfCounts(for: model.section)
+    let counts = model.statusCounts
     let total = counts.values.reduce(0, +)
     let selection = model.statusFilter
     let title = selection.map(model.section.statusLabel) ?? "All"
@@ -402,7 +402,7 @@ struct LibraryView: View {
   /// One text, so at accessibility sizes the label wraps between words
   /// instead of squeezing the title.
   private func filterLabel(
-    _ title: String, count: Int? = nil, systemImage: String, hue: Color
+    _ title: String, count: Int? = nil, systemImage: String, hue: Color, presentsMenu: Bool = true
   ) -> some View {
     let icon = Text(Image(systemName: systemImage)).foregroundStyle(hue)
     let chevron = Text(Image(systemName: "chevron.down")).font(.karla(.caption).weight(.bold))
@@ -410,7 +410,7 @@ struct LibraryView: View {
     let countText = count.map {
       Text(" \($0.formatted())").monospacedDigit().foregroundStyle(theme.pageSecondaryForeground)
     } ?? Text("")
-    return Text("\(icon) \(title)\(countText) \(chevron)")
+    return Text("\(icon) \(title)\(countText)\(presentsMenu ? Text(" \(chevron)") : Text(""))")
       .font(.karla(.caption).weight(.semibold))
   }
 
@@ -494,12 +494,9 @@ struct LibraryView: View {
     if !model.filters.isEmpty {
       ContentUnavailableView {
         Label("No matches", systemImage: "line.3.horizontal.decrease.circle")
+          .font(.karla(.title2).bold())
       } description: {
         Text("Try changing or clearing your filters.")
-      } actions: {
-        Button("Clear filters", action: clearFilters)
-          .buttonStyle(QuietActionStyle())
-          .accessibilityIdentifier("library.filters.emptyClear")
       }
     } else if !model.committedSearch.isEmpty {
       ContentUnavailableView.search(text: model.committedSearch)
