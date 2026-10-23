@@ -14,6 +14,7 @@ final class LibrarySession {
   private var retryTask: Task<Void, Never>?
   private var retryAttempt = 0
   private var loadGeneration = 0
+  private var appliedLoadGeneration = 0
   private var historyLoadGeneration = 0
   private var historyRevision = 0
   private var acknowledgedSpins: [(revision: Int, record: SpinHistoryRecord)] = []
@@ -38,6 +39,7 @@ final class LibrarySession {
   private var randomizerItemsByID: [LocalRecordKey: LibraryItem] = [:]
   private var randomizerCandidatesByMode: [RandomizerMode: [RandomizerCandidate]] = [:]
   private var bookTitles: [String: String] = [:]
+  private var mysteryBookIDs: Set<String> = []
   private var countsBySection: [LibrarySection: [String: Int]] = [:]
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
   private(set) var coloringPageProgressNotes: [ColoringProgressNoteRecord] = []
@@ -45,6 +47,7 @@ final class LibrarySession {
   private(set) var hasSnapshot = false
   private(set) var isSyncing = false
   private(set) var pendingCount = 0
+  private(set) var mediumAttempts: [PageMediumAttempt] = []
   private(set) var generation = 0
   private(set) var syncMessage: String?
   var onAuthenticationFailure: (@MainActor () async -> Void)?
@@ -70,15 +73,24 @@ final class LibrarySession {
 
   func ownedBookTitles() -> [String: String] { bookTitles }
 
+  func isMysteryBook(_ id: String) -> Bool { mysteryBookIDs.contains(id) }
+
+  func hidesMysteryThumbnail(for item: LibraryItem) -> Bool {
+    guard case .page(let page) = item else { return false }
+    return MysteryPagePresentation(page: page, isMystery: isMysteryBook(page.book)).hidesThumbnail
+  }
+
   func shelfCounts(for section: LibrarySection) -> [String: Int] {
     countsBySection[section] ?? [:]
   }
 
   private func rebuildShelfCounts() {
     var titles: [String: String] = [:]
+    var mysteryIDs: Set<String> = []
     for item in items {
       if case .book(let book) = item, book.user == userID {
         titles[book.id] = book.title
+        if book.isMystery == true { mysteryIDs.insert(book.id) }
       }
     }
     var counts: [LibrarySection: [String: Int]] = [:]
@@ -89,6 +101,7 @@ final class LibrarySession {
       }
     }
     bookTitles = titles
+    mysteryBookIDs = mysteryIDs
     countsBySection = counts
   }
 
@@ -116,15 +129,18 @@ final class LibrarySession {
     loadGeneration &+= 1
     let requestedGeneration = loadGeneration
     let projection = try await store.projection(scope: scope)
+    let attempts = try await store.mediumAttempts(scope: scope)
     try checkActive()
-    guard requestedGeneration == loadGeneration else { return }
+    guard requestedGeneration > appliedLoadGeneration else { return }
+    appliedLoadGeneration = requestedGeneration
     entries = projection.entries
     rebuildRandomizerItems()
     items = entries.map(\.item)
     progressNotes = projection.progressNotes
     coloringPageProgressNotes = projection.coloringPageProgressNotes
     hasSnapshot = projection.hasSnapshot
-    pendingCount = projection.pendingCount
+    pendingCount = projection.entries.filter(\.pending).count + attempts.count
+    mediumAttempts = attempts
   }
 
   func refresh(force: Bool = false) async throws {
@@ -240,12 +256,13 @@ final class LibrarySession {
       scope: scope, key: LocalRecordKey(kind: kind, id: id), patch: patch)
     try checkActive()
     loadGeneration &+= 1
+    appliedLoadGeneration = loadGeneration
     if let index = entries.firstIndex(where: { $0.item.localRecordKey == key }) {
       entries[index] = entry
     } else { entries.append(entry) }
     rebuildRandomizerItems()
     items = entries.map(\.item)
-    pendingCount = entries.filter(\.pending).count
+    pendingCount = entries.filter(\.pending).count + mediumAttempts.count
     generation &+= 1
     analytics?.capture(.recordSavedLocally, properties: [
       "record_type": collection, "field_count": patch.count,
@@ -354,6 +371,118 @@ final class LibrarySession {
       analytics?.record(.statusChanged, collection: collection, accountID: userID)
     }
     return saved
+  }
+
+  func savePageMediums(
+    pageID: String, baseline: [String], selection: Set<String>, connected: Bool,
+    replacing conflictID: UUID? = nil
+  ) async throws -> ColoringPageRecord {
+    do {
+      guard connected else { throw APIError.offline }
+      guard selection.count <= 99 else {
+        throw APIError.validation("Choose no more than 99 mediums.")
+      }
+      try await beginOnlineWrite()
+      defer { endOnlineWrite() }
+      let reserved = try await reserveOnlineRecord(
+        collection: "coloring_pages", id: pageID, allowingMediumAttempt: conflictID)
+      defer { onlineRecords.subtract(reserved) }
+      let attempt = PageMediumAttempt(pageID: pageID, baseline: baseline, selection: selection)
+      try await store.saveMediumAttempt(attempt, scope: scope, replacing: conflictID)
+      try await loadLocal()
+      return try await sendPageMediumAttempt(attempt)
+    } catch {
+      if active, error as? APIError == .unauthenticated || error as? APIError == .forbidden {
+        await onAuthenticationFailure?()
+      }
+      throw error
+    }
+  }
+
+  func mediumOptions() async throws -> [NamedRelationRecord] {
+    try checkActive()
+    do {
+      let options: [NamedRelationRecord] = try await client.allRecords(
+        collection: "coloring_mediums", filter: PocketBaseFilter.equals(.user, userID), sort: "+name")
+      try checkActive()
+      return options
+    } catch {
+      try checkActive()
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
+  }
+
+  func resumePageMediums(_ attemptID: UUID, connected: Bool) async throws -> ColoringPageRecord {
+    do {
+      guard connected else { throw APIError.offline }
+      try await beginOnlineWrite()
+      defer { endOnlineWrite() }
+      try await loadLocal()
+      guard let attempt = mediumAttempts.first(where: { $0.id == attemptID }),
+        attempt.state == .awaitingReceipt else { throw PageMediumSaveError.needsReview }
+      let reserved = try await reserveOnlineRecord(
+        collection: "coloring_pages", id: attempt.pageID, allowingMediumAttempt: attempt.id)
+      defer { onlineRecords.subtract(reserved) }
+      return try await sendPageMediumAttempt(attempt)
+    } catch {
+      if active, error as? APIError == .unauthenticated || error as? APIError == .forbidden {
+        await onAuthenticationFailure?()
+      }
+      throw error
+    }
+  }
+
+  func discardPageMediums(_ attemptID: UUID) async throws {
+    try checkWritable()
+    guard let attempt = mediumAttempts.first(where: { $0.id == attemptID }),
+      !onlineRecords.contains(LocalRecordKey(kind: .page, id: attempt.pageID)) else {
+      throw PageMediumSaveError.recoveryRequired
+    }
+    localWrites += 1
+    defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
+    try await store.discardMediumAttempt(attempt, scope: scope)
+    try await loadLocal()
+  }
+
+  private func sendPageMediumAttempt(_ attempt: PageMediumAttempt) async throws -> ColoringPageRecord {
+    try checkActive()
+    do {
+      let page = try await client.applyPageMediums(attempt: attempt)
+      try checkActive()
+      do { try await store.acceptMediumAttempt(attempt, record: page, scope: scope) }
+      catch {
+        syncMessage = "Saved to your account. Recover the medium save to update this device."
+        throw PageMediumSaveError.recoveryRequired
+      }
+      try await loadLocal()
+      generation &+= 1
+      return page
+    } catch let conflict as LocalSyncConflict {
+      try checkActive()
+      guard case .page(let page) = conflict.current else { throw APIError.decoding }
+      var saved = attempt
+      saved.state = .conflict
+      saved.current = page
+      try await store.recordMediumOutcome(saved, scope: scope)
+      try await loadLocal()
+      throw conflict
+    } catch {
+      if error as? APIError == .unauthenticated || error as? APIError == .forbidden {
+        throw error
+      }
+      if active {
+        var saved = attempt
+        if error as? PageMediumSaveError == .integrityFailure { saved.state = .integrityFailure }
+        else if error as? APIError == .notFound { saved.state = .missing }
+        else if case APIError.validation = error { saved.state = .rejected }
+        if saved.state != .awaitingReceipt {
+          try await store.recordMediumOutcome(saved, scope: scope)
+        }
+        try await loadLocal()
+      }
+      throw error
+    }
   }
 
   func update<Record: Decodable & Sendable>(
@@ -637,6 +766,7 @@ final class LibrarySession {
     entries = []
     progressNotes = []
     coloringPageProgressNotes = []
+    mediumAttempts = []
     if removingData {
       try await store.removeScope(scope)
       try await client.removeDownloadedArtwork(scope: scope)
@@ -663,7 +793,9 @@ final class LibrarySession {
     if refreshLibrary, onlineWrites == 0, active { Task { try? await refresh(force: true) } }
   }
 
-  private func reserveOnlineRecord(collection: String, id: String) async throws -> Set<LocalRecordKey> {
+  private func reserveOnlineRecord(
+    collection: String, id: String, allowingMediumAttempt: UUID? = nil
+  ) async throws -> Set<LocalRecordKey> {
     try checkWritable()
     try await loadLocal()
     try checkWritable()
@@ -672,7 +804,11 @@ final class LibrarySession {
       if collection == "coloring_books", case .page(let page) = $0.item { return page.book == id }
       return false
     }
-    let keys = Set(affected.map { $0.item.localRecordKey })
+    var keys = Set(affected.map { $0.item.localRecordKey })
+    if collection == "coloring_pages" { keys.insert(LocalRecordKey(kind: .page, id: id)) }
+    guard !mediumAttempts.contains(where: {
+      keys.contains(LocalRecordKey(kind: .page, id: $0.pageID)) && $0.id != allowingMediumAttempt
+    }) else { throw PageMediumSaveError.recoveryRequired }
     guard affected.allSatisfy({ !$0.pending }), keys.isDisjoint(with: onlineRecords) else {
       throw LibrarySessionError.pendingChanges
     }

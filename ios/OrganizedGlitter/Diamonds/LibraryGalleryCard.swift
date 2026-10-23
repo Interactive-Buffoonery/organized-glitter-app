@@ -9,6 +9,12 @@ struct LibraryGalleryCard: View {
   var mode: LibraryViewMode = .covers
   /// Shelves and status filters already name the status.
   var showsStatus = true
+  var hidesMysteryAnswer = false
+
+  private var displayTitle: String {
+    if hidesMysteryAnswer, case .page(let page) = item { return "Page \(page.pageNumber)" }
+    return item.title
+  }
 
   var body: some View {
     let metadata = LibraryItemMetadata(item: item)
@@ -29,7 +35,7 @@ struct LibraryGalleryCard: View {
         VStack(alignment: .leading, spacing: mode == .compact ? 4 : 8) {
           artwork
             .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 420 : .infinity)
-          Text(item.title)
+          Text(displayTitle)
             .font(.karla(mode == .compact ? .caption : .headline).weight(.semibold))
           if mode == .covers {
             metadataText(metadata.maker)
@@ -54,23 +60,31 @@ struct LibraryGalleryCard: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(.rect)
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(metadata.accessibilityLabel(for: item))
+    .accessibilityLabel(hidesMysteryAnswer
+      ? [displayTitle, "Mystery", metadata.maker, metadata.specifications, item.statusLabel]
+        .filter { !$0.isEmpty }.joined(separator: ", ")
+      : metadata.accessibilityLabel(for: item))
   }
 
+  @ViewBuilder
   private var artwork: some View {
-    CoverArtwork(item: item, url: imageURL)
+    if hidesMysteryAnswer, case .page(let page) = item {
+      MysteryPagePlaceholder(pageNumber: page.pageNumber)
+    } else {
+      CoverArtwork(item: item, url: imageURL)
+    }
   }
 
   private func listText(_ metadata: LibraryItemMetadata) -> some View {
     VStack(alignment: .leading, spacing: 2) {
       ViewThatFits(in: .horizontal) {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-          Text(item.title).font(.karla(.subheadline).weight(.semibold))
+          Text(displayTitle).font(.karla(.subheadline).weight(.semibold))
           Spacer(minLength: 0)
           if showsStatus { LibraryItemStatus(item: item) }
         }
         VStack(alignment: .leading, spacing: 2) {
-          Text(item.title).font(.karla(.subheadline).weight(.semibold))
+          Text(displayTitle).font(.karla(.subheadline).weight(.semibold))
           if showsStatus { LibraryItemStatus(item: item) }
         }
       }

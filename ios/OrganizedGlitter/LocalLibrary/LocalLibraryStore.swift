@@ -88,6 +88,7 @@ actor LocalLibraryStore: ModelActor {
   private static let schema = Schema([
     LocalStoredRecord.self, LocalStoredAccount.self, LocalStoredNote.self,
     LocalPendingRemoval.self,
+    LocalOnlineMediumAttempt.self,
   ])
   nonisolated let modelContainer: ModelContainer
   nonisolated let modelExecutor: any ModelExecutor
@@ -294,7 +295,115 @@ actor LocalLibraryStore: ModelActor {
       entries: records.map(entry), progressNotes: notes.diamonds,
       coloringPageProgressNotes: notes.coloring,
       hasSnapshot: account(scope.storageKey)?.hasSnapshot == true,
-      pendingCount: records.reduce(0) { $0 + ($1.activeData == nil ? 0 : 1) })
+      pendingCount: records.reduce(0) { $0 + ($1.activeData == nil ? 0 : 1) }
+        + mediumAttempts(scope: scope).count)
+  }
+
+  func mediumAttempts(scope: LocalAccountScope) throws -> [PageMediumAttempt] {
+    try storedMediumAttempts(scope.storageKey).map {
+      try decoder.decode(PageMediumAttempt.self, from: $0.attemptData)
+    }.sorted { $0.pageID < $1.pageID }
+  }
+
+  func saveMediumAttempt(
+    _ attempt: PageMediumAttempt, scope: LocalAccountScope, replacing: UUID? = nil
+  ) throws {
+    guard try !hasPendingRemoval(scope: scope) else { throw LocalLibraryError.storageUnavailable }
+    let key = LocalRecordKey(kind: .page, id: attempt.pageID)
+    guard let page = try record(scope.storageKey, key), page.activeData == nil,
+      page.conflictValue == nil else { throw LocalLibraryError.conflict }
+    try verify(try entry(page).item, scope: scope)
+    let existing = try storedMediumAttempts(scope.storageKey).first { $0.pageID == attempt.pageID }
+    if let existing {
+      let previous = try decoder.decode(PageMediumAttempt.self, from: existing.attemptData)
+      guard previous.id == replacing, previous.state == .conflict,
+        attempt.base.mediums == previous.current?.mediumIDs else {
+        throw PageMediumSaveError.recoveryRequired
+      }
+      existing.attemptData = try encoder.encode(attempt)
+    } else {
+      guard replacing == nil else { throw PageMediumSaveError.recoveryRequired }
+      context.insert(LocalOnlineMediumAttempt(
+        scope: scope, attempt: attempt, data: try encoder.encode(attempt)))
+    }
+    try commit()
+  }
+
+  func recordMediumOutcome(_ attempt: PageMediumAttempt, scope: LocalAccountScope) throws {
+    guard let stored = try storedMediumAttempts(scope.storageKey).first(where: {
+      $0.pageID == attempt.pageID
+    }), try decoder.decode(PageMediumAttempt.self, from: stored.attemptData).id == attempt.id else {
+      throw PageMediumSaveError.recoveryRequired
+    }
+    let encodedAttempt = try encoder.encode(attempt)
+    let currentRecord: LocalStoredRecord?
+    let currentData: Data?
+    if let current = attempt.current {
+      guard current.id == attempt.pageID else { throw LocalLibraryError.invalidValue }
+      try verify(.page(current), scope: scope)
+      currentRecord = try record(scope.storageKey, LocalRecordKey(kind: .page, id: current.id))
+      guard currentRecord?.activeData == nil else { throw LocalLibraryError.conflict }
+      currentData = try encoder.encode(current)
+    } else {
+      currentRecord = nil
+      currentData = nil
+    }
+    do {
+      try context.transaction {
+        stored.attemptData = encodedAttempt
+        if let currentRecord, let currentData { currentRecord.serverData = currentData }
+        try context.save()
+      }
+    } catch {
+      context.rollback()
+      throw error
+    }
+  }
+
+  func acceptMediumAttempt(
+    _ attempt: PageMediumAttempt, record page: ColoringPageRecord, scope: LocalAccountScope
+  ) throws {
+    guard page.id == attempt.pageID else { throw LocalLibraryError.invalidValue }
+    try verify(.page(page), scope: scope)
+    guard let journal = try storedMediumAttempts(scope.storageKey).first(where: {
+      $0.pageID == attempt.pageID
+    }), try decoder.decode(PageMediumAttempt.self, from: journal.attemptData).id == attempt.id else {
+      throw PageMediumSaveError.recoveryRequired
+    }
+    let key = LocalRecordKey(kind: .page, id: page.id)
+    guard let stored = try record(scope.storageKey, key), stored.activeData == nil else {
+      throw LocalLibraryError.conflict
+    }
+    let data = try encoder.encode(page)
+    do {
+      try context.transaction {
+        stored.serverData = data
+        stored.parentID = page.book
+        stored.conflictValue = nil
+        context.delete(journal)
+        try context.save()
+      }
+    } catch {
+      context.rollback()
+      throw error
+    }
+  }
+
+  func discardMediumAttempt(_ attempt: PageMediumAttempt, scope: LocalAccountScope) throws {
+    guard let stored = try storedMediumAttempts(scope.storageKey).first(where: {
+      $0.pageID == attempt.pageID
+    }) else { throw PageMediumSaveError.recoveryRequired }
+    let saved = try decoder.decode(PageMediumAttempt.self, from: stored.attemptData)
+    guard saved.id == attempt.id, saved.state != .awaitingReceipt else {
+      throw PageMediumSaveError.recoveryRequired
+    }
+    context.delete(stored)
+    try commit()
+  }
+
+  private func storedMediumAttempts(_ scopeKey: String) throws -> [LocalOnlineMediumAttempt] {
+    try context.fetch(FetchDescriptor<LocalOnlineMediumAttempt>(
+      predicate: #Predicate { $0.scope == scopeKey }))
   }
 
   func entry(scope: LocalAccountScope, key: LocalRecordKey) throws -> LocalLibraryEntry? {
@@ -367,6 +476,10 @@ actor LocalLibraryStore: ModelActor {
     guard let stored = try record(scope.storageKey, key) else {
       throw LocalLibraryError.missingRecord
     }
+    let onlineAttempts = try mediumAttempts(scope: scope)
+    guard key.kind != .page || !onlineAttempts.contains(where: {
+      $0.pageID == key.id
+    }) else { throw PageMediumSaveError.recoveryRequired }
     guard stored.conflictValue == nil else { throw LocalLibraryError.conflict }
     let visible = try visibleObject(stored)
     _ = try overlay(visible, with: patch).validated(as: key.kind, decoder: decoder)
@@ -423,6 +536,7 @@ actor LocalLibraryStore: ModelActor {
     let scopeKey = scope.storageKey
     return try context.fetchCount(FetchDescriptor<LocalStoredRecord>(
       predicate: #Predicate { $0.scope == scopeKey && $0.activeData != nil }))
+      + mediumAttempts(scope: scope).count
   }
 
   func conflictChanges(scope: LocalAccountScope, key: LocalRecordKey) throws
@@ -568,6 +682,7 @@ actor LocalLibraryStore: ModelActor {
       try context.transaction {
         for record in try storedRecords(key) { context.delete(record) }
         for note in try storedNotes(key) { context.delete(note) }
+        for attempt in try storedMediumAttempts(key) { context.delete(attempt) }
         if let account = try account(key) { context.delete(account) }
         try context.save()
       }
@@ -660,7 +775,7 @@ actor LocalLibraryStore: ModelActor {
       "notes", "is_mystery", "isbn", "book_format", "edition", "publication_year",
       "language", "theme", "source_url", "date_purchased", "date_received",
     ],
-    .page: ["status", "revealed_subject", "started_at", "completed_at"],
+    .page: ["status", "revealed_subject", "revealed_at", "started_at", "completed_at"],
   ]
 
   private func baselineFields(

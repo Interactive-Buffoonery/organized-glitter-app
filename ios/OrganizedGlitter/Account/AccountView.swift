@@ -258,7 +258,9 @@ struct AccountView: View {
     .themedScrollBackground()
     .navigationTitle("Account")
     .confirmationDialog(
-      "There are changes saved only on this device.",
+      library.mediumAttempts.isEmpty
+        ? "There are changes saved only on this device."
+        : "There are medium saves that need review.",
       isPresented: Binding(
         get: { appModel.requiresDiscardConfirmation },
         set: { appModel.requiresDiscardConfirmation = $0 }
@@ -269,7 +271,9 @@ struct AccountView: View {
       }
       Button("Keep Working", role: .cancel) {}
     } message: {
-      Text("Stay signed in and synchronize to keep these changes in your account.")
+      Text(library.mediumAttempts.isEmpty
+        ? "Stay signed in and synchronize to keep these changes in your account."
+        : "Recover medium saves before signing out to confirm what reached your account. Signing out removes these recovery requests and other unsent changes from this device.")
     }
     .refreshable { await preferences.load() }
     .task {
