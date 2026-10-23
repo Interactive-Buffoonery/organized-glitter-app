@@ -24,6 +24,24 @@ struct PagePhotoActionTests {
     return (library, model)
   }
 
+  @Test func photoReviewSurvivesSessionsAndAccountRemoval() async throws {
+    let (library, _) = try await setup()
+    try await library.requirePhotoReview(id: "page")
+    let restored = LibrarySession(client: library.client, userID: library.userID, store: library.store)
+    try await restored.loadLocal()
+    #expect(restored.photoReviewRequired(id: "page"))
+    try await restored.finishPhotoReview(id: "page")
+    try await library.loadLocal()
+    #expect(!library.photoReviewRequired(id: "page"))
+    try await restored.requirePhotoReview(id: "page")
+    try await restored.close(removingData: true)
+    let removed = LibrarySession(client: library.client, userID: library.userID, store: library.store)
+    try await removed.loadLocal()
+    #expect(!removed.photoReviewRequired(id: "page"))
+    try await library.close(removingData: false)
+    try await removed.close(removingData: false)
+  }
+
   @Test func unauthenticatedUploadShowsSessionExpiredMessage() async throws {
     let (library, model) = try await setup()
     await library.client.prepareOfflineSession(.init(token: "other-token", userID: "other-user"))
@@ -111,6 +129,10 @@ struct PagePhotoActionTests {
     PhotoActionURLProtocol.files = ["first.jpg", "new.jpg"]
     #expect(!(await model.setMainPagePhoto("second.jpg")))
     #expect(model.mutationErrorMessage?.contains("Photo list changed") == true)
+    #expect(model.photoMutationErrorMessage == model.mutationErrorMessage)
+    #expect(model.noteMutationErrorMessage == nil)
+    model.mutationErrorMessage = "Note failure"
+    #expect(model.noteMutationErrorMessage == "Note failure")
     #expect(model.unresolvedWriteState == nil)
     guard case .page(let page) = model.item else { Issue.record("Expected page"); return }
     #expect(page.photos == ["first.jpg", "new.jpg"])
@@ -155,7 +177,7 @@ struct PagePhotoActionTests {
     #expect(await model.refreshUnresolvedWriteStatus())
     #expect(model.unresolvedWriteState == .refreshed)
     #expect(!(await model.setMainPagePhoto("second.jpg")))
-    model.clearUnresolvedWriteRecovery()
+    await model.clearUnresolvedWriteRecovery()
     #expect(model.unresolvedWriteState == nil)
     guard case .page(let page) = model.item else { Issue.record("Expected page"); return }
     #expect(page.photos == ["second.jpg"])

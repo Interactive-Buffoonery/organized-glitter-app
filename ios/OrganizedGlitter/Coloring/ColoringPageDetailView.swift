@@ -102,7 +102,7 @@ struct ColoringPageDetailView: View {
                 .disabled(model.isMutating || !connectionAvailable)
                 .accessibilityIdentifier("detail.page.photoActionRefresh")
               } else if model.unresolvedWriteState == .refreshed {
-                Button("Back to photos") { model.clearUnresolvedWriteRecovery() }
+                Button("Back to photos") { Task { await model.clearUnresolvedWriteRecovery() } }
                   .buttonStyle(.bordered)
                   .controlSize(.large)
                   .disabled(model.isMutating)
@@ -393,7 +393,7 @@ struct ColoringPageDetailView: View {
     selectedItem = nil
     photoErrorMessage = nil
     if clearRecovery {
-      model.clearUnresolvedWriteRecovery()
+      Task { await model.clearUnresolvedWriteRecovery() }
     } else {
       model.clearPhotoError()
     }
