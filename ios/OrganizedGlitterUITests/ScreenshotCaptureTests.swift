@@ -74,7 +74,7 @@ final class ScreenshotCaptureTests: XCTestCase {
       try save(app.screenshot(), to: "\(prefix)-account.png")
       app.swipeUp()
       try save(app.screenshot(), to: "\(prefix)-account-lower.png")
-      app.navigationBars["Account"].buttons["Done"].tap()
+      app.closeAccount()
 
       XCTAssertTrue(app.openLibrary())
       let card = app.buttons.matching(
