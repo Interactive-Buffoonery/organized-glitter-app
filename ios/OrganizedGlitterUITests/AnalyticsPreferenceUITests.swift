@@ -29,7 +29,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     let pause = app.buttons["account.pauseAnalytics"]
     for _ in 0..<4 {
       if pause.exists && pause.isHittable { break }
-      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+      app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     XCTAssertTrue(pause.isHittable)
     pause.tap()
@@ -45,7 +45,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     let pause = app.buttons["account.pauseAnalytics"]
     for _ in 0..<4 {
       if pause.exists && pause.isHittable { break }
-      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+      app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     XCTAssertTrue(pause.isEnabled)
     pause.tap()
@@ -64,7 +64,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
     ).firstMatch
     for _ in 0..<4 {
       if disclosure.exists { break }
-      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+      app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     XCTAssertTrue(disclosure.exists)
     let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -87,7 +87,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
   private func openPrivacy(_ app: XCUIApplication) -> XCUIElement {
     XCTAssertTrue(app.buttons["account.open"].waitForExistence(timeout: 10))
     app.buttons["account.open"].tap()
-    let list = app.collectionViews.firstMatch
+    let list = app.scrollViews["account.list"]
     XCTAssertTrue(list.waitForExistence(timeout: 5))
     let toggle = app.switches["account.usageAnalytics"]
     for _ in 0..<8 {
