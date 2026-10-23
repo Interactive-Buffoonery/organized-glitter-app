@@ -133,7 +133,7 @@ struct DetailStatusRecovery: View {
           .accessibilityIdentifier("detail.status.refresh")
         case .refreshed:
           Button("Done reviewing status") {
-            model.clearUnresolvedWriteRecovery()
+            Task { await model.clearUnresolvedWriteRecovery() }
           }
           .accessibilityIdentifier("detail.status.reviewed")
         case nil:

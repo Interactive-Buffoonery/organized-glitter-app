@@ -24,6 +24,7 @@ final class LibrarySession {
   private var localWrites = 0
   private var writeWaiters: [CheckedContinuation<Void, Never>] = []
   private var onlineRecords: Set<LocalRecordKey> = []
+  private var photoRecoveryRecords: Set<LocalRecordKey> = []
 
   private(set) var spinHistory: [SpinHistoryRecord] = []
   private(set) var spinHistoryLoadState = SpinHistoryLoadState.idle
@@ -130,9 +131,11 @@ final class LibrarySession {
     let requestedGeneration = loadGeneration
     let projection = try await store.projection(scope: scope)
     let attempts = try await store.mediumAttempts(scope: scope)
+    let photoReviews = try await store.photoReviews(scope: scope)
     try checkActive()
     guard requestedGeneration > appliedLoadGeneration else { return }
     appliedLoadGeneration = requestedGeneration
+    photoRecoveryRecords = photoReviews
     entries = projection.entries
     rebuildRandomizerItems()
     items = entries.map(\.item)
@@ -246,6 +249,7 @@ final class LibrarySession {
     }
     let key = LocalRecordKey(kind: kind, id: id)
     guard !onlineRecords.contains(key) else { throw LibrarySessionError.pendingChanges }
+    guard !photoRecoveryRecords.contains(key) else { throw LibrarySessionError.photoActionNeedsReview }
     let patch = try JSONDecoder().decode(
       [String: LocalJSONValue].self, from: JSONEncoder().encode(body))
     if patch.isEmpty { return try record(collection: collection, id: id) }
@@ -390,6 +394,79 @@ final class LibrarySession {
     }
   }
 
+  func photoReviewRequired(id: String) -> Bool {
+    photoRecoveryRecords.contains(LocalRecordKey(kind: .page, id: id))
+  }
+
+  func requirePhotoReview(id: String) async throws {
+    try checkActive()
+    localWrites += 1
+    defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
+    try await store.setPhotoReview(id: id, required: true, scope: scope)
+    loadGeneration &+= 1
+    appliedLoadGeneration = loadGeneration
+    photoRecoveryRecords.insert(LocalRecordKey(kind: .page, id: id))
+  }
+
+  func finishPhotoReview(id: String) async throws {
+    try checkActive()
+    localWrites += 1
+    defer { localWrites -= 1; resumeWriteWaitersIfIdle() }
+    try await store.setPhotoReview(id: id, required: false, scope: scope)
+    loadGeneration &+= 1
+    appliedLoadGeneration = loadGeneration
+    photoRecoveryRecords.remove(LocalRecordKey(kind: .page, id: id))
+  }
+
+  func changePagePhoto(id: String, filename: String, setMain: Bool) async throws -> ColoringPageRecord {
+    var markedForReview = false
+    var serverAccepted = false
+    do {
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      try await beginOnlineWrite()
+      defer {
+        endOnlineWrite(refreshLibrary: false)
+        if hasQueuedChanges { scheduleSync() }
+      }
+      let reserved = try await reserveOnlineRecord(collection: "coloring_pages", id: id)
+      defer { onlineRecords.subtract(reserved) }
+      guard localWrites == 0 else { throw LibrarySessionError.pendingChanges }
+      let current: ColoringPageRecord = try record(collection: "coloring_pages", id: id)
+      guard current.photos.contains(filename) else { throw APIError.conflict }
+      try await requirePhotoReview(id: id)
+      markedForReview = true
+      let saved: ColoringPageRecord
+      if setMain {
+        saved = try await client.setMainPagePhoto(pageID: id, filename: filename, userID: userID)
+      } else {
+        saved = try await client.removePagePhoto(pageID: id, filename: filename, userID: userID)
+      }
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      guard saved.id == current.id, saved.book == current.book else { throw APIError.decoding }
+      serverAccepted = true
+      captureAnalytics(setMain ? .pageMainPhotoChanged : .pagePhotoDeleted,
+        properties: ["record_type": "coloring_pages", "save_destination": "server"])
+      try await acceptPagePhoto(saved, replacing: current)
+      try await finishPhotoReview(id: id)
+      return saved
+    } catch {
+      if markedForReview {
+        switch error as? APIError {
+        case .validation, .conflict, .forbidden, .unauthenticated, .emailUnverified, .notFound:
+          try? await finishPhotoReview(id: id)
+        default: break
+        }
+      }
+      if !serverAccepted {
+        captureOnlineFailure(error, operation: setMain ? .setMainPhoto : .deletePhoto,
+          collection: "coloring_pages")
+      }
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
+  }
+
   func resumePageMediums(_ attemptID: UUID, connected: Bool) async throws -> ColoringPageRecord {
     do {
       guard connected else { throw APIError.offline }
@@ -406,6 +483,51 @@ final class LibrarySession {
       if active, error as? APIError == .unauthenticated || error as? APIError == .forbidden {
         await onAuthenticationFailure?()
       }
+      throw error
+    }
+  }
+
+  func appendPagePhoto(id: String, multipart: PocketBaseMultipartForm) async throws -> ColoringPageRecord {
+    var markedForReview = false
+    var serverAccepted = false
+    do {
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      try await beginOnlineWrite()
+      defer {
+        endOnlineWrite(refreshLibrary: false)
+        if hasQueuedChanges { scheduleSync() }
+      }
+      let reserved = try await reserveOnlineRecord(collection: "coloring_pages", id: id)
+      defer { onlineRecords.subtract(reserved) }
+      guard localWrites == 0 else { throw LibrarySessionError.pendingChanges }
+      let current: ColoringPageRecord = try record(collection: "coloring_pages", id: id)
+      try await requirePhotoReview(id: id)
+      markedForReview = true
+      let saved: ColoringPageRecord = try await client.update(collection: "coloring_pages", id: id, multipart: multipart)
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      guard saved.id == current.id, saved.book == current.book else { throw APIError.decoding }
+      serverAccepted = true
+      analytics?.record(.updated, collection: "coloring_pages", accountID: userID)
+      if !multipart.files.isEmpty {
+        analytics?.capture(.pagePhotoAdded,
+          properties: ["record_type": "coloring_pages", "save_destination": "server"], accountID: userID)
+      }
+      try await acceptPagePhoto(saved, replacing: current)
+      try await finishPhotoReview(id: id)
+      return saved
+    } catch {
+      if markedForReview {
+        switch error as? APIError {
+        case .validation, .conflict, .forbidden, .unauthenticated, .emailUnverified, .notFound:
+          try? await finishPhotoReview(id: id)
+        default: break
+        }
+      }
+      if !serverAccepted {
+        captureOnlineFailure(error, operation: .addPhoto, collection: "coloring_pages")
+      }
+      await recoverHistoryAuthentication(after: error)
       throw error
     }
   }
@@ -458,6 +580,52 @@ final class LibrarySession {
         }
         try await loadLocal()
       }
+      throw error
+    }
+  }
+
+  private func acceptPagePhoto(_ saved: ColoringPageRecord, replacing current: ColoringPageRecord) async throws {
+    try checkActive()
+    guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+    guard saved.id == current.id, saved.book == current.book else { throw APIError.decoding }
+    do {
+      try await store.ingest(.page(saved), scope: scope)
+      try checkActive()
+      try await loadLocal()
+      generation &+= 1
+    } catch {
+      throw APIError.server
+    }
+  }
+
+  func refreshPagePhotos() async throws {
+    do {
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      try await beginOnlineWrite()
+      defer {
+        endOnlineWrite(refreshLibrary: false)
+        if hasQueuedChanges { scheduleSync() }
+      }
+      let snapshot = try await client.mobileSnapshot(userID: userID)
+      try checkActive()
+      guard await client.isAuthenticated(as: userID) else { throw APIError.cancelled }
+      let transitions = try await store.ingestSnapshot(snapshot, scope: scope)
+      for transition in transitions {
+        analytics?.capture(.syncConflict, properties: [
+          "record_type": transition.key.kind.rawValue,
+          "field_count": min(10_000, transition.fieldCount),
+        ], accountID: userID)
+      }
+      try checkActive()
+      try await loadLocal()
+      try await client.retainDownloadedArtwork(
+        items: entries.filter { $0.conflict != .deletedOnServer }.map(\.item),
+        notes: progressNotes, coloringNotes: coloringPageProgressNotes, scope: scope)
+      try checkActive()
+      generation &+= 1
+    } catch {
+      await recoverHistoryAuthentication(after: error)
       throw error
     }
   }
@@ -789,6 +957,7 @@ final class LibrarySession {
     guard affected.allSatisfy({ !$0.pending }), keys.isDisjoint(with: onlineRecords) else {
       throw LibrarySessionError.pendingChanges
     }
+    guard keys.isDisjoint(with: photoRecoveryRecords) else { throw LibrarySessionError.photoActionNeedsReview }
     onlineRecords.formUnion(keys)
     return keys
   }
@@ -841,10 +1010,12 @@ final class LibrarySession {
 enum LibrarySessionError: LocalizedError {
   case pendingChanges
   case onlineWriteInProgress
+  case photoActionNeedsReview
 
   var errorDescription: String? {
     switch self {
     case .pendingChanges: "Synchronize or resolve this item's pending changes before continuing."
+    case .photoActionNeedsReview: "Review the refreshed photos before changing this page again."
     case .onlineWriteInProgress: "Wait for the current save to finish, then try again."
     }
   }

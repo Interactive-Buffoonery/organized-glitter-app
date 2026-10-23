@@ -239,6 +239,21 @@
         if self.scenario != scenario {
           reset(for: scenario)
         }
+        if request.httpMethod == "POST", let path = request.url?.path,
+          path.hasPrefix("/api/coloring/pages/"), path.hasSuffix("/main-photo") {
+          let pageID = String(path.split(separator: "/").dropLast().last ?? "")
+          guard let index = collections["coloring_pages"]?.firstIndex(where: { $0["id"] as? String == pageID }) else {
+            return FixtureResponse(object: ["message": "Not found"], status: 404)
+          }
+          var page = collections["coloring_pages"]![index]
+          let files = page["photos"] as? [String] ?? []
+          guard let filename = jsonValues(from: request)["filename"] as? String, files.contains(filename) else {
+            return FixtureResponse(object: ["message": "Photo list changed"], status: 409)
+          }
+          page["photos"] = [filename] + files.filter { $0 != filename }
+          collections["coloring_pages"]![index] = page
+          return FixtureResponse(object: page, status: 200)
+        }
         if request.url?.path == "/api/notes/latest" {
           return latestNotes(request: request)
         }
@@ -339,6 +354,11 @@
           var page = page
           page["mediums"] = [] as [String]
           return page
+        }
+        if ProcessInfo.processInfo.arguments.contains("-fixture-page-photo-actions"),
+          var pages = collections["coloring_pages"], !pages.isEmpty {
+          pages[0]["photos"] = ["design-page-1.jpg", "design-page-2.jpg"]
+          collections["coloring_pages"] = pages
         }
         if scenario == "mystery", var books = collections["coloring_books"],
           var pages = collections["coloring_pages"], !books.isEmpty
@@ -537,6 +557,9 @@
         if collection == "coloring_pages" {
           var photos = record["photos"] as? [String] ?? []
           photos.append(contentsOf: upload.files["photos+"] ?? [])
+          let removed = jsonValues(from: request)["photos-"] as? [String] ?? []
+          photos.removeAll { removed.contains($0) }
+          record.removeValue(forKey: "photos-")
           record["photos"] = photos
         }
         record["updated"] = "2026-09-19 15:00:00"

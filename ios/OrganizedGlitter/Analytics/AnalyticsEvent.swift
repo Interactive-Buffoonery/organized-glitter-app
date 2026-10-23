@@ -42,6 +42,8 @@ enum AnalyticsEvent: String, Sendable {
   case photoAdded = "record_photo_added"
   case photoDeleted = "record_photo_deleted"
   case pagePhotoAdded = "coloring_page_photo_added"
+  case pagePhotoDeleted = "coloring_page_photo_deleted"
+  case pageMainPhotoChanged = "coloring_page_main_photo_changed"
   case syncRequested = "library_sync_requested"
   case syncCompleted = "library_sync_completed"
   case syncFailed = "library_sync_failed"
@@ -220,6 +222,8 @@ enum AnalyticsOperation: String, CaseIterable, Sendable {
   case editNote = "edit_note"
   case deleteNote = "delete_note"
   case addPhoto = "add_photo"
+  case setMainPhoto = "set_main_photo"
+  case deletePhoto = "delete_photo"
 }
 
 enum AnalyticsAccountSetting: String, CaseIterable, Sendable {

@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct ColoringPageDetailView: View {
+  @Environment(\.connectionAvailable) private var connectionAvailable
   @Environment(\.protectedFiles) private var protectedFiles
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -14,6 +15,7 @@ struct ColoringPageDetailView: View {
   @Binding var logEditor: LibraryItemDetailModel?
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
+  @State private var deletingPhoto: String?
   @State private var selectedItem: PhotosPickerItem?
   @State private var pendingPhoto: ProcessedDetailPhoto?
   @State private var pendingPreview: UIImage?
@@ -136,21 +138,47 @@ struct ColoringPageDetailView: View {
               )
               .frame(maxWidth: .infinity)
             } else {
-              DetailPhotoGallery(photos: photos)
+              DetailPhotoGallery(photos: photos, actions: galleryPhotoActions)
             }
 
             if isPreparingPhoto {
               ProgressView("Preparing photo…")
                 .frame(maxWidth: .infinity, alignment: .leading)
-            } else if model.isMutating {
+            } else if model.isMutating,
+              model.isChangingPagePhoto || model.unresolvedPhotoAction || model.unresolvedPagePhotoUpload {
               ProgressView(
-                model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…"
+                pendingPhoto != nil || model.unresolvedPagePhotoUpload
+                  ? (model.unresolvedWriteState == nil ? "Uploading photo…" : "Checking upload status…")
+                  : "Saving photo change…"
               )
               .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if let message = photoErrorMessage {
               AccessibleErrorLabel(message: message)
+            }
+
+            if pendingPhoto == nil, let message = model.photoMutationErrorMessage {
+              AccessibleErrorLabel(message: message)
+            }
+            if model.unresolvedPhotoAction {
+              if model.unresolvedWriteState == .needsRefresh {
+                Button("Refresh photos", systemImage: "arrow.clockwise") {
+                  Task {
+                    if await model.refreshUnresolvedWriteStatus() { await onCollectionChanged() }
+                  }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(model.isMutating || !connectionAvailable)
+                .accessibilityIdentifier("detail.page.photoActionRefresh")
+              } else if model.unresolvedWriteState == .refreshed {
+                Button("Back to photos") { Task { await model.clearUnresolvedWriteRecovery() } }
+                  .buttonStyle(.bordered)
+                  .controlSize(.large)
+                  .disabled(model.isMutating)
+                  .accessibilityIdentifier("detail.page.photoActionReview")
+              }
             }
 
             if let pendingPhoto {
@@ -207,7 +235,7 @@ struct ColoringPageDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(isPreparingPhoto || model.isMutating)
+                .disabled(isPreparingPhoto || model.isMutating || !connectionAvailable)
                 .accessibilityIdentifier(
                   model.mutationErrorMessage == nil
                     ? "detail.page.photoSubmit" : "detail.page.photoRetry"
@@ -276,7 +304,11 @@ struct ColoringPageDetailView: View {
         theme.themedBackground.ignoresSafeArea()
       }
       .refreshable { await model.refresh() }
-      .photoViewer(photos, library: model.library, surface: .coloringPageGallery)
+      .photoViewer(photos, library: model.library, surface: .coloringPageGallery,
+        actions: viewerPhotoActions)
+      .photoDeleteConfirmation($deletingPhoto, isEnabled: photoActionsEnabled) { id in
+        Task { await changePhoto(id, setMain: false) }
+      }
       .task(id: selectedItem) {
         await prepareSelection()
       }
@@ -368,6 +400,35 @@ struct ColoringPageDetailView: View {
     }
   }
 
+  private var photoActionsEnabled: Bool {
+    connectionAvailable && !model.isMutating && model.unresolvedWriteState == nil
+      && pendingPhoto == nil && selectedItem == nil && !isPreparingPhoto
+  }
+
+  private var galleryPhotoActions: DetailPhotoActions {
+    DetailPhotoActions(mainID: page.photos.first, isEnabled: photoActionsEnabled,
+      setMain: { filename in Task { await changePhoto(filename, setMain: true) } },
+      delete: { deletingPhoto = $0 })
+  }
+
+  private var viewerPhotoActions: DetailPhotoActions {
+    DetailPhotoActions(mainID: page.photos.first, isEnabled: photoActionsEnabled,
+      setMain: { filename in Task { await changePhoto(filename, setMain: true) } },
+      delete: { filename in Task { await changePhoto(filename, setMain: false) } })
+  }
+
+  private func changePhoto(_ filename: String, setMain: Bool) async {
+    guard photoActionsEnabled else { return }
+    deletingPhoto = nil
+    let saved = setMain ? await model.setMainPagePhoto(filename) : await model.deletePagePhoto(filename)
+    if saved {
+      await onCollectionChanged()
+      AccessibilityNotification.Announcement(setMain ? "Main photo updated" : "Photo deleted").post()
+    } else if model.unresolvedWriteState != nil {
+      AccessibilityNotification.Announcement("Review photo action status before changing photos again").post()
+    }
+  }
+
   private var photos: [DetailPhoto] {
     page.photos.enumerated().compactMap { index, filename in
       guard !filename.isEmpty,
@@ -416,7 +477,7 @@ struct ColoringPageDetailView: View {
               .contentShape(.rect)
           }
           .buttonStyle(.bordered)
-          .disabled(isPreparingPhoto || model.isMutating || hasMediumRecovery)
+          .disabled(isPreparingPhoto || model.isMutating || model.unresolvedWriteState != nil || !connectionAvailable || hasMediumRecovery)
           .accessibilityIdentifier("detail.page.addPhoto")
           NeedsConnectionHint()
         }
@@ -437,7 +498,7 @@ struct ColoringPageDetailView: View {
     guard let selectedItem else { return }
     isPreparingPhoto = true
     photoErrorMessage = nil
-    model.mutationErrorMessage = nil
+    model.clearPhotoError()
     pendingPhoto = nil
     pendingPreview = nil
     AccessibilityNotification.Announcement("Preparing photo").post()
@@ -488,9 +549,9 @@ struct ColoringPageDetailView: View {
     selectedItem = nil
     photoErrorMessage = nil
     if clearRecovery {
-      model.clearUnresolvedWriteRecovery()
+      Task { await model.clearUnresolvedWriteRecovery() }
     } else {
-      model.mutationErrorMessage = nil
+      model.clearPhotoError()
     }
   }
 }

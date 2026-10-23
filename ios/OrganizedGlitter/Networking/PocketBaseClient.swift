@@ -549,8 +549,25 @@ actor PocketBaseClient {
     )
   }
 
-  func mobileSnapshot() async throws -> LocalFullSnapshot {
-    try await request(path: "/api/mobile/sync/snapshot")
+  func isAuthenticated(as userID: String) -> Bool {
+    authentication?.user.id == userID
+  }
+
+  func setMainPagePhoto(pageID: String, filename: String, userID: String) async throws -> ColoringPageRecord {
+    guard isAuthenticated(as: userID) else { throw APIError.cancelled }
+    struct Body: Encodable { let filename: String }
+    return try await request(
+      path: "/api/coloring/pages/\(pageID)/main-photo", method: "POST", body: Body(filename: filename))
+  }
+
+  func removePagePhoto(pageID: String, filename: String, userID: String) async throws -> ColoringPageRecord {
+    guard isAuthenticated(as: userID) else { throw APIError.cancelled }
+    return try await update(collection: "coloring_pages", id: pageID, body: ["photos-": [filename]])
+  }
+
+  func mobileSnapshot(userID: String? = nil) async throws -> LocalFullSnapshot {
+    if let userID, !isAuthenticated(as: userID) { throw APIError.cancelled }
+    return try await request(path: "/api/mobile/sync/snapshot")
   }
 
   func applyLocalOperation(_ operation: LocalPendingOperation) async throws -> LibraryItem {
