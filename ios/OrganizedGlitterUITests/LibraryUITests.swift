@@ -330,7 +330,26 @@ final class LibraryUITests: XCTestCase {
   }
 }
 
+extension XCUIElement {
+  /// The tappable switch inside a Toggle row, which outside a List ignores taps on its label.
+  var switchControl: XCUIElement {
+    let control = switches.firstMatch
+    return control.exists ? control : self
+  }
+}
+
 extension XCUIApplication {
+  /// iPhone dismisses the Account sheet; iPad pops the Account page off Home.
+  func closeAccount() {
+    let account = navigationBars["Account"]
+    let done = account.buttons["Done"]
+    if done.exists {
+      done.tap()
+    } else {
+      account.buttons.element(boundBy: 0).tap()
+    }
+  }
+
   @discardableResult
   func openNotes() -> Bool {
     let destination: XCUIElement

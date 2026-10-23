@@ -38,14 +38,14 @@ final class OverviewUITests: XCTestCase {
     let toggle = app.switches["account.showCraftingStreak"]
     for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
     XCTAssertTrue(toggle.isHittable)
-    if toggle.value as? String == "1" { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
-    app.buttons["Done"].tap()
+    if toggle.value as? String == "1" { toggle.switchControl.tap() }
+    app.closeAccount()
     XCTAssertFalse(app.buttons["home.craftingStreak"].exists)
     app.buttons["account.open"].tap()
     for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
-    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+    toggle.switchControl.tap()
     XCTAssertEqual(toggle.value as? String, "1")
-    app.buttons["Done"].tap()
+    app.closeAccount()
     let streak = app.buttons["home.craftingStreak"]
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
     XCTAssertEqual(streak.label, "5-day crafting streak")
@@ -58,8 +58,8 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
     app.buttons["account.open"].tap()
     for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
-    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-    app.buttons["Done"].tap()
+    toggle.switchControl.tap()
+    app.closeAccount()
     XCTAssertTrue(streak.waitForNonExistence(timeout: 5))
   }
 
