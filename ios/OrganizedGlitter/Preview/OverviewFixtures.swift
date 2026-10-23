@@ -55,10 +55,18 @@
         respond(data: Self.artwork(filename: url.lastPathComponent), type: "image/jpeg")
         return
       }
+      if url.path == "/api/collections/users/auth-methods" {
+        respond(object: ["password": ["enabled": true], "oauth2": ["enabled": false, "providers": []]])
+        return
+      }
+      if url.path == "/api/collections/users/request-email-change" {
+        respond(object: [:], status: 204)
+        return
+      }
       if url.path.contains("/auth-with-password") {
         respond(object: [
           "token": "fictional-fixture-token",
-          "record": ["id": "preview-user", "verified": true, "username": "Fictional crafter"],
+          "record": ["id": "preview-user", "email": "fixture@example.test", "verified": true, "username": "Fictional crafter"],
         ])
         return
       }
@@ -317,7 +325,7 @@
         collections = [
           "users": [
             [
-              "id": "preview-user", "verified": true, "username": "Fictional crafter",
+              "id": "preview-user", "email": "fixture@example.test", "verified": true, "username": "Fictional crafter",
               "name": "Fictional crafter", "timezone": "America/New_York",
               "theme_preference": "system", "analytics_opt_out": false,
               "created": "2026-09-01 10:00:00",

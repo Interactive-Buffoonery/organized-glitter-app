@@ -6,6 +6,115 @@ import Testing
 @Suite(.serialized)
 struct PocketBaseClientTests {
   @Test
+  func emailChangeRequestsConfirmationWithoutEditingUser() async throws {
+    let client = await accountClient(responses: [(204, "")])
+    try await client.requestEmailChange(email: "new@example.test")
+
+    let request = try #require(PocketBaseClientURLProtocol.requests.first)
+    #expect(request.url?.path == "/api/collections/users/request-email-change")
+    #expect(request.httpMethod == "POST")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "account-token")
+    let body = try JSONDecoder().decode(
+      [String: String].self, from: PocketBaseClientURLProtocol.requestBodies[0])
+    #expect(body == ["newEmail": "new@example.test"])
+    #expect(PocketBaseClientURLProtocol.requests.count == 1)
+  }
+
+  @Test
+  func passwordChangeUsesAuthenticatedOwnerAndExactFields() async throws {
+    let client = await accountClient(responses: [(200, #"{"id":"account-owner"}"#)])
+    try await client.changePassword(
+      oldPassword: "old-example", password: "new-example",
+      passwordConfirmation: "confirm-example")
+
+    let request = try #require(PocketBaseClientURLProtocol.requests.first)
+    #expect(request.url?.path == "/api/collections/users/records/account-owner")
+    #expect(request.httpMethod == "PATCH")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "account-token")
+    let body = try JSONDecoder().decode(
+      [String: String].self, from: PocketBaseClientURLProtocol.requestBodies[0])
+    #expect(body == [
+      "oldPassword": "old-example", "password": "new-example",
+      "passwordConfirm": "confirm-example",
+    ])
+  }
+
+  @Test(arguments: [400, 401, 403, 409])
+  func accountWritesSurfaceRejectionWithoutReplayingCredentials(status: Int) async throws {
+    let expected: APIError = switch status {
+    case 400: .validation("Check the information and try again.")
+    case 401: .unauthenticated
+    case 403: .forbidden
+    default: .conflict
+    }
+    let client = await accountClient(responses: [(status, "{}"), (status, "{}")])
+    await #expect(throws: expected) {
+      try await client.requestEmailChange(email: "new@example.test")
+    }
+    await #expect(throws: expected) {
+      try await client.changePassword(
+        oldPassword: "old-example", password: "new-example",
+        passwordConfirmation: "new-example")
+    }
+    #expect(PocketBaseClientURLProtocol.requests.count == 2)
+    #expect(!PocketBaseClientURLProtocol.requests.contains {
+      $0.url?.path == "/api/collections/users/auth-refresh"
+    })
+  }
+
+  @Test(arguments: [false, true], [false, true])
+  func accountWritesRejectLateResponseAfterCancellation(
+    password: Bool, signOut: Bool
+  ) async throws {
+    let client = await accountClient(responses: [(200, #"{"id":"account-owner"}"#)])
+    PocketBaseClientURLProtocol.responseDelay = 0.1
+    defer { PocketBaseClientURLProtocol.responseDelay = 0 }
+    let task = Task {
+      if password {
+        try await client.changePassword(
+          oldPassword: "old-example", password: "new-example",
+          passwordConfirmation: "new-example")
+      } else {
+        try await client.requestEmailChange(email: "new@example.test")
+      }
+    }
+    while PocketBaseClientURLProtocol.requests.isEmpty { await Task.yield() }
+    if signOut { await client.signOut() } else { task.cancel() }
+    await #expect(throws: APIError.cancelled) { try await task.value }
+  }
+
+  @Test
+  func accountWritesRequireAuthenticationBeforeSending() async throws {
+    let client = await accountClient(responses: [])
+    await client.signOut()
+    await #expect(throws: APIError.unauthenticated) {
+      try await client.requestEmailChange(email: "new@example.test")
+    }
+    await #expect(throws: APIError.unauthenticated) {
+      try await client.changePassword(
+        oldPassword: "old-example", password: "new-example",
+        passwordConfirmation: "new-example")
+    }
+    #expect(PocketBaseClientURLProtocol.requests.isEmpty)
+  }
+
+  private func accountClient(responses: [(Int, String)]) async -> PocketBaseClient {
+    PocketBaseClientURLProtocol.requests = []
+    PocketBaseClientURLProtocol.requestBodies = []
+    PocketBaseClientURLProtocol.responses = responses
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [PocketBaseClientURLProtocol.self]
+    let client = PocketBaseClient(
+      baseURL: URL(string: "https://example.test")!,
+      sessionStore: KeychainSessionStore(
+        service: "com.interactivebuffoonery.organizedglitter.tests.\(UUID().uuidString)"),
+      urlSession: URLSession(configuration: configuration))
+    await client.prepareOfflineSession(
+      StoredSession(token: "account-token", userID: "account-owner"))
+    return client
+  }
+
+  @Test
   func appleNonceUsesThirtyTwoRandomBytesAndHashesTheRawValue() throws {
     let nonce = AppleSignInNonce(bytes: [UInt8](repeating: 0, count: 32))
     #expect(nonce.raw == String(repeating: "0", count: 64))
