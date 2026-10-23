@@ -133,8 +133,11 @@ opaque PocketBase ID supplied by the verified session.
 - Notes filters: `notes_craft_filter_changed` records only an explicit picker
   choice with the fixed `craft` enum. `notes_year_filter_changed` records an
   explicit year choice using only `filter_active`; it never includes the year.
-  Setup, preference alignment, invalid-year cleanup, and craft-driven resets do
-  not emit filter events.
+  `notes_source_filter_changed` records an explicit source choice or source-summary
+  Clear action using only `source_kind` (`all`, `project`, `book`) and `craft`.
+  No equivalent event exists in the web source. Repeated selections, setup,
+  preference alignment, invalid-source/year cleanup, craft-driven resets, and
+  the empty-state Show all notes action do not emit filter events.
 - Existing-record edits: `library_record_saved_locally` follows the durable
   SwiftData commit, with record type, patch field count, and whether the visible status
   changed. This event does not claim server acceptance.
@@ -143,7 +146,16 @@ opaque PocketBase ID supplied by the verified session.
   `progress_note_added` events follow accepted server responses. Native-only
   diamond note edits/deletes and generic photo additions/removals have their
   own names. Note creation includes only `has_photo`. Page photo uploads reuse
-  `coloring_page_photo_added`. Generic record update and photo events describe
+  `coloring_page_photo_added`; deletion reuses `coloring_page_photo_deleted`.
+  Main-photo selection uses native `coloring_page_main_photo_changed` (web has
+  no matching event). These events include only `record_type=coloring_pages`
+  and `save_destination=server`. Capture follows a validated accepted response
+  for the active account, before local storage or refresh. A later local-store
+  failure retains the accepted event and does not emit `operation_failed`.
+  Uncertain responses emit only `operation_failed` with `outcome_unknown`;
+  refresh and review never synthesize acceptance or replay the action.
+  Main-photo and delete failures use `set_main_photo` and `delete_photo`.
+  Generic record update and photo events describe
   separate outcomes of the same accepted upload; do not sum them as two edits.
 - Photo viewing: `record_photo_viewed` follows an explicit full-screen open and
   includes only a fixed `surface` enum. Viewer paging, setup, filenames, URLs,

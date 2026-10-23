@@ -265,6 +265,21 @@
         if self.scenario != scenario {
           reset(for: scenario)
         }
+        if request.httpMethod == "POST", let path = request.url?.path,
+          path.hasPrefix("/api/coloring/pages/"), path.hasSuffix("/main-photo") {
+          let pageID = String(path.split(separator: "/").dropLast().last ?? "")
+          guard let index = collections["coloring_pages"]?.firstIndex(where: { $0["id"] as? String == pageID }) else {
+            return FixtureResponse(object: ["message": "Not found"], status: 404)
+          }
+          var page = collections["coloring_pages"]![index]
+          let files = page["photos"] as? [String] ?? []
+          guard let filename = jsonValues(from: request)["filename"] as? String, files.contains(filename) else {
+            return FixtureResponse(object: ["message": "Photo list changed"], status: 409)
+          }
+          page["photos"] = [filename] + files.filter { $0 != filename }
+          collections["coloring_pages"]![index] = page
+          return FixtureResponse(object: page, status: 200)
+        }
         if request.url?.path == "/api/notes/latest" {
           return latestNotes(request: request)
         }
@@ -356,7 +371,46 @@
               : OverviewFixtureProtocol.progressNoteItems) : [],
           "coloring_page_progress_notes": hasContent && usesDesignData
             ? OverviewFixtureProtocol.designPageProgressNotes : [],
+          "coloring_mediums": [
+            ["id": "fixturepencil01", "user": "preview-user", "name": "Pencils", "type": "colored_pencil"],
+            ["id": "fixturemarker01", "user": "preview-user", "name": "Markers", "type": "alcohol_marker"],
+          ],
         ]
+        collections["coloring_pages"] = (collections["coloring_pages"] ?? []).map { page in
+          var page = page
+          page["mediums"] = [] as [String]
+          return page
+        }
+        if ProcessInfo.processInfo.arguments.contains("-fixture-page-photo-actions"),
+          var pages = collections["coloring_pages"], !pages.isEmpty {
+          pages[0]["photos"] = ["design-page-1.jpg", "design-page-2.jpg"]
+          collections["coloring_pages"] = pages
+        }
+        if scenario == "mystery", var books = collections["coloring_books"],
+          var pages = collections["coloring_pages"], !books.isEmpty
+        {
+          books[0]["is_mystery"] = true
+          collections["coloring_books"] = books
+          for index in pages.indices where pages[index]["book"] as? String == "fictional-book-1" {
+            pages[index]["revealed_subject"] = ""
+            pages[index]["revealed_at"] = ""
+            pages[index]["expand"] = ["book": books[0]]
+          }
+          collections["coloring_pages"] = pages
+        }
+        if ProcessInfo.processInfo.arguments.contains("-fixture-notes-source-years") {
+          collections["progress_notes"] = collections["progress_notes"]?.map { note in
+            var dated = note
+            dated["date"] = "2025-09-01"
+            return dated
+          }
+          collections["coloring_page_progress_notes"] =
+            collections["coloring_page_progress_notes"]?.map { note in
+              var dated = note
+              dated["date"] = "2026-09-01"
+              return dated
+            }
+        }
         if scenario == "many-pages", var books = collections["coloring_books"],
           var firstBook = books.first
         {
@@ -371,6 +425,7 @@
             pages.append([
               "id": "design-page-\(index)", "book": "design-book-0",
               "page_number": index + 1, "status": "not_started", "photos": [],
+              "mediums": [] as [String],
               "created": "2026-09-01", "updated": "2026-09-19 12:08:00",
               "expand": ["book": firstBook],
             ])
@@ -401,7 +456,16 @@
         for (field, value) in patch { record[field] = value }
         record["updated"] = "2026-09-19 15:00:00"
         collections[collection]![index] = record
-        return FixtureResponse(object: ["record": record], status: 200)
+        if collection == "coloring_pages", patch["mediums"] != nil {
+          var expansion = record["expand"] as? [String: Any] ?? [:]
+          let selected = Set(record["mediums"] as? [String] ?? [])
+          expansion["mediums"] = (collections["coloring_mediums"] ?? []).filter {
+            selected.contains($0["id"] as? String ?? "")
+          }
+          record["expand"] = expansion
+          collections[collection]![index] = record
+        }
+        return FixtureResponse(object: ["outcome": "updated", "record": record], status: 200)
       }
 
       private func latestNotes(request: URLRequest) -> FixtureResponse {
@@ -485,6 +549,8 @@
           if let image = upload.files["image"]?.first {
             record["image"] = image
           }
+        case "coloring_mediums":
+          record["user"] = "preview-user"
         case "user_dashboard_settings", "randomizer_spins":
           break
         default:
@@ -517,6 +583,9 @@
         if collection == "coloring_pages" {
           var photos = record["photos"] as? [String] ?? []
           photos.append(contentsOf: upload.files["photos+"] ?? [])
+          let removed = jsonValues(from: request)["photos-"] as? [String] ?? []
+          photos.removeAll { removed.contains($0) }
+          record.removeValue(forKey: "photos-")
           record["photos"] = photos
         }
         record["updated"] = "2026-09-19 15:00:00"

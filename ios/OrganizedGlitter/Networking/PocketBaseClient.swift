@@ -549,6 +549,22 @@ actor PocketBaseClient {
     )
   }
 
+  func isAuthenticated(as userID: String) -> Bool {
+    authentication?.user.id == userID
+  }
+
+  func setMainPagePhoto(pageID: String, filename: String, userID: String) async throws -> ColoringPageRecord {
+    guard isAuthenticated(as: userID) else { throw APIError.cancelled }
+    struct Body: Encodable { let filename: String }
+    return try await request(
+      path: "/api/coloring/pages/\(pageID)/main-photo", method: "POST", body: Body(filename: filename))
+  }
+
+  func removePagePhoto(pageID: String, filename: String, userID: String) async throws -> ColoringPageRecord {
+    guard isAuthenticated(as: userID) else { throw APIError.cancelled }
+    return try await update(collection: "coloring_pages", id: pageID, body: ["photos-": [filename]])
+  }
+
   func diamondStatsSummary(year: Int) async throws -> DiamondStatsSummary {
     try validateStatsYear(year)
     return try await request(
@@ -587,8 +603,9 @@ actor PocketBaseClient {
     }
   }
 
-  func mobileSnapshot() async throws -> LocalFullSnapshot {
-    try await request(path: "/api/mobile/sync/snapshot")
+  func mobileSnapshot(userID: String? = nil) async throws -> LocalFullSnapshot {
+    if let userID, !isAuthenticated(as: userID) { throw APIError.cancelled }
+    return try await request(path: "/api/mobile/sync/snapshot")
   }
 
   func applyLocalOperation(_ operation: LocalPendingOperation) async throws -> LibraryItem {
@@ -630,6 +647,43 @@ actor PocketBaseClient {
     }
     guard record.localRecordKey == operation.key else { throw APIError.decoding }
     if result.status == 409 { throw LocalSyncConflict(current: record) }
+    return record
+  }
+
+  func applyPageMediums(attempt: PageMediumAttempt) async throws -> ColoringPageRecord {
+    struct Body: Encodable {
+      let operationId: String
+      let collection = "coloring_pages"
+      let recordId: String
+      let base: ColoringPageMediumWrite
+      let patch: ColoringPageMediumWrite
+    }
+    struct Response: Decodable {
+      let outcome: String?
+      let reason: String?
+      let record: ColoringPageRecord?
+    }
+    let body = Body(
+      operationId: attempt.id.uuidString, recordId: attempt.pageID,
+      base: attempt.base, patch: attempt.patch)
+    let result = try await sendResponseEncoded(
+      path: "/api/mobile/sync/apply", method: "POST",
+      body: PocketBaseRequestBody(json: body), acceptedStatusCodes: [409])
+    let response: Response
+    do { response = try JSONDecoder().decode(Response.self, from: result.data) }
+    catch { throw APIError.decoding }
+    if result.status == 409, response.reason == "operation_id_reused" {
+      throw PageMediumSaveError.integrityFailure
+    }
+    guard let record = response.record, record.id == attempt.pageID,
+      record.mediumIDs != nil else { throw APIError.decoding }
+    if result.status == 409 {
+      guard response.reason == "field_conflict" else { throw APIError.decoding }
+      throw LocalSyncConflict(current: .page(record))
+    }
+    guard let outcome = response.outcome, ["updated", "replayed"].contains(outcome) else {
+      throw APIError.decoding
+    }
     return record
   }
 

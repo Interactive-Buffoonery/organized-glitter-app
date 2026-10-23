@@ -60,7 +60,9 @@ struct ListEntriesView: View {
           if entries.isEmpty {
             ContentUnavailableView(
               "No \(kind.title.lowercased())", systemImage: kind.systemImage,
-              description: Text("Add one here or while editing a record."))
+              description: Text(kind == .medium
+                ? "Add mediums here, then attach them to a page."
+                : "Add one here or while editing a record."))
           }
           ForEach(entries, id: \.id) { entry in
             Text(entry.name)

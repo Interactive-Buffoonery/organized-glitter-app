@@ -13,18 +13,58 @@ struct DetailPhoto: Identifiable, Hashable, Sendable {
   var caption: String? = nil
 }
 
+struct DetailPhotoActions {
+  let mainID: DetailPhoto.ID?
+  let isEnabled: Bool
+  let setMain: @MainActor (DetailPhoto.ID) -> Void
+  let delete: @MainActor (DetailPhoto.ID) -> Void
+}
+
 struct DetailPhotoGallery: View {
+  @Environment(\.theme) private var theme
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   let photos: [DetailPhoto]
+  var actions: DetailPhotoActions? = nil
 
   var body: some View {
     ScrollView(.horizontal) {
-      LazyHStack(spacing: 12) {
+      LazyHStack(alignment: .top, spacing: 12) {
         ForEach(photos) { photo in
-          DetailPhotoTile(photo: photo, contentMode: .fit, maxPixelDimension: thumbnailSize * 3)
-            .frame(width: thumbnailSize, height: thumbnailSize)
-            .photoViewerSource(photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen")
+          VStack(alignment: .leading, spacing: 6) {
+            DetailPhotoTile(photo: photo, contentMode: .fill, maxPixelDimension: thumbnailSize * 3)
+              .frame(width: thumbnailSize, height: thumbnailSize)
+            if actions?.mainID == photo.id {
+              Label("Main", systemImage: "star.fill")
+                .font(.karla(.caption).weight(.semibold))
+                .padding(6)
+                .foregroundStyle(theme.cardForeground)
+                .background(theme.card, in: .capsule)
+                .accessibilityHidden(true)
+            }
+          }
+            .photoViewerSource(
+              photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen"
+                + (actions?.mainID == photo.id ? ", Main photo" : ""))
+            .accessibilityIdentifier("detail.photo.\(photo.id)")
+            .contextMenu {
+              if let actions {
+                if actions.mainID != photo.id {
+                  Button("Set as main photo", systemImage: "star") { actions.setMain(photo.id) }
+                    .disabled(!actions.isEnabled)
+                }
+                Button("Delete photo", systemImage: "trash", role: .destructive) { actions.delete(photo.id) }
+                  .disabled(!actions.isEnabled)
+              }
+            }
+            .accessibilityActions {
+              if let actions, actions.isEnabled {
+                if actions.mainID != photo.id {
+                  Button("Set as main photo") { actions.setMain(photo.id) }
+                }
+                Button("Delete photo") { actions.delete(photo.id) }
+              }
+            }
         }
       }
     }
@@ -69,6 +109,22 @@ struct DetailPhotoContactSheet: View {
 }
 
 extension View {
+  /// Asks before deleting the photo held in `photo`, clearing it when the alert closes.
+  func photoDeleteConfirmation(
+    _ photo: Binding<DetailPhoto.ID?>, isEnabled: Bool,
+    onDelete: @escaping @MainActor (DetailPhoto.ID) -> Void
+  ) -> some View {
+    alert("Delete this photo?", isPresented: Binding(
+      get: { photo.wrappedValue != nil }, set: { if !$0 { photo.wrappedValue = nil } }
+    ), presenting: photo.wrappedValue) { id in
+      Button("Delete photo", role: .destructive) { onDelete(id) }
+        .disabled(!isEnabled)
+      Button("Cancel", role: .cancel) {}
+    } message: { _ in
+      Text("This can’t be undone.")
+    }
+  }
+
   /// Keeps a just-saved entry invisible until its sheet closes, then eases it in with a brief ring.
   func savedEntryReveal(isPending: Bool, isHighlighted: Bool) -> some View {
     modifier(SavedEntryReveal(isPending: isPending, isHighlighted: isHighlighted))

@@ -7,6 +7,100 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct AnalyticsBehaviorTests {
+  @Test(arguments: [false, true])
+  func pagePhotoUploadRetainsExistingAnalytics(fails: Bool) async throws {
+    let fixture = try await Fixture()
+    defer { fixture.analytics.close() }
+    let page = try JSONDecoder().decode(ColoringPageRecord.self, from: Data(
+      #"{"id":"page","book":"book","page_number":1,"status":"not_started","photos":["first.jpg"],"created":"2026-09-01","updated":"2026-09-02"}"#.utf8))
+    try await fixture.library.store.ingest(.book(featureBook("book", title: "Private book")), scope: fixture.library.scope)
+    try await fixture.library.store.ingest(.page(page), scope: fixture.library.scope)
+    try await fixture.library.loadLocal()
+    BehaviorProtocol.record = try JSONEncoder().encode(page)
+    BehaviorProtocol.status = fails ? 503 : 200
+    let form = PocketBaseMultipartForm(files: [
+      PocketBaseMultipartFile(fieldName: "photos+", fileName: "new.jpg", contentType: "image/jpeg", data: Data([1]))
+    ])
+    do {
+      _ = try await fixture.library.appendPagePhoto(id: page.id, multipart: form)
+      #expect(!fails)
+    } catch APIError.server {
+      #expect(fails)
+    }
+    if fails {
+      #expect(fixture.events.names == [.operationFailed])
+      #expect(fixture.events.properties.first?["operation"] as? String == "add_photo")
+    } else {
+      #expect(fixture.events.names == [.pageUpdated, .pagePhotoAdded])
+      #expect(fixture.events.properties.last?["save_destination"] as? String == "server")
+    }
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test(arguments: [false, true], [200, 409, 503])
+  func pagePhotoActionsCaptureOnlyAcceptedResponses(setMain: Bool, status: Int) async throws {
+    let fixture = try await Fixture()
+    defer { fixture.analytics.close() }
+    let page = try JSONDecoder().decode(ColoringPageRecord.self, from: Data(
+      #"{"id":"page","book":"book","page_number":1,"status":"not_started","photos":["first.jpg"],"created":"2026-09-01","updated":"2026-09-02"}"#.utf8))
+    try await fixture.library.store.ingest(.book(featureBook("book", title: "Private book")), scope: fixture.library.scope)
+    try await fixture.library.store.ingest(.page(page), scope: fixture.library.scope)
+    try await fixture.library.loadLocal()
+    BehaviorProtocol.record = try JSONEncoder().encode(page)
+    BehaviorProtocol.status = status
+    do {
+      _ = try await fixture.library.changePagePhoto(id: page.id, filename: "first.jpg", setMain: setMain)
+      #expect(status == 200)
+    } catch {
+      #expect(status != 200)
+    }
+    if status == 200 {
+      #expect(fixture.events.names == [setMain ? .pageMainPhotoChanged : .pagePhotoDeleted])
+      #expect(Set(fixture.events.properties[0].keys) == ["record_type", "save_destination"])
+    } else {
+      #expect(fixture.events.names == [.operationFailed])
+      #expect(fixture.events.properties[0]["operation"] as? String == (setMain ? "set_main_photo" : "delete_photo"))
+      #expect(fixture.events.properties[0]["failure_category"] as? String == (status == 409 ? "conflict" : "outcome_unknown"))
+    }
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func acceptedUploadWithLocalFailureStillCountsAsAdded() async throws {
+    let fixture = try await Fixture()
+    defer { fixture.analytics.close() }
+    let page = try JSONDecoder().decode(ColoringPageRecord.self, from: Data(
+      #"{"id":"page","book":"book","page_number":1,"status":"not_started","photos":["first.jpg"],"created":"2026-09-01","updated":"2026-09-02"}"#.utf8))
+    try await fixture.library.store.ingest(.book(featureBook("book", title: "Private book")), scope: fixture.library.scope)
+    try await fixture.library.store.ingest(.page(page), scope: fixture.library.scope)
+    try await fixture.library.loadLocal()
+    BehaviorProtocol.record = try JSONEncoder().encode(page)
+    let gate = LoadGate()
+    BehaviorProtocol.writeGate = gate
+    let upload = Task {
+      try await fixture.library.appendPagePhoto(id: page.id, multipart: PocketBaseMultipartForm(files: [
+        PocketBaseMultipartFile(fieldName: "photos+", fileName: "new.jpg", contentType: "image/jpeg", data: Data([1]))
+      ]))
+    }
+    await gate.waitUntilPaused(1)
+    // Removing the parent makes the accepted response fail local ownership validation.
+    try await fixture.library.store.removeConfirmed(scope: fixture.library.scope, key: .init(kind: .book, id: "book"))
+    gate.resumeAll()
+    do { _ = try await upload.value; Issue.record("Expected local storage failure") }
+    catch APIError.server {}
+    #expect(fixture.events.names == [.pageUpdated, .pagePhotoAdded])
+    #expect(fixture.library.photoReviewRequired(id: page.id))
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test(arguments: [AnalyticsEvent.pagePhotoDeleted, .pageMainPhotoChanged])
+  func pagePhotoPayloadDropsPrivateProperties(event: AnalyticsEvent) {
+    let values = AnalyticsPayload.properties([
+      "record_type": "coloring_pages", "save_destination": "server",
+      "filename": "private.jpg", "id": "private-id", "title": "Private title",
+    ], for: event)
+    #expect(Set(values.keys) == ["record_type", "save_destination"])
+  }
+
   @Test func localSavePrecedesAcceptanceAndRetryDoesNotDuplicate() async throws {
     let fixture = try await Fixture()
     defer { fixture.analytics.close() }
@@ -263,16 +357,58 @@ struct AnalyticsBehaviorTests {
     let fixture = try await Fixture()
     let filters = NotesFilterModel(library: fixture.library)
     filters.align(to: VerticalPreferences(diamondPainting: false, coloringBooks: true))
-    filters.reconcile(availableYears: [2025])
+    filters.reconcile(availableSources: [], availableYears: [2025])
     #expect(fixture.events.names.isEmpty)
 
     filters.selectCraft(.all)
     filters.selectYear(2026)
-    filters.reconcile(availableYears: [2025])
-    #expect(fixture.events.names == [.notesCraftFilterChanged, .notesYearFilterChanged])
+    filters.selectSource(.project("private-project"))
+    filters.reconcile(availableSources: [], availableYears: [2025])
+    #expect(filters.source == nil)
+    #expect(filters.year == nil)
+    filters.selectSource(.book("private-book"))
+    filters.selectYear(2025)
+    filters.reset()
+    #expect(filters.source == nil)
+    #expect(filters.year == nil)
+    filters.selectSource(.book("private-book"))
+    filters.selectCraft(.coloring)
+    #expect(filters.source == nil)
+    #expect(fixture.events.names == [
+      .notesCraftFilterChanged, .notesYearFilterChanged, .notesSourceFilterChanged,
+      .notesSourceFilterChanged, .notesYearFilterChanged, .notesSourceFilterChanged,
+      .notesCraftFilterChanged,
+    ])
     #expect(fixture.events.properties[0]["craft"] as? String == "all")
     #expect(fixture.events.properties[1]["filter_active"] as? Bool == true)
     #expect(fixture.events.properties.allSatisfy { $0["year"] == nil })
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func notesSourceChoicesCaptureOnlyKindAndCraft() async throws {
+    let fixture = try await Fixture()
+    let filters = NotesFilterModel(library: fixture.library)
+    filters.selectSource(nil)
+    filters.selectSource(.project("private-project"))
+    filters.selectSource(.project("private-project"))
+    filters.selectSource(.project("another-private-project"))
+    filters.selectSource(.book("private-book"))
+    filters.selectSource(nil)
+    filters.selectCraft(.coloring)
+    filters.selectSource(.book("private-book"))
+    filters.align(to: VerticalPreferences(diamondPainting: true, coloringBooks: false))
+    #expect(filters.source == nil)
+    #expect(fixture.events.names == [
+      .notesSourceFilterChanged, .notesSourceFilterChanged, .notesSourceFilterChanged,
+      .notesSourceFilterChanged, .notesCraftFilterChanged, .notesSourceFilterChanged,
+    ])
+    let properties = zip(fixture.events.names, fixture.events.properties)
+      .filter { $0.0 == .notesSourceFilterChanged }.map { $0.1 }
+    #expect(properties.map { $0["source_kind"] as? String }
+      == ["project", "project", "book", "all", "book"])
+    #expect(properties.map { $0["craft"] as? String }
+      == ["all", "all", "all", "all", "coloring"])
+    #expect(properties.allSatisfy { Set($0.keys) == ["source_kind", "craft"] })
     try await fixture.library.close(removingData: false)
   }
 
@@ -517,6 +653,19 @@ struct AnalyticsBehaviorTests {
       for: .notesCraftFilterChanged).isEmpty)
     #expect(AnalyticsPayload.properties(["filter_active": true, "year": 2026],
       for: .notesYearFilterChanged)["year"] == nil)
+    #expect(AnalyticsPayload.properties([
+      "source_kind": "private-project", "craft": "Private craft",
+      "source_id": "private-id", "title": "Private title",
+    ], for: .notesSourceFilterChanged).isEmpty)
+    for kind in ["all", "project", "book"] {
+      let source = AnalyticsPayload.properties([
+        "source_kind": kind, "craft": "all", "source_id": "private-id",
+        "title": "Private title", "year": 2026,
+      ], for: .notesSourceFilterChanged)
+      #expect(source["source_kind"] as? String == kind)
+      #expect(source["craft"] as? String == "all")
+      #expect(Set(source.keys) == ["source_kind", "craft"])
+    }
     #expect(AnalyticsPayload.properties(["surface": "private-filename.jpg"],
       for: .photoViewed).isEmpty)
     let photo = AnalyticsPayload.properties([
@@ -605,6 +754,7 @@ private struct Fixture {
     coordinator = LocalSyncCoordinator(store: store, client: client, scope: library.scope, analytics: analytics)
     BehaviorProtocol.status = 200
     BehaviorProtocol.snapshotGate = nil
+    BehaviorProtocol.writeGate = nil
     BehaviorProtocol.resetWriteCount()
     BehaviorProtocol.record = try JSONEncoder().encode(featureProject("project", title: "Private changed title", status: "progress"))
     BehaviorProtocol.snapshot = Data(
@@ -622,6 +772,7 @@ private final class BehaviorProtocol: URLProtocol, @unchecked Sendable {
   nonisolated(unsafe) static var record = Data()
   nonisolated(unsafe) static var snapshot = Data()
   nonisolated(unsafe) static var snapshotGate: LoadGate?
+  nonisolated(unsafe) static var writeGate: LoadGate?
   private static let writeLock = NSLock()
   nonisolated(unsafe) private static var writes = 0
   static var writeCount: Int { writeLock.withLock { writes } }
@@ -629,7 +780,8 @@ private final class BehaviorProtocol: URLProtocol, @unchecked Sendable {
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
   override func startLoading() {
-    if request.url?.path == "/api/mobile/sync/snapshot", let gate = Self.snapshotGate {
+    let gate = request.url?.path == "/api/mobile/sync/snapshot" ? Self.snapshotGate : Self.writeGate
+    if let gate {
       let respond: @Sendable () -> Void = { [self] in self.respond() }
       Task { @MainActor in
         try? await gate.pause()
