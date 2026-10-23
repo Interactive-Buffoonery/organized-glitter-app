@@ -26,10 +26,16 @@ struct StatsView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+        if sizeClass == .regular {
+          Text("Stats")
+            .font(.caveat(size: 44))
+            .accessibilityAddTraits(.isHeader)
+        }
         if let snapshot = model.snapshot(for: library, year: year) {
           if let error = model.errorMessage {
             AccessibleErrorLabel(message: error)
             Button("Retry") { refreshID &+= 1 }
+              .buttonStyle(QuietActionStyle())
           }
           if model.isStale {
             Label("Showing the last server result", systemImage: "clock")
@@ -54,10 +60,12 @@ struct StatsView: View {
           ContentUnavailableView {
             Label(model.needsConnection ? "Stats need a connection" : "Couldn’t load stats",
               systemImage: model.needsConnection ? "wifi.slash" : "chart.bar")
+              .font(.karla(.title2).weight(.semibold))
           } description: {
-            Text(model.errorMessage ?? "Connect to load your server stats.")
+            Text(model.needsConnection ? "Reconnect and try again." : model.errorMessage ?? "Connect to load your server stats.")
           } actions: {
             Button("Retry") { refreshID &+= 1 }
+              .buttonStyle(QuietActionStyle())
           }
           .frame(maxWidth: .infinity, minHeight: 280)
         }
@@ -69,6 +77,7 @@ struct StatsView: View {
     }
     .background { theme.themedBackground.ignoresSafeArea() }
     .navigationTitle("Stats")
+    .toolbar(removing: sizeClass == .regular ? .title : nil)
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
@@ -82,7 +91,8 @@ struct StatsView: View {
         } label: {
           Label(String(year), systemImage: "calendar")
         }
-        .accessibilityLabel("Stats year, \(year)")
+        .disabled(model.needsConnection)
+        .accessibilityLabel("Stats year, \(String(year))")
         .accessibilityIdentifier("stats.year")
       }
     }
