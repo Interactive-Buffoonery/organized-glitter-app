@@ -357,16 +357,58 @@ struct AnalyticsBehaviorTests {
     let fixture = try await Fixture()
     let filters = NotesFilterModel(library: fixture.library)
     filters.align(to: VerticalPreferences(diamondPainting: false, coloringBooks: true))
-    filters.reconcile(availableYears: [2025])
+    filters.reconcile(availableSources: [], availableYears: [2025])
     #expect(fixture.events.names.isEmpty)
 
     filters.selectCraft(.all)
     filters.selectYear(2026)
-    filters.reconcile(availableYears: [2025])
-    #expect(fixture.events.names == [.notesCraftFilterChanged, .notesYearFilterChanged])
+    filters.selectSource(.project("private-project"))
+    filters.reconcile(availableSources: [], availableYears: [2025])
+    #expect(filters.source == nil)
+    #expect(filters.year == nil)
+    filters.selectSource(.book("private-book"))
+    filters.selectYear(2025)
+    filters.reset()
+    #expect(filters.source == nil)
+    #expect(filters.year == nil)
+    filters.selectSource(.book("private-book"))
+    filters.selectCraft(.coloring)
+    #expect(filters.source == nil)
+    #expect(fixture.events.names == [
+      .notesCraftFilterChanged, .notesYearFilterChanged, .notesSourceFilterChanged,
+      .notesSourceFilterChanged, .notesYearFilterChanged, .notesSourceFilterChanged,
+      .notesCraftFilterChanged,
+    ])
     #expect(fixture.events.properties[0]["craft"] as? String == "all")
     #expect(fixture.events.properties[1]["filter_active"] as? Bool == true)
     #expect(fixture.events.properties.allSatisfy { $0["year"] == nil })
+    try await fixture.library.close(removingData: false)
+  }
+
+  @Test func notesSourceChoicesCaptureOnlyKindAndCraft() async throws {
+    let fixture = try await Fixture()
+    let filters = NotesFilterModel(library: fixture.library)
+    filters.selectSource(nil)
+    filters.selectSource(.project("private-project"))
+    filters.selectSource(.project("private-project"))
+    filters.selectSource(.project("another-private-project"))
+    filters.selectSource(.book("private-book"))
+    filters.selectSource(nil)
+    filters.selectCraft(.coloring)
+    filters.selectSource(.book("private-book"))
+    filters.align(to: VerticalPreferences(diamondPainting: true, coloringBooks: false))
+    #expect(filters.source == nil)
+    #expect(fixture.events.names == [
+      .notesSourceFilterChanged, .notesSourceFilterChanged, .notesSourceFilterChanged,
+      .notesSourceFilterChanged, .notesCraftFilterChanged, .notesSourceFilterChanged,
+    ])
+    let properties = zip(fixture.events.names, fixture.events.properties)
+      .filter { $0.0 == .notesSourceFilterChanged }.map { $0.1 }
+    #expect(properties.map { $0["source_kind"] as? String }
+      == ["project", "project", "book", "all", "book"])
+    #expect(properties.map { $0["craft"] as? String }
+      == ["all", "all", "all", "all", "coloring"])
+    #expect(properties.allSatisfy { Set($0.keys) == ["source_kind", "craft"] })
     try await fixture.library.close(removingData: false)
   }
 
@@ -611,6 +653,19 @@ struct AnalyticsBehaviorTests {
       for: .notesCraftFilterChanged).isEmpty)
     #expect(AnalyticsPayload.properties(["filter_active": true, "year": 2026],
       for: .notesYearFilterChanged)["year"] == nil)
+    #expect(AnalyticsPayload.properties([
+      "source_kind": "private-project", "craft": "Private craft",
+      "source_id": "private-id", "title": "Private title",
+    ], for: .notesSourceFilterChanged).isEmpty)
+    for kind in ["all", "project", "book"] {
+      let source = AnalyticsPayload.properties([
+        "source_kind": kind, "craft": "all", "source_id": "private-id",
+        "title": "Private title", "year": 2026,
+      ], for: .notesSourceFilterChanged)
+      #expect(source["source_kind"] as? String == kind)
+      #expect(source["craft"] as? String == "all")
+      #expect(Set(source.keys) == ["source_kind", "craft"])
+    }
     #expect(AnalyticsPayload.properties(["surface": "private-filename.jpg"],
       for: .photoViewed).isEmpty)
     let photo = AnalyticsPayload.properties([

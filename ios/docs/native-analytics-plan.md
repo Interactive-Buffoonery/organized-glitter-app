@@ -133,8 +133,11 @@ opaque PocketBase ID supplied by the verified session.
 - Notes filters: `notes_craft_filter_changed` records only an explicit picker
   choice with the fixed `craft` enum. `notes_year_filter_changed` records an
   explicit year choice using only `filter_active`; it never includes the year.
-  Setup, preference alignment, invalid-year cleanup, and craft-driven resets do
-  not emit filter events.
+  `notes_source_filter_changed` records an explicit source choice or source-summary
+  Clear action using only `source_kind` (`all`, `project`, `book`) and `craft`.
+  No equivalent event exists in the web source. Repeated selections, setup,
+  preference alignment, invalid-source/year cleanup, craft-driven resets, and
+  the empty-state Show all notes action do not emit filter events.
 - Existing-record edits: `library_record_saved_locally` follows the durable
   SwiftData commit, with record type, patch field count, and whether the visible status
   changed. This event does not claim server acceptance.

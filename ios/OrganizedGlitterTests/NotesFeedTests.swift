@@ -103,4 +103,92 @@ struct NotesFeedTests {
 
     #expect(entries.map(\.id) == ["diamond-note:visible"])
   }
+
+  @Test func sourceFilteringUsesIDsAndCombinesWithCraftAndYear() {
+    let duplicate = featureProject("other", title: "Garden", status: "progress")
+    let sibling = featurePage("sibling", book: "book", number: 4)
+    let otherBook = featureBook("other-book", title: "Moonlit pages")
+    let otherPage = featurePage("other-page", book: "other-book", number: 3)
+    let entries = NotesFeed.entries(
+      items: [.diamond(project), .diamond(duplicate), .book(book), .page(page),
+        .page(sibling), .book(otherBook), .page(otherPage)],
+      diamondNotes: [
+        diamondNote("current", date: "2026-09-01", created: "2026-09-02"),
+        DiamondProgressNoteRecord(
+          id: "duplicate", project: "other", content: "", date: "2026-09-03",
+          image: nil, created: "2026-09-03", updated: "2026-09-03", expand: nil)],
+      coloringNotes: [
+        pageNote("older", date: "2025-09-01", created: "2025-09-02"),
+        ColoringProgressNoteRecord(
+          id: "sibling", user: "feature-user", page: "sibling", content: "", date: "2026-09-01",
+          image: nil, created: "2026-09-04", updated: "2026-09-04", expand: nil),
+        ColoringProgressNoteRecord(
+          id: "other-page", user: "feature-user", page: "other-page", content: "", date: "2026-09-05",
+          image: nil, created: "2026-09-05", updated: "2026-09-05", expand: nil)])
+    let verticals = VerticalPreferences(diamondPainting: true, coloringBooks: true)
+
+    #expect(NotesFeed.filter(
+      entries, craft: .all, year: nil, verticals: verticals, source: .project("project")
+    ).map(\.id) == ["diamond-note:current"])
+    let bookEntries = NotesFeed.filter(
+      entries, craft: .coloring, year: nil, verticals: verticals, source: .book("book"))
+    #expect(bookEntries.map(\.id) == ["coloring-note:sibling", "coloring-note:older"])
+    #expect(NotesFeed.filter(
+      entries, craft: .all, year: 2026, verticals: verticals, source: .book("book")
+    ).map(\.id) == ["coloring-note:sibling"])
+    #expect(NotesFeed.filter(
+      entries, craft: .diamond, year: nil, verticals: verticals, source: .book("book")
+    ).isEmpty)
+    #expect(NotesFeed.months(bookEntries).map(\.id) == ["2026-09", "2025-09"])
+  }
+
+  @Test func sourceOptionsRejectMissingAccountSourcesAndStaleCraftSelections() {
+    let entries = NotesFeed.entries(
+      items: [.diamond(project), .book(book), .page(page)],
+      diamondNotes: [diamondNote("diamond", date: "2026-09-01", created: "2026-09-02")],
+      coloringNotes: [pageNote("page", date: "2025-08-31", created: "2025-09-03")])
+    let items: [LibraryItem] = [.diamond(project), .book(book), .page(page)]
+    let sources = NotesFeed.sources(in: entries, items: items)
+    #expect(sources.map(\.id) == [.project("project"), .book("book")])
+    #expect(NotesFeed.resolvedSource(.book("book"), in: sources) == .book("book"))
+
+    let coloring = NotesFeed.filter(
+      entries, craft: .coloring, year: nil,
+      verticals: .init(diamondPainting: true, coloringBooks: true))
+    let coloringSources = NotesFeed.sources(in: coloring, items: items)
+    #expect(coloringSources.map(\.id) == [.book("book")])
+    #expect(NotesFeed.resolvedSource(.project("project"), in: coloringSources) == nil)
+    #expect(NotesFeed.sources(in: entries, items: [.page(page)]).isEmpty)
+    #expect(NotesFeed.resolvedSource(.book("book"), in: []) == nil)
+    #expect(NotesFeed.sources(in: [], items: items).isEmpty)
+
+    let otherAccount = [LibraryItem.diamond(featureProject("different", title: "Garden"))]
+    let accountSources = NotesFeed.sources(in: entries, items: otherAccount)
+    #expect(accountSources.isEmpty)
+    #expect(NotesFeed.resolvedSource(.project("project"), in: accountSources) == nil)
+  }
+
+
+  @Test func projectAndBookIDsRemainDistinctWhenRecordIDsMatch() {
+    let sharedBook = featureBook("project", title: "Garden")
+    let sharedPage = featurePage("shared-page", book: "project", number: 1)
+    let entries = NotesFeed.entries(
+      items: [.diamond(project), .book(sharedBook), .page(sharedPage)],
+      diamondNotes: [diamondNote("diamond", date: "2026-09-01", created: "2026-09-01")],
+      coloringNotes: [ColoringProgressNoteRecord(
+        id: "coloring", user: "feature-user", page: "shared-page", content: "", date: "2026-09-02",
+        image: nil, created: "2026-09-02", updated: "2026-09-02", expand: nil)])
+    let verticals = VerticalPreferences(diamondPainting: true, coloringBooks: true)
+    #expect(NotesFeed.filter(
+      entries, craft: .all, year: nil, verticals: verticals, source: .book("project")
+    ).map(\.id) == ["coloring-note:coloring"])
+    #expect(NotesFeed.filter(
+      entries, craft: .all, year: nil, verticals: verticals, source: .project("project")
+    ).map(\.id) == ["diamond-note:diamond"])
+    #expect(NotesFeed.filter(
+      entries, craft: .all, year: nil,
+      verticals: .init(diamondPainting: true, coloringBooks: false), source: .book("project")
+    ).isEmpty)
+  }
+
 }
