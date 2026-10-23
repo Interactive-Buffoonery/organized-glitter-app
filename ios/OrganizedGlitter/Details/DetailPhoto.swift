@@ -29,21 +29,20 @@ struct DetailPhotoGallery: View {
 
   var body: some View {
     ScrollView(.horizontal) {
-      LazyHStack(spacing: 12) {
+      LazyHStack(alignment: .top, spacing: 12) {
         ForEach(photos) { photo in
-          DetailPhotoTile(photo: photo, contentMode: .fit, maxPixelDimension: thumbnailSize * 3)
-            .frame(width: thumbnailSize, height: thumbnailSize)
-            .overlay(alignment: .bottomLeading) {
-              if actions?.mainID == photo.id {
-                Label("Main", systemImage: "star.fill")
-                  .font(.karla(.caption).weight(.semibold))
-                  .padding(6)
-                  .foregroundStyle(theme.cardForeground)
-                  .background(theme.card, in: .capsule)
-                  .padding(4)
-                  .accessibilityHidden(true)
-              }
+          VStack(alignment: .leading, spacing: 6) {
+            DetailPhotoTile(photo: photo, contentMode: .fill, maxPixelDimension: thumbnailSize * 3)
+              .frame(width: thumbnailSize, height: thumbnailSize)
+            if actions?.mainID == photo.id {
+              Label("Main", systemImage: "star.fill")
+                .font(.karla(.caption).weight(.semibold))
+                .padding(6)
+                .foregroundStyle(theme.cardForeground)
+                .background(theme.card, in: .capsule)
+                .accessibilityHidden(true)
             }
+          }
             .photoViewerSource(
               photo.id, accessibilityLabel: "Open \(photo.accessibilityLabel) full screen"
                 + (actions?.mainID == photo.id ? ", Main photo" : ""))
@@ -110,6 +109,22 @@ struct DetailPhotoContactSheet: View {
 }
 
 extension View {
+  /// Asks before deleting the photo held in `photo`, clearing it when the alert closes.
+  func photoDeleteConfirmation(
+    _ photo: Binding<DetailPhoto.ID?>, isEnabled: Bool,
+    onDelete: @escaping @MainActor (DetailPhoto.ID) -> Void
+  ) -> some View {
+    alert("Delete this photo?", isPresented: Binding(
+      get: { photo.wrappedValue != nil }, set: { if !$0 { photo.wrappedValue = nil } }
+    ), presenting: photo.wrappedValue) { id in
+      Button("Delete photo", role: .destructive) { onDelete(id) }
+        .disabled(!isEnabled)
+      Button("Cancel", role: .cancel) {}
+    } message: { _ in
+      Text("This can’t be undone.")
+    }
+  }
+
   /// Keeps a just-saved entry invisible until its sheet closes, then eases it in with a brief ring.
   func savedEntryReveal(isPending: Bool, isHighlighted: Bool) -> some View {
     modifier(SavedEntryReveal(isPending: isPending, isHighlighted: isHighlighted))
