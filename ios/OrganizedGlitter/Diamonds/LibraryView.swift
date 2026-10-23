@@ -506,11 +506,7 @@ struct LibraryView: View {
   }
 
   private func galleryItem(_ item: LibraryItem) -> some View {
-    let hidesAnswer: Bool
-    if case .page(let page) = item {
-      hidesAnswer = MysteryPagePresentation(
-        page: page, isMystery: model.library.isMysteryBook(page.book)).hidesThumbnail
-    } else { hidesAnswer = false }
+    let hidesAnswer = model.library.hidesMysteryThumbnail(for: item)
     return NavigationLink(value: item) {
       LibraryGalleryCard(
         item: item,

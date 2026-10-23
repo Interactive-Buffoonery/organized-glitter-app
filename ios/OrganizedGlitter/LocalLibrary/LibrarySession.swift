@@ -73,6 +73,11 @@ final class LibrarySession {
 
   func isMysteryBook(_ id: String) -> Bool { mysteryBookIDs.contains(id) }
 
+  func hidesMysteryThumbnail(for item: LibraryItem) -> Bool {
+    guard case .page(let page) = item else { return false }
+    return MysteryPagePresentation(page: page, isMystery: isMysteryBook(page.book)).hidesThumbnail
+  }
+
   func shelfCounts(for section: LibrarySection) -> [String: Int] {
     countsBySection[section] ?? [:]
   }
