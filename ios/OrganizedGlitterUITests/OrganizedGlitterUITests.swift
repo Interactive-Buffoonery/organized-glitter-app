@@ -284,7 +284,7 @@ final class OrganizedGlitterUITests: XCTestCase {
     app.buttons.matching(identifier: "detail.edit").firstMatch.tap()
     XCTAssertTrue(app.navigationBars["Edit Project"].waitForExistence(timeout: 5))
     let editedTitle = "\(currentTitle) edited"
-    replaceText(in: app.textFields["Title"], with: editedTitle, app: app)
+    app.textFields["Title"].replaceText(with: editedTitle)
     currentTitle = editedTitle
     let status = app.buttons.matching(
       NSPredicate(format: "label BEGINSWITH[c] %@", "Status")
@@ -324,15 +324,6 @@ final class OrganizedGlitterUITests: XCTestCase {
       }
     }
     XCTAssertTrue(app.tabBars.buttons["Library"].firstMatch.waitForExistence(timeout: 8))
-  }
-
-  private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
-    // The edit menu differs between iPhone and iPad, so delete from the end instead.
-    field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-    let existing = field.value as? String ?? ""
-    field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
-    field.typeText(value)
-    XCTAssertEqual(field.value as? String, value)
   }
 
   private func deleteOpenProject(in app: XCUIApplication) {

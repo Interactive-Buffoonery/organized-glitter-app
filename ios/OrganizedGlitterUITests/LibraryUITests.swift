@@ -448,6 +448,15 @@ extension XCUIElement {
     let control = switches.firstMatch
     return control.exists ? control : self
   }
+
+  func replaceText(with value: String) {
+    // The edit menu differs between iPhone and iPad, so delete from the end instead.
+    coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    let existing = self.value as? String ?? ""
+    typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+    typeText(value)
+    XCTAssertEqual(self.value as? String, value)
+  }
 }
 
 extension XCUIApplication {

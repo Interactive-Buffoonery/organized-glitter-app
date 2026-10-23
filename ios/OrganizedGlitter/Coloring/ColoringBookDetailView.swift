@@ -99,14 +99,7 @@ struct ColoringBookDetailView: View {
           }
         }
 
-        if let errorMessage = model.errorMessage {
-          VStack(alignment: .leading, spacing: 12) {
-            AccessibleErrorLabel(message: errorMessage)
-            Button("Try again") {
-              Task { await model.load() }
-            }
-          }
-        }
+        DetailLoadError(model: model)
 
         if let mutationErrorMessage = model.mutationErrorMessage,
           !model.unresolvedStatusWrite

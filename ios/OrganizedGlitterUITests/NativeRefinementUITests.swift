@@ -107,7 +107,7 @@ final class NativeRefinementUITests: XCTestCase {
     button("detail.edit", in: app).tap()
     let title = app.textFields["Title"]
     XCTAssertTrue(title.waitForExistence(timeout: 5))
-    replaceText(in: title, with: "Summer Garden Blooms updated", app: app)
+    title.replaceText(with: "Summer Garden Blooms updated")
     app.buttons["Save"].tap()
     XCTAssertTrue(element("detail.diamond", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(app.staticTexts["Summer Garden Blooms updated"].waitForExistence(timeout: 5))
@@ -366,15 +366,6 @@ final class NativeRefinementUITests: XCTestCase {
       app.swipeUp()
     }
     XCTAssertTrue(element.isHittable)
-  }
-
-  private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
-    // The edit menu differs between iPhone and iPad, so delete from the end instead.
-    field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-    let existing = field.value as? String ?? ""
-    field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
-    field.typeText(value)
-    XCTAssertEqual(field.value as? String, value)
   }
 
   private func capture(_ name: String) throws {
