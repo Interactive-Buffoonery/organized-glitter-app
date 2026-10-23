@@ -36,6 +36,8 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(book.waitForExistence(timeout: 5))
     book.tap()
     let page = app.buttons["detail.book.page.fictional-page"]
+    XCTAssertTrue(app.buttons["detail.edit"].waitForExistence(timeout: 5))
+    try capture(app, "mystery-book")
     if !page.waitForExistence(timeout: 2) { app.swipeUp() }
     XCTAssertTrue(page.waitForExistence(timeout: 5))
     XCTAssertTrue(page.label.contains("Mystery"))
@@ -43,6 +45,10 @@ final class LibraryUITests: XCTestCase {
     let status = app.buttons["detail.status"]
     XCTAssertTrue(status.waitForExistence(timeout: 3))
     let originalStatus = status.label
+    let pageSubtitle = app.staticTexts["detail.page.subtitle"]
+    XCTAssertTrue(pageSubtitle.waitForExistence(timeout: 3))
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows")
+    try capture(app, "mystery-hidden")
     let reveal = app.buttons["detail.page.reveal"]
     if !reveal.waitForExistence(timeout: 2) { app.swipeUp() }
     XCTAssertTrue(reveal.waitForExistence(timeout: 5))
@@ -55,6 +61,7 @@ final class LibraryUITests: XCTestCase {
     let answer = app.buttons["detail.page.answerMenu"]
     XCTAssertTrue(answer.waitForExistence(timeout: 5))
     XCTAssertTrue(answer.label.contains("Garden"))
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows · Page 12")
     let date = app.staticTexts["detail.page.revealedDate"]
     XCTAssertTrue(date.waitForExistence(timeout: 3))
     let originalDate = date.label
@@ -82,6 +89,7 @@ final class LibraryUITests: XCTestCase {
     XCTAssertFalse(answer.exists)
     XCTAssertFalse(date.exists)
     XCTAssertEqual(status.label, originalStatus)
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows")
     try capture(app, "mystery-hidden-again")
   }
 

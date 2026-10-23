@@ -154,8 +154,8 @@ struct ColoringBookDetailView: View {
         .foregroundStyle(theme.pageSecondaryForeground)
         .padding(.top, 8)
       ProgressView(
-        value: min(max(book.completionPercentage ?? 0, 0), 100),
-        total: 100
+        value: Double(min(max(book.completedPages ?? 0, 0), book.totalPages)),
+        total: Double(max(book.totalPages, 1))
       )
       .frame(maxWidth: 240)
       .accessibilityLabel("Book completion")
