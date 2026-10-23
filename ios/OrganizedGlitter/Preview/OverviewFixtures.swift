@@ -331,6 +331,18 @@
           "coloring_page_progress_notes": hasContent && usesDesignData
             ? OverviewFixtureProtocol.designPageProgressNotes : [],
         ]
+        if scenario == "mystery", var books = collections["coloring_books"],
+          var pages = collections["coloring_pages"], !books.isEmpty
+        {
+          books[0]["is_mystery"] = true
+          collections["coloring_books"] = books
+          for index in pages.indices where pages[index]["book"] as? String == "fictional-book-1" {
+            pages[index]["revealed_subject"] = ""
+            pages[index]["revealed_at"] = ""
+            pages[index]["expand"] = ["book": books[0]]
+          }
+          collections["coloring_pages"] = pages
+        }
         if ProcessInfo.processInfo.arguments.contains("-fixture-notes-source-years") {
           collections["progress_notes"] = collections["progress_notes"]?.map { note in
             var dated = note

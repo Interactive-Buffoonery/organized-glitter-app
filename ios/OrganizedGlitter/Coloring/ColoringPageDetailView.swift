@@ -18,6 +18,19 @@ struct ColoringPageDetailView: View {
   @State private var pendingPreview: UIImage?
   @State private var isPreparingPhoto = false
   @State private var photoErrorMessage: String?
+  @State private var revealDraft = ""
+  @State private var showingRevealAlert = false
+  @State private var editingReveal = false
+  @State private var confirmingHide = false
+  @State private var revealErrorMessage: String?
+
+  private var mystery: MysteryPagePresentation {
+    MysteryPagePresentation(page: page, isMystery: model.library.isMysteryBook(page.book))
+  }
+
+  private var revealControlsDisabled: Bool {
+    model.isMutating || model.unresolvedWriteState != nil || isPreparingPhoto || pendingPhoto != nil
+  }
 
   var body: some View {
     let startedDate = page.startedAt.flatMap { DetailDateOnly.date($0) }
@@ -37,15 +50,28 @@ struct ColoringPageDetailView: View {
           .accessibilityIdentifier("detail.hero")
 
           VStack(alignment: .leading, spacing: 6) {
-            DetailInlineTitle(
-              value: page.revealedSubject ?? "",
-              placeholder: "Page \(page.pageNumber)",
-              field: "revealed_subject",
-              label: "Revealed subject",
-              allowsEmpty: true,
-              model: model,
-              onCollectionChanged: onCollectionChanged)
-            Text("\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
+            if mystery.isMystery {
+              mysteryTitle
+                .accessibilityAddTraits(.isHeader)
+              if mystery.isRevealed, let date = page.revealedAt.flatMap({ DetailDateOnly.formatted($0) }) {
+                Text("Revealed \(date)")
+                  .font(.karla(.subheadline))
+                  .foregroundStyle(theme.pageSecondaryForeground)
+                  .fixedSize(horizontal: false, vertical: true)
+                  .accessibilityIdentifier("detail.page.revealedDate")
+              }
+            } else {
+              DetailInlineTitle(
+                value: page.revealedSubject ?? "",
+                placeholder: "Page \(page.pageNumber)",
+                field: "revealed_subject",
+                label: "Revealed subject",
+                allowsEmpty: true,
+                model: model,
+                onCollectionChanged: onCollectionChanged)
+            }
+            Text(subtitle)
+              .accessibilityIdentifier("detail.page.subtitle")
               .font(.karla(.body))
               .foregroundStyle(theme.pageSecondaryForeground)
           }
@@ -53,6 +79,26 @@ struct ColoringPageDetailView: View {
           DetailStatusMenu<PageStatus>(
             current: page.status, model: model, onCollectionChanged: onCollectionChanged)
           DetailStatusRecovery(model: model, onCollectionChanged: onCollectionChanged)
+
+          if mystery.isMystery && !mystery.isRevealed {
+            VStack(alignment: .leading, spacing: 12) {
+              Label("Still a mystery", systemImage: "questionmark.square.dashed")
+                .font(.karla(.headline))
+              Text("What did it turn out to be?")
+                .fixedSize(horizontal: false, vertical: true)
+              Button("Reveal") {
+                editingReveal = false
+                showingRevealAlert = true
+              }
+              .buttonStyle(.bordered)
+              .disabled(revealControlsDisabled)
+              .accessibilityIdentifier("detail.page.reveal")
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(theme.card, in: .rect(cornerRadius: Theme.Radius.medium))
+          }
+          if let revealErrorMessage { AccessibleErrorLabel(message: revealErrorMessage) }
 
           VStack(alignment: .leading, spacing: 12) {
             photoHeader
@@ -208,6 +254,88 @@ struct ColoringPageDetailView: View {
       .photoViewer(photos, library: model.library, surface: .coloringPageGallery)
       .task(id: selectedItem) {
         await prepareSelection()
+      }
+    }
+    .alert(editingReveal ? "Edit answer" : "Reveal page", isPresented: $showingRevealAlert) {
+      TextField("Subject", text: $revealDraft)
+        .accessibilityIdentifier("mystery.subject")
+      Button("Cancel", role: .cancel) {}
+      Button(editingReveal ? "Save" : "Reveal") { saveReveal() }
+        .disabled(revealDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || revealControlsDisabled)
+    }
+    .confirmationDialog("Hide the answer?", isPresented: $confirmingHide, titleVisibility: .visible) {
+      Button("Hide again", role: .destructive) { hideReveal() }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("The page goes back to being a mystery.")
+    }
+  }
+
+  private var subtitle: String {
+    let bookTitle = page.expand?.book?.title ?? "Coloring book"
+    return mystery.isRevealed ? "\(bookTitle) · Page \(page.pageNumber)" : bookTitle
+  }
+
+  @ViewBuilder
+  private var mysteryTitle: some View {
+    if mystery.isRevealed {
+      Menu {
+        Button("Edit answer") {
+          editingReveal = true
+          revealDraft = page.revealedSubject ?? ""
+          showingRevealAlert = true
+        }
+        .accessibilityIdentifier("detail.page.editAnswer")
+        Button("Hide again", role: .destructive) { confirmingHide = true }
+          .accessibilityIdentifier("detail.page.hide")
+      } label: {
+        HStack(alignment: .firstTextBaseline) {
+          Text(mystery.title)
+            .fixedSize(horizontal: false, vertical: true)
+          Image(systemName: "chevron.down").font(.karla(.caption))
+            .accessibilityHidden(true)
+        }
+        .font(.karla(.title3).weight(.semibold))
+        .frame(minHeight: 44, alignment: .leading)
+        .contentShape(.rect)
+      }
+      .disabled(revealControlsDisabled)
+      .accessibilityIdentifier("detail.page.answerMenu")
+    } else {
+      Text(mystery.title)
+        .font(.karla(.title3).weight(.semibold))
+        .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private func saveReveal() {
+    guard !revealControlsDisabled else { return }
+    revealErrorMessage = nil
+    let isEditing = editingReveal
+    let today = DetailDateOnly.string(from: Date.now)
+    do {
+      let patch = try isEditing
+        ? MysteryRevealWrite.editAnswer(revealDraft)
+        : MysteryRevealWrite.reveal(subject: revealDraft, day: today, today: today)
+      Task {
+        if await model.updateFields(patch) {
+          await onCollectionChanged()
+          AccessibilityNotification.Announcement(isEditing ? "Answer saved" : "Revealed").post()
+          revealDraft = ""
+        }
+      }
+    } catch {
+      revealErrorMessage = "Enter a subject and a valid reveal date."
+    }
+  }
+
+  private func hideReveal() {
+    guard !revealControlsDisabled else { return }
+    Task {
+      if await model.updateFields(MysteryRevealWrite.hide) {
+        await onCollectionChanged()
+        revealDraft = ""
+        AccessibilityNotification.Announcement("Answer hidden").post()
       }
     }
   }
