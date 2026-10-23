@@ -17,47 +17,52 @@ struct ChangeEmailView: View {
 
   var body: some View {
     Form {
-      Section("New email") {
-        TextField("Email address", text: $email)
-          .textContentType(.emailAddress)
-          .keyboardType(.emailAddress)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-          .disabled(isSending)
-          .accessibilityLabel("New email address")
-          .accessibilityIdentifier("account.newEmail")
-        Button("Send confirmation", action: send)
-          .disabled(isSending || !connectionAvailable || normalizedEmail.isEmpty
-            || appModel.isChangingPassword || appModel.isSigningOut)
-          .accessibilityIdentifier("account.sendEmailConfirmation")
-        if isSending { ProgressView("Sending confirmation") }
-      }
-      if let confirmationEmail {
+      Group {
+        Section("New email") {
+          TextField("Email address", text: $email, axis: .vertical)
+            .textContentType(.emailAddress)
+            .keyboardType(.emailAddress)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .disabled(isSending)
+            .accessibilityLabel("New email address")
+            .accessibilityIdentifier("account.newEmail")
+          Button("Send confirmation", action: send)
+            .disabled(isSending || !connectionAvailable || normalizedEmail.isEmpty
+              || appModel.isChangingPassword || appModel.isSigningOut)
+            .buttonStyle(AuthPrimaryButtonStyle())
+            .accessibilityIdentifier("account.sendEmailConfirmation")
+          if !connectionAvailable { NeedsConnectionHint() }
+          if isSending { ProgressView("Sending confirmation") }
+        }
+        if let confirmationEmail {
+          Section {
+            Text("Check \(confirmationEmail) for a link to confirm the change. Your email stays the same until you confirm.")
+              .fixedSize(horizontal: false, vertical: true)
+              .accessibilityIdentifier("account.emailConfirmationSent")
+          }
+        }
         Section {
-          Text("Check \(confirmationEmail) for a link to confirm the change. Your email stays the same until you confirm.")
+          Text("Open the confirmation link on the web and enter your current password. If you usually sign in with Apple, Google, or Discord and don't know a password, reset it first.")
             .fixedSize(horizontal: false, vertical: true)
-            .accessibilityIdentifier("account.emailConfirmationSent")
+          NavigationLink("Reset password") {
+            PasswordResetView(client: client, initialEmail: currentEmail)
+          }
+          .disabled(isSending)
+        }
+        if let errorMessage {
+          Section {
+            AccessibleErrorLabel(message: errorMessage)
+              .accessibilityIdentifier("account.emailChangeError")
+          }
         }
       }
-      Section {
-        Text("Open the confirmation link on the web and enter your current password. If you usually sign in with Apple, Google, or Discord and don't know a password, reset it first.")
-          .fixedSize(horizontal: false, vertical: true)
-        NavigationLink("Reset password") {
-          PasswordResetView(client: client, initialEmail: currentEmail)
-        }
-        .disabled(isSending)
-      }
-      if !connectionAvailable { Section { NeedsConnectionHint() } }
-      if let errorMessage {
-        Section {
-          AccessibleErrorLabel(message: errorMessage)
-            .accessibilityIdentifier("account.emailChangeError")
-        }
-      }
+      .listRowBackground(theme.card)
     }
     .font(.karla(.body))
     .themedScrollBackground()
-    .navigationTitle("Change email")
+    .scrollEdgeEffectStyle(.hard, for: .top)
+    .fittingLargeTitle("Change email")
     .onDisappear {
       generation &+= 1
       sendTask?.cancel()
