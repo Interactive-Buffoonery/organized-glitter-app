@@ -18,6 +18,7 @@ struct LibraryView: View {
   @State private var logEditor: LibraryItemDetailModel?
   @State private var showsRandomizer = false
   @State private var showsNumberPicker = false
+  @State private var showsStats = false
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -64,6 +65,9 @@ struct LibraryView: View {
         }
         .navigationDestination(isPresented: $showsNumberPicker) {
           RandomizerView()
+        }
+        .navigationDestination(isPresented: $showsStats) {
+          StatsView(library: model.library, verticals: verticals)
         }
     }
     .sheet(isPresented: $showsFilters) {
@@ -160,6 +164,8 @@ struct LibraryView: View {
       if showsLibraryTools {
         ToolbarItem(placement: .topBarTrailing) {
           Menu {
+            Button("Stats", systemImage: "chart.bar") { showsStats = true }
+              .accessibilityIdentifier("library.stats")
             Button(RandomizerPageCopy.title, systemImage: "shuffle") { showsRandomizer = true }
               .accessibilityIdentifier("library.pickForMe")
             Button("Pick a section number", systemImage: "number") { showsNumberPicker = true }

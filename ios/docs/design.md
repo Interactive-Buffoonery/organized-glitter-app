@@ -12,10 +12,11 @@ screen backgrounds. The Shelf redesign (Option B in
   tab bar. Search uses `.searchable`.
   Account opens from the Home toolbar avatar. Create is the toolbar `+`
   `CreateMenu` on Home and Library.
-  Library’s More menu opens the library Randomizer page and the separate section-number tool.
-  Neither tool has a tab. Completed library picks save to shared online spin
-  history; section numbers are unsaved. Offline picks remain usable without
-  queuing history writes.
+  Library’s More menu opens Stats, the library Randomizer page, and the separate
+  section-number tool. None of these has a tab. Completed library picks save to
+  shared online spin history; section numbers are unsaved. Offline picks remain
+  usable without queuing history writes. Stats shows server summaries for
+  enabled crafts and a fixed menu of the ten most recent calendar years.
 - **iPad.** The `.sidebarAdaptable` `TabView` gives each craft a `TabSection`:
   Diamond art and Coloring, each with an All row, then one row per non-empty
   shelf with its on-device count, plus a `+` section action to create that craft.

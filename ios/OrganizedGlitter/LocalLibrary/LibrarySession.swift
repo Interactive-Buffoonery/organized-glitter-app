@@ -72,6 +72,19 @@ final class LibrarySession {
     analytics?.capture(event, properties: properties, accountID: userID)
   }
 
+  func statsSnapshot(year: Int) async throws -> StatsSnapshot {
+    try checkActive()
+    do {
+      let snapshot = try await client.statsSnapshot(year: year, userID: userID)
+      try checkActive()
+      return snapshot
+    } catch {
+      try checkActive()
+      await recoverHistoryAuthentication(after: error)
+      throw error
+    }
+  }
+
   func ownedBookTitles() -> [String: String] { bookTitles }
 
   func isMysteryBook(_ id: String) -> Bool { mysteryBookIDs.contains(id) }

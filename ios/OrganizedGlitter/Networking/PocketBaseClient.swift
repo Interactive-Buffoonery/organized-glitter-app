@@ -637,6 +637,44 @@ actor PocketBaseClient {
     return try await update(collection: "coloring_pages", id: pageID, body: ["photos-": [filename]])
   }
 
+  func diamondStatsSummary(year: Int) async throws -> DiamondStatsSummary {
+    try validateStatsYear(year)
+    return try await request(
+      path: "api/stats/summary", queryItems: [URLQueryItem(name: "year", value: String(year))])
+  }
+
+  func coloringStatsSummary(year: Int) async throws -> ColoringStatsSummary {
+    try validateStatsYear(year)
+    return try await request(
+      path: "api/stats/coloring/summary",
+      queryItems: [URLQueryItem(name: "year", value: String(year))])
+  }
+
+  func statsCompletions(year: Int, coloring: Bool) async throws -> StatsCompletions {
+    try validateStatsYear(year)
+    return try await request(
+      path: coloring ? "api/stats/coloring/completions" : "api/stats/completions",
+      queryItems: [URLQueryItem(name: "year", value: String(year))])
+  }
+
+  func statsSnapshot(year: Int, userID: String) async throws -> StatsSnapshot {
+    guard authentication?.user.id == userID else { throw APIError.cancelled }
+    let generation = sessionGeneration
+    let diamond = try await diamondStatsSummary(year: year)
+    guard generation == sessionGeneration, !Task.isCancelled else { throw APIError.cancelled }
+    let coloring = try await coloringStatsSummary(year: year)
+    guard generation == sessionGeneration, authentication?.user.id == userID,
+      !Task.isCancelled else { throw APIError.cancelled }
+    guard diamond.year == year, coloring.year == year else { throw APIError.decoding }
+    return StatsSnapshot(diamond: diamond, coloring: coloring)
+  }
+
+  private func validateStatsYear(_ year: Int) throws {
+    guard (1900...2100).contains(year) else {
+      throw APIError.validation("Choose a year from 1900 through 2100.")
+    }
+  }
+
   func mobileSnapshot(userID: String? = nil) async throws -> LocalFullSnapshot {
     if let userID, !isAuthenticated(as: userID) { throw APIError.cancelled }
     return try await request(path: "/api/mobile/sync/snapshot")
