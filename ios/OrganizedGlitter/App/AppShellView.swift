@@ -114,6 +114,7 @@ struct AppShellView: View {
             onNotesRequest: { selectedTab = .notes },
             onSessionExpired: { await model.expireSession() }
           )
+          .navigationDestination(isPresented: isShowingAccount(in: .regular)) { accountView }
           .toolbar {
             ToolbarItem(placement: .topBarLeading) {
               Button("Account", systemImage: "person.crop.circle") {
@@ -261,11 +262,9 @@ struct AppShellView: View {
     .task { try? await library.refresh() }
     .task { await library.monitorConnectivity() }
     .task { await connectivity.monitor() }
-    .sheet(isPresented: $isShowingAccount) {
+    .sheet(isPresented: isShowingAccount(in: .compact)) {
       NavigationStack {
-        AccountView(
-          appModel: model, library: library, client: client, preferences: accountPreferences,
-          showCraftingStreak: $showCraftingStreak)
+        accountView
           .toolbar {
             ToolbarItem(placement: .confirmationAction) {
               Button("Done") { isShowingAccount = false }
@@ -274,6 +273,19 @@ struct AppShellView: View {
       }
       .environment(\.connectionAvailable, connectivity.connectionAvailable)
     }
+  }
+
+  private var accountView: some View {
+    AccountView(
+      appModel: model, library: library, client: client, preferences: accountPreferences,
+      showCraftingStreak: $showCraftingStreak)
+  }
+
+  /// iPad pushes Account onto Home as its own page; iPhone keeps the sheet.
+  private func isShowingAccount(in sizeClass: UserInterfaceSizeClass) -> Binding<Bool> {
+    Binding(
+      get: { isShowingAccount && (self.sizeClass ?? .compact) == sizeClass },
+      set: { isShowingAccount = $0 })
   }
 
   private var tabSelection: Binding<AppTab> {

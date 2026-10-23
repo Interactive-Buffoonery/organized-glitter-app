@@ -66,7 +66,7 @@ final class NativeRefinementUITests: XCTestCase {
     app.buttons["account.open"].tap()
     XCTAssertTrue(app.staticTexts["Profile name"].waitForExistence(timeout: 3))
     try capture("shell-02-account")
-    app.buttons["Done"].tap()
+    app.closeAccount()
 
     XCTAssertTrue(app.openSearch(), "The Search destination is unavailable")
     XCTAssertTrue(app.staticTexts["Search your library"].waitForExistence(timeout: 5))
@@ -369,11 +369,10 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func replaceText(in field: XCUIElement, with value: String, app: XCUIApplication) {
-    field.tap()
-    field.press(forDuration: 1.1)
-    let selectAll = app.menuItems["Select All"].firstMatch
-    XCTAssertTrue(selectAll.waitForExistence(timeout: 3))
-    selectAll.tap()
+    // The edit menu differs between iPhone and iPad, so delete from the end instead.
+    field.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    let existing = field.value as? String ?? ""
+    field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
     field.typeText(value)
     XCTAssertEqual(field.value as? String, value)
   }
