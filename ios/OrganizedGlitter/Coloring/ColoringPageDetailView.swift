@@ -8,7 +8,6 @@ struct ColoringPageDetailView: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(\.theme) private var theme
-  @Environment(\.connectionAvailable) private var connectionAvailable
 
   let page: ColoringPageRecord
   let model: LibraryItemDetailModel
