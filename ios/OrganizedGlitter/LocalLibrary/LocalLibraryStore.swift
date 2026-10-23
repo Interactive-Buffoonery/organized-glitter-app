@@ -695,7 +695,7 @@ actor LocalLibraryStore: ModelActor {
       "notes", "is_mystery", "isbn", "book_format", "edition", "publication_year",
       "language", "theme", "source_url", "date_purchased", "date_received",
     ],
-    .page: ["status", "revealed_subject", "started_at", "completed_at"],
+    .page: ["status", "revealed_subject", "revealed_at", "started_at", "completed_at"],
   ]
 
   private func baselineFields(

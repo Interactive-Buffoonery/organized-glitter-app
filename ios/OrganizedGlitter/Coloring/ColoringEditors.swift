@@ -692,7 +692,13 @@ struct ColoringPageEditor: View {
               }
             }
 
-            TextField("Revealed subject", text: $draft.revealedSubject)
+            if library.isMysteryBook(page.book) {
+              Text("Use Reveal or Edit answer on the page to change its mystery answer.")
+                .font(.karla(.footnote))
+                .fixedSize(horizontal: false, vertical: true)
+            } else {
+              TextField("Revealed subject", text: $draft.revealedSubject)
+            }
           }
 
           if let errorMessage {
