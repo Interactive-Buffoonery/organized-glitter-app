@@ -18,6 +18,7 @@ struct PageMediumEditor: View {
   private var library: LibrarySession { model.library }
   private var attempt: PageMediumAttempt? { library.mediumAttempts.first { $0.pageID == page.id } }
   private var canEdit: Bool { !busy && !loading && attempt == nil && connectionAvailable }
+  private var canAdd: Bool { canEdit && !newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
   var body: some View {
     NavigationStack {
@@ -35,6 +36,7 @@ struct PageMediumEditor: View {
           ListMultiSelectRows(options: options, selection: $selection, isDisabled: !canEdit, selectionLimit: 99)
           if !selection.isEmpty {
             Button("Clear selection") { selection.removeAll() }
+              .foregroundStyle(canEdit ? theme.primary : theme.mutedForeground)
               .disabled(!canEdit)
               .accessibilityIdentifier("mediums.clear")
           }
@@ -53,7 +55,8 @@ struct PageMediumEditor: View {
             .disabled(!canEdit)
             .accessibilityIdentifier("mediums.newName")
           Button("Add medium") { Task { await create() } }
-            .disabled(!canEdit || newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .foregroundStyle(canAdd ? theme.primary : theme.mutedForeground)
+            .disabled(!canAdd)
         } header: {
           Text("Add a medium")
         } footer: {
@@ -115,7 +118,7 @@ struct PageMediumEditor: View {
       errorMessage = error.userMessage(
         permission: "Your account cannot view these mediums.",
         offline: baseline == nil ? "Mediums could not be loaded. Try again."
-          : "Showing downloaded mediums. Reconnect to see the full list and save.",
+          : "Reconnect to the internet to see all of your mediums.",
         fallback: "Mediums could not be loaded. Try again.")
     }
   }
