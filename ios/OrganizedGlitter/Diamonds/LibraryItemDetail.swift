@@ -28,6 +28,13 @@ struct LibraryItemDetailDestination: View {
     self.onEditPageCount = onEditPageCount
   }
 
+  private var detailTitle: String {
+    if case .page(let page) = model.item, model.library.isMysteryBook(page.book) {
+      return MysteryPagePresentation(page: page, isMystery: true).title
+    }
+    return model.item.title
+  }
+
   var body: some View {
     Group {
       switch model.item {
@@ -58,7 +65,7 @@ struct LibraryItemDetailDestination: View {
         .accessibilityIdentifier("detail.page")
       }
     }
-    .navigationTitle(model.item.title)
+    .navigationTitle(detailTitle)
     .navigationBarTitleDisplayMode(.inline)
     .background {
       theme.themedBackground.ignoresSafeArea()

@@ -39,6 +39,7 @@ final class LibrarySession {
   private var randomizerItemsByID: [LocalRecordKey: LibraryItem] = [:]
   private var randomizerCandidatesByMode: [RandomizerMode: [RandomizerCandidate]] = [:]
   private var bookTitles: [String: String] = [:]
+  private var mysteryBookIDs: Set<String> = []
   private var countsBySection: [LibrarySection: [String: Int]] = [:]
   private(set) var progressNotes: [DiamondProgressNoteRecord] = []
   private(set) var coloringPageProgressNotes: [ColoringProgressNoteRecord] = []
@@ -72,15 +73,24 @@ final class LibrarySession {
 
   func ownedBookTitles() -> [String: String] { bookTitles }
 
+  func isMysteryBook(_ id: String) -> Bool { mysteryBookIDs.contains(id) }
+
+  func hidesMysteryThumbnail(for item: LibraryItem) -> Bool {
+    guard case .page(let page) = item else { return false }
+    return MysteryPagePresentation(page: page, isMystery: isMysteryBook(page.book)).hidesThumbnail
+  }
+
   func shelfCounts(for section: LibrarySection) -> [String: Int] {
     countsBySection[section] ?? [:]
   }
 
   private func rebuildShelfCounts() {
     var titles: [String: String] = [:]
+    var mysteryIDs: Set<String> = []
     for item in items {
       if case .book(let book) = item, book.user == userID {
         titles[book.id] = book.title
+        if book.isMystery == true { mysteryIDs.insert(book.id) }
       }
     }
     var counts: [LibrarySection: [String: Int]] = [:]
@@ -91,6 +101,7 @@ final class LibrarySession {
       }
     }
     bookTitles = titles
+    mysteryBookIDs = mysteryIDs
     countsBySection = counts
   }
 
