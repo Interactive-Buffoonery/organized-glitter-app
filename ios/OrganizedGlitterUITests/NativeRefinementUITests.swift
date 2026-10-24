@@ -323,7 +323,9 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(first.label.hasPrefix("One, B000, Pale porcelain"))
     XCTAssertTrue(button("colorKeys.row.1", in: app).label.hasPrefix("Two, B000"))
 
-    button("colorKeys.add", in: app).tap()
+    let add = button("colorKeys.add", in: app)
+    makeHittable(add, in: app)
+    add.tap()
     let search = app.searchFields.firstMatch
     XCTAssertTrue(search.waitForExistence(timeout: 5))
     search.tap()
@@ -538,10 +540,16 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func makeHittable(_ element: XCUIElement, in app: XCUIApplication) {
-    for _ in 0..<8 where !element.isHittable {
-      app.swipeUp()
+    // XCUITest reports an element under the translucent navigation bar as hittable,
+    // but a tap at its center lands on the bar. Rows not built yet sit below.
+    let bar = app.navigationBars.firstMatch
+    func isReachable() -> Bool {
+      element.isHittable && (!bar.exists || element.frame.midY >= bar.frame.maxY)
     }
-    XCTAssertTrue(element.isHittable)
+    for _ in 0..<8 where !isReachable() {
+      if element.exists, element.frame.midY < app.frame.midY { app.swipeDown() } else { app.swipeUp() }
+    }
+    XCTAssertTrue(isReachable())
   }
 
   private func capture(_ name: String) throws {
