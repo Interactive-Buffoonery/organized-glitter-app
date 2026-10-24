@@ -80,6 +80,13 @@ struct SymbolCatalogTests {
     }
   }
 
+  @Test("a catalog with a repeated ID fails to decode")
+  func rejectsDuplicateIDs() {
+    let zero = #"{"id":"u:0030","char":"0","name":"Zero","group":"numbers","keywords":["zero"]}"#
+    let json = #"{"version":1,"groups":[{"id":"numbers","label":"Numbers"}],"symbols":[\#(zero),\#(zero)]}"#
+    #expect(throws: DecodingError.self) { try JSONDecoder().decode(SymbolCatalog.self, from: Data(json.utf8)) }
+  }
+
   @Test("dropped emoji symbols stay out of the catalog")
   func droppedSymbols() {
     for id in ["u:2693", "u:2615", "u:26A1", "u:2795", "u:2796", "u:2797"] {

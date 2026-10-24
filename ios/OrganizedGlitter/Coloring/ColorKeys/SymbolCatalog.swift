@@ -104,7 +104,12 @@ struct SymbolCatalog: Decodable, Sendable {
     version = try container.decode(Int.self, forKey: .version)
     groups = try container.decode([Group].self, forKey: .groups)
     symbols = try container.decode([Symbol].self, forKey: .symbols)
-    symbolsByID = Dictionary(symbols.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    var symbolsByID: [String: Symbol] = [:]
+    for symbol in symbols where symbolsByID.updateValue(symbol, forKey: symbol.id) != nil {
+      throw DecodingError.dataCorruptedError(
+        forKey: .symbols, in: container, debugDescription: "Duplicate symbol ID \(symbol.id)")
+    }
+    self.symbolsByID = symbolsByID
     pathsByID = symbolsByID.compactMapValues { $0.path.flatMap(SymbolPath.parse) }
   }
 
@@ -163,9 +168,9 @@ struct SymbolCatalog: Decodable, Sendable {
 
 @MainActor
 enum SymbolGlyphCoverage {
-  // ponytail: unbounded, but keys are only symbols the app draws (the catalog
-  // plus the user's own keys), so it stays small. Bound it if callers ever pass
-  // arbitrary text.
+  // ponytail: cleared when full rather than LRU; the catalog plus a page's
+  // keys fit well under the limit.
+  private static let cacheLimit = 1_024
   private static var cache: [String: Bool] = [:]
 
   /// Whether a system font, including cascade fallbacks, has glyphs for `text`.
@@ -182,6 +187,7 @@ enum SymbolGlyphCoverage {
     var glyphs = [CGGlyph](repeating: 0, count: characters.count)
     let renderable = CTFontCopyPostScriptName(font) as String != "LastResort"
       && CTFontGetGlyphsForCharacters(font, &characters, &glyphs, characters.count)
+    if cache.count >= cacheLimit { cache.removeAll() }
     cache[text] = renderable
     return renderable
   }
