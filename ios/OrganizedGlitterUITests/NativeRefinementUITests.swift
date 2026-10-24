@@ -400,6 +400,7 @@ final class NativeRefinementUITests: XCTestCase {
     photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     XCTAssertTrue(app.images["Symbol photo"].waitForExistence(timeout: 15))
     let description = app.textFields["symbolRequest.description"]
+    makeHittable(description, in: app)
     description.tap()
     description.typeText("Two w’s stacked")
     let email = app.textFields["symbolRequest.email"]
