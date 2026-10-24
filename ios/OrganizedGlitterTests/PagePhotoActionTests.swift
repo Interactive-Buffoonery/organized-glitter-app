@@ -299,7 +299,7 @@ private final class PhotoActionURLProtocol: URLProtocol, @unchecked Sendable {
       return
     }
     Self.mutations.append(request)
-    let data = request.httpBody ?? readBody()
+    let data = request.bodyData
     let body = (try? JSONSerialization.jsonObject(with: data)) as? NSDictionary ?? [:]
     Self.bodies.append(body)
     if request.httpMethod == "POST", let filename = body["filename"] as? String {
@@ -320,19 +320,6 @@ private final class PhotoActionURLProtocol: URLProtocol, @unchecked Sendable {
   static func finishHeld() {
     held?.respond(pageObject)
     held = nil
-  }
-
-  private func readBody() -> Data {
-    guard let stream = request.httpBodyStream else { return Data() }
-    stream.open(); defer { stream.close() }
-    var data = Data()
-    var buffer = [UInt8](repeating: 0, count: 1024)
-    while stream.hasBytesAvailable {
-      let count = stream.read(&buffer, maxLength: buffer.count)
-      if count <= 0 { break }
-      data.append(contentsOf: buffer.prefix(count))
-    }
-    return data
   }
 
   private func fail() { client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost)) }

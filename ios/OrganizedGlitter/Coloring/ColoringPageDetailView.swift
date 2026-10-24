@@ -126,6 +126,9 @@ struct ColoringPageDetailView: View {
             if !hasMediumRecovery { NeedsConnectionHint() }
           }
 
+          ColorKeysSection(library: model.library, pageID: page.id,
+            bookLabel: "\(page.expand?.book?.title ?? "Coloring book") · Page \(page.pageNumber)")
+
           VStack(alignment: .leading, spacing: 12) {
             photoHeader
 
@@ -502,13 +505,9 @@ struct ColoringPageDetailView: View {
       pendingPreview = await Task.detached(priority: .userInitiated) {
         UIImage(data: photo.data)
       }.value
-    } catch is CancellationError {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      photoErrorMessage = error.message
-      self.selectedItem = nil
     } catch {
-      photoErrorMessage = "That photo could not be prepared. Try another image."
+      guard let message = DetailPhotoProcessingError.message(for: error) else { return }
+      photoErrorMessage = message
       self.selectedItem = nil
     }
   }

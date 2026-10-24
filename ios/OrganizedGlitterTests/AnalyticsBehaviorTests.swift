@@ -17,7 +17,7 @@ struct AnalyticsBehaviorTests {
     try await fixture.library.store.ingest(.page(page), scope: fixture.library.scope)
     try await fixture.library.loadLocal()
     BehaviorProtocol.record = try JSONEncoder().encode(page)
-    BehaviorProtocol.status = fails ? 503 : 200
+    BehaviorProtocol.status = fails ? 500 : 200
     let form = PocketBaseMultipartForm(files: [
       PocketBaseMultipartFile(fieldName: "photos+", fileName: "new.jpg", contentType: "image/jpeg", data: Data([1]))
     ])
@@ -112,7 +112,7 @@ struct AnalyticsBehaviorTests {
     #expect(fixture.events.properties.first?["status_changed"] as? Bool == true)
     #expect(try await fixture.library.store.pendingOperations(scope: fixture.library.scope).count == 1)
 
-    BehaviorProtocol.status = 503
+    BehaviorProtocol.status = 500
     do { try await fixture.coordinator.syncPending(); Issue.record("Expected unavailable sync") }
     catch APIError.server {}
     #expect(fixture.events.names == [.recordSavedLocally])
@@ -417,7 +417,7 @@ struct AnalyticsBehaviorTests {
     let _: DiamondProjectRecord = try await fixture.library.create(
       collection: "projects", body: ["title": "Private title"])
     #expect(fixture.events.names == [.projectCreated])
-    BehaviorProtocol.status = 503
+    BehaviorProtocol.status = 500
     do {
       let _: DiamondProjectRecord = try await fixture.library.create(
         collection: "projects", body: ["title": "Private title"])
@@ -437,7 +437,7 @@ struct AnalyticsBehaviorTests {
     defer { fixture.analytics.close() }
     let gate = LoadGate()
     BehaviorProtocol.snapshotGate = gate
-    BehaviorProtocol.status = 503
+    BehaviorProtocol.status = 500
     let refresh = Task { try await fixture.library.refreshFromServer() }
     await gate.waitUntilPaused(1)
     var started = false
@@ -498,7 +498,7 @@ struct AnalyticsBehaviorTests {
       key: LocalRecordKey(kind: kind, id: kind == .book ? "book" : "page"),
       patch: kind == .book ? ["title": .string("Private edited title")]
         : ["status": .string("in_progress")])
-    BehaviorProtocol.status = 503
+    BehaviorProtocol.status = 500
 
     do {
       let _: ColoringBookRecord = try await fixture.library.updateOnline(
@@ -610,7 +610,7 @@ struct AnalyticsBehaviorTests {
       collection: "progress_notes", id: note.id, body: ["content": "Private edited note"])
     try await fixture.library.delete(collection: "progress_notes", id: note.id)
     #expect(fixture.events.names.suffix(2) == [.noteUpdated, .noteDeleted])
-    BehaviorProtocol.status = 503
+    BehaviorProtocol.status = 500
     do {
       let _: DiamondProjectRecord = try await fixture.library.update(
         collection: "projects", id: "project", multipart: PocketBaseMultipartForm(files: [

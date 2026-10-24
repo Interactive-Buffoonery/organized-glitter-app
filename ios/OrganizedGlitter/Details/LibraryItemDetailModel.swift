@@ -240,7 +240,7 @@ final class LibraryItemDetailModel {
       statusSaveRevision += 1
       await load()
       return true
-    } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
+    } catch let error as APIError where error.leavesWriteUncertain {
       unresolvedStatusWrite = true
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -358,7 +358,7 @@ final class LibraryItemDetailModel {
       lastAddedProgressNoteID = saved.recordID
       unresolvedNoteCreate = false
       return true
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch let error as APIError where error.leavesWriteUncertain && error != .decoding {
       unresolvedNoteWriteIncludesPhoto = photo != nil
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -399,7 +399,7 @@ final class LibraryItemDetailModel {
       mergeProgressNote(saved)
       mutationErrorMessage = nil
       return nil
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch let error as APIError where error.leavesWriteUncertain && error != .decoding {
       unresolvedNoteAction = "edit"
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -425,7 +425,7 @@ final class LibraryItemDetailModel {
       }
       mutationErrorMessage = nil
       return nil
-    } catch APIError.offline, APIError.server, APIError.cancelled {
+    } catch let error as APIError where error.leavesWriteUncertain && error != .decoding {
       unresolvedNoteAction = "delete"
       unresolvedWriteState = .needsRefresh
       _ = await reconcileUnresolvedWrite()
@@ -487,7 +487,7 @@ final class LibraryItemDetailModel {
     } catch let error as LibrarySessionError {
       mutationErrorMessage = error.errorDescription
       return false
-    } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
+    } catch let error as APIError where error.leavesWriteUncertain {
       guard item.id == targetID else { return false }
       guard await client.isAuthenticated(as: userID) else {
         mutationErrorMessage = APIError.sessionExpiredMessage
@@ -540,7 +540,7 @@ final class LibraryItemDetailModel {
       try await library.refreshPagePhotos()
       guard await load(), item.id == LibraryItem.page(page).id else { throw APIError.server }
       return true
-    } catch APIError.offline, APIError.server, APIError.decoding, APIError.cancelled {
+    } catch let error as APIError where error.leavesWriteUncertain {
       guard item.id == LibraryItem.page(page).id else { return false }
       guard await client.isAuthenticated(as: userID) else {
         mutationErrorMessage = APIError.sessionExpiredMessage

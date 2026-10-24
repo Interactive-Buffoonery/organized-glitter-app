@@ -257,7 +257,7 @@ enum AnalyticsFailureCategory: String, CaseIterable, Sendable {
     case .unauthenticated, .emailUnverified: self = .authentication
     case .notFound: self = .notFound
     case .conflict: self = .conflict
-    case .offline, .server, .decoding: self = .outcomeUnknown
+    case .offline, .server, .tryLater, .decoding: self = .outcomeUnknown
     case nil: self = .unexpected
     }
   }

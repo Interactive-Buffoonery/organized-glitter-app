@@ -881,6 +881,122 @@ final class LibrarySession {
     return savedState
   }
 
+  // Color keys have no offline contract, so they are read and written online
+  // and held only by the page that shows them. A 403 here means this page,
+  // not the session, so only a 401 signs out.
+  func colorKeys(pageID: String) async throws -> [ColorKeyRecord] {
+    try checkActive()
+    do {
+      let keys: [ColorKeyRecord] = try await client.allRecords(collection: ColorKeys.collection,
+        filter: PocketBaseFilter.all([
+          PocketBaseFilter.equals(.user, userID), PocketBaseFilter.equals(.page, pageID),
+        ]), sort: "position,created")
+      try checkActive()
+      return ColorKeys.sorted(keys.filter { $0.user == userID && $0.page == pageID })
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
+  /// The user's most recently updated keys with a code, across pages, for code
+  /// suggestions and recently used symbols.
+  func colorKeyHistory() async throws -> [ColorKeyRecord] {
+    try checkActive()
+    do {
+      // ponytail: one page of recent keys; page further if suggestions feel thin.
+      let page: RecordList<ColorKeyRecord> = try await client.list(collection: ColorKeys.collection,
+        perPage: 200, filter: PocketBaseFilter.all([
+          PocketBaseFilter.equals(.user, userID), PocketBaseFilter.notEquals(.code, ""),
+        ]), sort: "-updated")
+      try checkActive()
+      return page.items.filter { $0.user == userID && !$0.code.isEmpty }
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
+  /// Creates a key, or updates `original` with only the fields that changed,
+  /// and returns the stored record. The server may store a different symbol
+  /// than the one sent, so callers use the result.
+  func saveColorKey(_ key: ColorKeyWrite, original: ColorKeyRecord?) async throws -> ColorKeyRecord {
+    guard key.user == userID, original.map({ $0.user == userID && $0.page == key.page }) ?? true
+    else { throw APIError.forbidden }
+    guard connectionAvailable != false else { throw APIError.offline }
+    // The write ends before sign-out recovery, which waits for open writes.
+    do {
+      try await beginOnlineWrite()
+      defer { endOnlineWrite(refreshLibrary: false) }
+      let saved: ColorKeyRecord = if let original {
+        try await client.update(collection: ColorKeys.collection, id: original.id,
+          body: ColorKeyPatch(original: original.write, changed: key))
+      } else {
+        try await client.create(collection: ColorKeys.collection, body: key)
+      }
+      try checkActive()
+      guard saved.user == userID, saved.page == key.page else { throw APIError.decoding }
+      return saved
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
+  func deleteColorKey(id: String) async throws {
+    guard connectionAvailable != false else { throw APIError.offline }
+    do {
+      try await beginOnlineWrite()
+      defer { endOnlineWrite(refreshLibrary: false) }
+      try await client.delete(collection: ColorKeys.collection, id: id)
+      try checkActive()
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
+  /// Sends a symbol request. A lost response isn't retried, so at worst the
+  /// same photo arrives twice.
+  func createSymbolRequest(_ draft: SymbolRequestDraft, page: String) async throws -> SymbolRequestRecord {
+    guard connectionAvailable != false else { throw APIError.offline }
+    do {
+      try await beginOnlineWrite()
+      defer { endOnlineWrite(refreshLibrary: false) }
+      let saved: SymbolRequestRecord = try await client.create(
+        collection: SymbolRequestRecord.collection, multipart: draft.form(user: userID, page: page))
+      try checkActive()
+      guard saved.user == userID else { throw APIError.decoding }
+      return saved
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
+  /// The user's requests with these IDs, for photo thumbnails and copy text.
+  func symbolRequests(ids: [String]) async throws -> [SymbolRequestRecord] {
+    try checkActive()
+    do {
+      let requests: [SymbolRequestRecord] = try await client.allRecords(
+        collection: SymbolRequestRecord.collection,
+        filter: PocketBaseFilter.all([
+          PocketBaseFilter.equals(.user, userID),
+          PocketBaseFilter.any(ids.map { PocketBaseFilter.equals(.id, $0) }),
+        ]))
+      try checkActive()
+      return requests.filter { $0.user == userID }
+    } catch {
+      await recoverColorKeyAuthentication(after: error)
+      throw error
+    }
+  }
+
+  private func recoverColorKeyAuthentication(after error: Error) async {
+    guard !Task.isCancelled, error as? APIError == .unauthenticated else { return }
+    await onAuthenticationFailure?()
+  }
+
   private func recoverHistoryAuthentication(after error: Error) async {
     guard !Task.isCancelled, let error = error as? APIError,
       error == .unauthenticated || error == .forbidden else { return }

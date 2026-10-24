@@ -253,6 +253,7 @@ struct AppShellView: View {
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
     .environment(\.connectionAvailable, connectivity.connectionAvailable)
+    .environment(\.accountEmail, accountPreferences.user.email ?? "")
     .task(id: user.id) { await protectedFiles.run() }
     .task { await accountPreferences.load() }
     .task(id: shouldPollAnalyticsPreference) {

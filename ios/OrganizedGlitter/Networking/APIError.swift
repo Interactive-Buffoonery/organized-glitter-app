@@ -9,8 +9,18 @@ enum APIError: Error, Equatable {
   case notFound
   case offline
   case server
+  /// Rate limited or temporarily unavailable (429 or 503).
+  case tryLater
   case decoding
   case cancelled
+
+  /// The request may have reached the server, so whether the write landed is unknown.
+  var leavesWriteUncertain: Bool {
+    switch self {
+    case .offline, .server, .tryLater, .decoding, .cancelled: true
+    default: false
+    }
+  }
 
   static func from(
     statusCode: Int, body: Data, isPasswordAuthentication: Bool = false
@@ -34,6 +44,8 @@ enum APIError: Error, Equatable {
       return .conflict
     case 404:
       return .notFound
+    case 429, 503:
+      return .tryLater
     default:
       return .server
     }

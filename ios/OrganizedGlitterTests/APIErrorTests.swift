@@ -11,6 +11,12 @@ struct APIErrorTests {
     #expect(APIError.from(statusCode: 500, body: Data()) == .server)
   }
 
+  @Test("rate limits and outages ask the user to try again later")
+  func mapsBusyResponses() {
+    #expect(APIError.from(statusCode: 429, body: Data()) == .tryLater)
+    #expect(APIError.from(statusCode: 503, body: Data()) == .tryLater)
+  }
+
   @Test
   func mapsOfflineErrors() {
     let error = URLError(.notConnectedToInternet)

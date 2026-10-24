@@ -837,7 +837,7 @@ extension Error {
       return "You appear to be offline. Reconnect and try again."
     case .notFound:
       return "That account could not be found."
-    case .server, .decoding, .cancelled:
+    case .server, .tryLater, .decoding, .cancelled:
       return "Organized Glitter is unavailable right now. Try again shortly."
     }
   }

@@ -217,6 +217,23 @@ enum DetailPhotoProcessingError: Error, Equatable {
       "That image could not be reduced below 5 MB."
     }
   }
+
+  /// What to show when preparing a photo throws, or nil when it was cancelled.
+  static func message(
+    for error: Error, fallback: String = "That photo could not be prepared. Try another image."
+  ) -> String? {
+    switch error {
+    case is CancellationError, APIError.cancelled: nil
+    case let error as DetailPhotoProcessingError: error.message
+    default: fallback
+    }
+  }
+}
+
+/// A prepared photo waiting in the crop editor.
+struct CropSelection: Identifiable {
+  let id = UUID()
+  let photo: ProcessedDetailPhoto
 }
 
 enum DetailPhotoProcessor {

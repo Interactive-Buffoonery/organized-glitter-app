@@ -561,6 +561,18 @@
           record["user"] = "preview-user"
         case "user_dashboard_settings", "randomizer_spins":
           break
+        case ColorKeys.collection:
+          record["user"] = "preview-user"
+          for field in ["code", "color_name", "swatch", "note"] { record[field] = record[field] ?? "" }
+          record["tried"] = record["tried"] ?? []
+        case SymbolRequestRecord.collection:
+          // `r:` symbols need a real 15-character PocketBase ID.
+          record["id"] = String(format: "fixturereq%05d", sequence)
+          record["user"] = "preview-user"
+          record["description"] = record["description"] ?? ""
+          record["photo"] = upload.files["photo"]?.first ?? ""
+          record["status"] = "open"
+          record["resolved_symbol"] = ""
         default:
           return FixtureResponse(object: ["message": "Unsupported fixture create"], status: 400)
         }
@@ -696,7 +708,7 @@
         {
           return false
         }
-        for relation in ["book", "project"] {
+        for relation in ["book", "project"] + (collection == ColorKeys.collection ? ["page"] : []) {
           if let value = equalityValue(field: relation, in: filter),
             item[relation] as? String != value
           {
@@ -761,7 +773,7 @@
         let descending = primarySort.hasPrefix("-")
         let field = String(primarySort.drop(while: { $0 == "+" || $0 == "-" }))
         items.sort { left, right in
-          if field == "page_number" {
+          if field == "page_number" || field == "position" {
             let leftValue = left[field] as? Int ?? 0
             let rightValue = right[field] as? Int ?? 0
             return descending ? leftValue > rightValue : leftValue < rightValue

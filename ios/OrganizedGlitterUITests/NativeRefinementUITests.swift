@@ -181,7 +181,8 @@ final class NativeRefinementUITests: XCTestCase {
       NSPredicate(format: "label BEGINSWITH %@", "Open progress photo from")
     ).firstMatch
     makeHittable(photo, in: app)
-    photo.tap()
+    // The out-of-process picker reports its cells as not hittable.
+    photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
     XCTAssertTrue(button("photoViewer.next", in: app).isEnabled)
     button("photoViewer.next", in: app).tap()
@@ -209,7 +210,8 @@ final class NativeRefinementUITests: XCTestCase {
       pageScroll.swipeUp()
     }
     XCTAssertTrue(photo.isHittable)
-    photo.tap()
+    // The out-of-process picker reports its cells as not hittable.
+    photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     XCTAssertTrue(element("photoViewer.image", in: app).waitForExistence(timeout: 5))
     button("photoViewer.close", in: app).tap()
     XCTAssertTrue(element("detail.page", in: app).exists)
@@ -274,6 +276,174 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(element("detail.page", in: app).exists)
   }
 
+  func testColorKeysSetUpEnterAndAddSymbols() throws {
+    let app = launchFixture()
+    let setUp = colorKeySetupButton(in: app)
+    try capture("colorkeys-01-empty")
+    setUp.tap()
+
+    let z = element("colorKeys.setup.u:007A", in: app)
+    XCTAssertTrue(z.waitForExistence(timeout: 5))
+    XCTAssertEqual(z.label, "Lowercase z")
+    for letter in ["007A", "0079", "0078"] { element("colorKeys.setup.u:\(letter)", in: app).tap() }
+    try capture("colorkeys-02-setup")
+    button("colorKeys.setup.save", in: app).tap()
+
+    let first = button("colorKeys.row.0", in: app)
+    XCTAssertTrue(first.waitForExistence(timeout: 10))
+    XCTAssertTrue(button("colorKeys.row.32", in: app).exists)
+    XCTAssertFalse(button("colorKeys.row.33", in: app).exists)
+    XCTAssertTrue(first.label.hasPrefix("One, No code yet"))
+    first.tap()
+
+    let code = app.textFields["colorKeys.entry.code"]
+    XCTAssertTrue(code.waitForExistence(timeout: 5))
+    code.tap()
+    code.typeText("B000")
+    let name = app.textFields["colorKeys.entry.colorName"]
+    name.tap()
+    name.typeText("Pale porcelain")
+    try capture("colorkeys-03-entry")
+    let saveNext = button("colorKeys.entry.saveNext", in: app)
+    makeHittable(saveNext, in: app)
+    saveNext.tap()
+
+    XCTAssertTrue(app.navigationBars["Edit color"].waitForExistence(timeout: 5))
+    let nextCode = app.textFields["colorKeys.entry.code"]
+    XCTAssertEqual(nextCode.value as? String, "Code")
+    nextCode.tap()
+    nextCode.typeText("B0")
+    let suggestion = app.buttons["Use B000 Pale porcelain"]
+    XCTAssertTrue(suggestion.waitForExistence(timeout: 5))
+    suggestion.tap()
+    XCTAssertEqual(app.textFields["colorKeys.entry.colorName"].value as? String, "Pale porcelain")
+    button("colorKeys.entry.save", in: app).tap()
+
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+    XCTAssertTrue(first.label.hasPrefix("One, B000, Pale porcelain"))
+    XCTAssertTrue(button("colorKeys.row.1", in: app).label.hasPrefix("Two, B000"))
+
+    let add = button("colorKeys.add", in: app)
+    makeHittable(add, in: app)
+    add.tap()
+    let search = app.searchFields.firstMatch
+    XCTAssertTrue(search.waitForExistence(timeout: 5))
+    search.tap()
+    search.typeText("trident")
+    XCTAssertTrue(element("symbolPicker.footer", in: app).waitForExistence(timeout: 5))
+    try capture("colorkeys-04-picker")
+    let psi = button("symbolPicker.u:03C8", in: app)
+    XCTAssertTrue(psi.waitForExistence(timeout: 5))
+    XCTAssertEqual(psi.label, "Psi")
+    psi.tap()
+    XCTAssertTrue(app.navigationBars["Add color"].waitForExistence(timeout: 5))
+    button("colorKeys.entry.save", in: app).tap()
+
+    let added = button("colorKeys.row.33", in: app)
+    XCTAssertTrue(added.waitForExistence(timeout: 5))
+    XCTAssertTrue(added.label.hasPrefix("Psi, No code yet"))
+    try capture("colorkeys-05-rows")
+  }
+
+  func testColorKeysReorderInPanel() throws {
+    let app = launchFixture()
+    colorKeySetupButton(in: app).tap()
+    button("colorKeys.setup.save", in: app).tap()
+    XCTAssertTrue(button("colorKeys.row.0", in: app).waitForExistence(timeout: 10))
+
+    let reorder = button("colorKeys.reorder", in: app)
+    makeHittable(reorder, in: app)
+    reorder.tap()
+    XCTAssertTrue(app.navigationBars["Sort Color Order"].waitForExistence(timeout: 5))
+    let rows = app.cells
+    XCTAssertTrue(rows.element(boundBy: 1).waitForExistence(timeout: 5))
+    try capture("colorkeys-09-reorder")
+
+    let handle = rows.element(boundBy: 1).buttons.matching(
+      NSPredicate(format: "label BEGINSWITH %@", "Reorder")).firstMatch
+    XCTAssertTrue(handle.exists)
+    handle.press(forDuration: 0.6, thenDragTo: rows.element(boundBy: 0))
+    let firstInPanel = rows.element(boundBy: 0).otherElements.matching(
+      NSPredicate(format: "identifier BEGINSWITH %@", "colorKeys.reorder.")).firstMatch
+    XCTAssertTrue(firstInPanel.label.hasPrefix("Two"))
+    button("colorKeys.reorder.done", in: app).tap()
+
+    XCTAssertTrue(app.navigationBars["Sort Color Order"].waitForNonExistence(timeout: 5))
+    let first = button("colorKeys.row.0", in: app)
+    let moved = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "label BEGINSWITH %@", "Two"), object: first)
+    XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 10), .completed)
+    XCTAssertTrue(button("colorKeys.row.1", in: app).label.hasPrefix("One"))
+  }
+
+  func testColorKeysSendSymbolPhoto() throws {
+    let app = launchFixture()
+    openFirstDesignPage(in: app)
+
+    let addFirst = button("colorKeys.addFirst", in: app)
+    XCTAssertTrue(addFirst.waitForExistence(timeout: 5))
+    makeHittable(addFirst, in: app)
+    addFirst.tap()
+    let footer = button("symbolPicker.footer", in: app)
+    XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5))
+    for _ in 0..<30 where !(footer.exists && footer.isHittable) { app.swipeUp() }
+    footer.tap()
+
+    XCTAssertTrue(app.navigationBars["Send a symbol"].waitForExistence(timeout: 5))
+    XCTAssertTrue((app.textFields["symbolRequest.bookLabel"].value as? String ?? "").contains("· Page"))
+    XCTAssertFalse(button("symbolRequest.send", in: app).isEnabled)
+    button("symbolRequest.choosePhoto", in: app).tap()
+    // The system picker shows the simulator's sample library; any photo will do.
+    let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
+    XCTAssertTrue(photo.waitForExistence(timeout: 10))
+    // The out-of-process picker reports its cells as not hittable.
+    photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    XCTAssertTrue(app.images["Symbol photo"].waitForExistence(timeout: 15))
+    let description = app.textFields["symbolRequest.description"]
+    makeHittable(description, in: app)
+    description.tap()
+    description.typeText("Two w’s stacked")
+    let email = app.textFields["symbolRequest.email"]
+    if (email.value as? String ?? "").contains("@") == false {
+      makeHittable(email, in: app)
+      email.tap()
+      email.typeText("crafter@example.com")
+    }
+    try capture("colorkeys-06-request")
+    button("symbolRequest.send", in: app).tap()
+
+    XCTAssertTrue(app.navigationBars["Add color"].waitForExistence(timeout: 10))
+    try capture("colorkeys-07-request-entry")
+    button("colorKeys.entry.save", in: app).tap()
+    let row = button("colorKeys.row.0", in: app)
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    XCTAssertTrue(row.label.hasPrefix("Requested symbol, No code yet"))
+    for _ in 0..<8 where !row.isHittable { app.swipeDown() }
+    try capture("colorkeys-08-request-row")
+  }
+
+  func testColorKeysAtLargestTextSize() throws {
+    let app = launchFixture(arguments: [
+      "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+    ])
+    colorKeySetupButton(in: app).tap()
+    let save = button("colorKeys.setup.save", in: app)
+    XCTAssertTrue(save.waitForExistence(timeout: 5))
+    try capture("colorkeys-ax5-setup")
+    save.tap()
+
+    let copy = button("colorKeys.copy", in: app)
+    XCTAssertTrue(copy.waitForExistence(timeout: 10))
+    for _ in 0..<12 where !copy.isHittable { app.swipeDown() }
+    XCTAssertTrue(copy.isHittable)
+    try capture("colorkeys-ax5-rows")
+    let first = button("colorKeys.row.0", in: app)
+    makeHittable(first, in: app)
+    first.tap()
+    XCTAssertTrue(app.textFields["colorKeys.entry.code"].waitForExistence(timeout: 5))
+    try capture("colorkeys-ax5-entry")
+  }
+
   func testPagePhotoViewerPromotesAndDeletesAnAttachment() throws {
     let app = XCUIApplication()
     app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design", "-fixture-page-photo-actions"]
@@ -307,11 +477,20 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(remaining.label.contains("Main photo"))
   }
 
-  private func launchFixture(scenario: String = "design") -> XCUIApplication {
+  private func launchFixture(scenario: String = "design", arguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario]
+    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario] + arguments
     app.launch()
     return app
+  }
+
+  /// Opens the first design page and brings its color key setup button on screen.
+  private func colorKeySetupButton(in app: XCUIApplication) -> XCUIElement {
+    openFirstDesignPage(in: app)
+    let setUp = button("colorKeys.setup", in: app)
+    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
+    makeHittable(setUp, in: app)
+    return setUp
   }
 
   private func openLibrary(_ app: XCUIApplication) {
@@ -362,10 +541,16 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   private func makeHittable(_ element: XCUIElement, in app: XCUIApplication) {
-    for _ in 0..<8 where !element.isHittable {
-      app.swipeUp()
+    // XCUITest reports an element under the translucent navigation bar as hittable,
+    // but a tap at its center lands on the bar. Rows not built yet sit below.
+    let bar = app.navigationBars.firstMatch
+    func isReachable() -> Bool {
+      element.isHittable && (!bar.exists || element.frame.midY >= bar.frame.maxY)
     }
-    XCTAssertTrue(element.isHittable)
+    for _ in 0..<8 where !isReachable() {
+      if element.exists, element.frame.midY < app.frame.midY { app.swipeDown() } else { app.swipeUp() }
+    }
+    XCTAssertTrue(isReachable())
   }
 
   private func capture(_ name: String) throws {
