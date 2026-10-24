@@ -505,13 +505,9 @@ struct ColoringPageDetailView: View {
       pendingPreview = await Task.detached(priority: .userInitiated) {
         UIImage(data: photo.data)
       }.value
-    } catch is CancellationError {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      photoErrorMessage = error.message
-      self.selectedItem = nil
     } catch {
-      photoErrorMessage = "That photo could not be prepared. Try another image."
+      guard let message = DetailPhotoProcessingError.message(for: error) else { return }
+      photoErrorMessage = message
       self.selectedItem = nil
     }
   }

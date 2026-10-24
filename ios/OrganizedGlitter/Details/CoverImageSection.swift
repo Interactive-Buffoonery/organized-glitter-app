@@ -11,14 +11,9 @@ struct CoverImageSection: View {
   @Binding var change: CoverChange
 
   @State private var selectedItem: PhotosPickerItem?
-  @State private var cropPhoto: CropPhoto?
+  @State private var cropPhoto: CropSelection?
   @State private var isProcessing = false
   @State private var errorMessage: String?
-
-  private struct CropPhoto: Identifiable {
-    let id = UUID()
-    let photo: ProcessedDetailPhoto
-  }
 
   private var hasCover: Bool {
     switch change {
@@ -104,7 +99,7 @@ struct CoverImageSection: View {
 
   private func crop() async {
     if case .replace(let photo) = change {
-      cropPhoto = CropPhoto(photo: photo)
+      cropPhoto = CropSelection(photo: photo)
     } else if let currentCoverURL {
       await prepare(failure: "The current photo could not be loaded. Try again.") {
         try await Self.uploadedPhoto(at: currentCoverURL, client: client)
@@ -137,15 +132,9 @@ struct CoverImageSection: View {
     do {
       let photo = try await work()
       try Task.checkCancellation()
-      cropPhoto = CropPhoto(photo: photo)
-    } catch is CancellationError {
-      return
-    } catch APIError.cancelled {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      errorMessage = error.message
+      cropPhoto = CropSelection(photo: photo)
     } catch {
-      errorMessage = failure
+      errorMessage = DetailPhotoProcessingError.message(for: error, fallback: failure)
     }
   }
 }
@@ -290,12 +279,9 @@ struct CoverCropView: View {
       try Task.checkCancellation()
       onChoose(cropped)
       dismiss()
-    } catch is CancellationError {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      errorMessage = error.message
     } catch {
-      errorMessage = "That crop could not be prepared. Try again."
+      errorMessage = DetailPhotoProcessingError.message(
+        for: error, fallback: "That crop could not be prepared. Try again.")
     }
   }
 }

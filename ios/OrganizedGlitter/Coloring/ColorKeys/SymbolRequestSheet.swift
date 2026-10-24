@@ -24,18 +24,13 @@ struct SymbolRequestSheet: View {
   @State private var usePhoto = true
   @State private var selectedItem: PhotosPickerItem?
   @State private var isTakingPhoto = false
-  @State private var cropPhoto: CropPhoto?
+  @State private var cropPhoto: CropSelection?
   @State private var isPreparing = false
   @State private var isSending = false
   @State private var errorMessage: String?
   @State private var isSent = false
   /// Decoded once per photo, so typing in the form doesn't decode it again.
   @State private var preview: UIImage?
-
-  private struct CropPhoto: Identifiable {
-    let id = UUID()
-    let photo: ProcessedDetailPhoto
-  }
 
   init(requester: SymbolRequester, onUse: @escaping (String) -> Void) {
     self.requester = requester
@@ -92,12 +87,14 @@ struct SymbolRequestSheet: View {
             .frame(minHeight: 44)
         }
         .accessibilityIdentifier("symbolRequest.choosePhoto")
+        // A modifier on the Section repeats on every row, so the task lives on this one.
+        .task(id: selectedItem) { await prepareSelection() }
         if UIImagePickerController.isSourceTypeAvailable(.camera) {
           Button("Take Photo", systemImage: "camera") { isTakingPhoto = true }
             .frame(minHeight: 44)
         }
         if let photo = draft.photo {
-          Button("Crop", systemImage: "crop") { cropPhoto = CropPhoto(photo: photo) }
+          Button("Crop", systemImage: "crop") { cropPhoto = CropSelection(photo: photo) }
             .frame(minHeight: 44)
         }
         if isPreparing { ProgressView("Preparing photo") }
@@ -107,7 +104,6 @@ struct SymbolRequestSheet: View {
         Text("A close-up of one symbol works best.")
       }
       .disabled(isPreparing)
-      .task(id: selectedItem) { await prepareSelection() }
 
       Section("Book and page") {
         TextField("Book and page", text: $draft.bookLabel)
@@ -179,12 +175,8 @@ struct SymbolRequestSheet: View {
       let photo = try await work()
       try Task.checkCancellation()
       setPhoto(photo)
-    } catch is CancellationError {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      errorMessage = error.message
     } catch {
-      errorMessage = "That photo could not be prepared. Try another image."
+      errorMessage = DetailPhotoProcessingError.message(for: error)
     }
   }
 
