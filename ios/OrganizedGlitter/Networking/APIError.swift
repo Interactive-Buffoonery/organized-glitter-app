@@ -14,6 +14,14 @@ enum APIError: Error, Equatable {
   case decoding
   case cancelled
 
+  /// The request may have reached the server, so whether the write landed is unknown.
+  var leavesWriteUncertain: Bool {
+    switch self {
+    case .offline, .server, .tryLater, .decoding, .cancelled: true
+    default: false
+    }
+  }
+
   static func from(
     statusCode: Int, body: Data, isPasswordAuthentication: Bool = false
   ) -> APIError {

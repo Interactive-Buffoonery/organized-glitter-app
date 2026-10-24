@@ -145,7 +145,7 @@ final class ColorKeysModel {
       accept(saved)
       return .success(saved)
     } catch {
-      if original == nil, sent, Self.isUncertain(error) {
+      if original == nil, sent, (error as? APIError)?.leavesWriteUncertain == true {
         let pending = (write: write, knownIDs: knownIDs)
         unconfirmedCreate = pending
         if await confirmCreates(), let landed = landedKey(pending, for: write) {
@@ -246,7 +246,7 @@ final class ColorKeysModel {
       do {
         accept(try await library.saveColorKey(write, original: nil))
       } catch {
-        if sent, Self.isUncertain(error) {
+        if sent, (error as? APIError)?.leavesWriteUncertain == true {
           unconfirmedCreate = (write, knownIDs)
           _ = await confirmCreates()
         }
@@ -260,10 +260,6 @@ final class ColorKeysModel {
     revision &+= 1
     keys = ColorKeys.sorted(keys.filter { $0.id != saved.id } + [saved])
     history = (saved.code.isEmpty ? [] : [saved]) + history.filter { $0.id != saved.id }
-  }
-
-  private static func isUncertain(_ error: Error) -> Bool {
-    [.offline, .server, .tryLater, .decoding].contains(error as? APIError)
   }
 
   /// Reloads after an unconfirmed create. Returns false while the page can't

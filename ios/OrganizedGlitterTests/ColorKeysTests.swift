@@ -381,6 +381,25 @@ struct ColorKeysSessionTests {
     #expect(server.posts == 1)
   }
 
+  @Test("a create cancelled after it was sent is confirmed before the retry", .timeLimit(.minutes(1)))
+  func cancelledCreateIsConfirmed() async throws {
+    let library = try await makeLibrary()
+    let server = ColorKeyServer()
+    ColorKeyProtocol.respond { request in server.handle(request, template: Self.saved) }
+    let model = ColorKeysModel(library: library, pageID: "page")
+    await model.load()
+    let write = ColorKeyWrite(user: "feature-user", page: "page", position: 0, symbol: "u:0031")
+    ColorKeyProtocol.holdResponses(true)
+    let saving = Task { await model.save(write, id: nil) }
+    while server.posts == 0 { await Task.yield() }
+    saving.cancel()
+    await #expect(throws: ColorKeysModel.Failure.self) { try await saving.value.get() }
+    ColorKeyProtocol.holdResponses(false)
+    let saved = try await model.save(write, id: nil).get()
+    #expect(model.keys.map(\.id) == [saved.id])
+    #expect(server.posts == 1)
+  }
+
   @Test("a failed update after a lost create response doesn't create the key again")
   func lostCreateThenFailedUpdate() async throws {
     let library = try await makeLibrary()
@@ -704,7 +723,7 @@ private final class ColorKeyProtocol: URLProtocol, @unchecked Sendable {
     if url.path.hasSuffix("auth-with-password") {
       return respond(200, #"{"token":"fixture-token","record":{"id":"feature-user","verified":true}}"#)
     }
-    let recorded = Request(method: request.httpMethod ?? "GET", url: url, body: Self.body(of: request))
+    let recorded = Request(method: request.httpMethod ?? "GET", url: url, body: request.bodyData)
     let (responder, holding) = Self.lock.withLock {
       Self.recorded.append(recorded)
       return (Self.responder, Self.holding)
@@ -720,18 +739,5 @@ private final class ColorKeyProtocol: URLProtocol, @unchecked Sendable {
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: Data(body.utf8))
     client?.urlProtocolDidFinishLoading(self)
-  }
-
-  private static func body(of request: URLRequest) -> Data {
-    if let body = request.httpBody { return body }
-    guard let stream = request.httpBodyStream else { return Data() }
-    stream.open()
-    defer { stream.close() }
-    var data = Data()
-    var buffer = [UInt8](repeating: 0, count: 4_096)
-    while case let count = stream.read(&buffer, maxLength: buffer.count), count > 0 {
-      data.append(buffer, count: count)
-    }
-    return data
   }
 }
