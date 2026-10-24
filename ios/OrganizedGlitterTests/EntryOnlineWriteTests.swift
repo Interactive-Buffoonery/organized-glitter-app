@@ -200,7 +200,7 @@ private final class EntryWriteProtocol: URLProtocol, @unchecked Sendable {
         status = 200
         body = "{\"page\":1,\"perPage\":200,\"totalPages\":1,\"totalItems\":2,\"items\":\(Self.links)}"
       } else {
-        Self.writes.append((request, bodyData))
+        Self.writes.append((request, request.bodyData))
         status = Self.failWrite ? 500 : (method == "DELETE" ? 204 : 200)
         body = path.contains("coloring_books")
           ? String(decoding: try! JSONEncoder().encode(featureBook("book", title: "Original")), as: UTF8.self)
@@ -215,19 +215,5 @@ private final class EntryWriteProtocol: URLProtocol, @unchecked Sendable {
     client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: Data(body.utf8))
     client?.urlProtocolDidFinishLoading(self)
-  }
-
-  private var bodyData: Data {
-    if let body = request.httpBody { return body }
-    guard let stream = request.httpBodyStream else { return Data() }
-    stream.open()
-    defer { stream.close() }
-    var data = Data()
-    var buffer = [UInt8](repeating: 0, count: 1_024)
-    while true {
-      let count = stream.read(&buffer, maxLength: buffer.count)
-      guard count > 0 else { return data }
-      data.append(buffer, count: count)
-    }
   }
 }

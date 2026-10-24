@@ -1190,7 +1190,7 @@ private final class PocketBaseClientURLProtocol: URLProtocol, @unchecked Sendabl
 
   override func startLoading() {
     Self.requests.append(request)
-    Self.requestBodies.append(bodyData)
+    Self.requestBodies.append(request.bodyData)
     let (status, body) = Self.responses.removeFirst()
     if Self.responseDelay > 0 {
       Thread.sleep(forTimeInterval: Self.responseDelay)
@@ -1208,26 +1208,4 @@ private final class PocketBaseClientURLProtocol: URLProtocol, @unchecked Sendabl
   }
 
   override func stopLoading() {}
-
-  private var bodyData: Data {
-    if let body = request.httpBody {
-      return body
-    }
-    guard let stream = request.httpBodyStream else {
-      return Data()
-    }
-
-    stream.open()
-    defer { stream.close() }
-
-    var data = Data()
-    var buffer = [UInt8](repeating: 0, count: 1_024)
-    while true {
-      let count = stream.read(&buffer, maxLength: buffer.count)
-      guard count > 0 else {
-        return data
-      }
-      data.append(buffer, count: count)
-    }
-  }
 }

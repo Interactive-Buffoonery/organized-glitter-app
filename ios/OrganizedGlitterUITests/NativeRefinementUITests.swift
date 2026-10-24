@@ -278,11 +278,7 @@ final class NativeRefinementUITests: XCTestCase {
 
   func testColorKeysSetUpEnterAndAddSymbols() throws {
     let app = launchFixture()
-    openFirstDesignPage(in: app)
-
-    let setUp = button("colorKeys.setup", in: app)
-    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
-    makeHittable(setUp, in: app)
+    let setUp = colorKeySetupButton(in: app)
     try capture("colorkeys-01-empty")
     setUp.tap()
 
@@ -349,12 +345,7 @@ final class NativeRefinementUITests: XCTestCase {
 
   func testColorKeysReorderInPanel() throws {
     let app = launchFixture()
-    openFirstDesignPage(in: app)
-
-    let setUp = button("colorKeys.setup", in: app)
-    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
-    makeHittable(setUp, in: app)
-    setUp.tap()
+    colorKeySetupButton(in: app).tap()
     button("colorKeys.setup.save", in: app).tap()
     XCTAssertTrue(button("colorKeys.row.0", in: app).waitForExistence(timeout: 10))
 
@@ -429,18 +420,10 @@ final class NativeRefinementUITests: XCTestCase {
   }
 
   func testColorKeysAtLargestTextSize() throws {
-    let app = XCUIApplication()
-    app.launchArguments += [
-      "-ui-testing-authenticated", "-overview-fixture", "design",
+    let app = launchFixture(arguments: [
       "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
-    ]
-    app.launch()
-    openFirstDesignPage(in: app)
-
-    let setUp = button("colorKeys.setup", in: app)
-    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
-    makeHittable(setUp, in: app)
-    setUp.tap()
+    ])
+    colorKeySetupButton(in: app).tap()
     let save = button("colorKeys.setup.save", in: app)
     XCTAssertTrue(save.waitForExistence(timeout: 5))
     try capture("colorkeys-ax5-setup")
@@ -491,11 +474,20 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(remaining.label.contains("Main photo"))
   }
 
-  private func launchFixture(scenario: String = "design") -> XCUIApplication {
+  private func launchFixture(scenario: String = "design", arguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario]
+    app.launchArguments += ["-ui-testing-authenticated", "-overview-fixture", scenario] + arguments
     app.launch()
     return app
+  }
+
+  /// Opens the first design page and brings its color key setup button on screen.
+  private func colorKeySetupButton(in app: XCUIApplication) -> XCUIElement {
+    openFirstDesignPage(in: app)
+    let setUp = button("colorKeys.setup", in: app)
+    XCTAssertTrue(setUp.waitForExistence(timeout: 5))
+    makeHittable(setUp, in: app)
+    return setUp
   }
 
   private func openLibrary(_ app: XCUIApplication) {

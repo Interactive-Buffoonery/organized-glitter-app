@@ -376,7 +376,7 @@ private final class MediumSaveProtocol: URLProtocol, @unchecked Sendable {
         Self.applyStarted?.finish()
         return
       }
-      let data = bodyData
+      let data = request.bodyData
       let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
       Self.bodies.append(body)
       if let status = Self.overrideStatus {
@@ -425,19 +425,5 @@ private final class MediumSaveProtocol: URLProtocol, @unchecked Sendable {
       httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
     client?.urlProtocol(self, didLoad: try! JSONSerialization.data(withJSONObject: object))
     client?.urlProtocolDidFinishLoading(self)
-  }
-
-  private var bodyData: Data {
-    if let body = request.httpBody { return body }
-    guard let stream = request.httpBodyStream else { return Data() }
-    stream.open()
-    defer { stream.close() }
-    var result = Data()
-    var buffer = [UInt8](repeating: 0, count: 1_024)
-    while true {
-      let count = stream.read(&buffer, maxLength: buffer.count)
-      guard count > 0 else { return result }
-      result.append(buffer, count: count)
-    }
   }
 }
