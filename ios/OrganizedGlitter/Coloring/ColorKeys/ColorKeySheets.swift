@@ -90,6 +90,26 @@ struct SymbolPickerView: View {
   }
 }
 
+/// The picker presented on its own, with Cancel.
+struct SymbolPickerSheet: View {
+  @Environment(\.dismiss) private var dismiss
+
+  let recentSymbols: [String]
+  var requester: SymbolRequester? = nil
+  let onPick: (String) -> Void
+
+  var body: some View {
+    NavigationStack {
+      SymbolPickerView(recentSymbols: recentSymbols, requester: requester, onPick: onPick)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Cancel", role: .cancel) { dismiss() }
+          }
+        }
+    }
+  }
+}
+
 /// First run on a page with no keys: 1-9, 0 and a-z start on; extras come from the picker.
 struct ColorKeySetupSheet: View {
   @Environment(\.connectionAvailable) private var connectionAvailable
@@ -182,20 +202,13 @@ struct ColorKeySetupSheet: View {
         }
       }
       .sheet(isPresented: $isPickingExtra) {
-        NavigationStack {
-          SymbolPickerView(recentSymbols: recentSymbols, requester: requester) { id in
-            if SymbolCatalog.setupDefaults.contains(id) {
-              enabled.insert(id)
-            } else if !extras.contains(id) {
-              extras.append(id)
-            }
-            isPickingExtra = false
+        SymbolPickerSheet(recentSymbols: recentSymbols, requester: requester) { id in
+          if SymbolCatalog.setupDefaults.contains(id) {
+            enabled.insert(id)
+          } else if !extras.contains(id) {
+            extras.append(id)
           }
-          .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-              Button("Cancel", role: .cancel) { isPickingExtra = false }
-            }
-          }
+          isPickingExtra = false
         }
       }
     }
@@ -269,7 +282,6 @@ struct ColorKeyEntrySheet: View {
           .frame(maxWidth: .infinity)
           Button("Change Symbol") { isChangingSymbol = true }
             .frame(maxWidth: .infinity, minHeight: 44)
-            .disabled(model.isSaving)
             .accessibilityIdentifier("colorKeys.entry.changeSymbol")
         }
 
@@ -332,6 +344,8 @@ struct ColorKeyEntrySheet: View {
           }
         }
       }
+      // The draft is captured once saving starts, so edits then would be lost.
+      .disabled(model.isSaving)
       .font(.karla(.body))
       .scrollContentBackground(.hidden)
       .background(theme.themedBackground.ignoresSafeArea())
@@ -349,16 +363,9 @@ struct ColorKeyEntrySheet: View {
         }
       }
       .sheet(isPresented: $isChangingSymbol) {
-        NavigationStack {
-          SymbolPickerView(recentSymbols: model.recentSymbols, requester: requester) { symbol in
-            draft.symbol = symbol
-            isChangingSymbol = false
-          }
-          .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-              Button("Cancel", role: .cancel) { isChangingSymbol = false }
-            }
-          }
+        SymbolPickerSheet(recentSymbols: model.recentSymbols, requester: requester) { symbol in
+          draft.symbol = symbol
+          isChangingSymbol = false
         }
       }
       .confirmationDialog("Delete this color?", isPresented: $isConfirmingDelete,

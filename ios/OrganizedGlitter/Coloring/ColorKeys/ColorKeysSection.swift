@@ -71,6 +71,7 @@ struct ColorKeysSection: View {
     }
     .sheet(item: $sheet) { sheet in
       sheetContent(sheet)
+        .task { await model.loadHistoryIfNeeded() }
         .environment(\.connectionAvailable, connectionAvailable)
         .environment(\.symbolRequestThumbnails, requestThumbnails)
     }
@@ -158,19 +159,10 @@ struct ColorKeysSection: View {
         hasSavedKeys: !model.keys.isEmpty) {
         symbols in await model.setUp(symbols: symbols)
       }
-      .task { await model.loadHistoryIfNeeded() }
     case .picker(let position):
-      NavigationStack {
-        SymbolPickerView(recentSymbols: model.recentSymbols, requester: requester) { symbol in
-          self.sheet = .entry(model.newKey(symbol: symbol, position: position), id: nil)
-        }
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel", role: .cancel) { self.sheet = nil }
-          }
-        }
+      SymbolPickerSheet(recentSymbols: model.recentSymbols, requester: requester) { symbol in
+        self.sheet = .entry(model.newKey(symbol: symbol, position: position), id: nil)
       }
-      .task { await model.loadHistoryIfNeeded() }
     case .entry(let write, let id):
       ColorKeyEntrySheet(model: model, initial: write, id: id, requester: requester) { saved, advance in
         guard advance else { return self.sheet = nil }
@@ -180,7 +172,6 @@ struct ColorKeysSection: View {
           self.sheet = .picker(position: model.nextPosition)
         }
       }
-      .task { await model.loadHistoryIfNeeded() }
     }
   }
 }
