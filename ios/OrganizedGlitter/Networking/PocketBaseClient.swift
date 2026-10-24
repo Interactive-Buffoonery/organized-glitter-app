@@ -71,6 +71,16 @@ actor PocketBaseClient {
     return try persist(response.session)
   }
 
+  func passwordAuthenticationEnabled() async throws -> Bool {
+    struct Methods: Decodable {
+      struct Password: Decodable { let enabled: Bool }
+      let password: Password
+    }
+    let methods: Methods = try await request(
+      path: "/api/collections/users/auth-methods", includesAuthentication: false)
+    return methods.password.enabled
+  }
+
   func oauthProviders() async throws -> [OAuthProvider] {
     struct Methods: Decodable {
       struct OAuth2: Decodable {
@@ -280,6 +290,19 @@ actor PocketBaseClient {
     )
   }
 
+  func requestEmailChange(email: String) async throws {
+    struct Body: Encodable {
+      let newEmail: String
+    }
+
+    _ = try await send(
+      path: "/api/collections/users/request-email-change",
+      method: "POST",
+      body: Body(newEmail: email),
+      canRefreshAuthentication: false
+    )
+  }
+
   func requestPasswordReset(email: String) async throws {
     struct Body: Encodable {
       let email: String
@@ -314,6 +337,55 @@ actor PocketBaseClient {
       ),
       includesAuthentication: false
     )
+  }
+
+  func changePassword(
+    oldPassword: String,
+    password: String,
+    passwordConfirmation: String
+  ) async throws {
+    guard let authentication else { throw APIError.unauthenticated }
+    struct Body: Encodable {
+      let oldPassword: String
+      let password: String
+      let passwordConfirm: String
+    }
+
+    _ = try await send(
+      path: "/api/collections/users/records/\(authentication.user.id)",
+      method: "PATCH",
+      body: Body(
+        oldPassword: oldPassword,
+        password: password,
+        passwordConfirm: passwordConfirmation
+      ),
+      canRefreshAuthentication: false
+    )
+  }
+
+  func reauthenticateAfterPasswordChange(
+    identity: String, password: String, expectedUserID: String
+  ) async throws -> AuthenticatedSession {
+    guard authentication?.user.id == expectedUserID else { throw APIError.cancelled }
+    try sessionStore.clear()
+    authentication = nil
+    sessionGeneration &+= 1
+    let generation = sessionGeneration
+    refreshTask?.cancel()
+    refreshTask = nil
+    refreshGeneration = nil
+    struct Body: Encodable {
+      let identity: String
+      let password: String
+    }
+    let response: AuthResponse = try await request(
+      path: "/api/collections/users/auth-with-password",
+      method: "POST", body: Body(identity: identity, password: password),
+      includesAuthentication: false)
+    guard generation == sessionGeneration, !Task.isCancelled else { throw APIError.cancelled }
+    guard response.record.id == expectedUserID else { throw APIError.forbidden }
+    guard response.record.verified == true else { throw APIError.emailUnverified }
+    return try persist(response.session)
   }
 
   func restore(_ stored: StoredSession) async throws -> AuthenticatedSession {
@@ -549,8 +621,63 @@ actor PocketBaseClient {
     )
   }
 
-  func mobileSnapshot() async throws -> LocalFullSnapshot {
-    try await request(path: "/api/mobile/sync/snapshot")
+  func isAuthenticated(as userID: String) -> Bool {
+    authentication?.user.id == userID
+  }
+
+  func setMainPagePhoto(pageID: String, filename: String, userID: String) async throws -> ColoringPageRecord {
+    guard isAuthenticated(as: userID) else { throw APIError.cancelled }
+    struct Body: Encodable { let filename: String }
+    return try await request(
+      path: "/api/coloring/pages/\(pageID)/main-photo", method: "POST", body: Body(filename: filename))
+  }
+
+  func removePagePhoto(pageID: String, filename: String, userID: String) async throws -> ColoringPageRecord {
+    guard isAuthenticated(as: userID) else { throw APIError.cancelled }
+    return try await update(collection: "coloring_pages", id: pageID, body: ["photos-": [filename]])
+  }
+
+  func diamondStatsSummary(year: Int) async throws -> DiamondStatsSummary {
+    try validateStatsYear(year)
+    return try await request(
+      path: "api/stats/summary", queryItems: [URLQueryItem(name: "year", value: String(year))])
+  }
+
+  func coloringStatsSummary(year: Int) async throws -> ColoringStatsSummary {
+    try validateStatsYear(year)
+    return try await request(
+      path: "api/stats/coloring/summary",
+      queryItems: [URLQueryItem(name: "year", value: String(year))])
+  }
+
+  func statsCompletions(year: Int, coloring: Bool) async throws -> StatsCompletions {
+    try validateStatsYear(year)
+    return try await request(
+      path: coloring ? "api/stats/coloring/completions" : "api/stats/completions",
+      queryItems: [URLQueryItem(name: "year", value: String(year))])
+  }
+
+  func statsSnapshot(year: Int, userID: String) async throws -> StatsSnapshot {
+    guard authentication?.user.id == userID else { throw APIError.cancelled }
+    let generation = sessionGeneration
+    let diamond = try await diamondStatsSummary(year: year)
+    guard generation == sessionGeneration, !Task.isCancelled else { throw APIError.cancelled }
+    let coloring = try await coloringStatsSummary(year: year)
+    guard generation == sessionGeneration, authentication?.user.id == userID,
+      !Task.isCancelled else { throw APIError.cancelled }
+    guard diamond.year == year, coloring.year == year else { throw APIError.decoding }
+    return StatsSnapshot(diamond: diamond, coloring: coloring)
+  }
+
+  private func validateStatsYear(_ year: Int) throws {
+    guard (1900...2100).contains(year) else {
+      throw APIError.validation("Choose a year from 1900 through 2100.")
+    }
+  }
+
+  func mobileSnapshot(userID: String? = nil) async throws -> LocalFullSnapshot {
+    if let userID, !isAuthenticated(as: userID) { throw APIError.cancelled }
+    return try await request(path: "/api/mobile/sync/snapshot")
   }
 
   func applyLocalOperation(_ operation: LocalPendingOperation) async throws -> LibraryItem {
@@ -592,6 +719,43 @@ actor PocketBaseClient {
     }
     guard record.localRecordKey == operation.key else { throw APIError.decoding }
     if result.status == 409 { throw LocalSyncConflict(current: record) }
+    return record
+  }
+
+  func applyPageMediums(attempt: PageMediumAttempt) async throws -> ColoringPageRecord {
+    struct Body: Encodable {
+      let operationId: String
+      let collection = "coloring_pages"
+      let recordId: String
+      let base: ColoringPageMediumWrite
+      let patch: ColoringPageMediumWrite
+    }
+    struct Response: Decodable {
+      let outcome: String?
+      let reason: String?
+      let record: ColoringPageRecord?
+    }
+    let body = Body(
+      operationId: attempt.id.uuidString, recordId: attempt.pageID,
+      base: attempt.base, patch: attempt.patch)
+    let result = try await sendResponseEncoded(
+      path: "/api/mobile/sync/apply", method: "POST",
+      body: PocketBaseRequestBody(json: body), acceptedStatusCodes: [409])
+    let response: Response
+    do { response = try JSONDecoder().decode(Response.self, from: result.data) }
+    catch { throw APIError.decoding }
+    if result.status == 409, response.reason == "operation_id_reused" {
+      throw PageMediumSaveError.integrityFailure
+    }
+    guard let record = response.record, record.id == attempt.pageID,
+      record.mediumIDs != nil else { throw APIError.decoding }
+    if result.status == 409 {
+      guard response.reason == "field_conflict" else { throw APIError.decoding }
+      throw LocalSyncConflict(current: .page(record))
+    }
+    guard let outcome = response.outcome, ["updated", "replayed"].contains(outcome) else {
+      throw APIError.decoding
+    }
     return record
   }
 

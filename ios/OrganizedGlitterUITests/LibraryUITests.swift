@@ -27,6 +27,72 @@ final class LibraryUITests: XCTestCase {
     }
   }
 
+  func testMysteryPageRevealsEditsAndHidesAnswer() throws {
+    let app = launch("mystery")
+    openLibrary(app)
+    XCTAssertTrue(app.openCraft("Coloring"))
+    let book = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@",
+      "Moonlit meadows", "24 pages")).firstMatch
+    XCTAssertTrue(book.waitForExistence(timeout: 5))
+    book.tap()
+    let page = app.buttons["detail.book.page.fictional-page"]
+    XCTAssertTrue(app.buttons["detail.edit"].waitForExistence(timeout: 5))
+    try capture(app, "mystery-book")
+    if !page.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(page.waitForExistence(timeout: 5))
+    XCTAssertTrue(page.label.contains("Mystery"))
+    page.tap()
+    let status = app.buttons["detail.status"]
+    XCTAssertTrue(status.waitForExistence(timeout: 3))
+    let originalStatus = status.label
+    let pageSubtitle = app.staticTexts["detail.page.subtitle"]
+    XCTAssertTrue(pageSubtitle.waitForExistence(timeout: 3))
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows")
+    try capture(app, "mystery-hidden")
+    let reveal = app.buttons["detail.page.reveal"]
+    if !reveal.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(reveal.waitForExistence(timeout: 5))
+    reveal.tap()
+    let subject = app.alerts.textFields.firstMatch
+    XCTAssertTrue(subject.waitForExistence(timeout: 3))
+    subject.tap()
+    subject.typeText("Garden")
+    app.alerts.buttons["Reveal"].tap()
+    let answer = app.buttons["detail.page.answerMenu"]
+    XCTAssertTrue(answer.waitForExistence(timeout: 5))
+    XCTAssertTrue(answer.label.contains("Garden"))
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows · Page 12")
+    let date = app.staticTexts["detail.page.revealedDate"]
+    XCTAssertTrue(date.waitForExistence(timeout: 3))
+    let originalDate = date.label
+    answer.tap()
+    let editAnswer = app.buttons["detail.page.editAnswer"]
+    XCTAssertTrue(editAnswer.waitForExistence(timeout: 3))
+    editAnswer.tap()
+    let edit = app.alerts.textFields.firstMatch
+    XCTAssertTrue(edit.waitForExistence(timeout: 3))
+    edit.tap()
+    edit.typeText(" flowers")
+    app.alerts.buttons["Save"].tap()
+    XCTAssertTrue(answer.waitForExistence(timeout: 5))
+    let edited = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Garden flowers"), object: answer)
+    XCTAssertEqual(XCTWaiter.wait(for: [edited], timeout: 5), .completed)
+    XCTAssertEqual(date.label, originalDate)
+    answer.tap()
+    let hide = app.buttons["detail.page.hide"]
+    XCTAssertTrue(hide.waitForExistence(timeout: 3))
+    hide.tap()
+    let confirmHide = app.buttons["Hide again"].firstMatch
+    XCTAssertTrue(confirmHide.waitForExistence(timeout: 3))
+    confirmHide.tap()
+    XCTAssertTrue(reveal.waitForExistence(timeout: 5))
+    XCTAssertFalse(answer.exists)
+    XCTAssertFalse(date.exists)
+    XCTAssertEqual(status.label, originalStatus)
+    XCTAssertEqual(pageSubtitle.label, "Moonlit meadows")
+    try capture(app, "mystery-hidden-again")
+  }
+
   func testIPhoneBrowsesTwoCraftsAndOpensPagesThroughBook() throws {
     try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "iPhone peer craft browsing.")
     let app = launch("populated")
@@ -60,6 +126,52 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(
       app.navigationBars["A moonlit garden with a very long, winding path"]
         .waitForExistence(timeout: 3))
+  }
+
+  func testPageMediumsSaveOnceAndClearSelection() throws {
+    let app = launch("populated")
+    openLibrary(app)
+    XCTAssertTrue(app.openCraft("Coloring"))
+    let book = app.buttons.matching(NSPredicate(
+      format: "label CONTAINS[c] %@ AND label CONTAINS[c] %@", "Moonlit meadows", "24 pages")).firstMatch
+    XCTAssertTrue(book.waitForExistence(timeout: 5))
+    book.tap()
+    let page = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "A moonlit garden")).firstMatch
+    if !page.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(page.waitForExistence(timeout: 5))
+    page.tap()
+    let edit = app.buttons["detail.page.mediums"]
+    if !edit.waitForExistence(timeout: 2) { app.swipeUp() }
+    XCTAssertTrue(edit.waitForExistence(timeout: 5))
+    edit.tap()
+    let done = app.buttons["mediums.done"]
+    XCTAssertTrue(done.waitForExistence(timeout: 5))
+    XCTAssertFalse(done.isEnabled)
+    XCTAssertTrue(app.buttons["Pencils"].waitForExistence(timeout: 5))
+    app.buttons["Pencils"].tap()
+    app.buttons["Markers"].tap()
+    XCTAssertTrue(app.buttons["Pencils"].isSelected)
+    XCTAssertTrue(app.buttons["Markers"].isSelected)
+    XCTAssertTrue(app.buttons["mediums.clear"].isEnabled)
+    try capture(app, "mediums-selected")
+    XCTAssertTrue(done.isEnabled)
+    done.tap()
+    let names = app.staticTexts["detail.page.mediumNames"]
+    let hasNames = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Pencils", "Markers")
+    expectation(for: hasNames, evaluatedWith: names)
+    waitForExpectations(timeout: 8)
+    let noNotes = app.staticTexts["No progress notes"]
+    for _ in 0..<3 where !noNotes.isHittable { app.swipeUp() }
+    XCTAssertTrue(noNotes.isHittable)
+    try capture(app, "page-notes-empty")
+    for _ in 0..<3 where !edit.isHittable { app.swipeDown() }
+    edit.tap()
+    XCTAssertTrue(app.buttons["Pencils"].waitForExistence(timeout: 5))
+    app.buttons["Pencils"].tap()
+    app.buttons["Markers"].tap()
+    done.tap()
+    expectation(for: NSPredicate(format: "label == %@", "None"), evaluatedWith: names)
+    waitForExpectations(timeout: 8)
   }
 
   func testColoringSearchFindsPagesAndCreateChoosesTheirBook() throws {
@@ -122,6 +234,61 @@ final class LibraryUITests: XCTestCase {
     XCTAssertTrue(app.openCraft("Coloring"))
     XCTAssertTrue(modes.buttons["Compact"].isSelected)
     modes.buttons["Covers"].tap()
+  }
+
+  func testRicherFiltersKeepClearReachableWithNoMatches() throws {
+    let app = launch("design")
+    openLibrary(app)
+    let filters = app.buttons["library.filters"]
+    XCTAssertTrue(filters.waitForExistence(timeout: 5))
+    filters.tap()
+    let garden = app.buttons["library.filter.Tags.tag-gardens"]
+    for _ in 0..<8 where !garden.isHittable { app.swipeUp() }
+    XCTAssertTrue(garden.exists)
+    garden.tap()
+    app.buttons["library.filters.done"].tap()
+    XCTAssertTrue(app.staticTexts["Summer Garden Blooms"].waitForExistence(timeout: 5))
+    XCTAssertEqual(filters.label, "Filters, 1 active")
+    XCTAssertTrue(app.buttons["library.filters.clear"].exists)
+
+    filters.tap()
+    let year = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "2026")).firstMatch
+    for _ in 0..<8 where !year.isHittable { app.swipeUp() }
+    XCTAssertTrue(year.exists, app.debugDescription)
+    year.tap()
+    app.buttons["library.filters.done"].tap()
+    XCTAssertTrue(app.staticTexts["No matches"].waitForExistence(timeout: 5))
+    XCTAssertEqual(filters.label, "Filters, 2 active")
+    XCTAssertEqual(app.buttons.matching(identifier: "library.filters.clear").count, 1)
+    XCTAssertEqual(app.buttons["library.status"].value as? String, "All, 0")
+    app.buttons["library.filters.clear"].tap()
+    XCTAssertTrue(app.staticTexts["Summer Garden Blooms"].waitForExistence(timeout: 5))
+    XCTAssertEqual(filters.label, "Filters, 0 active")
+    XCTAssertFalse(app.staticTexts["library.filters.summary"].exists)
+  }
+
+  func testFilterSheetSummaryClearsAndStaysOpen() throws {
+    let app = launch("design")
+    openLibrary(app)
+    let filters = app.buttons["library.filters"]
+    XCTAssertTrue(filters.waitForExistence(timeout: 5))
+    filters.tap()
+    let summary = app.staticTexts["library.filters.sheetSummary"]
+    let clear = app.buttons["library.filters.sheetClear"]
+    XCTAssertTrue(app.buttons["library.filters.done"].waitForExistence(timeout: 5))
+    XCTAssertFalse(summary.exists)
+    XCTAssertFalse(clear.exists)
+
+    app.buttons["Example Atelier"].tap()
+    XCTAssertTrue(summary.waitForExistence(timeout: 5))
+    XCTAssertEqual(summary.label, "Filtered: Company")
+
+    clear.tap()
+    XCTAssertTrue(app.buttons["library.filters.done"].exists)
+    XCTAssertFalse(summary.waitForExistence(timeout: 2))
+    XCTAssertFalse(clear.exists)
+    app.buttons["library.filters.done"].tap()
+    XCTAssertEqual(filters.label, "Filters, 0 active")
   }
 
   func testLoadingEmptyAndErrorStates() throws {
@@ -275,7 +442,35 @@ final class LibraryUITests: XCTestCase {
   }
 }
 
+extension XCUIElement {
+  /// The tappable switch inside a Toggle row, which outside a List ignores taps on its label.
+  var switchControl: XCUIElement {
+    let control = switches.firstMatch
+    return control.exists ? control : self
+  }
+
+  func replaceText(with value: String) {
+    // The edit menu differs between iPhone and iPad, so delete from the end instead.
+    coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    let existing = self.value as? String ?? ""
+    typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+    typeText(value)
+    XCTAssertEqual(self.value as? String, value)
+  }
+}
+
 extension XCUIApplication {
+  /// iPhone dismisses the Account sheet; iPad pops the Account page off Home.
+  func closeAccount() {
+    let account = navigationBars["Account"]
+    let done = account.buttons["Done"]
+    if done.exists {
+      done.tap()
+    } else {
+      account.buttons.element(boundBy: 0).tap()
+    }
+  }
+
   @discardableResult
   func openNotes() -> Bool {
     let destination: XCUIElement

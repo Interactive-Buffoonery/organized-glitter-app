@@ -45,10 +45,25 @@ struct RootView: View {
     }
     .background(theme.themedBackground.ignoresSafeArea())
     .animation(Theme.motion, value: model.phase)
-    .alert("You’re already signed in", isPresented: $model.showsSignedInPasswordResetNotice) {
-      Button("OK", role: .cancel) {}
+    .alert(
+      model.passwordChangeNotice != nil ? "Password changed" : "You’re already signed in",
+      isPresented: Binding(
+        get: { model.passwordChangeNotice != nil || model.showsSignedInPasswordResetNotice },
+        set: { isPresented in
+          if !isPresented {
+            model.passwordChangeNotice = nil
+            model.showsSignedInPasswordResetNotice = false
+          }
+        }
+      )
+    ) {
+      Button("OK", role: .cancel) {
+        model.passwordChangeNotice = nil
+        model.showsSignedInPasswordResetNotice = false
+      }
     } message: {
-      Text("To use a password-reset link, sign out first, then open the link from your email again.")
+      Text(model.passwordChangeNotice
+        ?? "To use a password-reset link, sign out first, then open the link from your email again.")
     }
     .sheet(item: $model.passwordResetDestination) { destination in
       PasswordResetConfirmationView(

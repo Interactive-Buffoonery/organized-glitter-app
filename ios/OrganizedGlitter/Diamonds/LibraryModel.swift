@@ -224,6 +224,7 @@ final class LibraryModel {
   var section = LibrarySection.diamonds
   var searchText = ""
   private(set) var committedSearch = ""
+  var filters = LibraryFilters()
   var statusFilter: String? {
     didSet {
       guard hasLoaded, !adjustingListing, oldValue != statusFilter else { return }
@@ -246,6 +247,8 @@ final class LibraryModel {
 
   private(set) var displayedItems: [LibraryItem] = []
   private(set) var shelfCounts: [String: Int] = [:]
+  /// Matches for every status under the current filters and search.
+  private(set) var statusCounts: [String: Int] = [:]
   private var currentPage = 0
   private var totalPages = 0
   private var generation = 0
@@ -263,6 +266,12 @@ final class LibraryModel {
     self.library = library
     self.searchesColoringPages = searchesColoringPages
     self.loadLocal = loadLocal ?? { try await library.loadLocal() }
+  }
+
+  private(set) var filterOptions = LibraryFilterOptions(items: [], section: .diamonds, userID: "")
+
+  func resetFilters() {
+    filters = LibraryFilters()
   }
 
   var items: [LibraryItem] {
@@ -297,7 +306,7 @@ final class LibraryModel {
   /// search query are included so browsing changes reload; `listingEpoch`
   /// changes when a handoff clears search without changing the other fields.
   var listingIdentity: String {
-    "\(section.rawValue)|\(statusFilter ?? "")|\(sort.rawValue)|\(committedSearch)|\(listingEpoch)"
+    "\(section.rawValue)|\(statusFilter ?? "")|\(sort.rawValue)|\(committedSearch)|\(filters.identity)|\(listingEpoch)"
   }
 
   func apply(_ request: LibraryRequest) {
@@ -306,6 +315,7 @@ final class LibraryModel {
     defer { adjustingListing = previousAdjustment }
     pendingSearch = nil
     select(request.section)
+    resetFilters()
     searchText = ""
     committedSearch = ""
     statusFilter = request.status
@@ -325,6 +335,8 @@ final class LibraryModel {
     if userInitiated {
       library.captureAnalytics(.craftChanged, properties: ["record_type": section.analyticsCollection])
     }
+    resetFilters()
+    filterOptions = LibraryFilterOptions(items: [], section: section, userID: userID)
     searchText = ""
     committedSearch = ""
     statusFilter = nil
@@ -420,6 +432,7 @@ final class LibraryModel {
     do {
       if reset { try await loadLocal() }
       guard requestGeneration == generation, section == requestedSection else { return }
+      filterOptions = LibraryFilterOptions(items: library.items, section: section, userID: userID)
       if !library.hasSnapshot && library.items.isEmpty {
         displayedItems = []
         discardPendingSearch(section: requestedSection, query: requestedSearch)
@@ -429,6 +442,9 @@ final class LibraryModel {
       let matching = library.items.filter { matchesCurrentListing($0, bookTitles: bookTitles) }
         .sorted(by: precedes)
       shelfCounts = matching.reduce(into: [:]) { $0[$1.status, default: 0] += 1 }
+      statusCounts = library.items
+        .filter { matchesCurrentListing($0, bookTitles: bookTitles, ignoringStatus: true) }
+        .reduce(into: [:]) { $0[$1.status, default: 0] += 1 }
       totalPages = (matching.count + Self.pageSize - 1) / Self.pageSize
       currentPage = min(requestedPage, totalPages)
       displayedItems = Array(matching.prefix(requestedPage * Self.pageSize))
@@ -534,7 +550,7 @@ final class LibraryModel {
   }
 
   private func matchesCurrentListing(
-    _ item: LibraryItem, bookTitles: [String: String]
+    _ item: LibraryItem, bookTitles: [String: String], ignoringStatus: Bool = false
   ) -> Bool {
     let includesPage = searchesColoringPages && section == .books && !committedSearch.isEmpty
       && item.belongs(to: .pages, userID: userID, bookTitles: bookTitles)
@@ -542,7 +558,9 @@ final class LibraryModel {
       return false
     }
 
-    if let statusFilter, item.status != statusFilter {
+    guard filters.matches(item) else { return false }
+
+    if !ignoringStatus, let statusFilter, item.status != statusFilter {
       return false
     }
 

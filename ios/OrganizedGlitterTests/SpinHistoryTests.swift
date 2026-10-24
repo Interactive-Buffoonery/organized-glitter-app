@@ -138,6 +138,17 @@ struct SpinHistoryTests {
     #expect(try await library.store.pendingOperations(scope: library.scope).first?.id == operation.id)
   }
 
+  @Test func statsForbiddenRefreshEndsSession() async throws {
+    let library = try await makeLibrary()
+    var recoveries = 0
+    library.onAuthenticationFailure = { recoveries += 1 }
+    HistoryProtocol.getStatus = 401
+    HistoryProtocol.refreshStatus = 403
+    await #expect(throws: APIError.forbidden) { _ = try await library.statsSnapshot(year: 2026) }
+    #expect(recoveries == 1)
+    #expect(HistoryProtocol.refreshCount == 1)
+  }
+
   @Test func historyGetStillRefreshesExpiredAuthentication() async throws {
     let library = try await makeLibrary()
     HistoryProtocol.getStatus = 401

@@ -1,0 +1,148 @@
+import SwiftUI
+
+struct ChangePasswordView: View {
+  @Environment(\.connectionAvailable) private var connectionAvailable
+  @Environment(\.theme) private var theme
+  let appModel: AppModel
+  let library: LibrarySession
+  let client: PocketBaseClient
+  let currentEmail: String
+
+  @State private var currentPassword = ""
+  @State private var password = ""
+  @State private var confirmation = ""
+  @State private var isSaving = false
+  @State private var didChange = false
+  @State private var errorMessage: String?
+  @State private var outcomeUnknown = false
+  @State private var generation = 0
+
+  var body: some View {
+    Form {
+      Group {
+        if didChange {
+          Section {
+            Label("Password changed", systemImage: "checkmark.circle")
+              .accessibilityIdentifier("account.passwordChanged")
+          }
+        } else {
+          Section("Password") {
+            labeledField("Current password") {
+              SecureField("Current password", text: $currentPassword, prompt: Text(""))
+                .textContentType(.password)
+                .accessibilityIdentifier("account.currentPassword")
+            }
+            labeledField("New password") {
+              SecureField("New password", text: $password, prompt: Text(""))
+                .textContentType(.newPassword)
+                .accessibilityIdentifier("account.newPassword")
+            }
+            labeledField("Confirm new password") {
+              SecureField("Confirm new password", text: $confirmation, prompt: Text(""))
+                .textContentType(.newPassword)
+                .accessibilityIdentifier("account.confirmPassword")
+            }
+            if !password.isEmpty, let validationMessage {
+              Label(validationMessage, systemImage: "exclamationmark.circle")
+                .foregroundStyle(theme.destructive)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            Button("Change password", action: save)
+              .disabled(isSaving || !connectionAvailable || currentPassword.isEmpty
+                || validationMessage != nil || appModel.isSigningOut
+                || appModel.isChangingPassword || outcomeUnknown)
+              .buttonStyle(AuthPrimaryButtonStyle())
+              .accessibilityIdentifier("account.savePassword")
+            if !connectionAvailable { NeedsConnectionHint() }
+            if isSaving { ProgressView("Changing password") }
+          }
+          .disabled(isSaving)
+        }
+        Section {
+          Text("Use your current password. If you usually sign in with Apple, Google, or Discord and don't know a password, reset it first.")
+            .fixedSize(horizontal: false, vertical: true)
+          NavigationLink("Reset password") {
+            PasswordResetView(client: client, initialEmail: currentEmail)
+          }
+          .disabled(isSaving)
+        }
+        if let errorMessage {
+          Section {
+            AccessibleErrorLabel(message: errorMessage)
+              .accessibilityIdentifier("account.passwordChangeError")
+          }
+        }
+      }
+      .listRowBackground(theme.card)
+    }
+    .font(.karla(.body))
+    .themedScrollBackground()
+    .scrollEdgeEffectStyle(.hard, for: .top)
+    .fittingLargeTitle("Change password")
+    .onDisappear {
+      generation &+= 1
+      isSaving = false
+      clearPasswords()
+    }
+  }
+
+  private func labeledField(_ title: String, @ViewBuilder field: () -> some View) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(title)
+        .font(.karla(.subheadline).weight(.medium))
+        .accessibilityHidden(true)
+      field()
+    }
+  }
+
+  private var validationMessage: String? {
+    PasswordResetFormValidator.message(password: password, confirmation: confirmation)
+  }
+
+  private func clearPasswords() {
+    currentPassword = ""
+    password = ""
+    confirmation = ""
+  }
+
+  private func save() {
+    guard !isSaving, connectionAvailable, !currentPassword.isEmpty,
+      validationMessage == nil else { return }
+    generation &+= 1
+    let currentGeneration = generation
+    isSaving = true
+    errorMessage = nil
+    let (oldPassword, password, confirmation) = (currentPassword, self.password, self.confirmation)
+    // A dispatched change finishes after the form closes so session recovery still runs.
+    Task {
+      defer { if generation == currentGeneration { isSaving = false } }
+      do {
+        _ = try await appModel.changePassword(
+          oldPassword: oldPassword, password: password, confirmation: confirmation,
+          library: library, onAccepted: {
+            clearPasswords()
+            AccessibilityNotification.Announcement("Password changed").post()
+          })
+        guard generation == currentGeneration, !Task.isCancelled else { return }
+        didChange = true
+      } catch {
+        guard generation == currentGeneration, !Task.isCancelled,
+          error as? APIError != .cancelled else { return }
+        currentPassword = ""
+        if error as? APIError == .offline || error as? APIError == .server {
+          outcomeUnknown = true
+          errorMessage = "The result could not be confirmed. Sign in again with your new password or reset it before trying another change. Your unsent library changes stay on this device."
+          return
+        }
+        let rejected = "The password could not be changed. Check your current password and try again."
+        // PocketBase reports a wrong current password only as a generic record-update message.
+        if case .validation = error as? APIError {
+          errorMessage = rejected
+          return
+        }
+        errorMessage = error.userMessage(
+          permission: "This account cannot change its password.", fallback: rejected)
+      }
+    }
+  }
+}

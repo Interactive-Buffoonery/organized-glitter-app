@@ -397,12 +397,14 @@ struct PickForMeView: View {
   }
 
   private func result(_ selection: RandomizerSelection) -> some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+    let hidesAnswer = model.library.hidesMysteryThumbnail(for: selection.winner.item)
+    return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
       Text(RandomizerPageCopy.selectedTitle(selection.mode)).font(.karla(.headline))
         .accessibilityAddTraits(.isHeader)
       LibraryGalleryCard(item: selection.winner.item,
-        imageURL: protectedFiles?.artworkURL(for: selection.winner.item, thumb: ArtworkThumb.gallery),
-        mode: .covers, showsStatus: false)
+        imageURL: hidesAnswer ? nil
+          : protectedFiles?.artworkURL(for: selection.winner.item, thumb: ArtworkThumb.gallery),
+        mode: .covers, showsStatus: false, hidesMysteryAnswer: hidesAnswer)
         .accessibilityIdentifier("pickForMe.result")
       if let bookTitle = selection.winner.bookTitle { Text(bookTitle).font(.karla(.subheadline)) }
       Label(RandomizerPageCopy.status(selection.winner.item.status, mode: selection.mode),

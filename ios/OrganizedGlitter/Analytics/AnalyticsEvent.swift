@@ -19,6 +19,7 @@ enum AnalyticsEvent: String, Sendable {
   case craftChanged = "dashboard_mode_changed"
   case notesCraftFilterChanged = "notes_craft_filter_changed"
   case notesYearFilterChanged = "notes_year_filter_changed"
+  case notesSourceFilterChanged = "notes_source_filter_changed"
   case photoViewed = "record_photo_viewed"
   case operationFailed = "operation_failed"
   case recordSavedLocally = "library_record_saved_locally"
@@ -41,6 +42,8 @@ enum AnalyticsEvent: String, Sendable {
   case photoAdded = "record_photo_added"
   case photoDeleted = "record_photo_deleted"
   case pagePhotoAdded = "coloring_page_photo_added"
+  case pagePhotoDeleted = "coloring_page_photo_deleted"
+  case pageMainPhotoChanged = "coloring_page_main_photo_changed"
   case syncRequested = "library_sync_requested"
   case syncCompleted = "library_sync_completed"
   case syncFailed = "library_sync_failed"
@@ -79,6 +82,7 @@ enum AnalyticsEvent: String, Sendable {
     case .projectOpened, .recordOpened, .craftChanged: ["record_type"]
     case .notesCraftFilterChanged: ["craft"]
     case .notesYearFilterChanged: ["filter_active"]
+    case .notesSourceFilterChanged: ["source_kind", "craft"]
     case .photoViewed: ["surface"]
     case .operationFailed: ["operation", "failure_category", "record_type"]
     case .searchPerformed, .booksSearchPerformed: ["record_type", "result_count"]
@@ -164,6 +168,7 @@ enum AnalyticsPayload {
       "resolution": ["keep_local", "use_server"],
       "setting": Set(AnalyticsAccountSetting.allCases.map(\.rawValue)),
       "craft": Set(NotesCraft.allCases.map(\.rawValue)),
+      "source_kind": ["all", "project", "book"],
       "surface": Set(AnalyticsPhotoSurface.allCases.map(\.rawValue)),
       "operation": Set(AnalyticsOperation.allCases.map(\.rawValue)),
       "failure_category": Set(AnalyticsFailureCategory.allCases.map(\.rawValue)),
@@ -217,6 +222,8 @@ enum AnalyticsOperation: String, CaseIterable, Sendable {
   case editNote = "edit_note"
   case deleteNote = "delete_note"
   case addPhoto = "add_photo"
+  case setMainPhoto = "set_main_photo"
+  case deletePhoto = "delete_photo"
 }
 
 enum AnalyticsAccountSetting: String, CaseIterable, Sendable {

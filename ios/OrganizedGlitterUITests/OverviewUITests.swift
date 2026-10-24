@@ -38,14 +38,14 @@ final class OverviewUITests: XCTestCase {
     let toggle = app.switches["account.showCraftingStreak"]
     for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
     XCTAssertTrue(toggle.isHittable)
-    if toggle.value as? String == "1" { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
-    app.buttons["Done"].tap()
+    if toggle.value as? String == "1" { toggle.switchControl.tap() }
+    app.closeAccount()
     XCTAssertFalse(app.buttons["home.craftingStreak"].exists)
     app.buttons["account.open"].tap()
     for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
-    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+    toggle.switchControl.tap()
     XCTAssertEqual(toggle.value as? String, "1")
-    app.buttons["Done"].tap()
+    app.closeAccount()
     let streak = app.buttons["home.craftingStreak"]
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
     XCTAssertEqual(streak.label, "5-day crafting streak")
@@ -58,8 +58,8 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
     app.buttons["account.open"].tap()
     for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
-    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-    app.buttons["Done"].tap()
+    toggle.switchControl.tap()
+    app.closeAccount()
     XCTAssertTrue(streak.waitForNonExistence(timeout: 5))
   }
 
@@ -95,6 +95,54 @@ final class OverviewUITests: XCTestCase {
     XCTAssertTrue(app.descendants(matching: .any)["detail.diamond"].waitForExistence(timeout: 5))
     app.navigationBars.buttons.element(boundBy: 0).tap()
     XCTAssertTrue(app.buttons["notes.add"].waitForExistence(timeout: 5))
+  }
+
+  func testNotesSourceFilterClearsAndResetsOnCraftChange() throws {
+    let app = launch("design")
+    XCTAssertTrue(app.openNotes())
+    let source = app.buttons["notes.source"]
+    XCTAssertTrue(source.waitForExistence(timeout: 5))
+    source.tap()
+    app.buttons["Summer Garden Blooms"].tap()
+    XCTAssertTrue(app.buttons["notes.entry.design-note-1"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["notes.entry.design-page-note-1"].exists)
+    XCTAssertEqual(source.value as? String, "Summer Garden Blooms")
+    app.buttons["notes.source.clear"].tap()
+    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].waitForExistence(timeout: 5))
+
+    source.tap()
+    app.buttons["Summer Garden Blooms"].tap()
+    app.segmentedControls["notes.craft"].buttons["Coloring"].tap()
+    XCTAssertEqual(source.value as? String, "All projects and books")
+    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["notes.source.clear"].exists)
+    source.tap()
+    app.buttons["Smithsonian Libraries Coloring Pages, Volume 2"].tap()
+    XCTAssertEqual(source.value as? String, "Smithsonian Libraries Coloring Pages, Volume 2")
+    XCTAssertTrue(app.buttons["notes.source.clear"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].exists)
+  }
+
+  func testNotesSourceAndYearEmptyResultCanClearBothFilters() throws {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-ui-testing-authenticated", "-overview-fixture", "design", "-fixture-notes-source-years",
+    ]
+    app.launch()
+    XCTAssertTrue(app.openNotes())
+    let source = app.buttons["notes.source"]
+    XCTAssertTrue(source.waitForExistence(timeout: 5))
+    source.tap()
+    app.buttons["Smithsonian Libraries Coloring Pages, Volume 2"].tap()
+    app.buttons["notes.year"].tap()
+    app.buttons["2025"].tap()
+    XCTAssertTrue(app.buttons["notes.filters.clear"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["No notes in 2025."].exists)
+    XCTAssertTrue(app.buttons["notes.source.clear"].exists)
+    app.buttons["notes.filters.clear"].tap()
+    XCTAssertTrue(app.buttons["notes.entry.design-page-note-1"].waitForExistence(timeout: 5))
+    XCTAssertEqual(source.value as? String, "All projects and books")
+    XCTAssertEqual(app.buttons["notes.year"].value as? String, "All years")
   }
 
   func testHomeLogAppearsInNotesTab() throws {
