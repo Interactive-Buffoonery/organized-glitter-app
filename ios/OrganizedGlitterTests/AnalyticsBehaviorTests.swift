@@ -17,7 +17,7 @@ struct AnalyticsBehaviorTests {
     try await fixture.library.store.ingest(.page(page), scope: fixture.library.scope)
     try await fixture.library.loadLocal()
     BehaviorProtocol.record = try JSONEncoder().encode(page)
-    BehaviorProtocol.status = fails ? 503 : 200
+    BehaviorProtocol.status = fails ? 500 : 200
     let form = PocketBaseMultipartForm(files: [
       PocketBaseMultipartFile(fieldName: "photos+", fileName: "new.jpg", contentType: "image/jpeg", data: Data([1]))
     ])
