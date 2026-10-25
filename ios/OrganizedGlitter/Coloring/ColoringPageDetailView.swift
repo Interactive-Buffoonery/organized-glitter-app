@@ -15,6 +15,8 @@ struct ColoringPageDetailView: View {
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
   @State private var deletingPhoto: String?
+  @State private var isTakingPhoto = false
+  @State private var cameraImage: UIImage?
   @State private var selectedItem: PhotosPickerItem?
   @State private var pendingPhoto: ProcessedDetailPhoto?
   @State private var pendingPreview: UIImage?
@@ -304,6 +306,16 @@ struct ColoringPageDetailView: View {
       .photoDeleteConfirmation($deletingPhoto, isEnabled: photoActionsEnabled) { id in
         Task { await changePhoto(id, setMain: false) }
       }
+      .fullScreenCover(isPresented: $isTakingPhoto, onDismiss: {
+        guard let image = cameraImage else { return }
+        cameraImage = nil
+        Task { await preparePhoto { try await DetailPhotoProcessor.process(image: image) } }
+      }) {
+        CameraPicker { image in
+          cameraImage = image
+          isTakingPhoto = false
+        }
+      }
       .task(id: selectedItem) {
         await prepareSelection()
       }
@@ -474,6 +486,13 @@ struct ColoringPageDetailView: View {
           .buttonStyle(.bordered)
           .disabled(isPreparingPhoto || model.isMutating || model.unresolvedWriteState != nil || !connectionAvailable || hasMediumRecovery)
           .accessibilityIdentifier("detail.page.addPhoto")
+          if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            Button("Take Photo", systemImage: "camera") { isTakingPhoto = true }
+              .frame(minHeight: 44)
+              .buttonStyle(.bordered)
+              .accessibilityLabel("Take page photo")
+              .disabled(isPreparingPhoto || model.isMutating || model.unresolvedWriteState != nil || !connectionAvailable || hasMediumRecovery)
+          }
           NeedsConnectionHint()
         }
       }
@@ -491,6 +510,10 @@ struct ColoringPageDetailView: View {
 
   private func prepareSelection() async {
     guard let selectedItem else { return }
+    await preparePhoto { try await DetailPhotoProcessor.process(item: selectedItem) }
+  }
+
+  private func preparePhoto(_ work: () async throws -> ProcessedDetailPhoto) async {
     isPreparingPhoto = true
     photoErrorMessage = nil
     model.clearPhotoError()
@@ -499,7 +522,7 @@ struct ColoringPageDetailView: View {
     AccessibilityNotification.Announcement("Preparing photo").post()
     defer { isPreparingPhoto = false }
     do {
-      let photo = try await DetailPhotoProcessor.process(item: selectedItem)
+      let photo = try await work()
       try Task.checkCancellation()
       pendingPhoto = photo
       pendingPreview = await Task.detached(priority: .userInitiated) {

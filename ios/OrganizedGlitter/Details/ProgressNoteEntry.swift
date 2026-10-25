@@ -355,6 +355,8 @@ struct ProgressNoteEditor: View {
 
   @State private var date = Date()
   @State private var content = ""
+  @State private var isTakingPhoto = false
+  @State private var cameraImage: UIImage?
   @State private var selectedItem: PhotosPickerItem?
   @State private var processedPhoto: ProcessedDetailPhoto?
   @State private var previewImage: UIImage?
@@ -390,6 +392,11 @@ struct ProgressNoteEditor: View {
               )
             }
             .disabled(isPreparingPhoto || model.isMutating)
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+              Button("Take Photo", systemImage: "camera") { isTakingPhoto = true }
+                .accessibilityLabel("Take progress photo")
+                .disabled(isPreparingPhoto || model.isMutating)
+            }
           }
           .disabled(model.unresolvedWriteState != nil)
 
@@ -456,6 +463,16 @@ struct ProgressNoteEditor: View {
           }
         }
       }
+      .fullScreenCover(isPresented: $isTakingPhoto, onDismiss: {
+        guard let image = cameraImage else { return }
+        cameraImage = nil
+        Task { await preparePhoto { try await DetailPhotoProcessor.process(image: image) } }
+      }) {
+        CameraPicker { image in
+          cameraImage = image
+          isTakingPhoto = false
+        }
+      }
       .task(id: selectedItem) {
         await prepareSelectedPhoto()
       }
@@ -497,6 +514,10 @@ struct ProgressNoteEditor: View {
 
   private func prepareSelectedPhoto() async {
     guard let selectedItem else { return }
+    await preparePhoto { try await DetailPhotoProcessor.process(item: selectedItem) }
+  }
+
+  private func preparePhoto(_ work: () async throws -> ProcessedDetailPhoto) async {
     isPreparingPhoto = true
     photoErrorMessage = nil
     model.mutationErrorMessage = nil
@@ -505,9 +526,7 @@ struct ProgressNoteEditor: View {
     AccessibilityNotification.Announcement("Preparing photo").post()
     defer { isPreparingPhoto = false }
     do {
-      let photo = try await DetailPhotoProcessor.process(
-        item: selectedItem
-      )
+      let photo = try await work()
       try Task.checkCancellation()
       processedPhoto = photo
       previewImage = await Task.detached(priority: .userInitiated) {
