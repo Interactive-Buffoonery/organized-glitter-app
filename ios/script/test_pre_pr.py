@@ -23,7 +23,7 @@ class PrePRTests(unittest.TestCase):
                 'git': '[ -z "$HEAVY_GATE_LEASE_TOKEN" ] || [ -z "$DIFF_FAILURE" ]',
                 'xcodegen': 'echo generate >> "$TRACE"',
                 'xcodebuild': 'echo "test:$HEAVY_GATE_DEVICE" >> "$TRACE"; [ "$FAIL_DEVICE" != "$HEAVY_GATE_DEVICE" ]',
-                'heavy-gate': '''[ "$#" -eq 8 ] && [ "$1" = --simulator-session ] && [ "$3" = -- ] && [ "$4" = sh ] || exit 64
+                'process-gate': '''[ "$#" -eq 8 ] && [ "$1" = --simulator-session ] && [ "$3" = -- ] && [ "$4" = sh ] || exit 64
 [ "$5" = "$EXPECTED_WORKER" ] && [ "$2" = "$8" ] || exit 64
 case "$7:$8" in iphone:iPhone|ipad:iPad) ;; *) exit 64 ;; esac
 if [ -n "$GATE_STATUS" ]; then echo refused >> "$TRACE"; exit "$GATE_STATUS"; fi
@@ -75,13 +75,13 @@ fi''',
         result, trace = self.run_job(gate_status='75')
         self.assertEqual(result.returncode, 75)
         self.assertEqual(trace, ['refused'])
-        self.assertIn('heavy-gate --status and --help', result.stderr)
+        self.assertIn('process-gate --status and --help', result.stderr)
 
     def test_whitespace_failure_is_not_gate_refusal(self):
         result, trace = self.run_job(diff_failure='1')
         self.assertEqual(result.returncode, 1)
         self.assertIn('Workspace has whitespace errors', result.stderr)
-        self.assertNotIn('heavy-gate --status and --help', result.stderr)
+        self.assertNotIn('process-gate --status and --help', result.stderr)
         self.assertFalse(any(event.startswith('test:') for event in trace))
         self.assertEqual(trace[-1], 'shutdown:iPad')
 

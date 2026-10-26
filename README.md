@@ -86,7 +86,7 @@ sequentially:
 2. Fixture UI tests on an iPhone simulator.
 3. Fixture UI tests on an iPad simulator.
 
-The script requires the machine-wide `heavy-gate` command. Run it directly; it
+The script requires the machine-wide `process-gate` command. Run it directly; it
 queues an iPhone session followed by an iPad session. Each session boots one
 initially shut-down simulator and shuts it down before releasing the lease,
 including after failures or cancellation. Other booted devices are preserved
