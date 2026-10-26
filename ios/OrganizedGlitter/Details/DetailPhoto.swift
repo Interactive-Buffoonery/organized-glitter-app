@@ -241,11 +241,13 @@ enum DetailPhotoProcessor {
   static let maximumOutputBytes = 5 * 1_024 * 1_024
   static let maximumPixelDimension = 2_048
 
-  @MainActor
   static func process(image: UIImage) async throws -> ProcessedDetailPhoto {
-    guard let data = image.jpegData(compressionQuality: 0.95) else {
-      throw DetailPhotoProcessingError.unsupportedImage
-    }
+    let data = try await Task.detached(priority: .userInitiated) {
+      guard let data = image.jpegData(compressionQuality: 0.95) else {
+        throw DetailPhotoProcessingError.unsupportedImage
+      }
+      return data
+    }.value
     return try await process(data: data, contentTypeIdentifier: UTType.jpeg.identifier)
   }
 
