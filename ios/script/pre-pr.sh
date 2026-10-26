@@ -2,7 +2,7 @@
 set -eu
 repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
-for tool in heavy-gate xcodebuild xcodegen xcrun python3; do
+for tool in process-gate xcodebuild xcodegen xcrun python3; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "Missing prerequisite: $tool" >&2
     exit 1
@@ -70,7 +70,7 @@ overall_status=0
 for family in iphone ipad; do
   if [ "$family" = iphone ]; then simulator_id=$iphone_id; else simulator_id=$ipad_id; fi
   summary_file="$run_dir/summary-$family.txt"
-  if heavy-gate --simulator-session "$simulator_id" -- \
+  if process-gate --simulator-session "$simulator_id" -- \
     sh "$repo_root/script/pre-pr-device.sh" "$run_dir" "$family" "$simulator_id"; then
     :
   else
@@ -78,7 +78,7 @@ for family in iphone ipad; do
     printf '%s session: FAIL (exit %s)\n' "$family" "$status" | tee -a "$summary_file"
     if [ "$status" -eq 75 ]; then
       echo "Session did not complete. Inspect the gate or worker diagnostic above." >&2
-      echo "Check heavy-gate --status and --help; simulator-session and lease-token support are required." >&2
+      echo "Check process-gate --status and --help; simulator-session and lease-token support are required." >&2
     fi
     case "$status" in 74|75|129|130|143) exit "$status" ;; esac
     overall_status=1
