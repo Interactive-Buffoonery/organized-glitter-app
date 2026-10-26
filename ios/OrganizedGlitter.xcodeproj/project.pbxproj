@@ -52,6 +52,7 @@
 		303E37656A20EF88EB7F8E7E /* RecordStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7EA344F5E1133CC94BAC6DB /* RecordStatusTests.swift */; };
 		30E55406A1FB0F955D9C5D1F /* ManageListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B76E5637987BD92005A0F3 /* ManageListsView.swift */; };
 		313EC8D7602D40E948E4975A /* LibraryFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44F321CCDC532B7033EB80A /* LibraryFilterTests.swift */; };
+		32F7142F399D86D164D13BA3 /* CameraRollSaveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80678485C323E1BFE696ED0C /* CameraRollSaveTests.swift */; };
 		33F937DC2E7932E23F2042D3 /* PocketBaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8DDEAF77D2BFB8332BD742A /* PocketBaseClient.swift */; };
 		342C8490F7BBBA1EB1CE9531 /* PocketBaseFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 469E2CDC832BD2CCC3A32EB9 /* PocketBaseFilterTests.swift */; };
 		34401C9DCE7231B3465C4D13 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCC5D630FB65A58EB27EDEC /* AppConfiguration.swift */; };
@@ -59,6 +60,7 @@
 		37404AF106CABEFE16BA8F10 /* LibrarySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554D2223736BF1D4902B498D /* LibrarySession.swift */; };
 		3D6BFE41A3B50BDD4E82CCC5 /* Caveat.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 63076BFAC078AAEE6B474418 /* Caveat.ttf */; };
 		3F93AFCA88B2EB743C6B67D5 /* OAuthWebSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C461A07DF1FA06B1AB75C0 /* OAuthWebSession.swift */; };
+		3FCC28E37720CEE15804CA50 /* CameraRollSave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA1C2905C72D6E9490DCF36 /* CameraRollSave.swift */; };
 		4026BC25DE6D2DCB70DB696B /* LibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A094C2A5CFEB63EB6CC2A818 /* LibraryTests.swift */; };
 		415A713926F09C9B07C86D5D /* PocketBaseDateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371EA167F285531DE866936F /* PocketBaseDateTests.swift */; };
 		4264CD1E0C8948C1AF647295 /* ColoringPageMediumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D820E2DE14E788D05CB4600 /* ColoringPageMediumTests.swift */; };
@@ -255,6 +257,7 @@
 		3931E3144D4F762E170EE04B /* AccountActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountActionsTests.swift; sourceTree = "<group>"; };
 		39A9F5EB63F7156CCDA9FAB6 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		3B9D772610290CBFD91AE91A /* PocketBaseMultipart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PocketBaseMultipart.swift; sourceTree = "<group>"; };
+		3BA1C2905C72D6E9490DCF36 /* CameraRollSave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraRollSave.swift; sourceTree = "<group>"; };
 		3D847E3F5114BC43A87B1FAC /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		3DCAF3CF03153FE04F7EAA84 /* ListPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListPicker.swift; sourceTree = "<group>"; };
 		3F029D79800F22CE6C8BCB60 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
@@ -313,6 +316,7 @@
 		7BCADE99E4C9E7A968F900C5 /* Connectivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connectivity.swift; sourceTree = "<group>"; };
 		7DF7448BB4586E06FB910036 /* OAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthTests.swift; sourceTree = "<group>"; };
 		7FA4FE68327F5F2276F1EC0D /* PasswordResetLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetLink.swift; sourceTree = "<group>"; };
+		80678485C323E1BFE696ED0C /* CameraRollSaveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraRollSaveTests.swift; sourceTree = "<group>"; };
 		845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIErrorTests.swift; sourceTree = "<group>"; };
 		84804F12B2E01DD51C4BD891 /* VerificationRequestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationRequestView.swift; sourceTree = "<group>"; };
 		851DED600F7CB4403A776D95 /* LibraryItemDetailModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItemDetailModel.swift; sourceTree = "<group>"; };
@@ -720,6 +724,7 @@
 				845BD913474C9FAE4F0233D4 /* APIErrorTests.swift */,
 				E8963A0271FAA8AA1C402E65 /* AppModelTests.swift */,
 				9293732657D92D51736C184B /* BackendContractTests.swift */,
+				80678485C323E1BFE696ED0C /* CameraRollSaveTests.swift */,
 				2E7976C3250DB200B8D6BC78 /* ColoringEditorTests.swift */,
 				8D820E2DE14E788D05CB4600 /* ColoringPageMediumTests.swift */,
 				90D0BA2C02A998FAA415BABD /* ColorKeysTests.swift */,
@@ -790,6 +795,7 @@
 			isa = PBXGroup;
 			children = (
 				E6617A2BD4ECAA51B928AC47 /* CameraPicker.swift */,
+				3BA1C2905C72D6E9490DCF36 /* CameraRollSave.swift */,
 				BC53A77B8E88AC5C89B750FB /* CoverImageSection.swift */,
 				DCD3D05754AEB5E4718E7BD7 /* CoverUpload.swift */,
 				4598F11155765ABCC33C5CA7 /* DetailDateOnly.swift */,
@@ -952,6 +958,7 @@
 				8614BA1AF30CAD2F8F36E2EA /* AnalyticsBehaviorTests.swift in Sources */,
 				42DB3225654CE75C370E028F /* AppModelTests.swift in Sources */,
 				D5AD7758FFB77DC9C2723A7F /* BackendContractTests.swift in Sources */,
+				32F7142F399D86D164D13BA3 /* CameraRollSaveTests.swift in Sources */,
 				1E460897FA725591C55EA662 /* ColorKeySymbolTests.swift in Sources */,
 				06D7BAB45F72012BC6F68BC1 /* ColorKeysTests.swift in Sources */,
 				0382C749EC050E1904711CAB /* ColoringEditorTests.swift in Sources */,
@@ -1024,6 +1031,7 @@
 				5A7005B358D623FE511A003B /* BackendContract.swift in Sources */,
 				D7B876020FE9F555417363F7 /* BrandWordmarkArt.swift in Sources */,
 				59A36D30746FC08130204056 /* CameraPicker.swift in Sources */,
+				3FCC28E37720CEE15804CA50 /* CameraRollSave.swift in Sources */,
 				D66F5919F380EAE8F3CD4FF2 /* ChangeEmailView.swift in Sources */,
 				75A70BA95EB3C59C2CEB1D2B /* ChangePasswordView.swift in Sources */,
 				836193DDE95F6BE516E22F5A /* ClassicRandomizerWheel.swift in Sources */,
