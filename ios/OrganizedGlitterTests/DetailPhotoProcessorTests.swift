@@ -111,6 +111,27 @@ struct DetailPhotoProcessorTests {
     #expect(dimensions.height == 120)
   }
 
+  @Test
+  func preparesCameraImageWithinUploadLimitsAndAppliesOrientation() async throws {
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let source = UIGraphicsImageRenderer(size: CGSize(width: 3_000, height: 1_500), format: format)
+      .image { context in
+        UIColor.systemBlue.setFill()
+        context.fill(CGRect(x: 0, y: 0, width: 3_000, height: 1_500))
+      }
+    let image = UIImage(cgImage: try #require(source.cgImage), scale: 1, orientation: .right)
+
+    let result = try await DetailPhotoProcessor.process(image: image)
+
+    #expect(result.contentType == "image/jpeg")
+    #expect(result.fileName == "artwork.jpg")
+    #expect(result.data.count <= DetailPhotoProcessor.maximumOutputBytes)
+    let dimensions = try imageDimensions(result.data)
+    #expect(dimensions.height <= Double(DetailPhotoProcessor.maximumPixelDimension))
+    #expect(abs(dimensions.height / dimensions.width - 2) < 0.02)
+  }
+
   private func imageDimensions(_ data: Data) throws -> (width: Double, height: Double) {
     let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
     let properties = try #require(

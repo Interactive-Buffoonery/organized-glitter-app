@@ -10,6 +10,8 @@ struct CoverImageSection: View {
   let accessibilityNoun: String
   @Binding var change: CoverChange
 
+  @State private var isTakingPhoto = false
+  @State private var cameraImage: UIImage?
   @State private var selectedItem: PhotosPickerItem?
   @State private var cropPhoto: CropSelection?
   @State private var isProcessing = false
@@ -47,6 +49,16 @@ struct CoverImageSection: View {
       // A modifier on the Section repeats on every row, so the task and cover
       // live on this one row instead.
       .task(id: selectedItem) { await prepareSelection() }
+      .fullScreenCover(isPresented: $isTakingPhoto, onDismiss: {
+        guard let image = cameraImage else { return }
+        cameraImage = nil
+        Task { await prepare { try await DetailPhotoProcessor.process(image: image) } }
+      }) {
+        CameraPicker { image in
+          cameraImage = image
+          isTakingPhoto = false
+        }
+      }
       .fullScreenCover(item: $cropPhoto) { selection in
         CoverCropView(photo: selection.photo) { photo in
           change = .replace(photo)
@@ -59,6 +71,13 @@ struct CoverImageSection: View {
       }
       .accessibilityLabel("\(hasCover ? "Replace" : "Choose") \(accessibilityNoun)")
       .disabled(isProcessing)
+      if UIImagePickerController.isSourceTypeAvailable(.camera) {
+        Button("Take Photo", systemImage: "camera") { isTakingPhoto = true }
+          .frame(minHeight: 44)
+          .foregroundStyle(theme.primary)
+          .accessibilityLabel("Take \(accessibilityNoun)")
+          .disabled(isProcessing)
+      }
       if hasCover {
         Button("Crop", systemImage: "crop") { Task { await crop() } }
           .frame(minHeight: 44)
