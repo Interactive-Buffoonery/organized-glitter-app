@@ -1,10 +1,6 @@
 #!/bin/sh
 set -eu
 
-if [ -z "${HEAVY_GATE_LEASE_TOKEN:-}" ]; then
-  echo "Run script/pre-pr.sh to acquire an owned simulator session." >&2
-  exit 75
-fi
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 run_dir=$1
 family=$2
@@ -32,6 +28,7 @@ run_suite() {
     -project OrganizedGlitter.xcodeproj \
     -scheme OrganizedGlitter \
     -destination "platform=iOS Simulator,id=$simulator_id" \
+    ${SIMLOCK_IOS_DEVICE_SET:+"-DVTSimulatorSetLocation=$SIMLOCK_IOS_DEVICE_SET"} \
     -derivedDataPath "$run_dir/DerivedData-$family" \
     -resultBundlePath "$result_bundle" \
     -parallel-testing-enabled NO \
@@ -41,6 +38,8 @@ run_suite() {
     >"$log_file" 2>&1; then
     suite_status=PASS
   else
+    xcodebuild_status=$?
+    case "$xcodebuild_status" in 74|75|129|130|143) exit "$xcodebuild_status" ;; esac
     suite_status=FAIL
     overall_status=1
   fi
