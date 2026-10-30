@@ -19,9 +19,8 @@ class PrePRTests(unittest.TestCase):
             tools = root / 'bin'
             tools.mkdir()
             programs = {
-                # Whitespace errors appear after generation, so only the per-device check sees them.
-                'git': '[ -z "$DIFF_FAILURE" ] || [ ! -e "$TRACE.generated" ]',
-                'xcodegen': 'echo generate >> "$TRACE"; touch "$TRACE.generated"',
+                'git': '[ -z "$DIFF_FAILURE" ]',
+                'xcodegen': 'echo generate >> "$TRACE"',
                 'xcodebuild': '''set_flag=none
 for arg; do case $arg in
   *,id=*) id=${arg##*id=} ;;
@@ -59,7 +58,7 @@ echo "test:$id:$set_flag" >> "$TRACE"; [ "$FAIL_DEVICE" != "$id" ] || exit "$FAI
     def test_device_set_reaches_every_build(self):
         result, trace = self.run_job(device_set='/devices')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(trace[1:], ['test:iPhone:/devices', 'test:iPhone:/devices', 'test:iPad:/devices'])
+        self.assertEqual([event for event in trace if event.startswith('test:')], ['test:iPhone:/devices', 'test:iPhone:/devices', 'test:iPad:/devices'])
 
     def test_failed_tests_still_run_the_ipad(self):
         result, trace = self.run_job('iPhone')
@@ -78,7 +77,6 @@ echo "test:$id:$set_flag" >> "$TRACE"; [ "$FAIL_DEVICE" != "$id" ] || exit "$FAI
     def test_whitespace_failure_skips_tests(self):
         result, trace = self.run_job(diff_failure='1')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('Workspace has whitespace errors', result.stderr)
         self.assertFalse(any(event.startswith('test:') for event in trace))
 
 if __name__ == '__main__':

@@ -72,8 +72,7 @@ inspection, and Dynamic Type captures do not substitute for that pass.
 
 Run `./ios/script/pre-pr.sh` from the repo root; it regenerates the Xcode project
 and runs unit tests on an iPhone plus fixture UI tests on both iPhone and iPad.
-Set `IPHONE_SIMULATOR_ID` and `IPAD_SIMULATOR_ID` to the iOS 26 simulators opened
-for the run. See [the local test guide](../../README.md#tests) for an example and saved results.
+See [the local test guide](../../README.md#tests) for choosing simulators and saved results.
 
 Capture tests accept `TEST_RUNNER_SCREENSHOT_DIR`; the six-screen test also
 accepts `TEST_RUNNER_SCREENSHOT_ORIENTATION=landscape`. Accessibility detail

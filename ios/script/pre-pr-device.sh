@@ -39,6 +39,7 @@ run_suite() {
     suite_status=PASS
   else
     xcodebuild_status=$?
+    # Interrupted or unavailable; pre-pr.sh stops on any status other than 1.
     case "$xcodebuild_status" in 74|75|129|130|143) exit "$xcodebuild_status" ;; esac
     suite_status=FAIL
     overall_status=1

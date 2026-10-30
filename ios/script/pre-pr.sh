@@ -19,17 +19,20 @@ run_dir=$(mktemp -d "$repo_root/.derived-data/pre-pr/run.XXXXXX")
 overall_status=0
 for family in iphone ipad; do
   if [ "$family" = iphone ]; then simulator_id=$IPHONE_SIMULATOR_ID; else simulator_id=$IPAD_SIMULATOR_ID; fi
+  summary_file="$run_dir/summary-$family.txt"
   if sh "$repo_root/script/pre-pr-device.sh" "$run_dir" "$family" "$simulator_id"; then
     :
   else
     status=$?
-    printf '%s session: FAIL (exit %s)\n' "$family" "$status" | tee -a "$run_dir/summary-$family.txt"
-    case "$status" in 74|75|129|130|143) exit "$status" ;; esac
+    printf '%s session: FAIL (exit %s)\n' "$family" "$status" | tee -a "$summary_file"
+    # pre-pr-device.sh exits 1 for failed checks; anything else means the run was stopped.
+    [ "$status" -eq 1 ] || exit "$status"
     overall_status=1
   fi
 done
 for family in iphone ipad; do
-  if [ -f "$run_dir/summary-$family.txt" ]; then cat "$run_dir/summary-$family.txt"; fi
+  summary_file="$run_dir/summary-$family.txt"
+  if [ -f "$summary_file" ]; then cat "$summary_file"; fi
 done
 echo "Logs and Xcode result bundles: $run_dir"
 exit "$overall_status"

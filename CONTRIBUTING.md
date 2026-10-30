@@ -28,8 +28,7 @@ Before opening a pull request, run the local preflight check:
 
 This checks the diff, regenerates the Xcode project, then runs unit tests on
 an iPhone and fixture UI tests on both iPhone and iPad simulators running iOS 26.
-Set `IPHONE_SIMULATOR_ID` and `IPAD_SIMULATOR_ID` to the simulators opened
-for the run. See [the local test guide](README.md#tests) for an example, saved
+See [the local test guide](README.md#tests) for choosing simulators, saved
 results, and opt-in checks.
 
 The app supports iOS and iPadOS 26.0 and newer. Routine development uses iOS

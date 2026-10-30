@@ -104,10 +104,8 @@ native build. The native contract pins verified backend source and schema; it
 does not establish deployment status. No production deployment is part of this
 change. Backend and native PRs must be reviewed together before release.
 
-Run `./ios/script/pre-pr.sh` for unit tests and fixture UI tests on available
-the iOS 26 iPhone and iPad simulators named by `IPHONE_SIMULATOR_ID` and
-`IPAD_SIMULATOR_ID`; see
-[the local test guide](../../README.md#tests). Relevant coverage includes durable
+Run `./ios/script/pre-pr.sh` for unit tests and fixture UI tests on iOS 26
+iPhone and iPad simulators; see [the local test guide](../../README.md#tests). Relevant coverage includes durable
 restart, account isolation, follow-up edits, conflict resolution, snapshot
 failure, local search and sorting, session expiration, sign-out confirmation,
 and cache-only artwork requests. Backend tests run separately against a
