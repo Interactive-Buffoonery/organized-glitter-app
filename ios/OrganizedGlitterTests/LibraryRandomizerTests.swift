@@ -22,6 +22,31 @@ struct LibraryRandomizerTests {
     #expect(RandomizerPageCopy.status("in_stash", mode: .book) == BookStatus.inStash.label)
   }
 
+  @Test func mysteryThumbnailGuardUsesCandidatePageAndCurrentParent() async throws {
+    let library = try localFeatureLibrary()
+    var book = featureBook("book", title: "Book")
+    book.isMystery = true
+    let hidden = ColoringPageRecord(id: "hidden", book: "book", pageNumber: 1,
+      status: "in_progress", photos: ["artwork.png"], revealedSubject: " \n",
+      completedAt: nil, startedAt: nil, created: "", updated: "", expand: nil)
+    let revealed = ColoringPageRecord(id: "revealed", book: "book", pageNumber: 2,
+      status: "in_progress", photos: ["artwork.png"], revealedSubject: "  Garden  ",
+      completedAt: nil, startedAt: nil, created: "", updated: "", expand: nil)
+    try await seed([.book(book), .page(hidden), .page(revealed)], library: library)
+    let candidates = library.randomizerCandidates(mode: .page, verticals: verticals)
+    let hiddenCandidate = try #require(candidates.first { $0.item.recordID == "hidden" })
+    let revealedCandidate = try #require(candidates.first { $0.item.recordID == "revealed" })
+    #expect(library.hidesMysteryThumbnail(for: hiddenCandidate.item))
+    #expect(!library.hidesMysteryThumbnail(for: revealedCandidate.item))
+    #expect(!library.hidesMysteryThumbnail(for: .book(book)))
+    #expect(!library.hidesMysteryThumbnail(for: .diamond(featureProject("project", title: "Project"))))
+
+    _ = try await library.store.queueEdit(scope: library.scope,
+      key: LibraryItem.book(book).localRecordKey, patch: ["is_mystery": .bool(false)])
+    try await library.loadLocal()
+    #expect(!library.hidesMysteryThumbnail(for: hiddenCandidate.item))
+  }
+
   @Test func defaultsUseRawStatusesForEachMode() async throws {
     let library = try localFeatureLibrary()
     try await seed([

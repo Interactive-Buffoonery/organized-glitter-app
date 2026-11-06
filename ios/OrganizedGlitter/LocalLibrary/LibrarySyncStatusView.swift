@@ -13,11 +13,13 @@ struct LibrarySyncStatusView: View {
           .font(.karla(.footnote))
           .frame(maxWidth: .infinity, alignment: .leading)
         Button(actionTitle) {
-          if library.conflicts.isEmpty {
+          if library.conflicts.isEmpty && library.mediumAttempts.isEmpty {
             library.captureAnalytics(.syncRequested, properties: ["pending_count": min(10_000, library.pendingCount)])
             Task { try? await library.refresh(force: true) }
           } else {
-            library.captureAnalytics(.conflictReviewOpened, properties: ["pending_count": min(10_000, library.pendingCount)])
+            if !library.conflicts.isEmpty || library.mediumAttempts.contains(where: { $0.state == .conflict }) {
+              library.captureAnalytics(.conflictReviewOpened, properties: ["pending_count": min(10_000, library.pendingCount)])
+            }
             formDrawer.present(detents: [.medium, .large]) {
               NavigationStack { LibraryConflictView(library: library) }
             }
@@ -32,6 +34,9 @@ struct LibrarySyncStatusView: View {
   }
 
   private var message: String {
+    if !library.mediumAttempts.isEmpty {
+      return "A medium save needs review. Its recovery request is kept on this device."
+    }
     if !library.conflicts.isEmpty {
       return "\(library.conflicts.count) saved item\(library.conflicts.count == 1 ? "" : "s") need review. Your edits are still on this device."
     }
@@ -46,7 +51,7 @@ struct LibrarySyncStatusView: View {
   }
 
   private var actionTitle: String {
-    if !library.conflicts.isEmpty { return "Review" }
+    if !library.conflicts.isEmpty || !library.mediumAttempts.isEmpty { return "Review" }
     return library.syncMessage == nil ? "Sync" : "Try Again"
   }
 }
@@ -60,6 +65,12 @@ private struct LibraryConflictView: View {
   var body: some View {
     List {
       if let errorMessage { AccessibleErrorLabel(message: errorMessage) }
+      ForEach(library.mediumAttempts) { attempt in
+        Section(library.items.first(where: { $0.recordID == attempt.pageID && $0.section == .pages })?.title
+          ?? "Unavailable coloring page") {
+          PageMediumRecovery(library: library, attempt: attempt)
+        }
+      }
       ForEach(library.conflicts, id: \.item.id) { entry in
         Section(entry.item.title) {
           if entry.conflict == .deletedOnServer || entry.conflict == .rejectedByServer {

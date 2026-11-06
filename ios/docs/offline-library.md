@@ -7,12 +7,30 @@ progress notes from a private SwiftData store. Existing metadata and status
 edits save locally, including while offline. PocketBase remains the only
 backend and identity system. There is no CloudKit sync or guest account.
 
+Mystery pages use their cached parent book's mystery flag. Revealing a page
+queues a trimmed answer and the current calendar day as `revealed_at`. Editing
+an answer preserves that day; hiding clears both values without changing status
+or completion. These fields share the page lifecycle conflict group. Unrevealed
+mystery pages show a page-number placeholder in book grids and Library/Search;
+the user's photos remain visible in Detail, Home, and Notes.
+
 Creation, deletion, note submission, file uploads, taxonomy changes, account
 settings, and changing a book's page count require a connection. The server
 continues to generate coloring pages and maintain derived values. Online
 changes pass through LibrarySession and update the local view after acceptance.
 An accepted remote write must not be retried merely because a later local
 refresh failed.
+
+Page medium attachment also requires a connection. Its online save uses the
+transactional mobile apply route with the original raw ID array and a stable
+operation ID. A private account-scoped receipt journal keeps the frozen request
+until the server confirms it. This journal does not compose or synchronize
+offline edits. Uncertain saves survive restart and must be recovered with the
+same request before another save can start. Conflicts keep the draft and offer
+explicit reapplication against the returned account version. Accepted or replayed
+records and journal removal commit together; replay uses the current account
+record. Snapshots cannot discard the journal when a page disappears. Sign-out
+includes it in pending-work warnings and account cleanup.
 
 ## Components
 
@@ -86,12 +104,8 @@ native build. The native contract pins verified backend source and schema; it
 does not establish deployment status. No production deployment is part of this
 change. Backend and native PRs must be reviewed together before release.
 
-Run `./ios/script/pre-pr.sh` for unit tests and fixture UI tests on available
-iOS 26 iPhone and iPad simulators. To select specific devices, set
-`IPHONE_SIMULATOR_ID` and `IPAD_SIMULATOR_ID` using IDs from
-`xcrun simctl list devices available`. Each override is optional and must match
-the device family and iOS 26 runtime; see
-[the local test guide](../../README.md#tests). Relevant coverage includes durable
+Run `./ios/script/pre-pr.sh` for unit tests and fixture UI tests on iOS 26
+iPhone and iPad simulators; see [the local test guide](../../README.md#tests). Relevant coverage includes durable
 restart, account isolation, follow-up edits, conflict resolution, snapshot
 failure, local search and sorting, session expiration, sign-out confirmation,
 and cache-only artwork requests. Backend tests run separately against a

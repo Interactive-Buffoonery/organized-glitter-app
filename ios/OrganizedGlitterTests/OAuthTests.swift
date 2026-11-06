@@ -351,7 +351,7 @@ private final class OAuthHTTP: URLProtocol, @unchecked Sendable {
   override func startLoading() {
     Self.lock.lock()
     Self.captured.append(request)
-    Self.bodies.append(bodyData)
+    Self.bodies.append(request.bodyData)
     let gate = request.url?.path == "/api/collections/users/auth-with-oauth2" ? Self.exchangeGate : nil
     Self.lock.unlock()
     _ = gate?.wait(timeout: .now() + 3)
@@ -376,18 +376,4 @@ private final class OAuthHTTP: URLProtocol, @unchecked Sendable {
   }
 
   override func stopLoading() {}
-
-  private var bodyData: Data {
-    if let body = request.httpBody { return body }
-    guard let stream = request.httpBodyStream else { return Data() }
-    stream.open()
-    defer { stream.close() }
-    var result = Data()
-    var buffer = [UInt8](repeating: 0, count: 1_024)
-    while true {
-      let count = stream.read(&buffer, maxLength: buffer.count)
-      guard count > 0 else { return result }
-      result.append(buffer, count: count)
-    }
-  }
 }

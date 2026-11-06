@@ -30,6 +30,23 @@ enum NotesCraft: String, CaseIterable, Identifiable, Sendable {
   }
 }
 
+enum NotesSourceID: Hashable, Sendable {
+  case project(String)
+  case book(String)
+
+  var sortKey: String {
+    switch self {
+    case .project(let id): "project:\(id)"
+    case .book(let id): "book:\(id)"
+    }
+  }
+}
+
+struct NotesSource: Identifiable, Hashable, Sendable {
+  let id: NotesSourceID
+  let title: String
+}
+
 /// One progress note with the project or page it belongs to.
 struct NotesFeedEntry: Identifiable, Hashable, Sendable {
   let note: ProgressNoteItem
@@ -42,6 +59,14 @@ struct NotesFeedEntry: Identifiable, Hashable, Sendable {
   var craft: NotesCraft {
     if case .diamond = note { return .diamond }
     return .coloring
+  }
+
+  var sourceID: NotesSourceID? {
+    switch target {
+    case .diamond(let project): .project(project.id)
+    case .page(let page): .book(page.book)
+    case .book: nil
+    }
   }
 
   var year: Int? { Int(note.date.prefix(4)) }
@@ -114,7 +139,8 @@ enum NotesFeed {
   }
 
   static func filter(
-    _ entries: [NotesFeedEntry], craft: NotesCraft, year: Int?, verticals: VerticalPreferences
+    _ entries: [NotesFeedEntry], craft: NotesCraft, year: Int?, verticals: VerticalPreferences,
+    source: NotesSourceID? = nil
   ) -> [NotesFeedEntry] {
     let available = NotesCraft.available(for: verticals)
     guard let selected = craft.resolved(for: verticals) else { return [] }
@@ -122,7 +148,31 @@ enum NotesFeed {
       available.contains($0.craft)
         && (selected == .all || $0.craft == selected)
         && (year == nil || $0.year == year)
+        && (source == nil || $0.sourceID == source)
     }
+  }
+
+  /// Only current account sources with notes in the selected craft are offered.
+  static func sources(in entries: [NotesFeedEntry], items: [LibraryItem]) -> [NotesSource] {
+    let sourceIDs = Set(entries.compactMap(\.sourceID))
+    return items.compactMap { item -> NotesSource? in
+      let id: NotesSourceID
+      switch item {
+      case .diamond(let project): id = .project(project.id)
+      case .book(let book): id = .book(book.id)
+      case .page: return nil
+      }
+      guard sourceIDs.contains(id) else { return nil }
+      return NotesSource(id: id, title: item.title)
+    }.sorted {
+      let comparison = $0.title.localizedStandardCompare($1.title)
+      if comparison != .orderedSame { return comparison == .orderedAscending }
+      return $0.id.sortKey < $1.id.sortKey
+    }
+  }
+
+  static func resolvedSource(_ source: NotesSourceID?, in sources: [NotesSource]) -> NotesSourceID? {
+    source.flatMap { selected in sources.contains { $0.id == selected } ? selected : nil }
   }
 
   /// Newest year first.

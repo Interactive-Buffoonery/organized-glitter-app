@@ -1,0 +1,4919 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "numbers",
+      "label": "Numbers"
+    },
+    {
+      "id": "lowercase",
+      "label": "Lowercase"
+    },
+    {
+      "id": "uppercase",
+      "label": "Uppercase"
+    },
+    {
+      "id": "greek",
+      "label": "Greek"
+    },
+    {
+      "id": "money",
+      "label": "Money"
+    },
+    {
+      "id": "math",
+      "label": "Math"
+    },
+    {
+      "id": "music",
+      "label": "Music"
+    },
+    {
+      "id": "signs",
+      "label": "Signs"
+    },
+    {
+      "id": "letters-extra",
+      "label": "Extra letters"
+    },
+    {
+      "id": "shapes",
+      "label": "Shapes"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "u:0030",
+      "char": "0",
+      "name": "Zero",
+      "group": "numbers",
+      "keywords": ["zero", "0"]
+    },
+    {
+      "id": "u:0031",
+      "char": "1",
+      "name": "One",
+      "group": "numbers",
+      "keywords": ["one", "1"]
+    },
+    {
+      "id": "u:0032",
+      "char": "2",
+      "name": "Two",
+      "group": "numbers",
+      "keywords": ["two", "2"]
+    },
+    {
+      "id": "u:0033",
+      "char": "3",
+      "name": "Three",
+      "group": "numbers",
+      "keywords": ["three", "3"]
+    },
+    {
+      "id": "u:0034",
+      "char": "4",
+      "name": "Four",
+      "group": "numbers",
+      "keywords": ["four", "4"]
+    },
+    {
+      "id": "u:0035",
+      "char": "5",
+      "name": "Five",
+      "group": "numbers",
+      "keywords": ["five", "5"]
+    },
+    {
+      "id": "u:0036",
+      "char": "6",
+      "name": "Six",
+      "group": "numbers",
+      "keywords": ["six", "6"]
+    },
+    {
+      "id": "u:0037",
+      "char": "7",
+      "name": "Seven",
+      "group": "numbers",
+      "keywords": ["seven", "7"]
+    },
+    {
+      "id": "u:0038",
+      "char": "8",
+      "name": "Eight",
+      "group": "numbers",
+      "keywords": ["eight", "8"]
+    },
+    {
+      "id": "u:0039",
+      "char": "9",
+      "name": "Nine",
+      "group": "numbers",
+      "keywords": ["nine", "9"]
+    },
+    {
+      "id": "u:0061",
+      "char": "a",
+      "name": "Lowercase a",
+      "group": "lowercase",
+      "keywords": ["lowercase a", "a"]
+    },
+    {
+      "id": "u:0062",
+      "char": "b",
+      "name": "Lowercase b",
+      "group": "lowercase",
+      "keywords": ["lowercase b", "b"]
+    },
+    {
+      "id": "u:0063",
+      "char": "c",
+      "name": "Lowercase c",
+      "group": "lowercase",
+      "keywords": ["lowercase c", "c"]
+    },
+    {
+      "id": "u:0064",
+      "char": "d",
+      "name": "Lowercase d",
+      "group": "lowercase",
+      "keywords": ["lowercase d", "d"]
+    },
+    {
+      "id": "u:0065",
+      "char": "e",
+      "name": "Lowercase e",
+      "group": "lowercase",
+      "keywords": ["lowercase e", "e"]
+    },
+    {
+      "id": "u:0066",
+      "char": "f",
+      "name": "Lowercase f",
+      "group": "lowercase",
+      "keywords": ["lowercase f", "f"]
+    },
+    {
+      "id": "u:0067",
+      "char": "g",
+      "name": "Lowercase g",
+      "group": "lowercase",
+      "keywords": ["lowercase g", "g"]
+    },
+    {
+      "id": "u:0068",
+      "char": "h",
+      "name": "Lowercase h",
+      "group": "lowercase",
+      "keywords": ["lowercase h", "h"]
+    },
+    {
+      "id": "u:0069",
+      "char": "i",
+      "name": "Lowercase i",
+      "group": "lowercase",
+      "keywords": ["lowercase i", "i"]
+    },
+    {
+      "id": "u:006A",
+      "char": "j",
+      "name": "Lowercase j",
+      "group": "lowercase",
+      "keywords": ["lowercase j", "j"]
+    },
+    {
+      "id": "u:006B",
+      "char": "k",
+      "name": "Lowercase k",
+      "group": "lowercase",
+      "keywords": ["lowercase k", "k"]
+    },
+    {
+      "id": "u:006C",
+      "char": "l",
+      "name": "Lowercase l",
+      "group": "lowercase",
+      "keywords": ["lowercase l", "l"]
+    },
+    {
+      "id": "u:006D",
+      "char": "m",
+      "name": "Lowercase m",
+      "group": "lowercase",
+      "keywords": ["lowercase m", "m"]
+    },
+    {
+      "id": "u:006E",
+      "char": "n",
+      "name": "Lowercase n",
+      "group": "lowercase",
+      "keywords": ["lowercase n", "n"]
+    },
+    {
+      "id": "u:006F",
+      "char": "o",
+      "name": "Lowercase o",
+      "group": "lowercase",
+      "keywords": ["lowercase o", "o"]
+    },
+    {
+      "id": "u:0070",
+      "char": "p",
+      "name": "Lowercase p",
+      "group": "lowercase",
+      "keywords": ["lowercase p", "p"]
+    },
+    {
+      "id": "u:0071",
+      "char": "q",
+      "name": "Lowercase q",
+      "group": "lowercase",
+      "keywords": ["lowercase q", "q"]
+    },
+    {
+      "id": "u:0072",
+      "char": "r",
+      "name": "Lowercase r",
+      "group": "lowercase",
+      "keywords": ["lowercase r", "r"]
+    },
+    {
+      "id": "u:0073",
+      "char": "s",
+      "name": "Lowercase s",
+      "group": "lowercase",
+      "keywords": ["lowercase s", "s"]
+    },
+    {
+      "id": "u:0074",
+      "char": "t",
+      "name": "Lowercase t",
+      "group": "lowercase",
+      "keywords": ["lowercase t", "t"]
+    },
+    {
+      "id": "u:0075",
+      "char": "u",
+      "name": "Lowercase u",
+      "group": "lowercase",
+      "keywords": ["lowercase u", "u"]
+    },
+    {
+      "id": "u:0076",
+      "char": "v",
+      "name": "Lowercase v",
+      "group": "lowercase",
+      "keywords": ["lowercase v", "v"]
+    },
+    {
+      "id": "u:0077",
+      "char": "w",
+      "name": "Lowercase w",
+      "group": "lowercase",
+      "keywords": ["lowercase w", "w"]
+    },
+    {
+      "id": "u:0078",
+      "char": "x",
+      "name": "Lowercase x",
+      "group": "lowercase",
+      "keywords": ["lowercase x", "x"]
+    },
+    {
+      "id": "u:0079",
+      "char": "y",
+      "name": "Lowercase y",
+      "group": "lowercase",
+      "keywords": ["lowercase y", "y"]
+    },
+    {
+      "id": "u:007A",
+      "char": "z",
+      "name": "Lowercase z",
+      "group": "lowercase",
+      "keywords": ["lowercase z", "z"]
+    },
+    {
+      "id": "u:0041",
+      "char": "A",
+      "name": "Uppercase A",
+      "group": "uppercase",
+      "keywords": ["uppercase a", "a"]
+    },
+    {
+      "id": "u:0042",
+      "char": "B",
+      "name": "Uppercase B",
+      "group": "uppercase",
+      "keywords": ["uppercase b", "b"]
+    },
+    {
+      "id": "u:0043",
+      "char": "C",
+      "name": "Uppercase C",
+      "group": "uppercase",
+      "keywords": ["uppercase c", "c"]
+    },
+    {
+      "id": "u:0044",
+      "char": "D",
+      "name": "Uppercase D",
+      "group": "uppercase",
+      "keywords": ["uppercase d", "d"]
+    },
+    {
+      "id": "u:0045",
+      "char": "E",
+      "name": "Uppercase E",
+      "group": "uppercase",
+      "keywords": ["uppercase e", "e"]
+    },
+    {
+      "id": "u:0046",
+      "char": "F",
+      "name": "Uppercase F",
+      "group": "uppercase",
+      "keywords": ["uppercase f", "f"]
+    },
+    {
+      "id": "u:0047",
+      "char": "G",
+      "name": "Uppercase G",
+      "group": "uppercase",
+      "keywords": ["uppercase g", "g"]
+    },
+    {
+      "id": "u:0048",
+      "char": "H",
+      "name": "Uppercase H",
+      "group": "uppercase",
+      "keywords": ["uppercase h", "h"]
+    },
+    {
+      "id": "u:0049",
+      "char": "I",
+      "name": "Uppercase I",
+      "group": "uppercase",
+      "keywords": ["uppercase i", "i"]
+    },
+    {
+      "id": "u:004A",
+      "char": "J",
+      "name": "Uppercase J",
+      "group": "uppercase",
+      "keywords": ["uppercase j", "j"]
+    },
+    {
+      "id": "u:004B",
+      "char": "K",
+      "name": "Uppercase K",
+      "group": "uppercase",
+      "keywords": ["uppercase k", "k"]
+    },
+    {
+      "id": "u:004C",
+      "char": "L",
+      "name": "Uppercase L",
+      "group": "uppercase",
+      "keywords": ["uppercase l", "l"]
+    },
+    {
+      "id": "u:004D",
+      "char": "M",
+      "name": "Uppercase M",
+      "group": "uppercase",
+      "keywords": ["uppercase m", "m"]
+    },
+    {
+      "id": "u:004E",
+      "char": "N",
+      "name": "Uppercase N",
+      "group": "uppercase",
+      "keywords": ["uppercase n", "n"]
+    },
+    {
+      "id": "u:004F",
+      "char": "O",
+      "name": "Uppercase O",
+      "group": "uppercase",
+      "keywords": ["uppercase o", "o"]
+    },
+    {
+      "id": "u:0050",
+      "char": "P",
+      "name": "Uppercase P",
+      "group": "uppercase",
+      "keywords": ["uppercase p", "p"]
+    },
+    {
+      "id": "u:0051",
+      "char": "Q",
+      "name": "Uppercase Q",
+      "group": "uppercase",
+      "keywords": ["uppercase q", "q"]
+    },
+    {
+      "id": "u:0052",
+      "char": "R",
+      "name": "Uppercase R",
+      "group": "uppercase",
+      "keywords": ["uppercase r", "r"]
+    },
+    {
+      "id": "u:0053",
+      "char": "S",
+      "name": "Uppercase S",
+      "group": "uppercase",
+      "keywords": ["uppercase s", "s"]
+    },
+    {
+      "id": "u:0054",
+      "char": "T",
+      "name": "Uppercase T",
+      "group": "uppercase",
+      "keywords": ["uppercase t", "t"]
+    },
+    {
+      "id": "u:0055",
+      "char": "U",
+      "name": "Uppercase U",
+      "group": "uppercase",
+      "keywords": ["uppercase u", "u"]
+    },
+    {
+      "id": "u:0056",
+      "char": "V",
+      "name": "Uppercase V",
+      "group": "uppercase",
+      "keywords": ["uppercase v", "v"]
+    },
+    {
+      "id": "u:0057",
+      "char": "W",
+      "name": "Uppercase W",
+      "group": "uppercase",
+      "keywords": ["uppercase w", "w"]
+    },
+    {
+      "id": "u:0058",
+      "char": "X",
+      "name": "Uppercase X",
+      "group": "uppercase",
+      "keywords": ["uppercase x", "x"]
+    },
+    {
+      "id": "u:0059",
+      "char": "Y",
+      "name": "Uppercase Y",
+      "group": "uppercase",
+      "keywords": ["uppercase y", "y"]
+    },
+    {
+      "id": "u:005A",
+      "char": "Z",
+      "name": "Uppercase Z",
+      "group": "uppercase",
+      "keywords": ["uppercase z", "z"]
+    },
+    {
+      "id": "u:03B1",
+      "char": "α",
+      "name": "Alpha",
+      "group": "greek",
+      "keywords": ["alpha", "fish"]
+    },
+    {
+      "id": "u:03B2",
+      "char": "β",
+      "name": "Beta",
+      "group": "greek",
+      "keywords": ["beta", "b with tail"]
+    },
+    {
+      "id": "u:03B3",
+      "char": "γ",
+      "name": "Gamma",
+      "group": "greek",
+      "keywords": ["gamma"]
+    },
+    {
+      "id": "u:03B4",
+      "char": "δ",
+      "name": "Delta",
+      "group": "greek",
+      "keywords": ["delta", "curled triangle"]
+    },
+    {
+      "id": "u:03B5",
+      "char": "ε",
+      "name": "Epsilon",
+      "group": "greek",
+      "keywords": ["epsilon", "curled e"]
+    },
+    {
+      "id": "u:03B6",
+      "char": "ζ",
+      "name": "Zeta",
+      "group": "greek",
+      "keywords": ["zeta", "curled z"]
+    },
+    {
+      "id": "u:03B7",
+      "char": "η",
+      "name": "Eta",
+      "group": "greek",
+      "keywords": ["eta", "n with tail"]
+    },
+    {
+      "id": "u:03B8",
+      "char": "θ",
+      "name": "Theta",
+      "group": "greek",
+      "keywords": ["theta", "oval with line"]
+    },
+    {
+      "id": "u:03B9",
+      "char": "ι",
+      "name": "Iota",
+      "group": "greek",
+      "keywords": ["iota", "i without dot"]
+    },
+    {
+      "id": "u:03BA",
+      "char": "κ",
+      "name": "Kappa",
+      "group": "greek",
+      "keywords": ["kappa"]
+    },
+    {
+      "id": "u:03BB",
+      "char": "λ",
+      "name": "Lambda",
+      "group": "greek",
+      "keywords": ["lambda", "upside down y"]
+    },
+    {
+      "id": "u:03BC",
+      "char": "μ",
+      "name": "Mu",
+      "group": "greek",
+      "keywords": ["mu", "u with tail"]
+    },
+    {
+      "id": "u:03BD",
+      "char": "ν",
+      "name": "Nu",
+      "group": "greek",
+      "keywords": ["nu", "v"]
+    },
+    {
+      "id": "u:03BE",
+      "char": "ξ",
+      "name": "Xi",
+      "group": "greek",
+      "keywords": ["xi", "three curls"]
+    },
+    {
+      "id": "u:03BF",
+      "char": "ο",
+      "name": "Omicron",
+      "group": "greek",
+      "keywords": ["omicron", "o"]
+    },
+    {
+      "id": "u:03C0",
+      "char": "π",
+      "name": "Pi",
+      "group": "greek",
+      "keywords": ["pi", "table", "arch"]
+    },
+    {
+      "id": "u:03C1",
+      "char": "ρ",
+      "name": "Rho",
+      "group": "greek",
+      "keywords": ["rho", "p"]
+    },
+    {
+      "id": "u:03C3",
+      "char": "σ",
+      "name": "Sigma",
+      "group": "greek",
+      "keywords": ["sigma", "circle with tail"]
+    },
+    {
+      "id": "u:03C2",
+      "char": "ς",
+      "name": "Final sigma",
+      "group": "greek",
+      "keywords": ["final sigma"]
+    },
+    {
+      "id": "u:03C4",
+      "char": "τ",
+      "name": "Tau",
+      "group": "greek",
+      "keywords": ["tau", "t"]
+    },
+    {
+      "id": "u:03C5",
+      "char": "υ",
+      "name": "Upsilon",
+      "group": "greek",
+      "keywords": ["upsilon", "u"]
+    },
+    {
+      "id": "u:03C6",
+      "char": "φ",
+      "name": "Phi",
+      "group": "greek",
+      "keywords": ["phi", "circle with line"]
+    },
+    {
+      "id": "u:03C7",
+      "char": "χ",
+      "name": "Chi",
+      "group": "greek",
+      "keywords": ["chi", "x"]
+    },
+    {
+      "id": "u:03C8",
+      "char": "ψ",
+      "name": "Psi",
+      "group": "greek",
+      "keywords": ["psi", "trident", "fork"]
+    },
+    {
+      "id": "u:03C9",
+      "char": "ω",
+      "name": "Omega",
+      "group": "greek",
+      "keywords": ["omega", "curly w"]
+    },
+    {
+      "id": "u:0391",
+      "char": "Α",
+      "name": "Uppercase alpha",
+      "group": "greek",
+      "keywords": ["uppercase alpha", "a"]
+    },
+    {
+      "id": "u:0392",
+      "char": "Β",
+      "name": "Uppercase beta",
+      "group": "greek",
+      "keywords": ["uppercase beta", "b"]
+    },
+    {
+      "id": "u:0393",
+      "char": "Γ",
+      "name": "Uppercase gamma",
+      "group": "greek",
+      "keywords": ["uppercase gamma"]
+    },
+    {
+      "id": "u:0394",
+      "char": "Δ",
+      "name": "Uppercase delta",
+      "group": "greek",
+      "keywords": ["uppercase delta", "delta", "triangle"]
+    },
+    {
+      "id": "u:0395",
+      "char": "Ε",
+      "name": "Uppercase epsilon",
+      "group": "greek",
+      "keywords": ["uppercase epsilon", "e"]
+    },
+    {
+      "id": "u:0396",
+      "char": "Ζ",
+      "name": "Uppercase zeta",
+      "group": "greek",
+      "keywords": ["uppercase zeta", "z"]
+    },
+    {
+      "id": "u:0397",
+      "char": "Η",
+      "name": "Uppercase eta",
+      "group": "greek",
+      "keywords": ["uppercase eta", "h"]
+    },
+    {
+      "id": "u:0398",
+      "char": "Θ",
+      "name": "Uppercase theta",
+      "group": "greek",
+      "keywords": ["uppercase theta", "theta", "oval with line"]
+    },
+    {
+      "id": "u:0399",
+      "char": "Ι",
+      "name": "Uppercase iota",
+      "group": "greek",
+      "keywords": ["uppercase iota", "i"]
+    },
+    {
+      "id": "u:039A",
+      "char": "Κ",
+      "name": "Uppercase kappa",
+      "group": "greek",
+      "keywords": ["uppercase kappa", "k"]
+    },
+    {
+      "id": "u:039B",
+      "char": "Λ",
+      "name": "Uppercase lambda",
+      "group": "greek",
+      "keywords": ["uppercase lambda", "lambda", "upside down v"]
+    },
+    {
+      "id": "u:039C",
+      "char": "Μ",
+      "name": "Uppercase mu",
+      "group": "greek",
+      "keywords": ["uppercase mu", "mu", "m"]
+    },
+    {
+      "id": "u:039D",
+      "char": "Ν",
+      "name": "Uppercase nu",
+      "group": "greek",
+      "keywords": ["uppercase nu", "n"]
+    },
+    {
+      "id": "u:039E",
+      "char": "Ξ",
+      "name": "Uppercase xi",
+      "group": "greek",
+      "keywords": ["uppercase xi"]
+    },
+    {
+      "id": "u:039F",
+      "char": "Ο",
+      "name": "Uppercase omicron",
+      "group": "greek",
+      "keywords": ["uppercase omicron", "o"]
+    },
+    {
+      "id": "u:03A0",
+      "char": "Π",
+      "name": "Uppercase pi",
+      "group": "greek",
+      "keywords": ["uppercase pi", "pi", "table", "arch"]
+    },
+    {
+      "id": "u:03A1",
+      "char": "Ρ",
+      "name": "Uppercase rho",
+      "group": "greek",
+      "keywords": ["uppercase rho", "p"]
+    },
+    {
+      "id": "u:03A3",
+      "char": "Σ",
+      "name": "Uppercase sigma",
+      "group": "greek",
+      "keywords": ["uppercase sigma", "sigma", "sideways m", "zigzag"]
+    },
+    {
+      "id": "u:03A4",
+      "char": "Τ",
+      "name": "Uppercase tau",
+      "group": "greek",
+      "keywords": ["uppercase tau", "t"]
+    },
+    {
+      "id": "u:03A5",
+      "char": "Υ",
+      "name": "Uppercase upsilon",
+      "group": "greek",
+      "keywords": ["uppercase upsilon", "y"]
+    },
+    {
+      "id": "u:03A6",
+      "char": "Φ",
+      "name": "Uppercase phi",
+      "group": "greek",
+      "keywords": ["uppercase phi", "phi", "circle with line"]
+    },
+    {
+      "id": "u:03A7",
+      "char": "Χ",
+      "name": "Uppercase chi",
+      "group": "greek",
+      "keywords": ["uppercase chi", "x"]
+    },
+    {
+      "id": "u:03A8",
+      "char": "Ψ",
+      "name": "Uppercase psi",
+      "group": "greek",
+      "keywords": ["uppercase psi", "trident", "fork"]
+    },
+    {
+      "id": "u:03A9",
+      "char": "Ω",
+      "name": "Uppercase omega",
+      "group": "greek",
+      "keywords": ["uppercase omega", "omega", "horseshoe"]
+    },
+    {
+      "id": "u:03D0",
+      "char": "ϐ",
+      "name": "Beta symbol",
+      "group": "greek",
+      "keywords": ["beta symbol"]
+    },
+    {
+      "id": "u:03D1",
+      "char": "ϑ",
+      "name": "Theta symbol",
+      "group": "greek",
+      "keywords": ["theta symbol"]
+    },
+    {
+      "id": "u:03D5",
+      "char": "ϕ",
+      "name": "Phi symbol",
+      "group": "greek",
+      "keywords": ["phi symbol"]
+    },
+    {
+      "id": "u:03D6",
+      "char": "ϖ",
+      "name": "Pi symbol",
+      "group": "greek",
+      "keywords": ["pi symbol"]
+    },
+    {
+      "id": "u:03F0",
+      "char": "ϰ",
+      "name": "Kappa symbol",
+      "group": "greek",
+      "keywords": ["kappa symbol"]
+    },
+    {
+      "id": "u:03F1",
+      "char": "ϱ",
+      "name": "Rho symbol",
+      "group": "greek",
+      "keywords": ["rho symbol"]
+    },
+    {
+      "id": "u:03F5",
+      "char": "ϵ",
+      "name": "Lunate epsilon symbol",
+      "group": "greek",
+      "keywords": ["lunate epsilon symbol"]
+    },
+    {
+      "id": "u:0024",
+      "char": "$",
+      "name": "Dollar sign",
+      "group": "money",
+      "keywords": ["dollar sign", "dollar", "s with line"]
+    },
+    {
+      "id": "u:20AC",
+      "char": "€",
+      "name": "Euro sign",
+      "group": "money",
+      "keywords": ["euro sign", "euro", "c with lines"]
+    },
+    {
+      "id": "u:00A3",
+      "char": "£",
+      "name": "Pound sign",
+      "group": "money",
+      "keywords": ["pound sign", "pound", "l with line"]
+    },
+    {
+      "id": "u:00A5",
+      "char": "¥",
+      "name": "Yen sign",
+      "group": "money",
+      "keywords": ["yen sign", "yen", "y with lines", "y with bars"]
+    },
+    {
+      "id": "u:20AA",
+      "char": "₪",
+      "name": "New sheqel sign",
+      "group": "money",
+      "keywords": ["new sheqel sign", "shekel"]
+    },
+    {
+      "id": "u:20B8",
+      "char": "₸",
+      "name": "Tenge sign",
+      "group": "money",
+      "keywords": ["tenge sign", "tenge", "t with lines"]
+    },
+    {
+      "id": "u:00A2",
+      "char": "¢",
+      "name": "Cent sign",
+      "group": "money",
+      "keywords": ["cent sign", "cent", "c with line"]
+    },
+    {
+      "id": "u:20B9",
+      "char": "₹",
+      "name": "Indian rupee sign",
+      "group": "money",
+      "keywords": ["indian rupee sign", "rupee", "r with lines"]
+    },
+    {
+      "id": "u:20A9",
+      "char": "₩",
+      "name": "Won sign",
+      "group": "money",
+      "keywords": ["won sign", "won", "w with lines"]
+    },
+    {
+      "id": "u:20BD",
+      "char": "₽",
+      "name": "Ruble sign",
+      "group": "money",
+      "keywords": ["ruble sign", "ruble", "p with line"]
+    },
+    {
+      "id": "u:20BA",
+      "char": "₺",
+      "name": "Turkish lira sign",
+      "group": "money",
+      "keywords": ["turkish lira sign", "lira", "l with lines"]
+    },
+    {
+      "id": "u:20BF",
+      "char": "₿",
+      "name": "Bitcoin sign",
+      "group": "money",
+      "keywords": ["bitcoin sign", "bitcoin", "b with lines"]
+    },
+    {
+      "id": "u:00A4",
+      "char": "¤",
+      "name": "Currency sign",
+      "group": "money",
+      "keywords": ["currency sign"]
+    },
+    {
+      "id": "u:0E3F",
+      "char": "฿",
+      "name": "Thai currency symbol baht",
+      "group": "money",
+      "keywords": ["thai currency symbol baht"]
+    },
+    {
+      "id": "u:20AB",
+      "char": "₫",
+      "name": "Dong sign",
+      "group": "money",
+      "keywords": ["dong sign"]
+    },
+    {
+      "id": "u:20B4",
+      "char": "₴",
+      "name": "Hryvnia sign",
+      "group": "money",
+      "keywords": ["hryvnia sign"]
+    },
+    {
+      "id": "u:20A6",
+      "char": "₦",
+      "name": "Naira sign",
+      "group": "money",
+      "keywords": ["naira sign"]
+    },
+    {
+      "id": "u:20B1",
+      "char": "₱",
+      "name": "Peso sign",
+      "group": "money",
+      "keywords": ["peso sign"]
+    },
+    {
+      "id": "u:20B2",
+      "char": "₲",
+      "name": "Guarani sign",
+      "group": "money",
+      "keywords": ["guarani sign"]
+    },
+    {
+      "id": "u:20B5",
+      "char": "₵",
+      "name": "Cedi sign",
+      "group": "money",
+      "keywords": ["cedi sign"]
+    },
+    {
+      "id": "u:20A1",
+      "char": "₡",
+      "name": "Colon sign",
+      "group": "money",
+      "keywords": ["colon sign"]
+    },
+    {
+      "id": "u:20AD",
+      "char": "₭",
+      "name": "Kip sign",
+      "group": "money",
+      "keywords": ["kip sign"]
+    },
+    {
+      "id": "u:20AE",
+      "char": "₮",
+      "name": "Tugrik sign",
+      "group": "money",
+      "keywords": ["tugrik sign"]
+    },
+    {
+      "id": "u:20A8",
+      "char": "₨",
+      "name": "Rupee sign",
+      "group": "money",
+      "keywords": ["rupee sign"]
+    },
+    {
+      "id": "u:20BC",
+      "char": "₼",
+      "name": "Manat sign",
+      "group": "money",
+      "keywords": ["manat sign"]
+    },
+    {
+      "id": "u:20BE",
+      "char": "₾",
+      "name": "Lari sign",
+      "group": "money",
+      "keywords": ["lari sign"]
+    },
+    {
+      "id": "u:20B3",
+      "char": "₳",
+      "name": "Austral sign",
+      "group": "money",
+      "keywords": ["austral sign"]
+    },
+    {
+      "id": "u:20A2",
+      "char": "₢",
+      "name": "Cruzeiro sign",
+      "group": "money",
+      "keywords": ["cruzeiro sign"]
+    },
+    {
+      "id": "u:20A3",
+      "char": "₣",
+      "name": "French franc sign",
+      "group": "money",
+      "keywords": ["french franc sign"]
+    },
+    {
+      "id": "u:20A4",
+      "char": "₤",
+      "name": "Lira sign",
+      "group": "money",
+      "keywords": ["lira sign"]
+    },
+    {
+      "id": "u:20A5",
+      "char": "₥",
+      "name": "Mill sign",
+      "group": "money",
+      "keywords": ["mill sign"]
+    },
+    {
+      "id": "u:20A7",
+      "char": "₧",
+      "name": "Peseta sign",
+      "group": "money",
+      "keywords": ["peseta sign"]
+    },
+    {
+      "id": "u:20AF",
+      "char": "₯",
+      "name": "Drachma sign",
+      "group": "money",
+      "keywords": ["drachma sign"]
+    },
+    {
+      "id": "u:20A0",
+      "char": "₠",
+      "name": "Euro-currency sign",
+      "group": "money",
+      "keywords": ["euro-currency sign"]
+    },
+    {
+      "id": "u:002B",
+      "char": "+",
+      "name": "Plus sign",
+      "group": "math",
+      "keywords": ["plus sign", "plus"]
+    },
+    {
+      "id": "u:002D",
+      "char": "-",
+      "name": "Hyphen-minus",
+      "group": "math",
+      "keywords": ["hyphen-minus", "minus"]
+    },
+    {
+      "id": "u:2212",
+      "char": "−",
+      "name": "Minus sign",
+      "group": "math",
+      "keywords": ["minus sign", "minus"]
+    },
+    {
+      "id": "u:00D7",
+      "char": "×",
+      "name": "Multiplication sign",
+      "group": "math",
+      "keywords": ["multiplication sign", "times"]
+    },
+    {
+      "id": "u:00F7",
+      "char": "÷",
+      "name": "Division sign",
+      "group": "math",
+      "keywords": ["division sign", "divide"]
+    },
+    {
+      "id": "u:003D",
+      "char": "=",
+      "name": "Equals sign",
+      "group": "math",
+      "keywords": ["equals sign", "equals"]
+    },
+    {
+      "id": "u:2248",
+      "char": "≈",
+      "name": "Almost equal to",
+      "group": "math",
+      "keywords": ["almost equal to", "approximately", "wavy equals"]
+    },
+    {
+      "id": "u:2260",
+      "char": "≠",
+      "name": "Not equal to",
+      "group": "math",
+      "keywords": ["not equal to", "not equal", "crossed equals"]
+    },
+    {
+      "id": "u:2264",
+      "char": "≤",
+      "name": "Less-than or equal to",
+      "group": "math",
+      "keywords": ["less-than or equal to", "less than or equal"]
+    },
+    {
+      "id": "u:2265",
+      "char": "≥",
+      "name": "Greater-than or equal to",
+      "group": "math",
+      "keywords": ["greater-than or equal to", "greater than or equal"]
+    },
+    {
+      "id": "u:2211",
+      "char": "∑",
+      "name": "N-ary summation",
+      "group": "math",
+      "keywords": ["n-ary summation", "sigma", "sideways m"]
+    },
+    {
+      "id": "u:220F",
+      "char": "∏",
+      "name": "N-ary product",
+      "group": "math",
+      "keywords": ["n-ary product", "pi", "table"]
+    },
+    {
+      "id": "u:221A",
+      "char": "√",
+      "name": "Square root",
+      "group": "math",
+      "keywords": ["square root", "check with bar", "square"]
+    },
+    {
+      "id": "u:221E",
+      "char": "∞",
+      "name": "Infinity",
+      "group": "math",
+      "keywords": ["infinity", "sideways eight"]
+    },
+    {
+      "id": "u:222B",
+      "char": "∫",
+      "name": "Integral",
+      "group": "math",
+      "keywords": ["integral"]
+    },
+    {
+      "id": "u:2202",
+      "char": "∂",
+      "name": "Partial differential",
+      "group": "math",
+      "keywords": ["partial differential", "partial", "curled d"]
+    },
+    {
+      "id": "u:2206",
+      "char": "∆",
+      "name": "Increment",
+      "group": "math",
+      "keywords": ["increment", "delta", "triangle"]
+    },
+    {
+      "id": "u:2207",
+      "char": "∇",
+      "name": "Nabla",
+      "group": "math",
+      "keywords": ["nabla", "upside down triangle"]
+    },
+    {
+      "id": "u:2208",
+      "char": "∈",
+      "name": "Element of",
+      "group": "math",
+      "keywords": ["element of"]
+    },
+    {
+      "id": "u:2209",
+      "char": "∉",
+      "name": "Not an element of",
+      "group": "math",
+      "keywords": ["not an element of"]
+    },
+    {
+      "id": "u:2229",
+      "char": "∩",
+      "name": "Intersection",
+      "group": "math",
+      "keywords": ["intersection"]
+    },
+    {
+      "id": "u:222A",
+      "char": "∪",
+      "name": "Union",
+      "group": "math",
+      "keywords": ["union"]
+    },
+    {
+      "id": "u:2282",
+      "char": "⊂",
+      "name": "Subset of",
+      "group": "math",
+      "keywords": ["subset of"]
+    },
+    {
+      "id": "u:2283",
+      "char": "⊃",
+      "name": "Superset of",
+      "group": "math",
+      "keywords": ["superset of"]
+    },
+    {
+      "id": "u:2286",
+      "char": "⊆",
+      "name": "Subset of or equal to",
+      "group": "math",
+      "keywords": ["subset of or equal to"]
+    },
+    {
+      "id": "u:2287",
+      "char": "⊇",
+      "name": "Superset of or equal to",
+      "group": "math",
+      "keywords": ["superset of or equal to"]
+    },
+    {
+      "id": "u:22D4",
+      "char": "⋔",
+      "name": "Pitchfork",
+      "group": "math",
+      "keywords": ["pitchfork", "fork", "crossed lines"]
+    },
+    {
+      "id": "u:00B1",
+      "char": "±",
+      "name": "Plus-minus sign",
+      "group": "math",
+      "keywords": ["plus-minus sign", "plus or minus"]
+    },
+    {
+      "id": "u:2213",
+      "char": "∓",
+      "name": "Minus-or-plus sign",
+      "group": "math",
+      "keywords": ["minus-or-plus sign"]
+    },
+    {
+      "id": "u:00B0",
+      "char": "°",
+      "name": "Degree sign",
+      "group": "math",
+      "keywords": ["degree sign", "degree"]
+    },
+    {
+      "id": "u:2030",
+      "char": "‰",
+      "name": "Per mille sign",
+      "group": "math",
+      "keywords": ["per mille sign", "per thousand"]
+    },
+    {
+      "id": "u:2031",
+      "char": "‱",
+      "name": "Per ten thousand sign",
+      "group": "math",
+      "keywords": ["per ten thousand sign"]
+    },
+    {
+      "id": "u:221D",
+      "char": "∝",
+      "name": "Proportional to",
+      "group": "math",
+      "keywords": ["proportional to"]
+    },
+    {
+      "id": "u:2205",
+      "char": "∅",
+      "name": "Empty set",
+      "group": "math",
+      "keywords": ["empty set"]
+    },
+    {
+      "id": "u:2227",
+      "char": "∧",
+      "name": "Logical and",
+      "group": "math",
+      "keywords": ["logical and"]
+    },
+    {
+      "id": "u:2228",
+      "char": "∨",
+      "name": "Logical or",
+      "group": "math",
+      "keywords": ["logical or"]
+    },
+    {
+      "id": "u:00AC",
+      "char": "¬",
+      "name": "Not sign",
+      "group": "math",
+      "keywords": ["not sign"]
+    },
+    {
+      "id": "u:2200",
+      "char": "∀",
+      "name": "For all",
+      "group": "math",
+      "keywords": ["for all"]
+    },
+    {
+      "id": "u:2203",
+      "char": "∃",
+      "name": "There exists",
+      "group": "math",
+      "keywords": ["there exists"]
+    },
+    {
+      "id": "u:2234",
+      "char": "∴",
+      "name": "Therefore",
+      "group": "math",
+      "keywords": ["therefore"]
+    },
+    {
+      "id": "u:2235",
+      "char": "∵",
+      "name": "Because",
+      "group": "math",
+      "keywords": ["because"]
+    },
+    {
+      "id": "u:2220",
+      "char": "∠",
+      "name": "Angle",
+      "group": "math",
+      "keywords": ["angle"]
+    },
+    {
+      "id": "u:221F",
+      "char": "∟",
+      "name": "Right angle",
+      "group": "math",
+      "keywords": ["right angle"]
+    },
+    {
+      "id": "u:22A5",
+      "char": "⊥",
+      "name": "Up tack",
+      "group": "math",
+      "keywords": ["up tack"]
+    },
+    {
+      "id": "u:2225",
+      "char": "∥",
+      "name": "Parallel to",
+      "group": "math",
+      "keywords": ["parallel to"]
+    },
+    {
+      "id": "u:2261",
+      "char": "≡",
+      "name": "Identical to",
+      "group": "math",
+      "keywords": ["identical to"]
+    },
+    {
+      "id": "u:2245",
+      "char": "≅",
+      "name": "Approximately equal to",
+      "group": "math",
+      "keywords": ["approximately equal to"]
+    },
+    {
+      "id": "u:2243",
+      "char": "≃",
+      "name": "Asymptotically equal to",
+      "group": "math",
+      "keywords": ["asymptotically equal to"]
+    },
+    {
+      "id": "u:226A",
+      "char": "≪",
+      "name": "Much less-than",
+      "group": "math",
+      "keywords": ["much less-than"]
+    },
+    {
+      "id": "u:226B",
+      "char": "≫",
+      "name": "Much greater-than",
+      "group": "math",
+      "keywords": ["much greater-than"]
+    },
+    {
+      "id": "u:2217",
+      "char": "∗",
+      "name": "Asterisk operator",
+      "group": "math",
+      "keywords": ["asterisk operator"]
+    },
+    {
+      "id": "u:22C6",
+      "char": "⋆",
+      "name": "Star operator",
+      "group": "math",
+      "keywords": ["star operator", "star"]
+    },
+    {
+      "id": "u:22C5",
+      "char": "⋅",
+      "name": "Dot operator",
+      "group": "math",
+      "keywords": ["dot operator"]
+    },
+    {
+      "id": "u:2219",
+      "char": "∙",
+      "name": "Bullet operator",
+      "group": "math",
+      "keywords": ["bullet operator"]
+    },
+    {
+      "id": "u:221B",
+      "char": "∛",
+      "name": "Cube root",
+      "group": "math",
+      "keywords": ["cube root"]
+    },
+    {
+      "id": "u:221C",
+      "char": "∜",
+      "name": "Fourth root",
+      "group": "math",
+      "keywords": ["fourth root"]
+    },
+    {
+      "id": "u:222E",
+      "char": "∮",
+      "name": "Contour integral",
+      "group": "math",
+      "keywords": ["contour integral"]
+    },
+    {
+      "id": "u:222C",
+      "char": "∬",
+      "name": "Double integral",
+      "group": "math",
+      "keywords": ["double integral"]
+    },
+    {
+      "id": "u:222F",
+      "char": "∯",
+      "name": "Surface integral",
+      "group": "math",
+      "keywords": ["surface integral"]
+    },
+    {
+      "id": "u:22A2",
+      "char": "⊢",
+      "name": "Right tack",
+      "group": "math",
+      "keywords": ["right tack"]
+    },
+    {
+      "id": "u:22A3",
+      "char": "⊣",
+      "name": "Left tack",
+      "group": "math",
+      "keywords": ["left tack"]
+    },
+    {
+      "id": "u:22A4",
+      "char": "⊤",
+      "name": "Down tack",
+      "group": "math",
+      "keywords": ["down tack"]
+    },
+    {
+      "id": "u:22A8",
+      "char": "⊨",
+      "name": "Models (true)",
+      "group": "math",
+      "keywords": ["true"]
+    },
+    {
+      "id": "u:2135",
+      "char": "ℵ",
+      "name": "Alef symbol",
+      "group": "math",
+      "keywords": ["alef symbol"]
+    },
+    {
+      "id": "u:210F",
+      "char": "ℏ",
+      "name": "Planck constant over two pi",
+      "group": "math",
+      "keywords": ["planck constant over two pi"]
+    },
+    {
+      "id": "u:2113",
+      "char": "ℓ",
+      "name": "Script small l",
+      "group": "math",
+      "keywords": ["script small l"]
+    },
+    {
+      "id": "u:266A",
+      "char": "♪",
+      "name": "Eighth note",
+      "group": "music",
+      "keywords": ["eighth note", "note", "quaver"]
+    },
+    {
+      "id": "u:266B",
+      "char": "♫",
+      "name": "Beamed eighth notes",
+      "group": "music",
+      "keywords": ["beamed eighth notes", "notes", "beamed quavers"]
+    },
+    {
+      "id": "u:2669",
+      "char": "♩",
+      "name": "Quarter note",
+      "group": "music",
+      "keywords": ["quarter note", "note", "crotchet"]
+    },
+    {
+      "id": "u:266C",
+      "char": "♬",
+      "name": "Beamed sixteenth notes",
+      "group": "music",
+      "keywords": ["beamed sixteenth notes", "notes", "beamed semiquavers"]
+    },
+    {
+      "id": "u:266D",
+      "char": "♭",
+      "name": "Music flat sign",
+      "group": "music",
+      "keywords": ["music flat sign", "flat", "b"]
+    },
+    {
+      "id": "u:266E",
+      "char": "♮",
+      "name": "Music natural sign",
+      "group": "music",
+      "keywords": ["music natural sign", "natural", "box with lines"]
+    },
+    {
+      "id": "u:266F",
+      "char": "♯",
+      "name": "Music sharp sign",
+      "group": "music",
+      "keywords": ["music sharp sign", "sharp", "hashtag"]
+    },
+    {
+      "id": "u:1D11E",
+      "char": "𝄞",
+      "name": "Treble clef",
+      "group": "music",
+      "keywords": ["musical symbol g clef", "treble clef", "g clef", "curled s"]
+    },
+    {
+      "id": "u:1D122",
+      "char": "𝄢",
+      "name": "Musical symbol f clef",
+      "group": "music",
+      "keywords": ["musical symbol f clef", "bass clef", "f clef"]
+    },
+    {
+      "id": "u:1D121",
+      "char": "𝄡",
+      "name": "Musical symbol c clef",
+      "group": "music",
+      "keywords": ["musical symbol c clef"]
+    },
+    {
+      "id": "u:1D12A",
+      "char": "𝄪",
+      "name": "Musical symbol double sharp",
+      "group": "music",
+      "keywords": ["musical symbol double sharp"]
+    },
+    {
+      "id": "u:1D12B",
+      "char": "𝄫",
+      "name": "Musical symbol double flat",
+      "group": "music",
+      "keywords": ["musical symbol double flat"]
+    },
+    {
+      "id": "u:0023",
+      "char": "#",
+      "name": "Number sign",
+      "group": "signs",
+      "keywords": ["number sign", "hash", "hashtag"]
+    },
+    {
+      "id": "u:0040",
+      "char": "@",
+      "name": "Commercial at",
+      "group": "signs",
+      "keywords": ["commercial at", "at", "a in circle"]
+    },
+    {
+      "id": "u:0025",
+      "char": "%",
+      "name": "Percent sign",
+      "group": "signs",
+      "keywords": ["percent sign", "percent"]
+    },
+    {
+      "id": "u:0026",
+      "char": "&",
+      "name": "Ampersand",
+      "group": "signs",
+      "keywords": ["ampersand", "and"]
+    },
+    {
+      "id": "u:00A7",
+      "char": "§",
+      "name": "Section sign",
+      "group": "signs",
+      "keywords": ["section sign", "section", "double s"]
+    },
+    {
+      "id": "u:00B6",
+      "char": "¶",
+      "name": "Pilcrow sign",
+      "group": "signs",
+      "keywords": ["pilcrow sign", "paragraph", "pilcrow"]
+    },
+    {
+      "id": "u:00A9",
+      "char": "©",
+      "name": "Copyright sign",
+      "group": "signs",
+      "keywords": ["copyright sign", "c in circle"]
+    },
+    {
+      "id": "u:00AE",
+      "char": "®",
+      "name": "Registered sign",
+      "group": "signs",
+      "keywords": ["registered sign", "r in circle"]
+    },
+    {
+      "id": "u:2122",
+      "char": "™",
+      "name": "Trade mark sign",
+      "group": "signs",
+      "keywords": ["trade mark sign", "tm"]
+    },
+    {
+      "id": "u:002A",
+      "char": "*",
+      "name": "Asterisk",
+      "group": "signs",
+      "keywords": ["asterisk"]
+    },
+    {
+      "id": "u:2020",
+      "char": "†",
+      "name": "Dagger",
+      "group": "signs",
+      "keywords": ["dagger", "cross"]
+    },
+    {
+      "id": "u:2021",
+      "char": "‡",
+      "name": "Double dagger",
+      "group": "signs",
+      "keywords": ["double dagger", "double cross"]
+    },
+    {
+      "id": "u:003F",
+      "char": "?",
+      "name": "Question mark",
+      "group": "signs",
+      "keywords": ["question mark"]
+    },
+    {
+      "id": "u:0021",
+      "char": "!",
+      "name": "Exclamation mark",
+      "group": "signs",
+      "keywords": ["exclamation mark"]
+    },
+    {
+      "id": "u:00BF",
+      "char": "¿",
+      "name": "Inverted question mark",
+      "group": "signs",
+      "keywords": ["inverted question mark"]
+    },
+    {
+      "id": "u:00A1",
+      "char": "¡",
+      "name": "Inverted exclamation mark",
+      "group": "signs",
+      "keywords": ["inverted exclamation mark"]
+    },
+    {
+      "id": "u:003E",
+      "char": ">",
+      "name": "Greater-than sign",
+      "group": "signs",
+      "keywords": ["greater-than sign"]
+    },
+    {
+      "id": "u:003C",
+      "char": "<",
+      "name": "Less-than sign",
+      "group": "signs",
+      "keywords": ["less-than sign"]
+    },
+    {
+      "id": "u:2640",
+      "char": "♀",
+      "name": "Female sign",
+      "group": "signs",
+      "keywords": ["female sign", "venus", "female", "circle with cross"]
+    },
+    {
+      "id": "u:2642",
+      "char": "♂",
+      "name": "Male sign",
+      "group": "signs",
+      "keywords": ["male sign", "mars", "male", "circle with arrow"]
+    },
+    {
+      "id": "u:263C",
+      "char": "☼",
+      "name": "White sun with rays",
+      "group": "signs",
+      "keywords": ["white sun with rays", "sun", "circle with rays"]
+    },
+    {
+      "id": "u:2600",
+      "char": "☀",
+      "name": "Black sun with rays",
+      "group": "signs",
+      "keywords": ["black sun with rays", "sun", "rays"]
+    },
+    {
+      "id": "u:263E",
+      "char": "☾",
+      "name": "Last quarter moon",
+      "group": "signs",
+      "keywords": ["last quarter moon", "moon", "crescent"]
+    },
+    {
+      "id": "u:2605",
+      "char": "★",
+      "name": "Black star",
+      "group": "signs",
+      "keywords": ["black star", "star", "filled star"]
+    },
+    {
+      "id": "u:2606",
+      "char": "☆",
+      "name": "White star",
+      "group": "signs",
+      "keywords": ["white star", "star", "outline star"]
+    },
+    {
+      "id": "u:2660",
+      "char": "♠",
+      "name": "Black spade suit",
+      "group": "signs",
+      "keywords": ["black spade suit", "spade", "leaf"]
+    },
+    {
+      "id": "u:2663",
+      "char": "♣",
+      "name": "Black club suit",
+      "group": "signs",
+      "keywords": ["black club suit", "club", "clover"]
+    },
+    {
+      "id": "u:2665",
+      "char": "♥",
+      "name": "Black heart suit",
+      "group": "signs",
+      "keywords": ["black heart suit", "heart"]
+    },
+    {
+      "id": "u:2666",
+      "char": "♦",
+      "name": "Black diamond suit",
+      "group": "signs",
+      "keywords": ["black diamond suit", "diamond"]
+    },
+    {
+      "id": "u:2644",
+      "char": "♄",
+      "name": "Saturn",
+      "group": "signs",
+      "keywords": ["saturn", "h with cross"]
+    },
+    {
+      "id": "u:263A",
+      "char": "☺",
+      "name": "White smiling face",
+      "group": "signs",
+      "keywords": ["white smiling face", "smiley", "happy face"]
+    },
+    {
+      "id": "u:263B",
+      "char": "☻",
+      "name": "Black smiling face",
+      "group": "signs",
+      "keywords": ["black smiling face"]
+    },
+    {
+      "id": "u:2639",
+      "char": "☹",
+      "name": "White frowning face",
+      "group": "signs",
+      "keywords": ["white frowning face"]
+    },
+    {
+      "id": "u:263D",
+      "char": "☽",
+      "name": "First quarter moon",
+      "group": "signs",
+      "keywords": ["first quarter moon"]
+    },
+    {
+      "id": "u:263F",
+      "char": "☿",
+      "name": "Mercury",
+      "group": "signs",
+      "keywords": ["mercury"]
+    },
+    {
+      "id": "u:2641",
+      "char": "♁",
+      "name": "Earth",
+      "group": "signs",
+      "keywords": ["earth"]
+    },
+    {
+      "id": "u:2643",
+      "char": "♃",
+      "name": "Jupiter",
+      "group": "signs",
+      "keywords": ["jupiter"]
+    },
+    {
+      "id": "u:2645",
+      "char": "♅",
+      "name": "Uranus",
+      "group": "signs",
+      "keywords": ["uranus"]
+    },
+    {
+      "id": "u:2646",
+      "char": "♆",
+      "name": "Neptune",
+      "group": "signs",
+      "keywords": ["neptune"]
+    },
+    {
+      "id": "u:2647",
+      "char": "♇",
+      "name": "Pluto",
+      "group": "signs",
+      "keywords": ["pluto"]
+    },
+    {
+      "id": "u:2609",
+      "char": "☉",
+      "name": "Sun",
+      "group": "signs",
+      "keywords": ["sun"]
+    },
+    {
+      "id": "u:262E",
+      "char": "☮",
+      "name": "Peace symbol",
+      "group": "signs",
+      "keywords": ["peace symbol"]
+    },
+    {
+      "id": "u:262F",
+      "char": "☯",
+      "name": "Yin yang",
+      "group": "signs",
+      "keywords": ["yin yang"]
+    },
+    {
+      "id": "u:2638",
+      "char": "☸",
+      "name": "Wheel of dharma",
+      "group": "signs",
+      "keywords": ["wheel of dharma"]
+    },
+    {
+      "id": "u:2691",
+      "char": "⚑",
+      "name": "Black flag",
+      "group": "signs",
+      "keywords": ["black flag"]
+    },
+    {
+      "id": "u:2690",
+      "char": "⚐",
+      "name": "White flag",
+      "group": "signs",
+      "keywords": ["white flag"]
+    },
+    {
+      "id": "u:269C",
+      "char": "⚜",
+      "name": "Fleur-de-lis",
+      "group": "signs",
+      "keywords": ["fleur-de-lis"]
+    },
+    {
+      "id": "u:271D",
+      "char": "✝",
+      "name": "Latin cross",
+      "group": "signs",
+      "keywords": ["latin cross", "cross"]
+    },
+    {
+      "id": "u:271E",
+      "char": "✞",
+      "name": "Shadowed white latin cross",
+      "group": "signs",
+      "keywords": ["shadowed white latin cross", "cross"]
+    },
+    {
+      "id": "u:271F",
+      "char": "✟",
+      "name": "Outlined latin cross",
+      "group": "signs",
+      "keywords": ["outlined latin cross", "cross"]
+    },
+    {
+      "id": "u:2720",
+      "char": "✠",
+      "name": "Maltese cross",
+      "group": "signs",
+      "keywords": ["maltese cross", "cross"]
+    },
+    {
+      "id": "u:2721",
+      "char": "✡",
+      "name": "Star of David",
+      "group": "signs",
+      "keywords": ["star of david", "star"]
+    },
+    {
+      "id": "u:2722",
+      "char": "✢",
+      "name": "Four teardrop-spoked asterisk",
+      "group": "signs",
+      "keywords": ["four teardrop-spoked asterisk"]
+    },
+    {
+      "id": "u:2723",
+      "char": "✣",
+      "name": "Four balloon-spoked asterisk",
+      "group": "signs",
+      "keywords": ["four balloon-spoked asterisk"]
+    },
+    {
+      "id": "u:2724",
+      "char": "✤",
+      "name": "Heavy four balloon-spoked asterisk",
+      "group": "signs",
+      "keywords": ["heavy four balloon-spoked asterisk"]
+    },
+    {
+      "id": "u:2725",
+      "char": "✥",
+      "name": "Four club-spoked asterisk",
+      "group": "signs",
+      "keywords": ["four club-spoked asterisk", "club"]
+    },
+    {
+      "id": "u:2726",
+      "char": "✦",
+      "name": "Black four pointed star",
+      "group": "signs",
+      "keywords": ["black four pointed star", "star"]
+    },
+    {
+      "id": "u:2727",
+      "char": "✧",
+      "name": "White four pointed star",
+      "group": "signs",
+      "keywords": ["white four pointed star", "star"]
+    },
+    {
+      "id": "u:2729",
+      "char": "✩",
+      "name": "Stress outlined white star",
+      "group": "signs",
+      "keywords": ["stress outlined white star", "star"]
+    },
+    {
+      "id": "u:272A",
+      "char": "✪",
+      "name": "Circled white star",
+      "group": "signs",
+      "keywords": ["circled white star", "circle", "star"]
+    },
+    {
+      "id": "u:272B",
+      "char": "✫",
+      "name": "Open centre black star",
+      "group": "signs",
+      "keywords": ["open centre black star", "star"]
+    },
+    {
+      "id": "u:272C",
+      "char": "✬",
+      "name": "Black centre white star",
+      "group": "signs",
+      "keywords": ["black centre white star", "star"]
+    },
+    {
+      "id": "u:272D",
+      "char": "✭",
+      "name": "Outlined black star",
+      "group": "signs",
+      "keywords": ["outlined black star", "star"]
+    },
+    {
+      "id": "u:272E",
+      "char": "✮",
+      "name": "Heavy outlined black star",
+      "group": "signs",
+      "keywords": ["heavy outlined black star", "star"]
+    },
+    {
+      "id": "u:272F",
+      "char": "✯",
+      "name": "Pinwheel star",
+      "group": "signs",
+      "keywords": ["pinwheel star", "star"]
+    },
+    {
+      "id": "u:2730",
+      "char": "✰",
+      "name": "Shadowed white star",
+      "group": "signs",
+      "keywords": ["shadowed white star", "star"]
+    },
+    {
+      "id": "u:2731",
+      "char": "✱",
+      "name": "Heavy asterisk",
+      "group": "signs",
+      "keywords": ["heavy asterisk"]
+    },
+    {
+      "id": "u:2732",
+      "char": "✲",
+      "name": "Open centre asterisk",
+      "group": "signs",
+      "keywords": ["open centre asterisk"]
+    },
+    {
+      "id": "u:2733",
+      "char": "✳",
+      "name": "Eight spoked asterisk",
+      "group": "signs",
+      "keywords": ["eight spoked asterisk"]
+    },
+    {
+      "id": "u:2734",
+      "char": "✴",
+      "name": "Eight pointed black star",
+      "group": "signs",
+      "keywords": ["eight pointed black star", "star"]
+    },
+    {
+      "id": "u:2735",
+      "char": "✵",
+      "name": "Eight pointed pinwheel star",
+      "group": "signs",
+      "keywords": ["eight pointed pinwheel star", "star"]
+    },
+    {
+      "id": "u:2736",
+      "char": "✶",
+      "name": "Six pointed black star",
+      "group": "signs",
+      "keywords": ["six pointed black star", "star"]
+    },
+    {
+      "id": "u:2737",
+      "char": "✷",
+      "name": "Eight pointed rectilinear black star",
+      "group": "signs",
+      "keywords": ["eight pointed rectilinear black star", "star"]
+    },
+    {
+      "id": "u:2738",
+      "char": "✸",
+      "name": "Heavy eight pointed rectilinear black star",
+      "group": "signs",
+      "keywords": ["heavy eight pointed rectilinear black star", "star"]
+    },
+    {
+      "id": "u:2739",
+      "char": "✹",
+      "name": "Twelve pointed black star",
+      "group": "signs",
+      "keywords": ["twelve pointed black star", "star"]
+    },
+    {
+      "id": "u:273A",
+      "char": "✺",
+      "name": "Sixteen pointed asterisk",
+      "group": "signs",
+      "keywords": ["sixteen pointed asterisk"]
+    },
+    {
+      "id": "u:273B",
+      "char": "✻",
+      "name": "Teardrop-spoked asterisk",
+      "group": "signs",
+      "keywords": ["teardrop-spoked asterisk"]
+    },
+    {
+      "id": "u:273C",
+      "char": "✼",
+      "name": "Open centre teardrop-spoked asterisk",
+      "group": "signs",
+      "keywords": ["open centre teardrop-spoked asterisk"]
+    },
+    {
+      "id": "u:273D",
+      "char": "✽",
+      "name": "Heavy teardrop-spoked asterisk",
+      "group": "signs",
+      "keywords": ["heavy teardrop-spoked asterisk"]
+    },
+    {
+      "id": "u:273F",
+      "char": "✿",
+      "name": "Black florette",
+      "group": "signs",
+      "keywords": ["black florette"]
+    },
+    {
+      "id": "u:2740",
+      "char": "❀",
+      "name": "White florette",
+      "group": "signs",
+      "keywords": ["white florette"]
+    },
+    {
+      "id": "u:2741",
+      "char": "❁",
+      "name": "Eight petalled outlined black florette",
+      "group": "signs",
+      "keywords": ["eight petalled outlined black florette"]
+    },
+    {
+      "id": "u:2742",
+      "char": "❂",
+      "name": "Circled open centre eight pointed star",
+      "group": "signs",
+      "keywords": ["circled open centre eight pointed star", "circle", "star"]
+    },
+    {
+      "id": "u:2743",
+      "char": "❃",
+      "name": "Heavy teardrop-spoked pinwheel asterisk",
+      "group": "signs",
+      "keywords": ["heavy teardrop-spoked pinwheel asterisk"]
+    },
+    {
+      "id": "u:2744",
+      "char": "❄",
+      "name": "Snowflake",
+      "group": "signs",
+      "keywords": ["snowflake"]
+    },
+    {
+      "id": "u:2745",
+      "char": "❅",
+      "name": "Tight trifoliate snowflake",
+      "group": "signs",
+      "keywords": ["tight trifoliate snowflake", "snowflake"]
+    },
+    {
+      "id": "u:2746",
+      "char": "❆",
+      "name": "Heavy chevron snowflake",
+      "group": "signs",
+      "keywords": ["heavy chevron snowflake", "snowflake"]
+    },
+    {
+      "id": "u:2756",
+      "char": "❖",
+      "name": "Black diamond minus white x",
+      "group": "signs",
+      "keywords": ["black diamond minus white x", "diamond"]
+    },
+    {
+      "id": "u:2618",
+      "char": "☘",
+      "name": "Shamrock",
+      "group": "signs",
+      "keywords": ["shamrock"]
+    },
+    {
+      "id": "u:2619",
+      "char": "☙",
+      "name": "Reversed rotated floral heart bullet",
+      "group": "signs",
+      "keywords": ["reversed rotated floral heart bullet", "heart"]
+    },
+    {
+      "id": "u:2767",
+      "char": "❧",
+      "name": "Rotated floral heart bullet",
+      "group": "signs",
+      "keywords": ["rotated floral heart bullet", "heart"]
+    },
+    {
+      "id": "u:2602",
+      "char": "☂",
+      "name": "Umbrella",
+      "group": "signs",
+      "keywords": ["umbrella"]
+    },
+    {
+      "id": "u:2601",
+      "char": "☁",
+      "name": "Cloud",
+      "group": "signs",
+      "keywords": ["cloud"]
+    },
+    {
+      "id": "u:2603",
+      "char": "☃",
+      "name": "Snowman",
+      "group": "signs",
+      "keywords": ["snowman"]
+    },
+    {
+      "id": "u:2611",
+      "char": "☑",
+      "name": "Ballot box with check",
+      "group": "signs",
+      "keywords": ["ballot box with check", "check"]
+    },
+    {
+      "id": "u:2612",
+      "char": "☒",
+      "name": "Ballot box with x",
+      "group": "signs",
+      "keywords": ["ballot box with x"]
+    },
+    {
+      "id": "u:2654",
+      "char": "♔",
+      "name": "White chess king",
+      "group": "signs",
+      "keywords": ["white chess king"]
+    },
+    {
+      "id": "u:2655",
+      "char": "♕",
+      "name": "White chess queen",
+      "group": "signs",
+      "keywords": ["white chess queen"]
+    },
+    {
+      "id": "u:2656",
+      "char": "♖",
+      "name": "White chess rook",
+      "group": "signs",
+      "keywords": ["white chess rook"]
+    },
+    {
+      "id": "u:2657",
+      "char": "♗",
+      "name": "White chess bishop",
+      "group": "signs",
+      "keywords": ["white chess bishop"]
+    },
+    {
+      "id": "u:2658",
+      "char": "♘",
+      "name": "White chess knight",
+      "group": "signs",
+      "keywords": ["white chess knight"]
+    },
+    {
+      "id": "u:2659",
+      "char": "♙",
+      "name": "White chess pawn",
+      "group": "signs",
+      "keywords": ["white chess pawn"]
+    },
+    {
+      "id": "u:265A",
+      "char": "♚",
+      "name": "Black chess king",
+      "group": "signs",
+      "keywords": ["black chess king"]
+    },
+    {
+      "id": "u:265B",
+      "char": "♛",
+      "name": "Black chess queen",
+      "group": "signs",
+      "keywords": ["black chess queen"]
+    },
+    {
+      "id": "u:265C",
+      "char": "♜",
+      "name": "Black chess rook",
+      "group": "signs",
+      "keywords": ["black chess rook"]
+    },
+    {
+      "id": "u:265D",
+      "char": "♝",
+      "name": "Black chess bishop",
+      "group": "signs",
+      "keywords": ["black chess bishop"]
+    },
+    {
+      "id": "u:265E",
+      "char": "♞",
+      "name": "Black chess knight",
+      "group": "signs",
+      "keywords": ["black chess knight"]
+    },
+    {
+      "id": "u:265F",
+      "char": "♟",
+      "name": "Black chess pawn",
+      "group": "signs",
+      "keywords": ["black chess pawn"]
+    },
+    {
+      "id": "u:2190",
+      "char": "←",
+      "name": "Leftwards arrow",
+      "group": "signs",
+      "keywords": ["leftwards arrow", "arrow"]
+    },
+    {
+      "id": "u:2191",
+      "char": "↑",
+      "name": "Upwards arrow",
+      "group": "signs",
+      "keywords": ["upwards arrow", "arrow"]
+    },
+    {
+      "id": "u:2192",
+      "char": "→",
+      "name": "Rightwards arrow",
+      "group": "signs",
+      "keywords": ["rightwards arrow", "arrow"]
+    },
+    {
+      "id": "u:2193",
+      "char": "↓",
+      "name": "Downwards arrow",
+      "group": "signs",
+      "keywords": ["downwards arrow", "arrow"]
+    },
+    {
+      "id": "u:2194",
+      "char": "↔",
+      "name": "Left right arrow",
+      "group": "signs",
+      "keywords": ["left right arrow", "arrow"]
+    },
+    {
+      "id": "u:2195",
+      "char": "↕",
+      "name": "Up down arrow",
+      "group": "signs",
+      "keywords": ["up down arrow", "arrow"]
+    },
+    {
+      "id": "u:2196",
+      "char": "↖",
+      "name": "North west arrow",
+      "group": "signs",
+      "keywords": ["north west arrow", "arrow"]
+    },
+    {
+      "id": "u:2197",
+      "char": "↗",
+      "name": "North east arrow",
+      "group": "signs",
+      "keywords": ["north east arrow", "arrow"]
+    },
+    {
+      "id": "u:2198",
+      "char": "↘",
+      "name": "South east arrow",
+      "group": "signs",
+      "keywords": ["south east arrow", "arrow"]
+    },
+    {
+      "id": "u:2199",
+      "char": "↙",
+      "name": "South west arrow",
+      "group": "signs",
+      "keywords": ["south west arrow", "arrow"]
+    },
+    {
+      "id": "u:21A9",
+      "char": "↩",
+      "name": "Leftwards arrow with hook",
+      "group": "signs",
+      "keywords": ["leftwards arrow with hook", "arrow"]
+    },
+    {
+      "id": "u:21AA",
+      "char": "↪",
+      "name": "Rightwards arrow with hook",
+      "group": "signs",
+      "keywords": ["rightwards arrow with hook", "arrow"]
+    },
+    {
+      "id": "u:21D0",
+      "char": "⇐",
+      "name": "Leftwards double arrow",
+      "group": "signs",
+      "keywords": ["leftwards double arrow", "arrow"]
+    },
+    {
+      "id": "u:21D1",
+      "char": "⇑",
+      "name": "Upwards double arrow",
+      "group": "signs",
+      "keywords": ["upwards double arrow", "arrow"]
+    },
+    {
+      "id": "u:21D2",
+      "char": "⇒",
+      "name": "Rightwards double arrow",
+      "group": "signs",
+      "keywords": ["rightwards double arrow", "arrow"]
+    },
+    {
+      "id": "u:21D3",
+      "char": "⇓",
+      "name": "Downwards double arrow",
+      "group": "signs",
+      "keywords": ["downwards double arrow", "arrow"]
+    },
+    {
+      "id": "u:21D4",
+      "char": "⇔",
+      "name": "Left right double arrow",
+      "group": "signs",
+      "keywords": ["left right double arrow", "arrow"]
+    },
+    {
+      "id": "u:219F",
+      "char": "↟",
+      "name": "Upwards two headed arrow",
+      "group": "signs",
+      "keywords": ["upwards two headed arrow", "arrow"]
+    },
+    {
+      "id": "u:21A1",
+      "char": "↡",
+      "name": "Downwards two headed arrow",
+      "group": "signs",
+      "keywords": ["downwards two headed arrow", "arrow"]
+    },
+    {
+      "id": "u:212E",
+      "char": "℮",
+      "name": "Estimated symbol",
+      "group": "signs",
+      "keywords": ["estimated symbol"]
+    },
+    {
+      "id": "u:211E",
+      "char": "℞",
+      "name": "Prescription take",
+      "group": "signs",
+      "keywords": ["prescription take"]
+    },
+    {
+      "id": "u:2105",
+      "char": "℅",
+      "name": "Care of",
+      "group": "signs",
+      "keywords": ["care of"]
+    },
+    {
+      "id": "u:2127",
+      "char": "℧",
+      "name": "Inverted ohm sign",
+      "group": "signs",
+      "keywords": ["inverted ohm sign"]
+    },
+    {
+      "id": "u:0153",
+      "char": "œ",
+      "name": "Latin small ligature oe",
+      "group": "letters-extra",
+      "keywords": ["latin small ligature oe", "oe", "joined o and e"]
+    },
+    {
+      "id": "u:0152",
+      "char": "Œ",
+      "name": "Latin capital ligature oe",
+      "group": "letters-extra",
+      "keywords": ["latin capital ligature oe"]
+    },
+    {
+      "id": "u:00E6",
+      "char": "æ",
+      "name": "Latin small letter ae",
+      "group": "letters-extra",
+      "keywords": ["latin small letter ae", "ae", "joined a and e"]
+    },
+    {
+      "id": "u:00C6",
+      "char": "Æ",
+      "name": "Latin capital letter ae",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter ae"]
+    },
+    {
+      "id": "u:00F8",
+      "char": "ø",
+      "name": "Latin small letter o with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter o with stroke", "slashed o"]
+    },
+    {
+      "id": "u:00D8",
+      "char": "Ø",
+      "name": "Latin capital letter o with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter o with stroke"]
+    },
+    {
+      "id": "u:00DF",
+      "char": "ß",
+      "name": "Latin small letter sharp s",
+      "group": "letters-extra",
+      "keywords": ["latin small letter sharp s", "eszett", "sharp s", "beta"]
+    },
+    {
+      "id": "u:1E9E",
+      "char": "ẞ",
+      "name": "Latin capital letter sharp s",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter sharp s"]
+    },
+    {
+      "id": "u:00F0",
+      "char": "ð",
+      "name": "Latin small letter eth",
+      "group": "letters-extra",
+      "keywords": ["latin small letter eth", "eth", "crossed d"]
+    },
+    {
+      "id": "u:00D0",
+      "char": "Ð",
+      "name": "Latin capital letter eth",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter eth"]
+    },
+    {
+      "id": "u:00FE",
+      "char": "þ",
+      "name": "Latin small letter thorn",
+      "group": "letters-extra",
+      "keywords": ["latin small letter thorn", "thorn", "p with tall stem"]
+    },
+    {
+      "id": "u:00DE",
+      "char": "Þ",
+      "name": "Latin capital letter thorn",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter thorn"]
+    },
+    {
+      "id": "u:014B",
+      "char": "ŋ",
+      "name": "Latin small letter eng",
+      "group": "letters-extra",
+      "keywords": ["latin small letter eng", "eng", "n with tail"]
+    },
+    {
+      "id": "u:014A",
+      "char": "Ŋ",
+      "name": "Latin capital letter eng",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter eng"]
+    },
+    {
+      "id": "u:0283",
+      "char": "ʃ",
+      "name": "Latin small letter esh",
+      "group": "letters-extra",
+      "keywords": ["latin small letter esh", "esh", "long s", "integral"]
+    },
+    {
+      "id": "u:01A9",
+      "char": "Ʃ",
+      "name": "Latin capital letter esh",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter esh"]
+    },
+    {
+      "id": "u:0292",
+      "char": "ʒ",
+      "name": "Latin small letter ezh",
+      "group": "letters-extra",
+      "keywords": ["latin small letter ezh", "ezh", "reversed three"]
+    },
+    {
+      "id": "u:01B7",
+      "char": "Ʒ",
+      "name": "Latin capital letter ezh",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter ezh"]
+    },
+    {
+      "id": "u:0192",
+      "char": "ƒ",
+      "name": "Latin small letter f with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter f with hook", "florin", "f with hook"]
+    },
+    {
+      "id": "u:0191",
+      "char": "Ƒ",
+      "name": "Latin capital letter f with hook",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter f with hook"]
+    },
+    {
+      "id": "u:FB00",
+      "char": "ﬀ",
+      "name": "Latin small ligature ff",
+      "group": "letters-extra",
+      "keywords": ["latin small ligature ff", "ff", "ff ligature", "joined f letters"]
+    },
+    {
+      "id": "u:FB01",
+      "char": "ﬁ",
+      "name": "Latin small ligature fi",
+      "group": "letters-extra",
+      "keywords": ["latin small ligature fi"]
+    },
+    {
+      "id": "u:FB02",
+      "char": "ﬂ",
+      "name": "Latin small ligature fl",
+      "group": "letters-extra",
+      "keywords": ["latin small ligature fl"]
+    },
+    {
+      "id": "u:FB03",
+      "char": "ﬃ",
+      "name": "Latin small ligature ffi",
+      "group": "letters-extra",
+      "keywords": ["latin small ligature ffi"]
+    },
+    {
+      "id": "u:FB04",
+      "char": "ﬄ",
+      "name": "Latin small ligature ffl",
+      "group": "letters-extra",
+      "keywords": ["latin small ligature ffl"]
+    },
+    {
+      "id": "u:0416",
+      "char": "Ж",
+      "name": "Cyrillic capital letter zhe",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter zhe", "zhe", "asterisk", "x with line"]
+    },
+    {
+      "id": "u:040A",
+      "char": "Њ",
+      "name": "Cyrillic capital letter nje",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter nje", "nje", "h with loop"]
+    },
+    {
+      "id": "u:0466",
+      "char": "Ѧ",
+      "name": "Cyrillic capital letter little yus",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter little yus", "little yus", "a with legs"]
+    },
+    {
+      "id": "u:0244",
+      "char": "Ʉ",
+      "name": "Latin capital letter u bar",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter u bar", "u with bar"]
+    },
+    {
+      "id": "u:A728",
+      "char": "Ꜩ",
+      "name": "Latin capital letter tz",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter tz", "tz", "tz ligature"]
+    },
+    {
+      "id": "u:A64D",
+      "char": "ꙍ",
+      "name": "Cyrillic small letter broad omega",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter broad omega", "omega", "w with loop"]
+    },
+    {
+      "id": "u:AB53",
+      "char": "ꭓ",
+      "name": "Latin small letter chi",
+      "group": "letters-extra",
+      "keywords": ["latin small letter chi", "chi", "x with curl"]
+    },
+    {
+      "id": "u:01B3",
+      "char": "Ƴ",
+      "name": "Latin capital letter y with hook",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter y with hook", "y with hook"]
+    },
+    {
+      "id": "u:1E61",
+      "char": "ṡ",
+      "name": "Latin small letter s with dot above",
+      "group": "letters-extra",
+      "keywords": ["latin small letter s with dot above", "s with dot"]
+    },
+    {
+      "id": "u:1D25",
+      "char": "ᴥ",
+      "name": "Latin letter ain",
+      "group": "letters-extra",
+      "keywords": ["latin letter ain", "ain", "bear face", "reversed omega"]
+    },
+    {
+      "id": "u:0427",
+      "char": "Ч",
+      "name": "Cyrillic capital letter che",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter che", "che", "four", "4"]
+    },
+    {
+      "id": "u:0428",
+      "char": "Ш",
+      "name": "Cyrillic capital letter sha",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter sha", "sha", "three prongs", "comb"]
+    },
+    {
+      "id": "u:042F",
+      "char": "Я",
+      "name": "Cyrillic capital letter ya",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ya", "ya", "reversed r"]
+    },
+    {
+      "id": "u:0424",
+      "char": "Ф",
+      "name": "Cyrillic capital letter ef",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ef", "ef", "phi", "circle with line"]
+    },
+    {
+      "id": "u:042E",
+      "char": "Ю",
+      "name": "Cyrillic capital letter yu",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter yu", "yu", "io", "bar and circle"]
+    },
+    {
+      "id": "u:0411",
+      "char": "Б",
+      "name": "Cyrillic capital letter be",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter be", "be", "six", "6"]
+    },
+    {
+      "id": "u:0414",
+      "char": "Д",
+      "name": "Cyrillic capital letter de",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter de", "de", "triangle with feet"]
+    },
+    {
+      "id": "u:041B",
+      "char": "Л",
+      "name": "Cyrillic capital letter el",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter el", "el", "arch", "upside down v"]
+    },
+    {
+      "id": "u:041F",
+      "char": "П",
+      "name": "Cyrillic capital letter pe",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter pe", "pe", "pi", "table"]
+    },
+    {
+      "id": "u:0430",
+      "char": "а",
+      "name": "Cyrillic small letter a",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter a", "a"]
+    },
+    {
+      "id": "u:0431",
+      "char": "б",
+      "name": "Cyrillic small letter be",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter be"]
+    },
+    {
+      "id": "u:0432",
+      "char": "в",
+      "name": "Cyrillic small letter ve",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ve", "small b"]
+    },
+    {
+      "id": "u:0433",
+      "char": "г",
+      "name": "Cyrillic small letter ghe",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ghe", "corner"]
+    },
+    {
+      "id": "u:0434",
+      "char": "д",
+      "name": "Cyrillic small letter de",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter de", "triangle with feet"]
+    },
+    {
+      "id": "u:0435",
+      "char": "е",
+      "name": "Cyrillic small letter ie",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ie", "e"]
+    },
+    {
+      "id": "u:0436",
+      "char": "ж",
+      "name": "Cyrillic small letter zhe",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter zhe", "asterisk"]
+    },
+    {
+      "id": "u:0437",
+      "char": "з",
+      "name": "Cyrillic small letter ze",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ze", "three"]
+    },
+    {
+      "id": "u:0438",
+      "char": "и",
+      "name": "Cyrillic small letter i",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter i", "reversed n"]
+    },
+    {
+      "id": "u:0439",
+      "char": "й",
+      "name": "Cyrillic small letter short i",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter short i", "reversed n with accent"]
+    },
+    {
+      "id": "u:043A",
+      "char": "к",
+      "name": "Cyrillic small letter ka",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ka", "k"]
+    },
+    {
+      "id": "u:043B",
+      "char": "л",
+      "name": "Cyrillic small letter el",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter el", "arch"]
+    },
+    {
+      "id": "u:043C",
+      "char": "м",
+      "name": "Cyrillic small letter em",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter em", "m"]
+    },
+    {
+      "id": "u:043D",
+      "char": "н",
+      "name": "Cyrillic small letter en",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter en", "h"]
+    },
+    {
+      "id": "u:043E",
+      "char": "о",
+      "name": "Cyrillic small letter o",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter o", "o"]
+    },
+    {
+      "id": "u:043F",
+      "char": "п",
+      "name": "Cyrillic small letter pe",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter pe", "pi"]
+    },
+    {
+      "id": "u:0440",
+      "char": "р",
+      "name": "Cyrillic small letter er",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter er", "p"]
+    },
+    {
+      "id": "u:0441",
+      "char": "с",
+      "name": "Cyrillic small letter es",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter es", "c"]
+    },
+    {
+      "id": "u:0442",
+      "char": "т",
+      "name": "Cyrillic small letter te",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter te", "t"]
+    },
+    {
+      "id": "u:0443",
+      "char": "у",
+      "name": "Cyrillic small letter u",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter u", "y"]
+    },
+    {
+      "id": "u:0444",
+      "char": "ф",
+      "name": "Cyrillic small letter ef",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ef", "circle with line"]
+    },
+    {
+      "id": "u:0445",
+      "char": "х",
+      "name": "Cyrillic small letter ha",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ha", "x"]
+    },
+    {
+      "id": "u:0446",
+      "char": "ц",
+      "name": "Cyrillic small letter tse",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter tse", "u with tail"]
+    },
+    {
+      "id": "u:0447",
+      "char": "ч",
+      "name": "Cyrillic small letter che",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter che", "four"]
+    },
+    {
+      "id": "u:0448",
+      "char": "ш",
+      "name": "Cyrillic small letter sha",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter sha", "comb"]
+    },
+    {
+      "id": "u:0449",
+      "char": "щ",
+      "name": "Cyrillic small letter shcha",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter shcha", "comb with tail"]
+    },
+    {
+      "id": "u:044A",
+      "char": "ъ",
+      "name": "Cyrillic small letter hard sign",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter hard sign", "b with arm"]
+    },
+    {
+      "id": "u:044B",
+      "char": "ы",
+      "name": "Cyrillic small letter yeru",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter yeru", "b and bar"]
+    },
+    {
+      "id": "u:044C",
+      "char": "ь",
+      "name": "Cyrillic small letter soft sign",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter soft sign", "b"]
+    },
+    {
+      "id": "u:044D",
+      "char": "э",
+      "name": "Cyrillic small letter e",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter e", "reversed e"]
+    },
+    {
+      "id": "u:044E",
+      "char": "ю",
+      "name": "Cyrillic small letter yu",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter yu", "io"]
+    },
+    {
+      "id": "u:044F",
+      "char": "я",
+      "name": "Cyrillic small letter ya",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter ya", "reversed r"]
+    },
+    {
+      "id": "u:0410",
+      "char": "А",
+      "name": "Cyrillic capital letter a",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter a", "a"]
+    },
+    {
+      "id": "u:0412",
+      "char": "В",
+      "name": "Cyrillic capital letter ve",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ve", "b"]
+    },
+    {
+      "id": "u:0413",
+      "char": "Г",
+      "name": "Cyrillic capital letter ghe",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ghe"]
+    },
+    {
+      "id": "u:0415",
+      "char": "Е",
+      "name": "Cyrillic capital letter ie",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ie", "e"]
+    },
+    {
+      "id": "u:0417",
+      "char": "З",
+      "name": "Cyrillic capital letter ze",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ze", "three"]
+    },
+    {
+      "id": "u:0418",
+      "char": "И",
+      "name": "Cyrillic capital letter i",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter i"]
+    },
+    {
+      "id": "u:041A",
+      "char": "К",
+      "name": "Cyrillic capital letter ka",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ka", "k"]
+    },
+    {
+      "id": "u:041C",
+      "char": "М",
+      "name": "Cyrillic capital letter em",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter em", "m"]
+    },
+    {
+      "id": "u:041D",
+      "char": "Н",
+      "name": "Cyrillic capital letter en",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter en", "h"]
+    },
+    {
+      "id": "u:041E",
+      "char": "О",
+      "name": "Cyrillic capital letter o",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter o", "o"]
+    },
+    {
+      "id": "u:0420",
+      "char": "Р",
+      "name": "Cyrillic capital letter er",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter er", "p"]
+    },
+    {
+      "id": "u:0421",
+      "char": "С",
+      "name": "Cyrillic capital letter es",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter es", "c"]
+    },
+    {
+      "id": "u:0422",
+      "char": "Т",
+      "name": "Cyrillic capital letter te",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter te", "t"]
+    },
+    {
+      "id": "u:0423",
+      "char": "У",
+      "name": "Cyrillic capital letter u",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter u", "y"]
+    },
+    {
+      "id": "u:0425",
+      "char": "Х",
+      "name": "Cyrillic capital letter ha",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter ha", "x"]
+    },
+    {
+      "id": "u:0426",
+      "char": "Ц",
+      "name": "Cyrillic capital letter tse",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter tse"]
+    },
+    {
+      "id": "u:0429",
+      "char": "Щ",
+      "name": "Cyrillic capital letter shcha",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter shcha"]
+    },
+    {
+      "id": "u:042A",
+      "char": "Ъ",
+      "name": "Cyrillic capital letter hard sign",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter hard sign"]
+    },
+    {
+      "id": "u:042B",
+      "char": "Ы",
+      "name": "Cyrillic capital letter yeru",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter yeru"]
+    },
+    {
+      "id": "u:042C",
+      "char": "Ь",
+      "name": "Cyrillic capital letter soft sign",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter soft sign"]
+    },
+    {
+      "id": "u:042D",
+      "char": "Э",
+      "name": "Cyrillic capital letter e",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter e"]
+    },
+    {
+      "id": "u:0409",
+      "char": "Љ",
+      "name": "Cyrillic capital letter lje",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter lje"]
+    },
+    {
+      "id": "u:045A",
+      "char": "њ",
+      "name": "Cyrillic small letter nje",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter nje"]
+    },
+    {
+      "id": "u:0459",
+      "char": "љ",
+      "name": "Cyrillic small letter lje",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter lje"]
+    },
+    {
+      "id": "u:0463",
+      "char": "ѣ",
+      "name": "Cyrillic small letter yat",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter yat"]
+    },
+    {
+      "id": "u:0462",
+      "char": "Ѣ",
+      "name": "Cyrillic capital letter yat",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter yat"]
+    },
+    {
+      "id": "u:0467",
+      "char": "ѧ",
+      "name": "Cyrillic small letter little yus",
+      "group": "letters-extra",
+      "keywords": ["cyrillic small letter little yus"]
+    },
+    {
+      "id": "u:A64C",
+      "char": "Ꙍ",
+      "name": "Cyrillic capital letter broad omega",
+      "group": "letters-extra",
+      "keywords": ["cyrillic capital letter broad omega"]
+    },
+    {
+      "id": "u:0250",
+      "char": "ɐ",
+      "name": "Latin small letter turned a",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned a", "upside down a"]
+    },
+    {
+      "id": "u:0251",
+      "char": "ɑ",
+      "name": "Latin small letter alpha",
+      "group": "letters-extra",
+      "keywords": ["latin small letter alpha", "script a"]
+    },
+    {
+      "id": "u:0252",
+      "char": "ɒ",
+      "name": "Latin small letter turned alpha",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned alpha", "reversed script a"]
+    },
+    {
+      "id": "u:0253",
+      "char": "ɓ",
+      "name": "Latin small letter b with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter b with hook", "b with hook"]
+    },
+    {
+      "id": "u:0254",
+      "char": "ɔ",
+      "name": "Latin small letter open o",
+      "group": "letters-extra",
+      "keywords": ["latin small letter open o", "open o"]
+    },
+    {
+      "id": "u:0255",
+      "char": "ɕ",
+      "name": "Latin small letter c with curl",
+      "group": "letters-extra",
+      "keywords": ["latin small letter c with curl", "c with curl"]
+    },
+    {
+      "id": "u:0256",
+      "char": "ɖ",
+      "name": "Latin small letter d with tail",
+      "group": "letters-extra",
+      "keywords": ["latin small letter d with tail", "d with tail"]
+    },
+    {
+      "id": "u:0257",
+      "char": "ɗ",
+      "name": "Latin small letter d with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter d with hook", "d with hook"]
+    },
+    {
+      "id": "u:0259",
+      "char": "ə",
+      "name": "Latin small letter schwa",
+      "group": "letters-extra",
+      "keywords": ["latin small letter schwa", "upside down e"]
+    },
+    {
+      "id": "u:025B",
+      "char": "ɛ",
+      "name": "Latin small letter open e",
+      "group": "letters-extra",
+      "keywords": ["latin small letter open e", "open e"]
+    },
+    {
+      "id": "u:025C",
+      "char": "ɜ",
+      "name": "Latin small letter reversed open e",
+      "group": "letters-extra",
+      "keywords": ["latin small letter reversed open e", "reversed epsilon"]
+    },
+    {
+      "id": "u:025E",
+      "char": "ɞ",
+      "name": "Latin small letter closed reversed open e",
+      "group": "letters-extra",
+      "keywords": ["latin small letter closed reversed open e", "closed reversed epsilon"]
+    },
+    {
+      "id": "u:025F",
+      "char": "ɟ",
+      "name": "Latin small letter dotless j with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter dotless j with stroke", "j with bar"]
+    },
+    {
+      "id": "u:0261",
+      "char": "ɡ",
+      "name": "Latin small letter script g",
+      "group": "letters-extra",
+      "keywords": ["latin small letter script g", "script g"]
+    },
+    {
+      "id": "u:0263",
+      "char": "ɣ",
+      "name": "Latin small letter gamma",
+      "group": "letters-extra",
+      "keywords": ["latin small letter gamma", "gamma"]
+    },
+    {
+      "id": "u:0265",
+      "char": "ɥ",
+      "name": "Latin small letter turned h",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned h", "upside down h"]
+    },
+    {
+      "id": "u:0266",
+      "char": "ɦ",
+      "name": "Latin small letter h with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter h with hook", "h with hook"]
+    },
+    {
+      "id": "u:0268",
+      "char": "ɨ",
+      "name": "Latin small letter i with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter i with stroke", "i with bar"]
+    },
+    {
+      "id": "u:026A",
+      "char": "ɪ",
+      "name": "Latin letter small capital i",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital i", "small capital i"]
+    },
+    {
+      "id": "u:026B",
+      "char": "ɫ",
+      "name": "Latin small letter l with middle tilde",
+      "group": "letters-extra",
+      "keywords": ["latin small letter l with middle tilde", "l with wave"]
+    },
+    {
+      "id": "u:026C",
+      "char": "ɬ",
+      "name": "Latin small letter l with belt",
+      "group": "letters-extra",
+      "keywords": ["latin small letter l with belt", "l with belt"]
+    },
+    {
+      "id": "u:026F",
+      "char": "ɯ",
+      "name": "Latin small letter turned m",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned m", "upside down m"]
+    },
+    {
+      "id": "u:0270",
+      "char": "ɰ",
+      "name": "Latin small letter turned m with long leg",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned m with long leg", "upside down m with tail"]
+    },
+    {
+      "id": "u:0272",
+      "char": "ɲ",
+      "name": "Latin small letter n with left hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter n with left hook", "n with left hook"]
+    },
+    {
+      "id": "u:0273",
+      "char": "ɳ",
+      "name": "Latin small letter n with retroflex hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter n with retroflex hook", "n with tail"]
+    },
+    {
+      "id": "u:0275",
+      "char": "ɵ",
+      "name": "Latin small letter barred o",
+      "group": "letters-extra",
+      "keywords": ["latin small letter barred o", "o with bar"]
+    },
+    {
+      "id": "u:0278",
+      "char": "ɸ",
+      "name": "Latin small letter phi",
+      "group": "letters-extra",
+      "keywords": ["latin small letter phi", "phi"]
+    },
+    {
+      "id": "u:0279",
+      "char": "ɹ",
+      "name": "Latin small letter turned r",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned r", "upside down r"]
+    },
+    {
+      "id": "u:027B",
+      "char": "ɻ",
+      "name": "Latin small letter turned r with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned r with hook", "upside down r with tail"]
+    },
+    {
+      "id": "u:027D",
+      "char": "ɽ",
+      "name": "Latin small letter r with tail",
+      "group": "letters-extra",
+      "keywords": ["latin small letter r with tail", "r with tail"]
+    },
+    {
+      "id": "u:027E",
+      "char": "ɾ",
+      "name": "Latin small letter r with fishhook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter r with fishhook", "r without stem"]
+    },
+    {
+      "id": "u:0280",
+      "char": "ʀ",
+      "name": "Latin letter small capital r",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital r", "small capital r"]
+    },
+    {
+      "id": "u:0281",
+      "char": "ʁ",
+      "name": "Latin letter small capital inverted r",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital inverted r", "upside down capital r"]
+    },
+    {
+      "id": "u:0282",
+      "char": "ʂ",
+      "name": "Latin small letter s with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter s with hook", "s with tail"]
+    },
+    {
+      "id": "u:0288",
+      "char": "ʈ",
+      "name": "Latin small letter t with retroflex hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter t with retroflex hook", "t with tail"]
+    },
+    {
+      "id": "u:0289",
+      "char": "ʉ",
+      "name": "Latin small letter u bar",
+      "group": "letters-extra",
+      "keywords": ["latin small letter u bar", "u with bar"]
+    },
+    {
+      "id": "u:028A",
+      "char": "ʊ",
+      "name": "Latin small letter upsilon",
+      "group": "letters-extra",
+      "keywords": ["latin small letter upsilon", "horseshoe"]
+    },
+    {
+      "id": "u:028B",
+      "char": "ʋ",
+      "name": "Latin small letter v with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter v with hook", "v with hook"]
+    },
+    {
+      "id": "u:028C",
+      "char": "ʌ",
+      "name": "Latin small letter turned v",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned v", "upside down v"]
+    },
+    {
+      "id": "u:028D",
+      "char": "ʍ",
+      "name": "Latin small letter turned w",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned w", "upside down w"]
+    },
+    {
+      "id": "u:028E",
+      "char": "ʎ",
+      "name": "Latin small letter turned y",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned y", "upside down y"]
+    },
+    {
+      "id": "u:028F",
+      "char": "ʏ",
+      "name": "Latin letter small capital y",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital y", "small capital y"]
+    },
+    {
+      "id": "u:0290",
+      "char": "ʐ",
+      "name": "Latin small letter z with retroflex hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter z with retroflex hook", "z with tail"]
+    },
+    {
+      "id": "u:0294",
+      "char": "ʔ",
+      "name": "Latin letter glottal stop",
+      "group": "letters-extra",
+      "keywords": ["latin letter glottal stop", "question mark without dot"]
+    },
+    {
+      "id": "u:0295",
+      "char": "ʕ",
+      "name": "Latin letter pharyngeal voiced fricative",
+      "group": "letters-extra",
+      "keywords": ["latin letter pharyngeal voiced fricative", "reversed question mark"]
+    },
+    {
+      "id": "u:0298",
+      "char": "ʘ",
+      "name": "Latin letter bilabial click",
+      "group": "letters-extra",
+      "keywords": ["latin letter bilabial click", "bullseye"]
+    },
+    {
+      "id": "u:0299",
+      "char": "ʙ",
+      "name": "Latin letter small capital b",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital b"]
+    },
+    {
+      "id": "u:029B",
+      "char": "ʛ",
+      "name": "Latin letter small capital g with hook",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital g with hook"]
+    },
+    {
+      "id": "u:029C",
+      "char": "ʜ",
+      "name": "Latin letter small capital h",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital h"]
+    },
+    {
+      "id": "u:029D",
+      "char": "ʝ",
+      "name": "Latin small letter j with crossed-tail",
+      "group": "letters-extra",
+      "keywords": ["latin small letter j with crossed-tail", "cross"]
+    },
+    {
+      "id": "u:029F",
+      "char": "ʟ",
+      "name": "Latin letter small capital l",
+      "group": "letters-extra",
+      "keywords": ["latin letter small capital l"]
+    },
+    {
+      "id": "u:02A2",
+      "char": "ʢ",
+      "name": "Latin letter reversed glottal stop with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin letter reversed glottal stop with stroke"]
+    },
+    {
+      "id": "u:02A1",
+      "char": "ʡ",
+      "name": "Latin letter glottal stop with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin letter glottal stop with stroke"]
+    },
+    {
+      "id": "u:0180",
+      "char": "ƀ",
+      "name": "Latin small letter b with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter b with stroke"]
+    },
+    {
+      "id": "u:0188",
+      "char": "ƈ",
+      "name": "Latin small letter c with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter c with hook"]
+    },
+    {
+      "id": "u:018C",
+      "char": "ƌ",
+      "name": "Latin small letter d with topbar",
+      "group": "letters-extra",
+      "keywords": ["latin small letter d with topbar"]
+    },
+    {
+      "id": "u:0195",
+      "char": "ƕ",
+      "name": "Latin small letter hv",
+      "group": "letters-extra",
+      "keywords": ["latin small letter hv"]
+    },
+    {
+      "id": "u:019A",
+      "char": "ƚ",
+      "name": "Latin small letter l with bar",
+      "group": "letters-extra",
+      "keywords": ["latin small letter l with bar"]
+    },
+    {
+      "id": "u:019B",
+      "char": "ƛ",
+      "name": "Latin small letter lambda with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter lambda with stroke"]
+    },
+    {
+      "id": "u:019E",
+      "char": "ƞ",
+      "name": "Latin small letter n with long right leg",
+      "group": "letters-extra",
+      "keywords": ["latin small letter n with long right leg"]
+    },
+    {
+      "id": "u:01A3",
+      "char": "ƣ",
+      "name": "Latin small letter oi",
+      "group": "letters-extra",
+      "keywords": ["latin small letter oi"]
+    },
+    {
+      "id": "u:01A5",
+      "char": "ƥ",
+      "name": "Latin small letter p with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter p with hook"]
+    },
+    {
+      "id": "u:01A8",
+      "char": "ƨ",
+      "name": "Latin small letter tone two",
+      "group": "letters-extra",
+      "keywords": ["latin small letter tone two"]
+    },
+    {
+      "id": "u:01AB",
+      "char": "ƫ",
+      "name": "Latin small letter t with palatal hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter t with palatal hook"]
+    },
+    {
+      "id": "u:01AD",
+      "char": "ƭ",
+      "name": "Latin small letter t with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter t with hook"]
+    },
+    {
+      "id": "u:01B4",
+      "char": "ƴ",
+      "name": "Latin small letter y with hook",
+      "group": "letters-extra",
+      "keywords": ["latin small letter y with hook"]
+    },
+    {
+      "id": "u:01B6",
+      "char": "ƶ",
+      "name": "Latin small letter z with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter z with stroke"]
+    },
+    {
+      "id": "u:01C2",
+      "char": "ǂ",
+      "name": "Latin letter alveolar click",
+      "group": "letters-extra",
+      "keywords": ["latin letter alveolar click"]
+    },
+    {
+      "id": "u:01C3",
+      "char": "ǃ",
+      "name": "Latin letter retroflex click",
+      "group": "letters-extra",
+      "keywords": ["latin letter retroflex click"]
+    },
+    {
+      "id": "u:01C0",
+      "char": "ǀ",
+      "name": "Latin letter dental click",
+      "group": "letters-extra",
+      "keywords": ["latin letter dental click"]
+    },
+    {
+      "id": "u:01C1",
+      "char": "ǁ",
+      "name": "Latin letter lateral click",
+      "group": "letters-extra",
+      "keywords": ["latin letter lateral click"]
+    },
+    {
+      "id": "u:01DD",
+      "char": "ǝ",
+      "name": "Latin small letter turned e",
+      "group": "letters-extra",
+      "keywords": ["latin small letter turned e"]
+    },
+    {
+      "id": "u:0131",
+      "char": "ı",
+      "name": "Latin small letter dotless i",
+      "group": "letters-extra",
+      "keywords": ["latin small letter dotless i", "i without dot"]
+    },
+    {
+      "id": "u:0237",
+      "char": "ȷ",
+      "name": "Latin small letter dotless j",
+      "group": "letters-extra",
+      "keywords": ["latin small letter dotless j", "j without dot"]
+    },
+    {
+      "id": "u:017F",
+      "char": "ſ",
+      "name": "Latin small letter long s",
+      "group": "letters-extra",
+      "keywords": ["latin small letter long s", "long s"]
+    },
+    {
+      "id": "u:0142",
+      "char": "ł",
+      "name": "Latin small letter l with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter l with stroke", "l with slash"]
+    },
+    {
+      "id": "u:0141",
+      "char": "Ł",
+      "name": "Latin capital letter l with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter l with stroke"]
+    },
+    {
+      "id": "u:0111",
+      "char": "đ",
+      "name": "Latin small letter d with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter d with stroke"]
+    },
+    {
+      "id": "u:0110",
+      "char": "Đ",
+      "name": "Latin capital letter d with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter d with stroke"]
+    },
+    {
+      "id": "u:0127",
+      "char": "ħ",
+      "name": "Latin small letter h with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter h with stroke"]
+    },
+    {
+      "id": "u:0126",
+      "char": "Ħ",
+      "name": "Latin capital letter h with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter h with stroke"]
+    },
+    {
+      "id": "u:0167",
+      "char": "ŧ",
+      "name": "Latin small letter t with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin small letter t with stroke"]
+    },
+    {
+      "id": "u:0166",
+      "char": "Ŧ",
+      "name": "Latin capital letter t with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter t with stroke"]
+    },
+    {
+      "id": "u:0138",
+      "char": "ĸ",
+      "name": "Latin small letter kra",
+      "group": "letters-extra",
+      "keywords": ["latin small letter kra"]
+    },
+    {
+      "id": "u:0149",
+      "char": "ŉ",
+      "name": "Latin small letter n preceded by apostrophe",
+      "group": "letters-extra",
+      "keywords": ["latin small letter n preceded by apostrophe"]
+    },
+    {
+      "id": "u:018F",
+      "char": "Ə",
+      "name": "Latin capital letter schwa",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter schwa"]
+    },
+    {
+      "id": "u:0190",
+      "char": "Ɛ",
+      "name": "Latin capital letter open e",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter open e"]
+    },
+    {
+      "id": "u:0194",
+      "char": "Ɣ",
+      "name": "Latin capital letter gamma",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter gamma"]
+    },
+    {
+      "id": "u:01B1",
+      "char": "Ʊ",
+      "name": "Latin capital letter upsilon",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter upsilon"]
+    },
+    {
+      "id": "u:01B2",
+      "char": "Ʋ",
+      "name": "Latin capital letter v with hook",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter v with hook"]
+    },
+    {
+      "id": "u:01B5",
+      "char": "Ƶ",
+      "name": "Latin capital letter z with stroke",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter z with stroke"]
+    },
+    {
+      "id": "u:01BF",
+      "char": "ƿ",
+      "name": "Latin letter wynn",
+      "group": "letters-extra",
+      "keywords": ["latin letter wynn"]
+    },
+    {
+      "id": "u:021D",
+      "char": "ȝ",
+      "name": "Latin small letter yogh",
+      "group": "letters-extra",
+      "keywords": ["latin small letter yogh"]
+    },
+    {
+      "id": "u:021C",
+      "char": "Ȝ",
+      "name": "Latin capital letter yogh",
+      "group": "letters-extra",
+      "keywords": ["latin capital letter yogh"]
+    },
+    {
+      "id": "u:25CA",
+      "char": "◊",
+      "name": "Lozenge",
+      "group": "shapes",
+      "keywords": ["lozenge", "diamond"]
+    },
+    {
+      "id": "u:25CB",
+      "char": "○",
+      "name": "White circle",
+      "group": "shapes",
+      "keywords": ["white circle", "circle", "ring"]
+    },
+    {
+      "id": "u:25CF",
+      "char": "●",
+      "name": "Black circle",
+      "group": "shapes",
+      "keywords": ["black circle", "filled circle", "dot", "circle"]
+    },
+    {
+      "id": "u:25A1",
+      "char": "□",
+      "name": "White square",
+      "group": "shapes",
+      "keywords": ["white square", "square", "box"]
+    },
+    {
+      "id": "u:25A0",
+      "char": "■",
+      "name": "Black square",
+      "group": "shapes",
+      "keywords": ["black square", "filled square", "square"]
+    },
+    {
+      "id": "u:25B3",
+      "char": "△",
+      "name": "White up-pointing triangle",
+      "group": "shapes",
+      "keywords": ["white up-pointing triangle", "triangle", "up triangle"]
+    },
+    {
+      "id": "u:25B2",
+      "char": "▲",
+      "name": "Black up-pointing triangle",
+      "group": "shapes",
+      "keywords": ["black up-pointing triangle", "filled triangle", "triangle"]
+    },
+    {
+      "id": "u:25BD",
+      "char": "▽",
+      "name": "White down-pointing triangle",
+      "group": "shapes",
+      "keywords": ["white down-pointing triangle", "down triangle", "triangle"]
+    },
+    {
+      "id": "u:25BC",
+      "char": "▼",
+      "name": "Black down-pointing triangle",
+      "group": "shapes",
+      "keywords": ["black down-pointing triangle", "triangle"]
+    },
+    {
+      "id": "u:25C7",
+      "char": "◇",
+      "name": "White diamond",
+      "group": "shapes",
+      "keywords": ["white diamond", "diamond"]
+    },
+    {
+      "id": "u:25C6",
+      "char": "◆",
+      "name": "Black diamond",
+      "group": "shapes",
+      "keywords": ["black diamond", "filled diamond", "diamond"]
+    },
+    {
+      "id": "u:25CE",
+      "char": "◎",
+      "name": "Bullseye",
+      "group": "shapes",
+      "keywords": ["bullseye", "double circle", "target"]
+    },
+    {
+      "id": "u:2299",
+      "char": "⊙",
+      "name": "Circled dot operator",
+      "group": "shapes",
+      "keywords": ["circled dot operator", "circle with dot", "bullseye", "circle"]
+    },
+    {
+      "id": "u:2295",
+      "char": "⊕",
+      "name": "Circled plus",
+      "group": "shapes",
+      "keywords": ["circled plus", "circle with plus", "cross in circle", "circle"]
+    },
+    {
+      "id": "u:2297",
+      "char": "⊗",
+      "name": "Circled times",
+      "group": "shapes",
+      "keywords": ["circled times", "circle with cross", "x in circle", "circle"]
+    },
+    {
+      "id": "u:2715",
+      "char": "✕",
+      "name": "Multiplication x",
+      "group": "shapes",
+      "keywords": ["multiplication x", "cross", "x"]
+    },
+    {
+      "id": "u:2713",
+      "char": "✓",
+      "name": "Check mark",
+      "group": "shapes",
+      "keywords": ["check mark", "check", "tick"]
+    },
+    {
+      "id": "u:2662",
+      "char": "♢",
+      "name": "White diamond suit",
+      "group": "shapes",
+      "keywords": ["white diamond suit", "diamond", "outline diamond"]
+    },
+    {
+      "id": "u:25CC",
+      "char": "◌",
+      "name": "Dotted circle",
+      "group": "shapes",
+      "keywords": ["dotted circle", "circle"]
+    },
+    {
+      "id": "u:25CD",
+      "char": "◍",
+      "name": "Circle with vertical fill",
+      "group": "shapes",
+      "keywords": ["circle with vertical fill", "circle"]
+    },
+    {
+      "id": "u:25C9",
+      "char": "◉",
+      "name": "Fisheye",
+      "group": "shapes",
+      "keywords": ["fisheye"]
+    },
+    {
+      "id": "u:25D0",
+      "char": "◐",
+      "name": "Circle with left half black",
+      "group": "shapes",
+      "keywords": ["circle with left half black", "circle"]
+    },
+    {
+      "id": "u:25D1",
+      "char": "◑",
+      "name": "Circle with right half black",
+      "group": "shapes",
+      "keywords": ["circle with right half black", "circle"]
+    },
+    {
+      "id": "u:25D2",
+      "char": "◒",
+      "name": "Circle with lower half black",
+      "group": "shapes",
+      "keywords": ["circle with lower half black", "circle"]
+    },
+    {
+      "id": "u:25D3",
+      "char": "◓",
+      "name": "Circle with upper half black",
+      "group": "shapes",
+      "keywords": ["circle with upper half black", "circle"]
+    },
+    {
+      "id": "u:25D4",
+      "char": "◔",
+      "name": "Circle with upper right quadrant black",
+      "group": "shapes",
+      "keywords": ["circle with upper right quadrant black", "circle"]
+    },
+    {
+      "id": "u:25D5",
+      "char": "◕",
+      "name": "Circle with all but upper left quadrant black",
+      "group": "shapes",
+      "keywords": ["circle with all but upper left quadrant black", "circle"]
+    },
+    {
+      "id": "u:25D6",
+      "char": "◖",
+      "name": "Left half black circle",
+      "group": "shapes",
+      "keywords": ["left half black circle", "circle"]
+    },
+    {
+      "id": "u:25D7",
+      "char": "◗",
+      "name": "Right half black circle",
+      "group": "shapes",
+      "keywords": ["right half black circle", "circle"]
+    },
+    {
+      "id": "u:25D8",
+      "char": "◘",
+      "name": "Inverse bullet",
+      "group": "shapes",
+      "keywords": ["inverse bullet"]
+    },
+    {
+      "id": "u:25D9",
+      "char": "◙",
+      "name": "Inverse white circle",
+      "group": "shapes",
+      "keywords": ["inverse white circle", "circle"]
+    },
+    {
+      "id": "u:25DA",
+      "char": "◚",
+      "name": "Upper half inverse white circle",
+      "group": "shapes",
+      "keywords": ["upper half inverse white circle", "circle"]
+    },
+    {
+      "id": "u:25DB",
+      "char": "◛",
+      "name": "Lower half inverse white circle",
+      "group": "shapes",
+      "keywords": ["lower half inverse white circle", "circle"]
+    },
+    {
+      "id": "u:25DC",
+      "char": "◜",
+      "name": "Upper left quadrant circular arc",
+      "group": "shapes",
+      "keywords": ["upper left quadrant circular arc"]
+    },
+    {
+      "id": "u:25DD",
+      "char": "◝",
+      "name": "Upper right quadrant circular arc",
+      "group": "shapes",
+      "keywords": ["upper right quadrant circular arc"]
+    },
+    {
+      "id": "u:25DE",
+      "char": "◞",
+      "name": "Lower right quadrant circular arc",
+      "group": "shapes",
+      "keywords": ["lower right quadrant circular arc"]
+    },
+    {
+      "id": "u:25DF",
+      "char": "◟",
+      "name": "Lower left quadrant circular arc",
+      "group": "shapes",
+      "keywords": ["lower left quadrant circular arc"]
+    },
+    {
+      "id": "u:25E0",
+      "char": "◠",
+      "name": "Upper half circle",
+      "group": "shapes",
+      "keywords": ["upper half circle", "circle"]
+    },
+    {
+      "id": "u:25E1",
+      "char": "◡",
+      "name": "Lower half circle",
+      "group": "shapes",
+      "keywords": ["lower half circle", "circle"]
+    },
+    {
+      "id": "u:25E2",
+      "char": "◢",
+      "name": "Black lower right triangle",
+      "group": "shapes",
+      "keywords": ["black lower right triangle", "triangle"]
+    },
+    {
+      "id": "u:25E3",
+      "char": "◣",
+      "name": "Black lower left triangle",
+      "group": "shapes",
+      "keywords": ["black lower left triangle", "triangle"]
+    },
+    {
+      "id": "u:25E4",
+      "char": "◤",
+      "name": "Black upper left triangle",
+      "group": "shapes",
+      "keywords": ["black upper left triangle", "triangle"]
+    },
+    {
+      "id": "u:25E5",
+      "char": "◥",
+      "name": "Black upper right triangle",
+      "group": "shapes",
+      "keywords": ["black upper right triangle", "triangle"]
+    },
+    {
+      "id": "u:25E6",
+      "char": "◦",
+      "name": "White bullet",
+      "group": "shapes",
+      "keywords": ["white bullet"]
+    },
+    {
+      "id": "u:25E7",
+      "char": "◧",
+      "name": "Square with left half black",
+      "group": "shapes",
+      "keywords": ["square with left half black", "square"]
+    },
+    {
+      "id": "u:25E8",
+      "char": "◨",
+      "name": "Square with right half black",
+      "group": "shapes",
+      "keywords": ["square with right half black", "square"]
+    },
+    {
+      "id": "u:25E9",
+      "char": "◩",
+      "name": "Square with upper left diagonal half black",
+      "group": "shapes",
+      "keywords": ["square with upper left diagonal half black", "square"]
+    },
+    {
+      "id": "u:25EA",
+      "char": "◪",
+      "name": "Square with lower right diagonal half black",
+      "group": "shapes",
+      "keywords": ["square with lower right diagonal half black", "square"]
+    },
+    {
+      "id": "u:25EB",
+      "char": "◫",
+      "name": "White square with vertical bisecting line",
+      "group": "shapes",
+      "keywords": ["white square with vertical bisecting line", "square"]
+    },
+    {
+      "id": "u:25EC",
+      "char": "◬",
+      "name": "White up-pointing triangle with dot",
+      "group": "shapes",
+      "keywords": ["white up-pointing triangle with dot", "triangle"]
+    },
+    {
+      "id": "u:25ED",
+      "char": "◭",
+      "name": "Up-pointing triangle with left half black",
+      "group": "shapes",
+      "keywords": ["up-pointing triangle with left half black", "triangle"]
+    },
+    {
+      "id": "u:25EE",
+      "char": "◮",
+      "name": "Up-pointing triangle with right half black",
+      "group": "shapes",
+      "keywords": ["up-pointing triangle with right half black", "triangle"]
+    },
+    {
+      "id": "u:25EF",
+      "char": "◯",
+      "name": "Large circle",
+      "group": "shapes",
+      "keywords": ["large circle", "circle"]
+    },
+    {
+      "id": "u:25F0",
+      "char": "◰",
+      "name": "White square with upper left quadrant",
+      "group": "shapes",
+      "keywords": ["white square with upper left quadrant", "square"]
+    },
+    {
+      "id": "u:25F1",
+      "char": "◱",
+      "name": "White square with lower left quadrant",
+      "group": "shapes",
+      "keywords": ["white square with lower left quadrant", "square"]
+    },
+    {
+      "id": "u:25F2",
+      "char": "◲",
+      "name": "White square with lower right quadrant",
+      "group": "shapes",
+      "keywords": ["white square with lower right quadrant", "square"]
+    },
+    {
+      "id": "u:25F3",
+      "char": "◳",
+      "name": "White square with upper right quadrant",
+      "group": "shapes",
+      "keywords": ["white square with upper right quadrant", "square"]
+    },
+    {
+      "id": "u:25F4",
+      "char": "◴",
+      "name": "White circle with upper left quadrant",
+      "group": "shapes",
+      "keywords": ["white circle with upper left quadrant", "circle"]
+    },
+    {
+      "id": "u:25F5",
+      "char": "◵",
+      "name": "White circle with lower left quadrant",
+      "group": "shapes",
+      "keywords": ["white circle with lower left quadrant", "circle"]
+    },
+    {
+      "id": "u:25F6",
+      "char": "◶",
+      "name": "White circle with lower right quadrant",
+      "group": "shapes",
+      "keywords": ["white circle with lower right quadrant", "circle"]
+    },
+    {
+      "id": "u:25F7",
+      "char": "◷",
+      "name": "White circle with upper right quadrant",
+      "group": "shapes",
+      "keywords": ["white circle with upper right quadrant", "circle"]
+    },
+    {
+      "id": "u:25F8",
+      "char": "◸",
+      "name": "Upper left triangle",
+      "group": "shapes",
+      "keywords": ["upper left triangle", "triangle"]
+    },
+    {
+      "id": "u:25F9",
+      "char": "◹",
+      "name": "Upper right triangle",
+      "group": "shapes",
+      "keywords": ["upper right triangle", "triangle"]
+    },
+    {
+      "id": "u:25FA",
+      "char": "◺",
+      "name": "Lower left triangle",
+      "group": "shapes",
+      "keywords": ["lower left triangle", "triangle"]
+    },
+    {
+      "id": "u:25FF",
+      "char": "◿",
+      "name": "Lower right triangle",
+      "group": "shapes",
+      "keywords": ["lower right triangle", "triangle"]
+    },
+    {
+      "id": "u:25A2",
+      "char": "▢",
+      "name": "White square with rounded corners",
+      "group": "shapes",
+      "keywords": ["white square with rounded corners", "square"]
+    },
+    {
+      "id": "u:25A3",
+      "char": "▣",
+      "name": "White square containing black small square",
+      "group": "shapes",
+      "keywords": ["white square containing black small square", "square"]
+    },
+    {
+      "id": "u:25A4",
+      "char": "▤",
+      "name": "Square with horizontal fill",
+      "group": "shapes",
+      "keywords": ["square with horizontal fill", "square"]
+    },
+    {
+      "id": "u:25A5",
+      "char": "▥",
+      "name": "Square with vertical fill",
+      "group": "shapes",
+      "keywords": ["square with vertical fill", "square"]
+    },
+    {
+      "id": "u:25A6",
+      "char": "▦",
+      "name": "Square with orthogonal crosshatch fill",
+      "group": "shapes",
+      "keywords": ["square with orthogonal crosshatch fill", "square", "cross"]
+    },
+    {
+      "id": "u:25A7",
+      "char": "▧",
+      "name": "Square with upper left to lower right fill",
+      "group": "shapes",
+      "keywords": ["square with upper left to lower right fill", "square"]
+    },
+    {
+      "id": "u:25A8",
+      "char": "▨",
+      "name": "Square with upper right to lower left fill",
+      "group": "shapes",
+      "keywords": ["square with upper right to lower left fill", "square"]
+    },
+    {
+      "id": "u:25A9",
+      "char": "▩",
+      "name": "Square with diagonal crosshatch fill",
+      "group": "shapes",
+      "keywords": ["square with diagonal crosshatch fill", "square", "cross"]
+    },
+    {
+      "id": "u:25AA",
+      "char": "▪",
+      "name": "Black small square",
+      "group": "shapes",
+      "keywords": ["black small square", "square"]
+    },
+    {
+      "id": "u:25AB",
+      "char": "▫",
+      "name": "White small square",
+      "group": "shapes",
+      "keywords": ["white small square", "square"]
+    },
+    {
+      "id": "u:25AC",
+      "char": "▬",
+      "name": "Black rectangle",
+      "group": "shapes",
+      "keywords": ["black rectangle", "rectangle"]
+    },
+    {
+      "id": "u:25AD",
+      "char": "▭",
+      "name": "White rectangle",
+      "group": "shapes",
+      "keywords": ["white rectangle", "rectangle"]
+    },
+    {
+      "id": "u:25AE",
+      "char": "▮",
+      "name": "Black vertical rectangle",
+      "group": "shapes",
+      "keywords": ["black vertical rectangle", "rectangle"]
+    },
+    {
+      "id": "u:25AF",
+      "char": "▯",
+      "name": "White vertical rectangle",
+      "group": "shapes",
+      "keywords": ["white vertical rectangle", "rectangle"]
+    },
+    {
+      "id": "u:25B0",
+      "char": "▰",
+      "name": "Black parallelogram",
+      "group": "shapes",
+      "keywords": ["black parallelogram", "parallelogram"]
+    },
+    {
+      "id": "u:25B1",
+      "char": "▱",
+      "name": "White parallelogram",
+      "group": "shapes",
+      "keywords": ["white parallelogram", "parallelogram"]
+    },
+    {
+      "id": "u:25B7",
+      "char": "▷",
+      "name": "White right-pointing triangle",
+      "group": "shapes",
+      "keywords": ["white right-pointing triangle", "triangle"]
+    },
+    {
+      "id": "u:25B6",
+      "char": "▶",
+      "name": "Black right-pointing triangle",
+      "group": "shapes",
+      "keywords": ["black right-pointing triangle", "triangle"]
+    },
+    {
+      "id": "u:25C1",
+      "char": "◁",
+      "name": "White left-pointing triangle",
+      "group": "shapes",
+      "keywords": ["white left-pointing triangle", "triangle"]
+    },
+    {
+      "id": "u:25C0",
+      "char": "◀",
+      "name": "Black left-pointing triangle",
+      "group": "shapes",
+      "keywords": ["black left-pointing triangle", "triangle"]
+    },
+    {
+      "id": "u:25B9",
+      "char": "▹",
+      "name": "White right-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["white right-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25B8",
+      "char": "▸",
+      "name": "Black right-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["black right-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25C3",
+      "char": "◃",
+      "name": "White left-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["white left-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25C2",
+      "char": "◂",
+      "name": "Black left-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["black left-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25B5",
+      "char": "▵",
+      "name": "White up-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["white up-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25B4",
+      "char": "▴",
+      "name": "Black up-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["black up-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25BF",
+      "char": "▿",
+      "name": "White down-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["white down-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25BE",
+      "char": "▾",
+      "name": "Black down-pointing small triangle",
+      "group": "shapes",
+      "keywords": ["black down-pointing small triangle", "triangle"]
+    },
+    {
+      "id": "u:25BB",
+      "char": "▻",
+      "name": "White right-pointing pointer",
+      "group": "shapes",
+      "keywords": ["white right-pointing pointer"]
+    },
+    {
+      "id": "u:25BA",
+      "char": "►",
+      "name": "Black right-pointing pointer",
+      "group": "shapes",
+      "keywords": ["black right-pointing pointer"]
+    },
+    {
+      "id": "u:25C5",
+      "char": "◅",
+      "name": "White left-pointing pointer",
+      "group": "shapes",
+      "keywords": ["white left-pointing pointer"]
+    },
+    {
+      "id": "u:25C4",
+      "char": "◄",
+      "name": "Black left-pointing pointer",
+      "group": "shapes",
+      "keywords": ["black left-pointing pointer"]
+    },
+    {
+      "id": "u:2B1F",
+      "char": "⬟",
+      "name": "Black pentagon",
+      "group": "shapes",
+      "keywords": ["black pentagon", "pentagon"]
+    },
+    {
+      "id": "u:2B20",
+      "char": "⬠",
+      "name": "White pentagon",
+      "group": "shapes",
+      "keywords": ["white pentagon", "pentagon"]
+    },
+    {
+      "id": "u:2B21",
+      "char": "⬡",
+      "name": "White hexagon",
+      "group": "shapes",
+      "keywords": ["white hexagon", "hexagon"]
+    },
+    {
+      "id": "u:2B22",
+      "char": "⬢",
+      "name": "Black hexagon",
+      "group": "shapes",
+      "keywords": ["black hexagon", "hexagon"]
+    },
+    {
+      "id": "u:2B23",
+      "char": "⬣",
+      "name": "Horizontal black hexagon",
+      "group": "shapes",
+      "keywords": ["horizontal black hexagon", "hexagon"]
+    },
+    {
+      "id": "u:2B24",
+      "char": "⬤",
+      "name": "Black large circle",
+      "group": "shapes",
+      "keywords": ["black large circle", "circle"]
+    },
+    {
+      "id": "u:2B25",
+      "char": "⬥",
+      "name": "Black medium diamond",
+      "group": "shapes",
+      "keywords": ["black medium diamond", "diamond"]
+    },
+    {
+      "id": "u:2B26",
+      "char": "⬦",
+      "name": "White medium diamond",
+      "group": "shapes",
+      "keywords": ["white medium diamond", "diamond"]
+    },
+    {
+      "id": "u:2B27",
+      "char": "⬧",
+      "name": "Black medium lozenge",
+      "group": "shapes",
+      "keywords": ["black medium lozenge"]
+    },
+    {
+      "id": "u:2B28",
+      "char": "⬨",
+      "name": "White medium lozenge",
+      "group": "shapes",
+      "keywords": ["white medium lozenge"]
+    },
+    {
+      "id": "u:2B29",
+      "char": "⬩",
+      "name": "Black small diamond",
+      "group": "shapes",
+      "keywords": ["black small diamond", "diamond"]
+    },
+    {
+      "id": "u:2B2A",
+      "char": "⬪",
+      "name": "Black small lozenge",
+      "group": "shapes",
+      "keywords": ["black small lozenge"]
+    },
+    {
+      "id": "u:2B2B",
+      "char": "⬫",
+      "name": "White small lozenge",
+      "group": "shapes",
+      "keywords": ["white small lozenge"]
+    },
+    {
+      "id": "u:2B2C",
+      "char": "⬬",
+      "name": "Black horizontal ellipse",
+      "group": "shapes",
+      "keywords": ["black horizontal ellipse"]
+    },
+    {
+      "id": "u:2B2D",
+      "char": "⬭",
+      "name": "White horizontal ellipse",
+      "group": "shapes",
+      "keywords": ["white horizontal ellipse"]
+    },
+    {
+      "id": "u:2B2E",
+      "char": "⬮",
+      "name": "Black vertical ellipse",
+      "group": "shapes",
+      "keywords": ["black vertical ellipse"]
+    },
+    {
+      "id": "u:2B2F",
+      "char": "⬯",
+      "name": "White vertical ellipse",
+      "group": "shapes",
+      "keywords": ["white vertical ellipse"]
+    },
+    {
+      "id": "u:2302",
+      "char": "⌂",
+      "name": "House",
+      "group": "shapes",
+      "keywords": ["house"]
+    },
+    {
+      "id": "u:2311",
+      "char": "⌑",
+      "name": "Square lozenge",
+      "group": "shapes",
+      "keywords": ["square lozenge", "square"]
+    },
+    {
+      "id": "u:2318",
+      "char": "⌘",
+      "name": "Place of interest sign",
+      "group": "shapes",
+      "keywords": ["place of interest sign"]
+    },
+    {
+      "id": "u:2316",
+      "char": "⌖",
+      "name": "Position indicator",
+      "group": "shapes",
+      "keywords": ["position indicator"]
+    },
+    {
+      "id": "u:2317",
+      "char": "⌗",
+      "name": "Viewdata square",
+      "group": "shapes",
+      "keywords": ["viewdata square", "square"]
+    },
+    {
+      "id": "u:232C",
+      "char": "⌬",
+      "name": "Benzene ring",
+      "group": "shapes",
+      "keywords": ["benzene ring"]
+    },
+    {
+      "id": "u:23E3",
+      "char": "⏣",
+      "name": "Benzene ring with circle",
+      "group": "shapes",
+      "keywords": ["benzene ring with circle", "circle"]
+    },
+    {
+      "id": "u:23E5",
+      "char": "⏥",
+      "name": "Flatness",
+      "group": "shapes",
+      "keywords": ["flatness"]
+    },
+    {
+      "id": "u:23E2",
+      "char": "⏢",
+      "name": "White trapezium",
+      "group": "shapes",
+      "keywords": ["white trapezium"]
+    },
+    {
+      "id": "u:23E4",
+      "char": "⏤",
+      "name": "Straightness",
+      "group": "shapes",
+      "keywords": ["straightness"]
+    },
+    {
+      "id": "u:23E6",
+      "char": "⏦",
+      "name": "AC current",
+      "group": "shapes",
+      "keywords": ["ac current"]
+    },
+    {
+      "id": "u:2716",
+      "char": "✖",
+      "name": "Heavy multiplication x",
+      "group": "shapes",
+      "keywords": ["heavy multiplication x"]
+    },
+    {
+      "id": "u:2714",
+      "char": "✔",
+      "name": "Heavy check mark",
+      "group": "shapes",
+      "keywords": ["heavy check mark", "check"]
+    },
+    {
+      "id": "u:2717",
+      "char": "✗",
+      "name": "Ballot x",
+      "group": "shapes",
+      "keywords": ["ballot x"]
+    },
+    {
+      "id": "u:2718",
+      "char": "✘",
+      "name": "Heavy ballot x",
+      "group": "shapes",
+      "keywords": ["heavy ballot x"]
+    },
+    {
+      "id": "u:2A2F",
+      "char": "⨯",
+      "name": "Vector or cross product",
+      "group": "shapes",
+      "keywords": ["vector or cross product", "cross"]
+    },
+    {
+      "id": "c:linked-circles",
+      "name": "Linked circles",
+      "group": "shapes",
+      "keywords": ["circles", "rings", "infinity", "circle"],
+      "path": "M4 12 A5 5 0 1 0 14 12 A5 5 0 1 0 4 12 M10 12 A5 5 0 1 0 20 12 A5 5 0 1 0 10 12"
+    },
+    {
+      "id": "c:curled-triangle",
+      "name": "Curled triangle",
+      "group": "shapes",
+      "keywords": ["triangle", "curl", "swirl"],
+      "path": "M12 3 L22 21 H2 Z M7 18 Q15 19 15 15 Q15 11 12 12 Q10 13 12 15"
+    },
+    {
+      "id": "c:spiral-square",
+      "name": "Spiral square",
+      "group": "shapes",
+      "keywords": ["square", "spiral", "box", "maze"],
+      "path": "M21 3 H3 V21 H21 V7 H7 V17 H17 V11 H11 V13"
+    },
+    {
+      "id": "c:crossed-ribbons",
+      "name": "Crossed ribbons",
+      "group": "shapes",
+      "keywords": ["ribbons", "cross", "bow", "loops"],
+      "path": "M4 4 C12 2 12 22 20 20 C22 12 2 12 4 4 Z M20 4 C12 2 12 22 4 20 C2 12 22 12 20 4 Z"
+    },
+    {
+      "id": "c:lightning",
+      "name": "Lightning",
+      "group": "shapes",
+      "keywords": ["lightning", "bolt", "zigzag"],
+      "path": "M14 2 L5 13 H11 L9 22 L20 9 H13 Z"
+    },
+    {
+      "id": "c:circled-dot",
+      "name": "Circled dot",
+      "group": "shapes",
+      "keywords": ["circle", "dot", "bullseye", "target"],
+      "path": "M3 12 A9 9 0 1 0 21 12 A9 9 0 1 0 3 12 M11 12 A1 1 0 1 0 13 12 A1 1 0 1 0 11 12"
+    },
+    {
+      "id": "c:w-over-w",
+      "name": "W over W",
+      "group": "shapes",
+      "keywords": ["w", "double w", "stacked w", "two ws"],
+      "path": "M3 3 L7 10 L12 4 L17 10 L21 3 M3 14 L7 21 L12 15 L17 21 L21 14"
+    }
+  ]
+}

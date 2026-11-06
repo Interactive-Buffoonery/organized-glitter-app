@@ -13,10 +13,12 @@ struct LibraryView: View {
 
   @State private var model: LibraryModel
   @State private var path: [LibraryItem] = []
+  @State private var showsFilters = false
   @State private var contentWidth: CGFloat = 0
   @State private var logEditor: LibraryItemDetailModel?
   @State private var showsRandomizer = false
   @State private var showsNumberPicker = false
+  @State private var showsStats = false
   let presentation: LibraryPresentation
   let libraryRefresh: LibraryRefresh
   let verticals: VerticalPreferences
@@ -64,6 +66,13 @@ struct LibraryView: View {
         .navigationDestination(isPresented: $showsNumberPicker) {
           RandomizerView()
         }
+        .navigationDestination(isPresented: $showsStats) {
+          StatsView(library: model.library, verticals: verticals)
+        }
+    }
+    .sheet(isPresented: $showsFilters) {
+      LibraryFilterSheet(filters: Bindable(model).filters, section: model.section,
+        options: model.filterOptions)
     }
     .progressNoteDrawer(editor: $logEditor) { _ in await model.load() }
     .task(id: model.listingIdentity) {
@@ -103,7 +112,7 @@ struct LibraryView: View {
     presentation != .search && model.library.hasSnapshot && model.hasLoaded
       && !model.isLoading && model.items.isEmpty
       && model.errorMessage == nil && model.statusFilter == nil
-      && model.committedSearch.isEmpty
+      && model.committedSearch.isEmpty && model.filters.isEmpty
   }
 
   /// The search tab shows a prompt until something has been searched.
@@ -130,6 +139,9 @@ struct LibraryView: View {
         if presentation != .search, !isEmptyLibrary {
           filterRow
         }
+        if !model.filters.isEmpty {
+          activeFilterSummary
+        }
         libraryBody
       }
       .frame(
@@ -152,6 +164,8 @@ struct LibraryView: View {
       if showsLibraryTools {
         ToolbarItem(placement: .topBarTrailing) {
           Menu {
+            Button("Stats", systemImage: "chart.bar") { showsStats = true }
+              .accessibilityIdentifier("library.stats")
             Button(RandomizerPageCopy.title, systemImage: "shuffle") { showsRandomizer = true }
               .accessibilityIdentifier("library.pickForMe")
             Button("Pick a section number", systemImage: "number") { showsNumberPicker = true }
@@ -261,10 +275,14 @@ struct LibraryView: View {
       .accessibilityIdentifier("library.heading")
   }
 
-  /// The controls stack when their full labels cannot fit across the screen.
+  /// The view picker drops to a second row first, then every control stacks.
   private var filterRow: some View {
     ViewThatFits(in: .horizontal) {
       HStack(spacing: 8) { filterControls }
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 8) { filterMenus }
+        viewModePicker
+      }
       VStack(alignment: .leading, spacing: 8) { filterControls }
     }
     .buttonStyle(.bordered)
@@ -275,11 +293,47 @@ struct LibraryView: View {
 
   @ViewBuilder
   private var filterControls: some View {
+    filterMenus
+    viewModePicker
+  }
+
+  @ViewBuilder
+  private var filterMenus: some View {
     if presentation.showsStatusFilter {
       statusMenu
     }
     sortMenu
-    viewModePicker
+    filtersButton
+  }
+
+  private var filtersButton: some View {
+    let count = model.filters.activeFacets.count
+    return Button { showsFilters = true } label: {
+      filterLabel(count == 0 ? "Filters" : "Filters (\(count))",
+        systemImage: count == 0 ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill",
+        hue: theme.primary, presentsMenu: false)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .accessibilityLabel("Filters, \(count) active")
+    .accessibilityIdentifier("library.filters")
+  }
+
+  private func clearFilters() {
+    model.resetFilters()
+    AccessibilityNotification.Announcement("Filters cleared").post()
+  }
+
+  private var activeFilterSummary: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("Filtered: \(model.filters.activeFacets.joined(separator: ", "))")
+        .font(.karla(.subheadline))
+        .foregroundStyle(theme.pageSecondaryForeground)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("library.filters.summary")
+      Button("Clear filters", action: clearFilters)
+        .buttonStyle(QuietActionStyle())
+        .accessibilityIdentifier("library.filters.clear")
+    }
   }
 
   private var viewMode: LibraryViewMode {
@@ -308,7 +362,7 @@ struct LibraryView: View {
   }
 
   private var statusMenu: some View {
-    let counts = model.library.shelfCounts(for: model.section)
+    let counts = model.statusCounts
     let total = counts.values.reduce(0, +)
     let selection = model.statusFilter
     let title = selection.map(model.section.statusLabel) ?? "All"
@@ -354,7 +408,7 @@ struct LibraryView: View {
   /// One text, so at accessibility sizes the label wraps between words
   /// instead of squeezing the title.
   private func filterLabel(
-    _ title: String, count: Int? = nil, systemImage: String, hue: Color
+    _ title: String, count: Int? = nil, systemImage: String, hue: Color, presentsMenu: Bool = true
   ) -> some View {
     let icon = Text(Image(systemName: systemImage)).foregroundStyle(hue)
     let chevron = Text(Image(systemName: "chevron.down")).font(.karla(.caption).weight(.bold))
@@ -362,7 +416,7 @@ struct LibraryView: View {
     let countText = count.map {
       Text(" \($0.formatted())").monospacedDigit().foregroundStyle(theme.pageSecondaryForeground)
     } ?? Text("")
-    return Text("\(icon) \(title)\(countText) \(chevron)")
+    return Text("\(icon) \(title)\(countText)\(presentsMenu ? Text(" \(chevron)") : Text(""))")
       .font(.karla(.caption).weight(.semibold))
   }
 
@@ -443,7 +497,14 @@ struct LibraryView: View {
 
   @ViewBuilder
   private var emptyState: some View {
-    if !model.committedSearch.isEmpty {
+    if !model.filters.isEmpty {
+      ContentUnavailableView {
+        Label("No matches", systemImage: "line.3.horizontal.decrease.circle")
+          .font(.karla(.title2).bold())
+      } description: {
+        Text("Try changing or clearing your filters.")
+      }
+    } else if !model.committedSearch.isEmpty {
       ContentUnavailableView.search(text: model.committedSearch)
     } else if let status = model.statusFilter {
       ContentUnavailableView {
@@ -506,12 +567,14 @@ struct LibraryView: View {
   }
 
   private func galleryItem(_ item: LibraryItem) -> some View {
-    NavigationLink(value: item) {
+    let hidesAnswer = model.library.hidesMysteryThumbnail(for: item)
+    return NavigationLink(value: item) {
       LibraryGalleryCard(
         item: item,
-        imageURL: protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
+        imageURL: hidesAnswer ? nil : protectedFiles?.artworkURL(for: item, thumb: ArtworkThumb.gallery),
         mode: viewMode,
-        showsStatus: !model.isShelved && model.statusFilter == nil)
+        showsStatus: !model.isShelved && model.statusFilter == nil,
+        hidesMysteryAnswer: hidesAnswer)
     }
     .buttonStyle(.plain)
     .contextMenu {

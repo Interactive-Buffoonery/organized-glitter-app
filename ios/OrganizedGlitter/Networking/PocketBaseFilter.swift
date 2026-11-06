@@ -2,6 +2,7 @@ import Foundation
 
 enum PocketBaseFilter {
   enum Field: String {
+    case id
     case user
     case status
     case title
@@ -10,6 +11,7 @@ enum PocketBaseFilter {
     case project
     case projectUser = "project.user"
     case page
+    case code
     case pageBookUser = "page.book.user"
     case bookUser = "book.user"
     case bookTitle = "book.title"
@@ -30,6 +32,10 @@ enum PocketBaseFilter {
 
   static func equals(_ field: Field, _ value: String) -> String {
     "\(field.rawValue) = \"\(escape(value))\""
+  }
+
+  static func notEquals(_ field: Field, _ value: String) -> String {
+    "\(field.rawValue) != \"\(escape(value))\""
   }
 
   /// Matches when any value of a multiple relation equals `value`.

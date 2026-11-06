@@ -278,7 +278,7 @@ struct PasswordResetConfirmationView: View {
         announceInvalidLink()
       case .offline:
         await showUncertainOutcome(generation: generation)
-      case .server, .decoding, .emailUnverified, .conflict:
+      case .server, .tryLater, .decoding, .emailUnverified, .conflict:
         await showUncertainOutcome(generation: generation)
       }
     } catch {

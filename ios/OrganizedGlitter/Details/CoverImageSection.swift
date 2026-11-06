@@ -10,15 +10,12 @@ struct CoverImageSection: View {
   let accessibilityNoun: String
   @Binding var change: CoverChange
 
+  @State private var isTakingPhoto = false
+  @State private var cameraImage: UIImage?
   @State private var selectedItem: PhotosPickerItem?
-  @State private var cropPhoto: CropPhoto?
+  @State private var cropPhoto: CropSelection?
   @State private var isProcessing = false
   @State private var errorMessage: String?
-
-  private struct CropPhoto: Identifiable {
-    let id = UUID()
-    let photo: ProcessedDetailPhoto
-  }
 
   private var hasCover: Bool {
     switch change {
@@ -52,6 +49,16 @@ struct CoverImageSection: View {
       // A modifier on the Section repeats on every row, so the task and cover
       // live on this one row instead.
       .task(id: selectedItem) { await prepareSelection() }
+      .fullScreenCover(isPresented: $isTakingPhoto, onDismiss: {
+        guard let image = cameraImage else { return }
+        cameraImage = nil
+        Task { await prepare { try await DetailPhotoProcessor.process(image: image) } }
+      }) {
+        CameraPicker { image in
+          cameraImage = image
+          isTakingPhoto = false
+        }
+      }
       .fullScreenCover(item: $cropPhoto) { selection in
         CoverCropView(photo: selection.photo) { photo in
           change = .replace(photo)
@@ -64,6 +71,13 @@ struct CoverImageSection: View {
       }
       .accessibilityLabel("\(hasCover ? "Replace" : "Choose") \(accessibilityNoun)")
       .disabled(isProcessing)
+      if UIImagePickerController.isSourceTypeAvailable(.camera) {
+        Button("Take Photo", systemImage: "camera") { isTakingPhoto = true }
+          .frame(minHeight: 44)
+          .foregroundStyle(theme.primary)
+          .accessibilityLabel("Take \(accessibilityNoun)")
+          .disabled(isProcessing)
+      }
       if hasCover {
         Button("Crop", systemImage: "crop") { Task { await crop() } }
           .frame(minHeight: 44)
@@ -104,7 +118,7 @@ struct CoverImageSection: View {
 
   private func crop() async {
     if case .replace(let photo) = change {
-      cropPhoto = CropPhoto(photo: photo)
+      cropPhoto = CropSelection(photo: photo)
     } else if let currentCoverURL {
       await prepare(failure: "The current photo could not be loaded. Try again.") {
         try await Self.uploadedPhoto(at: currentCoverURL, client: client)
@@ -137,15 +151,9 @@ struct CoverImageSection: View {
     do {
       let photo = try await work()
       try Task.checkCancellation()
-      cropPhoto = CropPhoto(photo: photo)
-    } catch is CancellationError {
-      return
-    } catch APIError.cancelled {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      errorMessage = error.message
+      cropPhoto = CropSelection(photo: photo)
     } catch {
-      errorMessage = failure
+      errorMessage = DetailPhotoProcessingError.message(for: error, fallback: failure)
     }
   }
 }
@@ -153,6 +161,10 @@ struct CoverImageSection: View {
 struct CoverCropView: View {
   @Environment(\.dismiss) private var dismiss
   let photo: ProcessedDetailPhoto
+  /// Width divided by height.
+  var aspectRatio: CGFloat = 0.8
+  var title = "Crop Cover"
+  var previewLabel = "Cover crop preview"
   let onChoose: (ProcessedDetailPhoto) -> Void
   @State private var zoom: CGFloat = 1
   @State private var offset: CGSize = .zero
@@ -180,8 +192,8 @@ struct CoverCropView: View {
   var body: some View {
     NavigationStack {
       GeometryReader { geometry in
-        let width = min(geometry.size.width - 32, max(80, (geometry.size.height - 180) * 0.8), 480)
-        let frame = CGSize(width: width, height: width * 1.25)
+        let width = min(geometry.size.width - 32, max(80, (geometry.size.height - 180) * aspectRatio), 480)
+        let frame = CGSize(width: width, height: width / aspectRatio)
         VStack(spacing: 16) {
           Spacer(minLength: 0)
           if let image = UIImage(data: photo.data) {
@@ -213,7 +225,7 @@ struct CoverCropView: View {
                 zoom = min(8, max(1, zoom * value.magnification))
                 clamp(imageSize: image.size, frame: frame)
               })
-              .accessibilityLabel("Cover crop preview")
+              .accessibilityLabel(previewLabel)
               .accessibilityAdjustableAction { direction in
                 zoom = min(8, max(1, zoom + (direction == .increment ? 0.25 : -0.25)))
                 clamp(imageSize: image.size, frame: frame)
@@ -249,7 +261,7 @@ struct CoverCropView: View {
       }
       .background(.black)
       .foregroundStyle(.white)
-      .navigationTitle("Crop Cover")
+      .navigationTitle(title)
       .navigationBarTitleDisplayMode(.inline)
       .toolbarColorScheme(.dark, for: .navigationBar)
       .preferredColorScheme(.dark)
@@ -286,12 +298,9 @@ struct CoverCropView: View {
       try Task.checkCancellation()
       onChoose(cropped)
       dismiss()
-    } catch is CancellationError {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      errorMessage = error.message
     } catch {
-      errorMessage = "That crop could not be prepared. Try again."
+      errorMessage = DetailPhotoProcessingError.message(
+        for: error, fallback: "That crop could not be prepared. Try again.")
     }
   }
 }

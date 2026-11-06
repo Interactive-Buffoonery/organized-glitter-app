@@ -133,7 +133,7 @@ struct DetailStatusRecovery: View {
           .accessibilityIdentifier("detail.status.refresh")
         case .refreshed:
           Button("Done reviewing status") {
-            model.clearUnresolvedWriteRecovery()
+            Task { await model.clearUnresolvedWriteRecovery() }
           }
           .accessibilityIdentifier("detail.status.reviewed")
         case nil:
@@ -367,6 +367,22 @@ func saveDetailChange(
   Task {
     if await write() {
       await onCollectionChanged()
+    }
+  }
+}
+
+/// The load failure message with a retry, shared by the detail screens.
+struct DetailLoadError: View {
+  let model: LibraryItemDetailModel
+
+  var body: some View {
+    if let errorMessage = model.errorMessage {
+      VStack(alignment: .leading, spacing: 12) {
+        AccessibleErrorLabel(message: errorMessage)
+        Button("Try again") {
+          Task { await model.load() }
+        }
+      }
     }
   }
 }

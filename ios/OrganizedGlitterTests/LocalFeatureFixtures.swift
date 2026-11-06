@@ -2,6 +2,22 @@ import Foundation
 
 @testable import OrganizedGlitter
 
+extension URLRequest {
+  /// The body a URLProtocol stub sees: URLSession moves uploads into `httpBodyStream`.
+  var bodyData: Data {
+    if let httpBody { return httpBody }
+    guard let stream = httpBodyStream else { return Data() }
+    stream.open()
+    defer { stream.close() }
+    var data = Data()
+    var buffer = [UInt8](repeating: 0, count: 4_096)
+    while case let count = stream.read(&buffer, maxLength: buffer.count), count > 0 {
+      data.append(buffer, count: count)
+    }
+    return data
+  }
+}
+
 @MainActor
 func localFeatureLibrary(userID: String = "feature-user") throws -> LibrarySession {
   let client = PocketBaseClient(

@@ -39,10 +39,10 @@ enum KarlaTypography {
   static func applyControlFonts() {
     UIBarButtonItem.appearance().setTitleTextAttributes(
       [.font: nativeFont(size: 17, relativeTo: .body)], for: .normal)
-    UITabBarItem.appearance().setTitleTextAttributes(
-      [.font: nativeFont(size: 10, relativeTo: .caption2)], for: .normal)
-    UITabBarItem.appearance().setTitleTextAttributes(
-      [.font: nativeFont(size: 10, relativeTo: .caption2)], for: .selected)
+    let tabFont: [NSAttributedString.Key: Any] = [.font: nativeFont(size: 10, relativeTo: .caption2)]
+    for state: UIControl.State in [.normal, .selected] {
+      UITabBarItem.appearance().setTitleTextAttributes(tabFont, for: state)
+    }
     UISegmentedControl.appearance().setTitleTextAttributes(
       [.font: nativeFont(size: 13, relativeTo: .footnote)], for: .normal)
   }

@@ -393,7 +393,7 @@ private final class AccountPreferencesURLProtocol: URLProtocol, @unchecked Senda
 
   override func startLoading() {
     Self.requests.append(request)
-    Self.requestBodies.append(bodyData)
+    Self.requestBodies.append(request.bodyData)
     if Self.responseDelay > 0 { Thread.sleep(forTimeInterval: Self.responseDelay) }
     let (status, body) = Self.responses.removeFirst()
     let response = HTTPURLResponse(
@@ -406,19 +406,4 @@ private final class AccountPreferencesURLProtocol: URLProtocol, @unchecked Senda
   }
 
   override func stopLoading() {}
-
-  private var bodyData: Data {
-    if let body = request.httpBody { return body }
-    guard let stream = request.httpBodyStream else { return Data() }
-    stream.open()
-    defer { stream.close() }
-    var data = Data()
-    var buffer = [UInt8](repeating: 0, count: 1_024)
-    while stream.hasBytesAvailable {
-      let count = stream.read(&buffer, maxLength: buffer.count)
-      guard count > 0 else { break }
-      data.append(buffer, count: count)
-    }
-    return data
-  }
 }

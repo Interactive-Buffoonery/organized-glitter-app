@@ -199,10 +199,14 @@ struct ProgressNotesSection: View {
       VStack(alignment: .leading, spacing: 12) {
         header
         if model.progressNotes.isEmpty {
-          ContentUnavailableView(
-            "No progress notes", systemImage: "note.text",
-            description: Text("Log a photo, a caption, or both as your work changes."))
-            .frame(maxWidth: .infinity)
+          // ponytail: ContentUnavailableView forces the system title font.
+          VStack(alignment: .leading, spacing: 4) {
+            Text("No progress notes")
+              .font(.karla(.headline))
+            Text("Log a photo, a caption, or both as your work changes.")
+              .font(.karla(.subheadline))
+          }
+          .foregroundStyle(theme.pageSecondaryForeground)
         } else {
           LazyVStack(alignment: .leading, spacing: 12) {
             ForEach(model.progressNotes) { note in
@@ -238,7 +242,8 @@ struct ProgressNotesSection: View {
           .disabled(model.isLoadingMore)
           .accessibilityIdentifier("detail.progress.loadMore")
         }
-        if !isAddingNote, !model.unresolvedStatusWrite {
+        if !isAddingNote, !model.unresolvedStatusWrite,
+          !model.unresolvedPhotoAction, !model.unresolvedPagePhotoUpload {
           recovery
         }
       }
@@ -290,7 +295,7 @@ struct ProgressNotesSection: View {
   private var recovery: some View {
     switch model.unresolvedWriteState {
     case .needsRefresh:
-      if let message = model.mutationErrorMessage { AccessibleErrorLabel(message: message) }
+      if let message = model.noteMutationErrorMessage { AccessibleErrorLabel(message: message) }
       Button("Refresh note status") {
         Task {
           if await model.refreshUnresolvedWriteStatus() { await onCollectionChanged() }
@@ -299,11 +304,11 @@ struct ProgressNotesSection: View {
       .buttonStyle(.bordered)
       .disabled(model.isMutating)
     case .refreshed:
-      if let message = model.mutationErrorMessage {
+      if let message = model.noteMutationErrorMessage {
         Label(message, systemImage: "checkmark.circle")
           .foregroundStyle(theme.foreground)
       }
-      Button("Done reviewing progress notes") { model.clearUnresolvedWriteRecovery() }
+      Button("Done reviewing progress notes") { Task { await model.clearUnresolvedWriteRecovery() } }
         .buttonStyle(.bordered)
     case nil:
       EmptyView()
@@ -350,6 +355,8 @@ struct ProgressNoteEditor: View {
 
   @State private var date = Date()
   @State private var content = ""
+  @State private var isTakingPhoto = false
+  @State private var cameraImage: UIImage?
   @State private var selectedItem: PhotosPickerItem?
   @State private var processedPhoto: ProcessedDetailPhoto?
   @State private var previewImage: UIImage?
@@ -385,6 +392,11 @@ struct ProgressNoteEditor: View {
               )
             }
             .disabled(isPreparingPhoto || model.isMutating)
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+              Button("Take Photo", systemImage: "camera") { isTakingPhoto = true }
+                .accessibilityLabel("Take progress photo")
+                .disabled(isPreparingPhoto || model.isMutating)
+            }
           }
           .disabled(model.unresolvedWriteState != nil)
 
@@ -402,7 +414,7 @@ struct ProgressNoteEditor: View {
             Section {
               AccessibleErrorLabel(message: message)
             }
-          } else if let message = model.mutationErrorMessage {
+          } else if let message = model.noteMutationErrorMessage {
             Section {
               if model.unresolvedWriteState == .refreshed {
                 Label(message, systemImage: "checkmark.circle")
@@ -435,20 +447,30 @@ struct ProgressNoteEditor: View {
             .accessibilityIdentifier("detail.progress.noteRefresh")
           case .refreshed:
             Button("Back to notes") {
-              model.clearUnresolvedWriteRecovery()
+              Task { await model.clearUnresolvedWriteRecovery() }
               dismiss()
             }
             .accessibilityIdentifier("detail.progress.noteReview")
           case nil:
-            Button(model.mutationErrorMessage == nil ? "Add" : "Try again") {
+            Button(model.noteMutationErrorMessage == nil ? "Add" : "Try again") {
               Task { await submit() }
             }
             .disabled(!canSubmit || isPreparingPhoto || model.isMutating)
             .accessibilityIdentifier(
-              model.mutationErrorMessage == nil
+              model.noteMutationErrorMessage == nil
                 ? "detail.progress.noteSubmit" : "detail.progress.noteRetry"
             )
           }
+        }
+      }
+      .fullScreenCover(isPresented: $isTakingPhoto, onDismiss: {
+        guard let image = cameraImage else { return }
+        cameraImage = nil
+        Task { await preparePhoto { try await DetailPhotoProcessor.process(image: image) } }
+      }) {
+        CameraPicker { image in
+          cameraImage = image
+          isTakingPhoto = false
         }
       }
       .task(id: selectedItem) {
@@ -492,6 +514,10 @@ struct ProgressNoteEditor: View {
 
   private func prepareSelectedPhoto() async {
     guard let selectedItem else { return }
+    await preparePhoto { try await DetailPhotoProcessor.process(item: selectedItem) }
+  }
+
+  private func preparePhoto(_ work: () async throws -> ProcessedDetailPhoto) async {
     isPreparingPhoto = true
     photoErrorMessage = nil
     model.mutationErrorMessage = nil
@@ -500,21 +526,15 @@ struct ProgressNoteEditor: View {
     AccessibilityNotification.Announcement("Preparing photo").post()
     defer { isPreparingPhoto = false }
     do {
-      let photo = try await DetailPhotoProcessor.process(
-        item: selectedItem
-      )
+      let photo = try await work()
       try Task.checkCancellation()
       processedPhoto = photo
       previewImage = await Task.detached(priority: .userInitiated) {
         UIImage(data: photo.data)
       }.value
-    } catch is CancellationError {
-      return
-    } catch let error as DetailPhotoProcessingError {
-      photoErrorMessage = error.message
-      self.selectedItem = nil
     } catch {
-      photoErrorMessage = "That photo could not be prepared. Try another image."
+      guard let message = DetailPhotoProcessingError.message(for: error) else { return }
+      photoErrorMessage = message
       self.selectedItem = nil
     }
   }

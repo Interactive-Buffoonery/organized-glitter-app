@@ -195,6 +195,11 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
   let updated: String
   let expand: ColoringPageExpand?
   var revealedAt: String? = nil
+  var mediumIDs: [String]? = nil
+
+  var selectedMediumIDs: Set<String> {
+    Set(mediumIDs ?? expand?.mediums?.map(\.id) ?? [])
+  }
 
   enum CodingKeys: String, CodingKey {
     case id, book, status, photos, created, updated, expand
@@ -203,6 +208,7 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
     case completedAt = "completed_at"
     case startedAt = "started_at"
     case revealedAt = "revealed_at"
+    case mediumIDs = "mediums"
   }
 
   func withExpand(_ expand: ColoringPageExpand?) -> ColoringPageRecord {
@@ -211,6 +217,7 @@ struct ColoringPageRecord: Codable, Hashable, Identifiable, Sendable {
       revealedSubject: revealedSubject, completedAt: completedAt,
       startedAt: startedAt, created: created, updated: updated, expand: expand)
     copy.revealedAt = revealedAt
+    copy.mediumIDs = mediumIDs
     return copy
   }
 }

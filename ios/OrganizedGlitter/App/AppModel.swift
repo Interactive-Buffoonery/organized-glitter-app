@@ -54,6 +54,7 @@ final class AppModel {
   private(set) var library: LibrarySession?
   var requiresDiscardConfirmation = false
   private(set) var sessionError: String?
+  private(set) var isChangingPassword = false
   private(set) var isSigningOut = false {
     didSet { updateAnalyticsSession() }
   }
@@ -82,6 +83,7 @@ final class AppModel {
   var isSubmitting = false
   var passwordResetDestination: PasswordResetDestination?
   var showsSignedInPasswordResetNotice = false
+  var passwordChangeNotice: String?
   private var pendingPasswordResetLink: PasswordResetLink?
 
   init(
@@ -557,6 +559,83 @@ final class AppModel {
     }
   }
 
+  enum PasswordChangeOutcome: Equatable {
+    case changed
+    case changedSignInRequired
+  }
+
+  func requestEmailChange(email: String, library: LibrarySession) async throws {
+    guard !isSigningOut, !isChangingPassword, self.library === library,
+      case .signedIn(let user) = phase, user.id == library.userID else {
+      throw APIError.cancelled
+    }
+    let generation = sessionGeneration
+    do {
+      try await library.requestEmailChange(email: email)
+    } catch APIError.unauthenticated {
+      if generation == sessionGeneration, self.library === library {
+        await expireSession()
+      }
+      throw APIError.unauthenticated
+    }
+    guard generation == sessionGeneration, self.library === library,
+      !Task.isCancelled else { throw APIError.cancelled }
+  }
+
+  func changePassword(
+    oldPassword: String, password: String, confirmation: String,
+    library: LibrarySession, onAccepted: () -> Void
+  ) async throws -> PasswordChangeOutcome {
+    guard !isSigningOut, !isChangingPassword, self.library === library,
+      let client, case .signedIn(let user) = phase,
+      user.id == library.userID else { throw APIError.cancelled }
+    let generation = sessionGeneration
+    isChangingPassword = true
+    defer { isChangingPassword = false }
+    do {
+      try await library.changePassword(
+        oldPassword: oldPassword, password: password,
+        passwordConfirmation: confirmation)
+    } catch APIError.unauthenticated {
+      if generation == sessionGeneration, self.library === library {
+        await expireSession()
+      }
+      throw APIError.unauthenticated
+    }
+    guard generation == sessionGeneration, self.library === library else {
+      throw APIError.cancelled
+    }
+    onAccepted()
+    library.pauseWrites()
+    await library.waitForWrites()
+    guard generation == sessionGeneration, self.library === library else {
+      throw APIError.cancelled
+    }
+    do {
+      guard let identity = user.email?.nonEmpty else { throw APIError.unauthenticated }
+      let session = try await client.reauthenticateAfterPasswordChange(
+        identity: identity, password: password, expectedUserID: user.id)
+      guard generation == sessionGeneration, self.library === library,
+        !isSigningOut, !Task.isCancelled else { throw APIError.cancelled }
+      guard let localStore else { throw LocalLibraryError.storageUnavailable }
+      try await localStore.saveUser(session.user, scope: library.scope)
+      guard generation == sessionGeneration, self.library === library,
+        !isSigningOut, !Task.isCancelled else { throw APIError.cancelled }
+      setSignedInUser(session.user, analyticsConsentVerified: true)
+      applyThemePreference(from: session.user)
+      library.resumeWrites()
+      Task { try? await library.refresh(force: true) }
+      return .changed
+    } catch {
+      guard generation == sessionGeneration, self.library === library else {
+        throw APIError.cancelled
+      }
+      await expireSession()
+      passwordChangeNotice = "Sign in again with your new password. Your unsent library changes are still on this device."
+      return .changedSignInRequired
+    }
+  }
+
   func expireSession() async {
     guard !isSigningOut, !cleanupBlocked, deletion?.isLocked != true else { return }
     isSigningOut = true
@@ -918,7 +997,7 @@ extension Error {
       return "You appear to be offline. Reconnect and try again."
     case .notFound:
       return "That account could not be found."
-    case .server, .decoding, .cancelled:
+    case .server, .tryLater, .decoding, .cancelled:
       return "Organized Glitter is unavailable right now. Try again shortly."
     }
   }
