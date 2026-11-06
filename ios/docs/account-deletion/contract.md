@@ -95,3 +95,19 @@ See `failure-model.md` and the private, gitignored local test evidence directory
 provider reauthentication, backend transactions, vendor erasure or production.
 Full iPhone/iPad pre-PR, guarded-backend integration, accessibility driving and
 fresh independent implementation review remain separate release evidence.
+
+## Cleanup source verification (2026-11-05)
+
+Reviewed web `origin/main` at
+`81b798bab0841bcf52e3f28d96f1f2984e8cc8fd` without changing its checkout.
+`pb_hooks/account_deletion.pb.js` accepts exactly `proof` and `confirmed`,
+returns HTTP 200 with `status: deleted` and `cleanup`, and resolves a stored
+proof receipt before requiring authentication. An unknown proof still requires
+a verified user and fresh server proof. The native tokenless recovery request
+therefore cannot create a new deletion. Password step-up, guarded OAuth
+`og_step_up_*` fields and native Apple deletion fields exist in current source.
+This supersedes older prose saying no guarded deletion backend exists.
+
+This is source compatibility evidence only. It does not verify deployment,
+provider credentials, external vendor erasure, receipt retention in production,
+or a disposable PocketBase integration run. No backend pin was changed.

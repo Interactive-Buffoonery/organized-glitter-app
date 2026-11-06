@@ -92,7 +92,7 @@ final class AccountDeletionUITests: XCTestCase {
     let analytics = app.switches["account.usageAnalytics"]
     for _ in 0..<10 {
       if analytics.exists && analytics.isHittable { break }
-      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+      app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     try app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(directory)/account-privacy.png"))
     let details = app.buttons["How analytics works"]
@@ -103,7 +103,7 @@ final class AccountDeletionUITests: XCTestCase {
     let entry = app.buttons["account.delete"]
     for _ in 0..<10 {
       if entry.exists && entry.isHittable { break }
-      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+      app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     XCTAssertTrue(entry.isHittable)
     entry.tap()
@@ -146,7 +146,7 @@ final class AccountDeletionUITests: XCTestCase {
     let entry = app.buttons["account.delete"]
     for _ in 0..<10 {
       if entry.exists && entry.isHittable { break }
-      app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+      app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     XCTAssertTrue(entry.isHittable)
     entry.tap()
