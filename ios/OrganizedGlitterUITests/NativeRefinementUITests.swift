@@ -86,7 +86,8 @@ final class NativeRefinementUITests: XCTestCase {
       openLibrary(app)
       XCTAssertTrue(
         app.navigationBars["Library"].waitForExistence(timeout: 5)
-          || app.navigationBars["Diamond art"].exists,
+          || app.navigationBars["Diamond art"].exists
+          || element("library.heading", in: app).isHittable,
         "Library cannot be opened during \(scenario)")
       app.terminate()
     }

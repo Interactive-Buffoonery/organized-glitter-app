@@ -39,16 +39,8 @@ final class ProtectedFileAccess {
   }
 
   static func renewalDelay(for token: String, now: Date = .now) -> TimeInterval {
-    let parts = token.split(separator: ".")
-    guard parts.count == 3 else { return 30 }
-    var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+")
-      .replacingOccurrences(of: "_", with: "/")
-    payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
-    guard let data = Data(base64Encoded: payload),
-      let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let expiration = claims["exp"] as? TimeInterval
-    else { return 30 }
-    let timeUntilExpiry = expiration - now.timeIntervalSince1970
+    guard let expiration = JWTExpiration.date(for: token) else { return 30 }
+    let timeUntilExpiry = expiration.timeIntervalSince(now)
     guard timeUntilExpiry > 0 else { return 30 }
     return max(30, timeUntilExpiry - 30)
   }
