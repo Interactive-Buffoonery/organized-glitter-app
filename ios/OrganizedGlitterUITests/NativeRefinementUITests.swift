@@ -294,6 +294,7 @@ final class NativeRefinementUITests: XCTestCase {
     XCTAssertTrue(button("colorKeys.row.32", in: app).exists)
     XCTAssertFalse(button("colorKeys.row.33", in: app).exists)
     XCTAssertTrue(first.label.hasPrefix("One, No code yet"))
+    makeHittable(first, in: app)
     first.tap()
 
     let code = app.textFields["colorKeys.entry.code"]

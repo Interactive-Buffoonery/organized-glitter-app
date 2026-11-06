@@ -86,15 +86,9 @@ sequentially:
 2. Fixture UI tests on an iPhone simulator.
 3. Fixture UI tests on an iPad simulator.
 
-The script requires the machine-wide `process-gate` command. Run it directly; it
-queues an iPhone session followed by an iPad session. Each session boots one
-initially shut-down simulator and shuts it down before releasing the lease,
-including after failures or cancellation. Other booted devices are preserved
-and block a session from starting.
-
-The script selects shut-down iOS 26 simulators and prints their names, runtime
-versions, and IDs. To use specific simulators, get their IDs with
-`xcrun simctl list devices available` and pass both overrides:
+The script uses an iPhone and an iPad simulator that you, or the agent's
+device tools, open first; it never creates, boots or shuts down devices. Pass
+both IDs:
 
 ```sh
 IPHONE_SIMULATOR_ID='<iPhone simulator UUID>' \
@@ -102,9 +96,9 @@ IPAD_SIMULATOR_ID='<iPad simulator UUID>' \
 ./ios/script/pre-pr.sh
 ```
 
-Each override is optional, but must identify an available device of the matching
-family running iOS 26. The earlier `DESTINATION` override is replaced by these
-device-specific variables. Use simulators that other test runs are not using.
+Use iOS 26 simulators that no other run is using. If they live outside Xcode's
+default device set (for example, Simlock's), also set `SIMLOCK_IOS_DEVICE_SET`
+to that set's path; this needs Xcode 27 or later.
 
 Each run saves separate logs and `.xcresult` bundles under
 `ios/.derived-data/pre-pr/run.*`. UI suites can take several minutes; use
