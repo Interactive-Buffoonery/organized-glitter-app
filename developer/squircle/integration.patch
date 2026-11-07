@@ -380,7 +380,7 @@ index c55ce7d..d8c4b6f 100644
              if updated == errSecSuccess { return .stored }
              guard updated == errSecItemNotFound else { return .failed(updated) }
 diff --git a/app/Squircle/Sources/AppProject.swift b/app/Squircle/Sources/AppProject.swift
-index e83f41a..36aa731 100644
+index e83f41a..ffa42a8 100644
 --- a/app/Squircle/Sources/AppProject.swift
 +++ b/app/Squircle/Sources/AppProject.swift
 @@ -192,21 +192,14 @@ enum T3AppCatalog {
@@ -412,7 +412,7 @@ index e83f41a..36aa731 100644
  enum AppOrder {
      /// The whole catalog's order after Home shows `visible` (some of its
 diff --git a/app/Squircle/Sources/SquircleClient.swift b/app/Squircle/Sources/SquircleClient.swift
-index 03db669..fffe860 100644
+index 03db669..2dbc2e1 100644
 --- a/app/Squircle/Sources/SquircleClient.swift
 +++ b/app/Squircle/Sources/SquircleClient.swift
 @@ -32,7 +32,7 @@ enum ServiceNotice: Equatable {
@@ -424,17 +424,42 @@ index 03db669..fffe860 100644
      let configuration: AppConfiguration
      private let session: URLSession
      /// The event stream's: it stays open, quiet for as long as nothing changes.
-@@ -381,6 +381,10 @@ final class SquircleClient {
+@@ -365,12 +365,11 @@ final class SquircleClient {
+
+     func reportLaunch(buildID: String, eventID: String, timestamp: Int) async throws {
+         guard UUID(uuidString: buildID) != nil else { return }
+-        var request = try request(["v1", "diagnostics"], method: "POST", body: JSONSerialization.data(withJSONObject: [
++        let request = try request(["v1", "diagnostics"], method: "POST", body: JSONSerialization.data(withJSONObject: [
+             "event_id": eventID, "build_id": buildID.lowercased(), "kind": "launch",
+             "message": "Squircle opened", "timestamp": timestamp,
+             "attributes": ["bundle_id": Bundle.main.bundleIdentifier ?? "", "client": "squircle-ios"]
+-        ]))
+-        request.setValue("Bearer \(configuration.diagnosticToken)", forHTTPHeaderField: "Authorization")
++        ]), launchReceipt: true)
+         try await send(request, service: "Squircle diagnostics", exposeAPIError: false)
      }
 
-     private func request(_ components: [String], query: [URLQueryItem] = [], method: String = "GET", body: Data? = nil) throws -> URLRequest {
-+        guard method == "GET" || method == "HEAD" ||
-+              (method == "POST" && components.count == 4 && components.prefix(2) == ["v1", "builds"] && components.last == "install-link") else {
+@@ -380,7 +379,10 @@ final class SquircleClient {
+         try await send(request(["v1", "push", endpoint], method: "POST", body: JSONSerialization.data(withJSONObject: body)))
+     }
+
+-    private func request(_ components: [String], query: [URLQueryItem] = [], method: String = "GET", body: Data? = nil) throws -> URLRequest {
++    private func request(_ components: [String], query: [URLQueryItem] = [], method: String = "GET", body: Data? = nil, launchReceipt: Bool = false) throws -> URLRequest {
++        guard DeveloperPolicy.allowsServiceRequest(method, components, launchReceipt: launchReceipt) else {
 +            throw ClientError.backend("Squircle", 403, "Start builds and manage agents on the Mac. This client only installs an explicitly selected signed update.")
 +        }
          var url = configuration.squircleURL
          for component in components {
              guard !component.isEmpty, !component.contains("/"), component != ".", component != ".." else {
+@@ -398,7 +400,7 @@ final class SquircleClient {
+         var request = URLRequest(url: endpoint)
+         request.httpMethod = method
+         request.httpBody = body
+-        request.setValue("Bearer \(configuration.squircleToken)", forHTTPHeaderField: "Authorization")
++        request.setValue("Bearer \(launchReceipt ? configuration.diagnosticToken : configuration.squircleToken)", forHTTPHeaderField: "Authorization")
+         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+         return request
+     }
 diff --git a/app/Squircle/Sources/SquircleModel.swift b/app/Squircle/Sources/SquircleModel.swift
 index 60e3422..d32705d 100644
 --- a/app/Squircle/Sources/SquircleModel.swift

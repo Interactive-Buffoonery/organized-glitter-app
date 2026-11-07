@@ -43,8 +43,9 @@ that thread. The RPC boundary allows only message dispatch, run cancellation,
 and explicit runtime-request responses for that coordinator. It removes mode
 and model selection fields before dispatch. Project/thread creation, permission
 mode changes and provider switches cannot pass this boundary. The service HTTP
-boundary permits reads and explicit install-link creation only; build creation,
-agent restart, and service-mediated approvals are disabled. Start builds on the
+boundary permits reads, explicit install-link creation, and an automatic launch
+receipt sent only to the diagnostics endpoint with the separate diagnostic
+credential. Build creation, agent restart, and service-mediated approvals are disabled. Start builds on the
 Mac after reviewing the requested change. Existing coordinator authority is
 preserved; messages do not authorize merges, releases, comments or deployment.
 

@@ -5,6 +5,11 @@ import UIKit
 enum DeveloperPolicy {
     static let coordinator = "thread:mcp:e3d98edb-0578-4124-ab34-844958cb8a3b:og-dedicated-developer-chat-1:0"
     static let projects = ["90467d1d-7979-4839-b147-d1f2aae30573", "66f71ea9-e4b3-44d3-813f-ae6739c23a2a"]
+    static func allowsServiceRequest(_ method: String, _ components: [String], launchReceipt: Bool = false) -> Bool {
+        if launchReceipt { return method == "POST" && components == ["v1", "diagnostics"] }
+        return method == "GET" || method == "HEAD" ||
+            (method == "POST" && components.count == 4 && components.prefix(2) == ["v1", "builds"] && components.last == "install-link")
+    }
 }
 
 @MainActor
