@@ -35,7 +35,10 @@ revoked enrollment; this closes the old connection before import. Continuing
 without tools leaves a Developer tools button to reopen enrollment. Revoke leaked credentials on the Mac separately.
 
 The project list is restricted to the existing web and native projects. Their
-agent entry points resolve to the existing pinned coordinator. Sends require
+agent entry points resolve to the dedicated Organized Glitter developer chat.
+Sarah requested this separate thread after the first physical connection; it
+uses the native project and inherits the selected model and permission settings.
+The original general coordinator is no longer the allowed destination. Sends require
 that thread. The RPC boundary allows only message dispatch, run cancellation,
 and explicit runtime-request responses for that coordinator. It removes mode
 and model selection fields before dispatch. Project/thread creation, permission

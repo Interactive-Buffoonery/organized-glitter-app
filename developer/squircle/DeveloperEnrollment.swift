@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import UIKit
 
 enum DeveloperPolicy {
-    static let coordinator = "mcp:launch:35d158297e1521e6b8760d9a70706a8e48f4b0ced66ea511a4f48fe9b37b9ac3"
+    static let coordinator = "thread:mcp:e3d98edb-0578-4124-ab34-844958cb8a3b:og-dedicated-developer-chat-1:0"
     static let projects = ["90467d1d-7979-4839-b147-d1f2aae30573", "66f71ea9-e4b3-44d3-813f-ae6739c23a2a"]
 }
 
@@ -59,7 +59,7 @@ private struct EnrollmentView: View {
         NavigationStack {
             Form {
                 Section("Personal developer connection") {
-                    Text("Connect to your existing coding coordinator. Screenshots you attach are sent with your message. Review them for private information before sending.")
+                    Text("Connect to your developer coding chat. Screenshots you attach are sent with your message. Review them for private information before sending.")
                     Text("This connection uses a separate, device-only Keychain item. It grants access to your Mac; import only your own HTTPS connection file.")
                     Button("Import connection file") { importing = true }
                     Button("Connect") {

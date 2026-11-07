@@ -403,7 +403,7 @@ index e83f41a..36aa731 100644
 +            guard let id = project["id"].string, DeveloperPolicy.projects.contains(id),
 +                  project["deletedAt"] == .null else { return nil }
 +            return AppProject(id: id, name: id == DeveloperPolicy.projects[0] ? "Organized Glitter Web" : "Organized Glitter Native",
-+                              subtitle: "Shared coding coordinator", bundleID: nil, canBuild: false)
++                              subtitle: "Developer coding chat", bundleID: nil, canBuild: false)
 +        }
      }
  }
