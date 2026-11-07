@@ -47,6 +47,21 @@ struct StoredSession: Codable, Equatable, Sendable {
   let userID: String
 }
 
+enum JWTExpiration {
+  static func date(for token: String) -> Date? {
+    let parts = token.split(separator: ".")
+    guard parts.count == 3 else { return nil }
+    var payload = String(parts[1]).replacingOccurrences(of: "-", with: "+")
+      .replacingOccurrences(of: "_", with: "/")
+    payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
+    guard let data = Data(base64Encoded: payload),
+      let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+      let expiration = claims["exp"] as? TimeInterval
+    else { return nil }
+    return Date(timeIntervalSince1970: expiration)
+  }
+}
+
 struct AuthResponse: Decodable, Sendable {
   let token: String
   let record: UserRecord

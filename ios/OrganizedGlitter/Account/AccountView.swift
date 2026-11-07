@@ -116,7 +116,7 @@ struct AccountView: View {
 
         AccountSection(
           title: "Crafts",
-          footer: "At least one craft stays enabled. Turning one off hides its Library and Create choices without deleting anything."
+          footer: "At least one craft must be enabled. Turning off a craft hides that craft's Library and Create choices, but does not delete any data."
         ) {
           Toggle(
             "Diamond painting",
@@ -161,10 +161,7 @@ struct AccountView: View {
             .accessibilityIdentifier("account.showCraftingStreak")
         }
 
-        AccountSection(
-          title: "Privacy",
-          footer: "Usage analytics helps improve Organized Glitter. Signed-in activity is linked to your account without project content, search text, email, or name. Your account choice applies anywhere you sign in and requires a connection to save. Turning this off stops new collection here right away. You can also pause collection on this device for this session, even offline. Other open apps and browsers will pick up the change after they refresh your account. Previously collected events may still be delivered, including after you turn analytics back on. It does not delete past activity."
-        ) {
+        AccountSection(title: "Privacy") {
           Toggle(
             "Share usage analytics",
             isOn: Binding(
@@ -178,6 +175,16 @@ struct AccountView: View {
             preferences.isBusy
               || preferences.user.analyticsOptOut == nil || !connectionAvailable)
           .accessibilityIdentifier("account.usageAnalytics")
+
+          Text(
+            preferences.user.analyticsOptOut == false
+              ? "Thank you for sharing usage analytics! They help me make Organized Glitter better. Analytics are tied to your account and include general information, like which screens you visit and which features you use, but never your project details, search text, name, or email."
+              : "Sharing usage analytics helps me make Organized Glitter better. Analytics are tied to your account and include general information, like which screens you visit and which features you use, but never your project details, search text, name, or email."
+          )
+            .font(.karla(.footnote))
+            .foregroundStyle(theme.mutedForeground)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("account.analyticsSummary")
 
           if preferences.isAnalyticsLocallyPaused {
             Text("Analytics is paused on this device for this session. Connect to resume collection or turn sharing off for your account.")
@@ -195,6 +202,15 @@ struct AccountView: View {
             }
             .accessibilityIdentifier("account.pauseAnalytics")
           }
+
+          DisclosureGroup("How analytics works") {
+            Text("Your account choice applies wherever you sign in. Saving needs a connection. Other open apps and browsers pick up changes after refreshing your account.")
+            Text("Turning sharing off stops new collection here immediately. You can also pause this device for the current session, even offline.")
+            Text("Previously collected events may still be delivered, including after sharing is turned back on. Turning sharing off does not delete past activity.")
+              .accessibilityIdentifier("account.analyticsHistory")
+          }
+          .font(.karla(.footnote))
+          .foregroundStyle(theme.mutedForeground)
         }
 
         AccountSection {
@@ -234,8 +250,13 @@ struct AccountView: View {
           } label: {
             AccountNavigationRow { Text("Reset password") }
           }
-          Link("Account deletion help", destination: AccountLinks.accountDeletionSupport)
-            .accessibilityLabel("Email support about account deletion")
+          NavigationLink {
+            AccountDeletionView(appModel: appModel, pendingCount: library.pendingCount)
+          } label: {
+            Text("Delete Account").foregroundStyle(theme.destructive)
+          }
+          .accessibilityIdentifier("account.delete")
+          .disabled(!connectionAvailable || appModel.isSigningOut)
         }
 
         if let error = preferences.errorMessage {

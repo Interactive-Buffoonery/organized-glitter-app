@@ -22,7 +22,11 @@ struct OrganizedGlitterApp: App {
         URLProtocol.unregisterClass(OverviewFixtureProtocol.self)
         if OverviewFixtureProtocol.scenario != nil {
           URLProtocol.registerClass(OverviewFixtureProtocol.self)
-          sessionStore = KeychainSessionStore(service: "OverviewFixtures")
+          let deletionFixture = ProcessInfo.processInfo.arguments.contains("-fixture-deletion")
+          sessionStore = KeychainSessionStore(service: deletionFixture ? "OverviewDeletionFixtures" : "OverviewFixtures")
+          if deletionFixture, ProcessInfo.processInfo.arguments.contains("-fixture-deletion-reset") {
+            try sessionStore.deletionPersistence.clear()
+          }
           client = PocketBaseClient(
             baseURL: URL(string: "https://overview.example.invalid")!,
             sessionStore: sessionStore,

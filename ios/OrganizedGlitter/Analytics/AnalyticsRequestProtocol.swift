@@ -5,6 +5,7 @@ final class AnalyticsNetworkGate: @unchecked Sendable {
   private let lock = NSLock()
   private let endpoint: URL
   private var enabled = false
+  private var tasks: [UUID: URLSessionDataTask] = [:]
   let sessionConfiguration: URLSessionConfiguration
 
   init(host: URL, sessionConfiguration: URLSessionConfiguration = .ephemeral) {
@@ -14,6 +15,28 @@ final class AnalyticsNetworkGate: @unchecked Sendable {
 
   func setEnabled(_ enabled: Bool) {
     lock.withLock { self.enabled = enabled }
+  }
+
+  func beginForwarding(_ task: URLSessionDataTask, id: UUID) {
+    lock.withLock {
+      guard enabled else { task.cancel(); return }
+      tasks[id] = task
+      task.resume()
+    }
+  }
+
+  func finished(_ id: UUID) {
+    _ = lock.withLock { tasks.removeValue(forKey: id) }
+  }
+
+  func stopForDeletion() {
+    let pending = lock.withLock {
+      enabled = false
+      let pending = Array(tasks.values)
+      tasks = [:]
+      return pending
+    }
+    for task in pending { task.cancel() }
   }
 
   func allows(_ request: URLRequest) -> Bool {
@@ -74,9 +97,13 @@ final class AnalyticsRequestProtocol: URLProtocol, URLSessionTaskDelegate, @unch
       forwarded.httpBody = body
     }
     let session = URLSession(configuration: gate.sessionConfiguration, delegate: self, delegateQueue: nil)
+    let forwardingID = UUID()
     let task = session.dataTask(with: forwarded) { [weak self] data, response, error in
+      defer {
+        gate.finished(forwardingID)
+        session.finishTasksAndInvalidate()
+      }
       guard let self else { return }
-      defer { session.finishTasksAndInvalidate() }
       guard !self.taskLock.withLock({ self.stopped }) else { return }
       if let error {
         self.client?.urlProtocol(self, didFailWithError: error)
@@ -89,7 +116,7 @@ final class AnalyticsRequestProtocol: URLProtocol, URLSessionTaskDelegate, @unch
     taskLock.withLock {
       self.session = session
       self.forwardingTask = task
-      if stopped { task.cancel() } else { task.resume() }
+      if stopped { task.cancel() } else { gate.beginForwarding(task, id: forwardingID) }
     }
   }
 
