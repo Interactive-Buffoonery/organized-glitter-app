@@ -116,7 +116,7 @@ struct AccountView: View {
 
         AccountSection(
           title: "Crafts",
-          footer: "At least one craft stays enabled. Turning one off hides its Library and Create choices without deleting anything."
+          footer: "At least one craft must be enabled. Turning off a craft hides that craft's Library and Create choices, but does not delete any data."
         ) {
           Toggle(
             "Diamond painting",
@@ -176,7 +176,11 @@ struct AccountView: View {
               || preferences.user.analyticsOptOut == nil || !connectionAvailable)
           .accessibilityIdentifier("account.usageAnalytics")
 
-          Text("Usage analytics helps improve Organized Glitter. Activity is linked to your account, without project content, search text, name, or email.")
+          Text(
+            preferences.user.analyticsOptOut == false
+              ? "Thank you for sharing usage analytics! They help me make Organized Glitter better. Analytics are tied to your account and include general information, like which screens you visit and which features you use, but never your project details, search text, name, or email."
+              : "Sharing usage analytics helps me make Organized Glitter better. Analytics are tied to your account and include general information, like which screens you visit and which features you use, but never your project details, search text, name, or email."
+          )
             .font(.karla(.footnote))
             .foregroundStyle(theme.mutedForeground)
             .fixedSize(horizontal: false, vertical: true)

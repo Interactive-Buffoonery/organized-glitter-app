@@ -75,7 +75,7 @@ final class AnalyticsPreferenceUITests: XCTestCase {
       app.scrollViews["account.list"].swipeUp(velocity: .slow)
     }
     XCTAssertTrue(summary.isHittable)
-    XCTAssertTrue(summary.label.contains("linked to your account"))
+    XCTAssertTrue(summary.label.contains("tied to your account"))
     for _ in 0..<6 {
       if details.exists && details.isHittable { break }
       app.scrollViews["account.list"].swipeUp(velocity: .slow)
