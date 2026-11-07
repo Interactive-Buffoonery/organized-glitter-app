@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
 """Check prepared upstream boundaries; these are source checks, not runtime QA."""
 import sys
+import subprocess
 from pathlib import Path
 r = Path(sys.argv[1])
+adapter = Path(__file__).resolve().parent
+prepared_patch = subprocess.check_output([
+    'git', '-C', str(r), 'diff', '--binary', '--', '.',
+    ':(exclude)app/Squircle/Squircle.xcodeproj',
+], text=True).replace(' \n', '\n')
+assert prepared_patch == (adapter / 'integration.patch').read_text(), 'Prepared adapter is stale or modified'
+assert (r / 'app/Squircle/Sources/DeveloperEnrollment.swift').read_bytes() == (adapter / 'DeveloperEnrollment.swift').read_bytes(), 'Prepared enrollment is stale or modified'
 src = r / 'app/Squircle/Sources'
 gateway = (src / 'T3Gateway.swift').read_text()
 dispatch = gateway.split('func dispatch(_ command: JSONValue)', 1)[1].split('private enum Pictures', 1)[0]

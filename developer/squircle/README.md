@@ -1,5 +1,9 @@
 # Personal in-app development (runtime verification pending)
 
+The dedicated coding agent follows [Automatic personal updates](AUTOMATIC-UPDATES.md):
+after a requested native change passes checks and review, it queues a personal
+build on the Mac and returns a verified install link. Installation remains manual.
+
 This integration reuses Squircle's MIT overlay and Rust build service at
 `737f2e881483a4c7237b49d5696adff7d44cad1b`. It is not linked into the native
 application target. `prepare.py` creates a new checkout and applies the tracked
