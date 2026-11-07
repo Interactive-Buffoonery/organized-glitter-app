@@ -95,6 +95,8 @@ build artifacts are excluded from the integration patch.
 
 This is compiler and test evidence. Enrollment UI, H.264 playback, recording,
 reconnection, live RPCs, signing, physical installation, HTTPS reachability and
-normal host Release artifact exclusion still require their separate checks.
-Fresh independent review belongs to the coordinator. No service was started,
-no device acquired, no public update made, and no authority changed.
+signed archive/export exclusion still require their separate checks.
+Fresh independent review of `5996111..6655d81` approved the compiler fixes with
+no findings. The normal unsigned host Release simulator artifact passed its
+separate exclusion inspection; see README.md for the digest and evidence limits.
+No service was started, no device acquired, and no authority changed.

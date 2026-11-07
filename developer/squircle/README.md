@@ -1,4 +1,4 @@
-# Personal in-app development (implementation pending verification)
+# Personal in-app development (runtime verification pending)
 
 This integration reuses Squircle's MIT overlay and Rust build service at
 `737f2e881483a4c7237b49d5696adff7d44cad1b`. It is not linked into the native
@@ -78,25 +78,37 @@ compiler errors (`/tmp/og-squircle-queued-build.log`). The compiler fixes and
 subsequent verification are recorded in [COMPILER-FIXES.md](COMPILER-FIXES.md).
 All retries used process-gate with waiting enabled; no failed build was rerouted.
 No device was acquired, no service started, and no signing or installation ran.
-This remains a draft pending runtime, artifact and signing checks.
+This remains a draft pending runtime, signed-artifact and delivery checks.
 
-Before calling this usable: finish gated Swift 6 and Rust compilation/tests;
-exercise enrollment/forget/re-enrollment and reconnect under dropped connections;
-verify questions, approval denial/acceptance, cancellation and screenshots against
-the pinned coordinator; inspect a normal Release artifact for overlay symbols,
-resources and credentials; then separately establish authorized HTTPS
-reachability, signing/profile readiness, and manual device update proof.
-Fresh independent review and publication belong to the coordinator.
+At source head `6655d816aaf1b1150b97fcbfd088ae374ebee953`, the gated
+Swift 6 overlay build passed for arm64 and x86_64. The Rust service built and all
+99 tests passed. A fresh focused independent source review approved the compiler
+fixes with no findings. These results do not establish runtime behavior.
+
+The normal native Release simulator build also passed. Inspection found no
+Squircle linkage, named overlay resources, or enrollment/coordinator markers.
+The executable SHA-256 was
+`57f7aa2000f8557b5489a26be41008f6511d84ac8d073436915235b7d054fe9e`.
+Local receipts: `/tmp/og-native-release-exclusion.log` and
+`/tmp/og-native-release-exclusion-evidence.json`. This is an unsigned simulator
+artifact, not an archive/export or physical-distribution proof.
+
+Before calling this usable: exercise enrollment/forget/re-enrollment and
+reconnect under dropped connections; verify questions, approval denial/acceptance,
+cancellation and screenshots against the pinned coordinator; then separately
+establish authorized HTTPS reachability, signing/profile readiness, personal
+export composition, and manual device update proof. T3's remote device listing
+failed twice with “Could not reach the Simlock gateway”; no device was acquired
+or driven through an alternate path.
 
 ## Focused review
 
-The first fresh Sol review found one compilation blocker: a non-Sendable
-static Info.plist dictionary under Swift 6. The adapter now initializes only
-String values using bundle lookups, without retaining that dictionary.
-The follow-up source review approved that dictionary fix. Actual compilation
-then exposed additional errors, now addressed separately; the coordinator must
-perform a fresh focused review of the compiler fixes. Historical source approval
-is not build or runtime approval.
+The first fresh review found a non-Sendable static Info.plist dictionary under
+Swift 6. The follow-up approved its replacement with stored String values.
+Compilation then exposed further errors; see [COMPILER-FIXES.md](COMPILER-FIXES.md).
+A fresh focused review of `5996111..6655d81` approved those compiler fixes with no
+findings, including GPU locking, synchronous VideoToolbox callback lifetime and
+actor isolation. This was source and SDK-header review, not runtime testing.
 
 Read-only signing inspection found one valid local code-signing identity.
 This does not establish an appropriate development/distribution certificate,
