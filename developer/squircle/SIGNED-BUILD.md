@@ -1,9 +1,9 @@
 # Personal build and connection evidence
 
-Source head: `74e678add92e7a42c0f2d6b38615756c4146d47e`.
-Current build ID: `8c50d974-8ee9-4705-be0d-814bcebeb2f6`.
+Source head: `878ed6ca81318e2ae8fff4ecf6cf9503910aaace`.
+Current build ID: `2b00b2d4-0bcb-47b7-950e-c28ecad14190`.
 Upstream pin: `737f2e881483a4c7237b49d5696adff7d44cad1b`.
-IPA SHA-256: `66928b6720d26a5b9bae79984ebbd418b63c80167c5cc44f6bc7fb1c3fb33b1a`.
+IPA SHA-256: `9d741a45eb16f71144a061f01bab23e4375cd38c43229af4d4d9824c70386125`.
 
 ## Managed personal build
 
@@ -20,7 +20,11 @@ links SquircleOverlay, and retains the original host entitlements exactly. No
 shared Keychain group was added. No `client.json` or `client-t3.json` is bundled.
 The profile lists three devices; the acceptance phone/iPad has not been matched
 to that list. The embedded SquircleBuildID equals the service job UUID, enabling
-real launch acknowledgement after enrollment. It has not yet been observed.
+real launch acknowledgement after enrollment. The first installed build connected
+according to Sarah, but its client policy blocked launch receipts. This update
+fixes that diagnostic-only path and routes to the dedicated developer thread.
+Ten actual Swift policy cases passed, and fresh focused review approved both
+changes with no findings. Launch acknowledgement for this update remains pending.
 
 The earlier offline build `og-d68ab372-debug-1` established signing/injection,
 but its custom non-UUID ID could not produce launch acknowledgement. Use the
@@ -32,7 +36,10 @@ The normal signed Release device archive passes strict signature verification.
 It contains no Squircle linkage, named overlay/enrollment resources, or scanned
 overlay/enrollment/coordinator markers. Executable SHA-256:
 `a23fccd8c45e843e1f05486b467946472cdd1e481e62dd8ce0d9e239f8e085f8`.
-This archive used source head `d68ab372`; only documentation changed afterward.
+This archive used source head `d68ab372`. Later changes are confined to the
+developer adapter and documentation; the native target and configuration are
+unchanged. This is historical artifact evidence, not a new Release archive at
+the current adapter head.
 The earlier unsigned Release simulator artifact also passed exclusion inspection.
 No App Store/TestFlight export, upload or release was performed.
 
@@ -47,7 +54,8 @@ A private-card one-time pairing token was exchanged for a separate
 `orchestration:read orchestration:operate` session. Authenticated HTTPS shell
 reads found both pinned projects and the existing coordinator. A protocol-2 WSS
 subscription returned that coordinator's thread snapshot. These checks sent no
-chat message or mutation command. The service reports T3 Connected.
+chat message or mutation command. The service reports T3 Connected. The dedicated thread also returned an HTTPS
+shell entry and a matching protocol-2 WSS snapshot before this update was offered.
 
 The installation page, manifest and IPA each returned HTTP 200 over HTTPS from
 the Mac. The downloaded IPA SHA-256 matches the signed export. This proves the
@@ -77,12 +85,14 @@ for a new build. Do not run ungated builds on a gated host.
    reviewed screenshot attachment, activity, question, explicit approval and
    denial, cancellation, dropped-connection reconnect, and forget/re-enrollment.
 
-No physical installation, cellular download, iPhone/iPad UI interaction,
-mutation-command behavior, or finite-background behavior is verified yet.
+Sarah reported installing and connecting the previous build. This new update
+still needs manual installation and exact-build launch acknowledgement. Cellular
+download, iPhone/iPad interaction details, mutation-command behavior, reconnect
+and finite-background behavior have not been independently verified.
 Session expiry still requires renewed explicit enrollment; credentials are not
 baked into this IPA.
 
-Local receipts: `/tmp/og-squircle-managed-build-evidence.json`,
+Local receipts: `/tmp/og-squircle-dedicated-build-evidence.json`,
 `/tmp/og-squircle-signed-release-exclusion.json`,
-`/tmp/og-squircle-live-readiness.json`,
-`/tmp/og-squircle-https-delivery-evidence.json`.
+`/tmp/og-squircle-dedicated-live-readiness.json`,
+`/tmp/og-squircle-dedicated-delivery-evidence.json`.
