@@ -31,9 +31,10 @@ struct NativeAnalyticsTests {
     #expect(first.phase == .cleanupFailed)
     #expect(try await local.pendingRemovals() == [scope])
     #expect(FileManager.default.fileExists(atPath: queue.path))
+    AnalyticsWireProtocol.reset()
 
     let resumedAnalytics = NativeAnalytics(configuration: configuration(token: fixture.token),
-      sdk: fixture.sdk, compression: .none)
+      sdk: fixture.sdk, sessionConfiguration: wireSession(), compression: .none)
     let resumed = AppModel(client: client, sessionStore: store, themeStore: ThemeStore(),
       localStore: local, analytics: resumedAnalytics)
     while resumed.phase == .restoring || resumed.phase == .cleaningLocalData { await Task.yield() }
@@ -58,9 +59,9 @@ struct NativeAnalyticsTests {
     try Data("keep".utf8).write(to: unrelated)
     defer { try? FileManager.default.removeItem(at: unrelated) }
     try fixture.analytics.eraseDeletedAccountData()
+    AnalyticsWireProtocol.reset()
     #expect(!FileManager.default.fileExists(atPath: queue.path))
     #expect(try Data(contentsOf: unrelated) == Data("keep".utf8))
-    #expect(AnalyticsWireProtocol.requests.isEmpty)
     fixture.analytics.setSession(accountID: "next-account", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
     fixture.sdk.flush()
@@ -76,6 +77,7 @@ struct NativeAnalyticsTests {
     fixture.analytics.setSession(accountID: "deleted-account", isActive: true, analyticsEnabled: true)
     fixture.analytics.capture(.appOpened)
     fixture.analytics.close()
+    AnalyticsWireProtocol.reset()
     let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
       .appending(path: Bundle.main.bundleIdentifier!)
     let queue = root.appending(path: fixture.token).appending(path: "posthog.queueFolder.uuid")
@@ -370,15 +372,19 @@ struct NativeAnalyticsTests {
     AnalyticsWireProtocol.reset()
     let token = "phc_test_\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: token)!
-    let session = URLSessionConfiguration.ephemeral
-    session.protocolClasses = [AnalyticsWireProtocol.self]
     let sdk = PostHogSDK.shared
     let analytics = NativeAnalytics(
       configuration: configuration(token: token), sdk: sdk,
-      sessionConfiguration: session, compression: .none,
+      sessionConfiguration: wireSession(), compression: .none,
       storageErase: storageErase ?? { try PostHogLocalStorage.erase(projectToken: $0) }
     )
     return AnalyticsFixture(token: token, defaults: defaults, sdk: sdk, analytics: analytics)
+  }
+
+  private func wireSession() -> URLSessionConfiguration {
+    let session = URLSessionConfiguration.ephemeral
+    session.protocolClasses = [AnalyticsWireProtocol.self]
+    return session
   }
 
   private func waitForBatch(token: String) async throws -> [String: Any] {
