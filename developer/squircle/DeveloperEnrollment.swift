@@ -73,7 +73,11 @@ private struct EnrollmentView: View {
                         } catch { status = "Could not remove connection. Try again while the device is unlocked." }
                     }
                     Button("Continue without developer tools") { DeveloperEnrollment.dismiss() }
-                    Text(status).accessibilityLiveRegion(.polite)
+                    Text(status)
+                        .onChange(of: status) { _, message in
+                            guard !message.isEmpty else { return }
+                            AccessibilityNotification.Announcement(message).post()
+                        }
                 }
             }
             .navigationTitle("Developer tools")

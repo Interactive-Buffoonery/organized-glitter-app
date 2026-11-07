@@ -1,3 +1,163 @@
+diff --git a/app/Squircle/Overlay/GPUProbe.swift b/app/Squircle/Overlay/GPUProbe.swift
+index 3b871d3..c36cbd3 100644
+--- a/app/Squircle/Overlay/GPUProbe.swift
++++ b/app/Squircle/Overlay/GPUProbe.swift
+@@ -53,7 +53,12 @@ final class GPUProbe: @unchecked Sendable {
+
+     private struct Hook { let method: Method; let original: IMP }
+
+-    private let records = Mutex(Records())
++    private let recordsLock = NSLock()
++    private var records = Records()
++
++    private func withRecords<Result>(_ body: (inout Records) throws -> Result) rethrows -> Result {
++        try recordsLock.withLock { try body(&records) }
++    }
+     private var hooks: [Hook] = []
+     private let screenPixels: Double
+     private let device: MTLDevice?
+@@ -110,7 +115,7 @@ final class GPUProbe: @unchecked Sendable {
+     func uninstall() {
+         for hook in hooks.reversed() { method_setImplementation(hook.method, hook.original) }
+         hooks = []
+-        records.withLock { $0.stopped = true }
++        withRecords { $0.stopped = true }
+     }
+
+     private func install() {
+@@ -312,13 +317,13 @@ final class GPUProbe: @unchecked Sendable {
+     }
+
+     private func event(_ event: [String: Any]) {
+-        records.withLock { if $0.events.count < 2_000 { $0.events.append(event) } }
++        withRecords { if $0.events.count < 2_000 { $0.events.append(event) } }
+     }
+
+     private func drawable(_ drawable: CAMetalDrawable?, from layer: AnyObject, requested: Double, got: Double) {
+         guard let layer = layer as? CAMetalLayer else { return }
+         let key = ObjectIdentifier(layer)
+-        let known = records.withLock { $0.layerIndex[key] }
++        let known = withRecords { $0.layerIndex[key] }
+         let index: Int
+         if let known { index = known } else {
+             let size = layer.drawableSize
+@@ -326,7 +331,7 @@ final class GPUProbe: @unchecked Sendable {
+             let info = Layer(name: owner, pixels: size, screenShare: screenPixels > 0 ? Double(size.width * size.height) / screenPixels : 0,
+                              drawables: layer.maximumDrawableCount, withTransaction: layer.presentsWithTransaction,
+                              format: Self.format(layer.pixelFormat))
+-            index = records.withLock { records in
++            index = withRecords { records in
+                 if let raced = records.layerIndex[key] { return raced }
+                 records.layers.append(info)
+                 records.layerIndex[key] = records.layers.count - 1
+@@ -334,7 +339,7 @@ final class GPUProbe: @unchecked Sendable {
+             }
+         }
+         let thread = Self.threadID()
+-        let slot: Int? = records.withLock { records in
++        let slot: Int? = withRecords { records in
+             guard !records.stopped, records.drawables.count < 60_000 else { return nil }
+             records.drawables.append(Drawable(layer: index, requested: requested, wait: got - requested, thread: thread,
+                                               presented: drawable == nil ? 0 : nil))
+@@ -344,7 +349,7 @@ final class GPUProbe: @unchecked Sendable {
+         guard let slot, let drawable else { return }
+         // Called once it is on screen, or with 0 when it never got there.
+         Self.onPresented(drawable) { [weak self] time in
+-            self?.records.withLock { records in
++            self?.withRecords { records in
+                 records.drawables[slot].presented = time
+                 records.drawableIndex.removeValue(forKey: ObjectIdentifier(drawable))
+             }
+@@ -353,7 +358,7 @@ final class GPUProbe: @unchecked Sendable {
+
+     private func presenting(_ drawable: AnyObject) {
+         let now = CACurrentMediaTime()
+-        records.withLock { records in
++        withRecords { records in
+             // Where the presented handler never comes (the simulator), the
+             // drawable's identity may be reused: the latest acquisition wins.
+             guard let index = records.drawableIndex[ObjectIdentifier(drawable)], records.drawables[index].presentCalled == nil else { return }
+@@ -375,12 +380,12 @@ final class GPUProbe: @unchecked Sendable {
+
+     private func waited(_ kind: String, from start: Double) {
+         let end = CACurrentMediaTime(), thread = Self.threadID()
+-        records.withLock { if $0.waits.count < 60_000, !$0.stopped { $0.waits.append(Wait(kind: kind, start: start, end: end, thread: thread)) } }
++        withRecords { if $0.waits.count < 60_000, !$0.stopped { $0.waits.append(Wait(kind: kind, start: start, end: end, thread: thread)) } }
+     }
+
+     private func slot(_ count: Int) -> (MTLCounterSampleBuffer, Int)? {
+         guard !counterBuffers.isEmpty else { return nil }
+-        return records.withLock { records in
++        return withRecords { records in
+             guard !records.stopped else { return nil }
+             var (buffer, index) = records.counterCursor
+             if index + count > Self.counterSamples { (buffer, index) = ((buffer + 1) % counterBuffers.count, 0) }
+@@ -390,7 +395,7 @@ final class GPUProbe: @unchecked Sendable {
+     }
+
+     private func pending(_ buffer: AnyObject, _ pass: Pass, _ encoder: AnyObject, _ sampleBuffer: MTLCounterSampleBuffer, _ index: Int, _ count: Int) {
+-        records.withLock {
++        withRecords {
+             $0.pending[ObjectIdentifier(buffer), default: []].append(PendingPass(pass: pass, encoder: encoder, sampleBuffer: sampleBuffer, index: index, count: count))
+         }
+     }
+@@ -398,15 +403,20 @@ final class GPUProbe: @unchecked Sendable {
+     private func committing(_ object: AnyObject) {
+         guard let buffer = object as? MTLCommandBuffer else { return }
+         let record = Buffer(committed: CACurrentMediaTime(), thread: Self.threadID())
+-        let (index, passes): (Int?, [PendingPass]) = records.withLock { records in
+-            let passes = records.pending.removeValue(forKey: ObjectIdentifier(object)) ?? []
+-            guard !records.stopped, records.buffers.count < 60_000 else { return (nil, []) }
++        let key = ObjectIdentifier(object)
++        let index: Int? = withRecords { records in
++            guard !records.stopped, records.buffers.count < 60_000 else {
++                records.pending.removeValue(forKey: key)
++                return nil
++            }
+             records.buffers.append(record)
+-            return (records.buffers.count - 1, passes)
++            return records.buffers.count - 1
+         }
+         guard let index else { return }
+-        // Added before the commit, as Metal requires.
++        // Keep Metal objects behind the lock; the callback captures only identity.
+         buffer.addCompletedHandler { [weak self] done in
++            guard let self else { return }
++            let passes = self.withRecords { $0.pending.removeValue(forKey: key) ?? [] }
+             let timed = passes.map { pending -> Pass in
+                 var pass = pending.pass
+                 pass.label = (pending.encoder as? MTLCommandEncoder)?.label ?? ""
+@@ -416,7 +426,7 @@ final class GPUProbe: @unchecked Sendable {
+                 return pass
+             }
+             let (label, start, end, status) = (done.label ?? "", done.gpuStartTime, done.gpuEndTime, done.status.rawValue)
+-            self?.records.withLock { records in
++            self.withRecords { records in
+                 records.buffers[index].label = label
+                 records.buffers[index].gpuStart = start
+                 records.buffers[index].gpuEnd = end
+@@ -453,7 +463,7 @@ final class GPUProbe: @unchecked Sendable {
+     func finish(origin: Double) -> [String: Any] {
+         calibrate()
+         uninstall()
+-        let records = records.withLock { $0 }
++        let records = withRecords { $0 }
+         let r = { (t: Double) in ((t - origin) * 100_000).rounded() / 100_000 }
+         // GPU ticks to seconds from the start, through the two calibrations.
+         var toTime: ((UInt64) -> Double)?
+diff --git a/app/Squircle/Overlay/GlassJelly.swift b/app/Squircle/Overlay/GlassJelly.swift
+index 7feca2f..11f0324 100644
+--- a/app/Squircle/Overlay/GlassJelly.swift
++++ b/app/Squircle/Overlay/GlassJelly.swift
+@@ -245,7 +245,7 @@ final class GlassJelly: UIView {
+         }
+     }
+
+-    deinit { ticker.end(); observers.forEach { $0.cancel() } }
++    isolated deinit { ticker.end(); observers.forEach { $0.cancel() } }
+
+     @available(*, unavailable)
+     required init?(coder: NSCoder) { fatalError() }
 diff --git a/app/Squircle/Overlay/OverlayHost.swift b/app/Squircle/Overlay/OverlayHost.swift
 index d47e56f..340e724 100644
 --- a/app/Squircle/Overlay/OverlayHost.swift
@@ -31,10 +191,125 @@ index d47e56f..340e724 100644
      func start(bundleID: String, configuration: AppConfiguration) {
          guard case .unconfigured = state else { return }
          state = .detached(SquircleModel(configuration: configuration, scopeBundleID: bundleID))
+diff --git a/app/Squircle/Overlay/PerfRecorder.swift b/app/Squircle/Overlay/PerfRecorder.swift
+index 1f57a92..1f2f981 100644
+--- a/app/Squircle/Overlay/PerfRecorder.swift
++++ b/app/Squircle/Overlay/PerfRecorder.swift
+@@ -65,7 +65,7 @@ final class PerfRecorder: CaptureProducer {
+         }
+     }
+
+-    deinit {
++    isolated deinit {
+         // Never left running past its owner, finished or not.
+         sampler.abandon()
+         probe.uninstall()
+@@ -313,7 +313,7 @@ final class TouchTracker {
+         return events
+     }
+
+-    fileprivate func record(_ touches: Set<UITouch>, phase: String, in view: UIView?) {
++    @MainActor fileprivate func record(_ touches: Set<UITouch>, phase: String, in view: UIView?) {
+         for touch in touches {
+             let point = touch.location(in: nil)
+             let key = ObjectIdentifier(touch)
+diff --git a/app/Squircle/Overlay/ScreenRecorder.swift b/app/Squircle/Overlay/ScreenRecorder.swift
+index a0de2d4..d0176d4 100644
+--- a/app/Squircle/Overlay/ScreenRecorder.swift
++++ b/app/Squircle/Overlay/ScreenRecorder.swift
+@@ -20,7 +20,7 @@ final class ScreenRecorder: CaptureProducer {
+     private let encoder: ScreenEncoder
+     private weak var overlay: UIWindow?
+     private weak var screen: UIScreen?
+-    private let display: NSString
++    private let display: String
+     private let scale: CGFloat
+     private var link: CADisplayLink?
+     private let started = CACurrentMediaTime()
+@@ -49,7 +49,7 @@ final class ScreenRecorder: CaptureProducer {
+         guard let encoder = ScreenEncoder(size: size, scale: scale, upright: upright, server: server)
+         else { return nil }
+         self.encoder = encoder
+-        self.display = display
++        self.display = display as String
+         self.screen = screen
+         self.overlay = overlay
+         touches = TouchTracker(origin: started)
+@@ -89,7 +89,7 @@ final class ScreenRecorder: CaptureProducer {
+         }
+     }
+
+-    deinit {
++    isolated deinit {
+         link?.invalidate()
+         // Dropped without finishing: the file is of no use. (A no-op once handed over.)
+         Task { [encoder] in await encoder.discard() }
+@@ -131,7 +131,7 @@ private actor ScreenEncoder {
+     }
+     struct Frame {
+         let time: Double
+-        let display: NSString
++        let display: String
+         /// The app's windows below the overlay, bottom first.
+         let layers: [Layer]
+         /// Fingers, in the recording's pixels.
+@@ -198,8 +198,10 @@ private actor ScreenEncoder {
+         self.scale = scale
+     }
+
+-    private static let surface: [String: Any] = [kCVPixelBufferIOSurfacePropertiesKey as String: [String: Any](),
+-                                                 kCVPixelBufferMetalCompatibilityKey as String: true]
++    private static var surface: [String: Any] {
++        [kCVPixelBufferIOSurfacePropertiesKey as String: [String: Any](),
++         kCVPixelBufferMetalCompatibilityKey as String: true]
++    }
+
+     /// The surface the render server draws window `index` into.
+     private func snapshot(_ index: Int) -> CVPixelBuffer? {
+@@ -218,7 +220,7 @@ private actor ScreenEncoder {
+         for layer in frame.layers {
+             guard let snapshot = snapshot(drawn.count), let surface = CVPixelBufferGetIOSurface(snapshot)?.takeUnretainedValue(),
+                   server.render(context: layer.context, layer: layer.layer, transform: layer.transform,
+-                                display: frame.display, into: surface)
++                                display: frame.display as NSString, into: surface)
+             else { continue }
+             drawn.append(snapshot)
+         }
+@@ -294,7 +296,7 @@ private final class FrameConverter: @unchecked Sendable {
+
+     /// Finger dots and their outline ring: centres, radius and half the
+     /// ring's width, in the frame's pixels. True once the GPU has written it.
+-    func convert(_ sources: [CVPixelBuffer], into frame: CVPixelBuffer, dots: [SIMD2<Float>], radius: Float, ring: Float) async -> Bool {
++    nonisolated(nonsending) func convert(_ sources: [CVPixelBuffer], into frame: CVPixelBuffer, dots: [SIMD2<Float>], radius: Float, ring: Float) async -> Bool {
+         let width = CVPixelBufferGetWidth(frame), height = CVPixelBufferGetHeight(frame)
+         let layers = sources.prefix(ScreenEncoder.maxLayers).compactMap { texture($0, plane: 0, .bgra8Unorm, width, height) }
+         guard !layers.isEmpty, layers.count == min(sources.count, ScreenEncoder.maxLayers),
+diff --git a/app/Squircle/Sources/AgentStep.swift b/app/Squircle/Sources/AgentStep.swift
+index 706323a..2924811 100644
+--- a/app/Squircle/Sources/AgentStep.swift
++++ b/app/Squircle/Sources/AgentStep.swift
+@@ -161,7 +161,7 @@ struct StepDiff: Equatable {
+ @MainActor
+ enum StepVideos {
+     /// Where downloads go; anything in it is Squircle's to delete.
+-    static let directory: URL = {
++    nonisolated static let directory: URL = {
+         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
+         let url = caches.appendingPathComponent("squircle-media", isDirectory: true)
+         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
 diff --git a/app/Squircle/Sources/AppConfiguration.swift b/app/Squircle/Sources/AppConfiguration.swift
-index c55ce7d..0a172f5 100644
+index c55ce7d..d8c4b6f 100644
 --- a/app/Squircle/Sources/AppConfiguration.swift
 +++ b/app/Squircle/Sources/AppConfiguration.swift
+@@ -2,7 +2,7 @@ import Foundation
+ import Security
+ import os
+
+-struct AppConfiguration: Decodable {
++struct AppConfiguration: Decodable, Sendable {
+     let t3URL: URL
+     let t3Token: String
+     let squircleURL: URL
 @@ -21,47 +21,28 @@ struct AppConfiguration: Decodable {
          squircleToken = try Self.credential(c.decode(String.self, forKey: .squircleToken))
          diagnosticToken = try Self.credential(c.decode(String.self, forKey: .diagnosticToken))
@@ -137,9 +412,18 @@ index e83f41a..36aa731 100644
  enum AppOrder {
      /// The whole catalog's order after Home shows `visible` (some of its
 diff --git a/app/Squircle/Sources/SquircleClient.swift b/app/Squircle/Sources/SquircleClient.swift
-index 03db669..be93c6a 100644
+index 03db669..fffe860 100644
 --- a/app/Squircle/Sources/SquircleClient.swift
 +++ b/app/Squircle/Sources/SquircleClient.swift
+@@ -32,7 +32,7 @@ enum ServiceNotice: Equatable {
+     case changed(topic: String, id: String?)
+ }
+
+-final class SquircleClient {
++final class SquircleClient: Sendable {
+     let configuration: AppConfiguration
+     private let session: URLSession
+     /// The event stream's: it stays open, quiet for as long as nothing changes.
 @@ -381,6 +381,10 @@ final class SquircleClient {
      }
 
@@ -152,7 +436,7 @@ index 03db669..be93c6a 100644
          for component in components {
              guard !component.isEmpty, !component.contains("/"), component != ".", component != ".." else {
 diff --git a/app/Squircle/Sources/SquircleModel.swift b/app/Squircle/Sources/SquircleModel.swift
-index 60e3422..16d5e54 100644
+index 60e3422..d32705d 100644
 --- a/app/Squircle/Sources/SquircleModel.swift
 +++ b/app/Squircle/Sources/SquircleModel.swift
 @@ -109,7 +109,7 @@ final class SquircleModel {
@@ -164,6 +448,17 @@ index 60e3422..16d5e54 100644
      /// The exact command that runs the Mac's Squircle CLI, from the service.
      private(set) var cli: String?
      private var observers: [UUID: AsyncStream<Void>.Continuation] = [:]
+@@ -231,8 +231,8 @@ final class SquircleModel {
+     private var leases: [UUID: RefreshNeed] = [:]
+     private static let preferredModelKey = "squircle.t3.preferredModel"
+     /// Squircle's own T3 instances an app agent runs on: Claude (new agents) and Codex.
+-    static let agentInstance = "squircle"
+-    static let codexAgentInstance = "squircle-codex"
++    nonisolated static let agentInstance = "squircle"
++    nonisolated static let codexAgentInstance = "squircle-codex"
+     static func isAgentInstance(_ instance: String?) -> Bool {
+         instance == agentInstance || instance == codexAgentInstance
+     }
 @@ -308,11 +308,11 @@ final class SquircleModel {
      }
      /// The open conversation's approval mode, the same way.
@@ -217,10 +512,123 @@ index 60e3422..16d5e54 100644
                      deliver(.created(messageID: id, threadID: thread))
                  } catch { deliver(.createAnswered(messageID: id, attempt: nil, .service(error))) }
              }
+@@ -1659,9 +1660,9 @@ final class SquircleModel {
+             var outcome = "ended"
+             do {
+                 try await client.events { notice in
+-                    guard let self, eventsGeneration == generation else { return }
++                    guard let self, self.eventsGeneration == generation else { return }
+                     if notice == .ready { heard = true }
+-                    await received(notice)
++                    await self.received(notice)
+                 }
+             } catch { outcome = "failed: \(error.localizedDescription)" }
+             guard let self, eventsGeneration == generation else { return }
+diff --git a/app/Squircle/Sources/T3DeviceStream.swift b/app/Squircle/Sources/T3DeviceStream.swift
+index dbb2290..14e22a0 100644
+--- a/app/Squircle/Sources/T3DeviceStream.swift
++++ b/app/Squircle/Sources/T3DeviceStream.swift
+@@ -41,11 +41,16 @@ final class SimulatorOutput: @unchecked Sendable {
+     /// Weak: a screen that went away without detaching leaves nothing behind.
+     private struct Target { weak var renderer: AVSampleBufferVideoRenderer?; var last: CFTimeInterval }
+     private struct State { var targets: [ObjectIdentifier: Target] = [:]; var format: CMVideoFormatDescription? }
+-    private let state = Mutex(State())
++    private let stateLock = NSLock()
++    private var state = State()
++
++    private func withState<Result>(_ body: (inout State) throws -> Result) rethrows -> Result {
++        try stateLock.withLock { try body(&state) }
++    }
+
+     /// Starts showing on `renderer`, with `picture` now if there is one.
+     func add(_ renderer: AVSampleBufferVideoRenderer, showing picture: CVPixelBuffer?) {
+-        state.withLock { state in
++        withState { state in
+             var target = Target(renderer: renderer, last: 0)
+             if let picture { Self.enqueue(picture, at: CACurrentMediaTime(), on: &target, format: &state.format) }
+             state.targets[ObjectIdentifier(renderer)] = target
+@@ -54,13 +59,13 @@ final class SimulatorOutput: @unchecked Sendable {
+
+     /// Stops showing on `renderer`; it keeps its current picture.
+     func remove(_ renderer: AVSampleBufferVideoRenderer) {
+-        state.withLock { state in
++        withState { state in
+             if state.targets.removeValue(forKey: ObjectIdentifier(renderer)) != nil { renderer.flush() }
+         }
+     }
+
+     func show(_ picture: CVPixelBuffer, at time: CFTimeInterval) {
+-        state.withLock { state in
++        withState { state in
+             var gone = false
+             for index in state.targets.values.indices {
+                 if state.targets.values[index].renderer == nil { gone = true; continue }
+@@ -154,6 +159,10 @@ struct SimulatorPacer {
+ /// One synchronous hardware decode at a time, off the main actor. All reference
+ /// frames are decoded; only decoded pictures may be replaced before presentation.
+ private final class SimulatorH264Decoder {
++    private struct DecodeResult {
++        var image: CVPixelBuffer?
++        var status: OSStatus = noErr
++    }
+     private final class Configuration {
+         let format: CMVideoFormatDescription
+         let session: VTDecompressionSession
+@@ -194,9 +203,15 @@ private final class SimulatorH264Decoder {
+             #endif
+             let attributes: [String:Any] = [kCVPixelBufferPixelFormatTypeKey as String:kCVPixelFormatType_32BGRA,
+                 kCVPixelBufferIOSurfacePropertiesKey as String:[:],kCVPixelBufferMetalCompatibilityKey as String:true]
++            var callback = VTDecompressionOutputCallbackRecord(decompressionOutputCallback: { _, frame, status, _, image, _, _ in
++                guard let frame else { return }
++                let result = frame.assumingMemoryBound(to: DecodeResult.self)
++                result.pointee.status = status
++                result.pointee.image = image
++            }, decompressionOutputRefCon: nil)
+             let created = VTDecompressionSessionCreate(allocator:kCFAllocatorDefault,formatDescription:format,
+                 decoderSpecification:specification as CFDictionary,imageBufferAttributes:attributes as CFDictionary,
+-                outputCallback:nil,decompressionSessionOut:&decoder)
++                outputCallback:&callback,decompressionSessionOut:&decoder)
+             guard created == noErr, let decoder else { throw ClientError.response("Simulator H.264 decoder: \(created)") }
+             session = decoder
+             VTSessionSetProperty(session,key:kVTDecompressionPropertyKey_RealTime,value:kCFBooleanTrue)
+@@ -231,14 +246,17 @@ private final class SimulatorH264Decoder {
+         let ready = CMSampleBufferCreateReady(allocator:kCFAllocatorDefault,dataBuffer:block,formatDescription:config.format,
+             sampleCount:1,sampleTimingEntryCount:1,sampleTimingArray:&timing,sampleSizeEntryCount:1,sampleSizeArray:&size,sampleBufferOut:&sample)
+         guard ready == noErr, let sample else { throw ClientError.response("Simulator H.264 sample") }
+-        var output: CVPixelBuffer?, outputStatus: OSStatus = noErr
+-        // Both flags clear guarantees the callback completes before this returns.
+-        // No temporal reordering or asynchronous decoder queue can accumulate.
+-        let status = VTDecompressionSessionDecodeFrame(config.session,sampleBuffer:sample,flags:[],infoFlagsOut:nil) {
+-            status, _, image, _, _ in outputStatus = status; output = image
++        var result = DecodeResult()
++        // With asynchronous decompression and temporal processing disabled, the
++        // callback completes within DecodeFrame; this frame pointer cannot escape.
++        let status = withUnsafeMutablePointer(to: &result) { pointer in
++            VTDecompressionSessionDecodeFrame(config.session, sampleBuffer: sample, flags: [],
++                                              frameRefcon: pointer, infoFlagsOut: nil)
++        }
++        guard status == noErr, result.status == noErr else {
++            throw ClientError.response("Simulator H.264 decode: \(status)/\(result.status)")
+         }
+-        guard status == noErr, outputStatus == noErr else { throw ClientError.response("Simulator H.264 decode: \(status)/\(outputStatus)") }
+-        return output
++        return result.image
+     }
+ }
+
 diff --git a/app/Squircle/Sources/T3Gateway.swift b/app/Squircle/Sources/T3Gateway.swift
-index 6522f4c..dfbaff8 100644
+index 6522f4c..d7b9373 100644
 --- a/app/Squircle/Sources/T3Gateway.swift
 +++ b/app/Squircle/Sources/T3Gateway.swift
+@@ -103,7 +103,7 @@ final class RefuseRedirects: NSObject, URLSessionTaskDelegate {
+
+ /// The paired session is isolated from cookies; its credential comes from
+ /// the build's configuration.
+-final class T3HTTP {
++final class T3HTTP: Sendable {
+     /// The orchestration protocol this client speaks (T3 0.1.0's: runs,
+     /// runtime requests and turn items). T3 refuses the socket (HTTP 426)
+     /// to a client that doesn't declare it.
 @@ -393,7 +393,14 @@ final class T3Gateway {
      /// proves nothing ran; a lost answer is `unknown`, never a refusal.
      /// A message's pictures go to T3 first; if they don't, nothing was sent.
@@ -237,6 +645,157 @@ index 6522f4c..dfbaff8 100644
          if command["attachments"].array.contains(where: { $0["dataUrl"] != .null }) {
              switch await persistPictures(of: command) {
              case .stored(let attachments): var c = command.object; c["attachments"] = .array(attachments); command = .object(c)
+diff --git a/app/Squircle/Sources/UI/AttachmentPicker.swift b/app/Squircle/Sources/UI/AttachmentPicker.swift
+index 8cdacfa..f1c079c 100644
+--- a/app/Squircle/Sources/UI/AttachmentPicker.swift
++++ b/app/Squircle/Sources/UI/AttachmentPicker.swift
+@@ -55,7 +55,7 @@ final class AttachmentPicker: NSObject, PHPickerViewControllerDelegate, UIImageP
+
+     /// A picture or video from the library, the pasteboard or a drop, ready
+     /// for the field; nil when it is neither.
+-    nonisolated static func attachment(from provider: NSItemProvider) async -> ImageAttachment? {
++    static func attachment(from provider: NSItemProvider) async -> ImageAttachment? {
+         if let movie = provider.registeredTypeIdentifiers.first(where: { UTType($0)?.conforms(to: .movie) == true }) {
+             return await video(from: provider, type: movie)
+         }
+@@ -73,7 +73,7 @@ final class AttachmentPicker: NSObject, PHPickerViewControllerDelegate, UIImageP
+
+     /// The video copied out of the provider (its file only lives for the
+     /// callback), with its first frame as the poster.
+-    private nonisolated static func video(from provider: NSItemProvider, type: String) async -> ImageAttachment? {
++    private static func video(from provider: NSItemProvider, type: String) async -> ImageAttachment? {
+         let file: URL? = await withCheckedContinuation { continuation in
+             _ = provider.loadFileRepresentation(forTypeIdentifier: type) { url, _ in
+                 guard let url else { return continuation.resume(returning: nil) }
+diff --git a/app/Squircle/Sources/UI/DocumentViews.swift b/app/Squircle/Sources/UI/DocumentViews.swift
+index eaae649..fee405f 100644
+--- a/app/Squircle/Sources/UI/DocumentViews.swift
++++ b/app/Squircle/Sources/UI/DocumentViews.swift
+@@ -229,7 +229,7 @@ private final class TypeTile: UIView {
+
+ /// Quick Look over one document: PDFs page and zoom; text reads as text;
+ /// share saves it to Files or sends it on. Markdown opens in the reader.
+-final class DocumentViewer: QLPreviewController, QLPreviewControllerDataSource, QLPreviewControllerDelegate {
++final class DocumentViewer: QLPreviewController, QLPreviewControllerDataSource, @MainActor QLPreviewControllerDelegate {
+     private final class Item: NSObject, QLPreviewItem {
+         let previewItemURL: URL?
+         let previewItemTitle: String?
+diff --git a/app/Squircle/Sources/UI/Jelly.swift b/app/Squircle/Sources/UI/Jelly.swift
+index ce34430..c9af16b 100644
+--- a/app/Squircle/Sources/UI/Jelly.swift
++++ b/app/Squircle/Sources/UI/Jelly.swift
+@@ -793,7 +793,7 @@ final class JellyHero: UIView {
+         }
+     }
+
+-    deinit { link?.invalidate(); observers.forEach { $0.cancel() } }
++    isolated deinit { link?.invalidate(); observers.forEach { $0.cancel() } }
+
+     @available(*, unavailable)
+     required init?(coder: NSCoder) { fatalError() }
+diff --git a/app/Squircle/Sources/UI/MediaViewer.swift b/app/Squircle/Sources/UI/MediaViewer.swift
+index 04e1351..1ef8b6c 100644
+--- a/app/Squircle/Sources/UI/MediaViewer.swift
++++ b/app/Squircle/Sources/UI/MediaViewer.swift
+@@ -6,7 +6,7 @@ import UIKit
+ struct MediaSpot {
+     let view: UIView
+     let style: CALayer
+-    init(_ view: UIView, style: CALayer? = nil) {
++    @MainActor init(_ view: UIView, style: CALayer? = nil) {
+         self.view = view
+         self.style = style ?? view.layer
+     }
+diff --git a/app/Squircle/Sources/UI/SpringDriver.swift b/app/Squircle/Sources/UI/SpringDriver.swift
+index 62dc9f5..00fbb0d 100644
+--- a/app/Squircle/Sources/UI/SpringDriver.swift
++++ b/app/Squircle/Sources/UI/SpringDriver.swift
+@@ -159,6 +159,7 @@ final class SpringDriver {
+ }
+
+ /// CADisplayLink retains its target; this keeps the owner releasable.
++@MainActor
+ final class DisplayLinkProxy: NSObject {
+     private let handler: @MainActor (CADisplayLink) -> Void
+     init(_ handler: @escaping @MainActor (CADisplayLink) -> Void) { self.handler = handler }
+diff --git a/app/Squircle/Sources/UI/Theme.swift b/app/Squircle/Sources/UI/Theme.swift
+index 6b806fb..0f5d4bd 100644
+--- a/app/Squircle/Sources/UI/Theme.swift
++++ b/app/Squircle/Sources/UI/Theme.swift
+@@ -147,7 +147,7 @@ enum Theme {
+     /// both SF Rounded and New York here).
+     static func appCaptionFont() -> UIFont { Text.lineStrong }
+
+-    static func label(_ text: String = "", _ font: UIFont, color: UIColor = .label, lines: Int = 1) -> UILabel {
++    @MainActor static func label(_ text: String = "", _ font: UIFont, color: UIColor = .label, lines: Int = 1) -> UILabel {
+         let label = UILabel()
+         label.text = text
+         label.font = font
+@@ -158,7 +158,7 @@ enum Theme {
+     }
+
+     /// Native Liquid Glass buttons (iOS 26+), with a tinted material fallback.
+-    static func glassButton(symbol: String? = nil, title: String? = nil, prominent: Bool = false,
++    @MainActor static func glassButton(symbol: String? = nil, title: String? = nil, prominent: Bool = false,
+                             identifier: String? = nil, accessibilityLabel: String? = nil) -> UIButton {
+         var config: UIButton.Configuration
+         if #available(iOS 26.0, *) {
+@@ -193,7 +193,7 @@ enum Theme {
+     /// Glass surface for grouped interactive content (approvals, composer).
+     /// `clear` is the more transparent glass, for lensing text seen through it;
+     /// `tint` colours the glass itself.
+-    static func glassSurface(cornerRadius: CGFloat, interactive: Bool = false, clear: Bool = false,
++    @MainActor static func glassSurface(cornerRadius: CGFloat, interactive: Bool = false, clear: Bool = false,
+                              tint: UIColor? = nil) -> UIVisualEffectView {
+         let view: UIVisualEffectView
+         if #available(iOS 26.0, *) {
+@@ -212,7 +212,7 @@ enum Theme {
+     }
+
+     /// Lets adjacent glass shapes blend and morph as one native group.
+-    static func glassGroup(spacing: CGFloat = Space.rowPad) -> UIVisualEffectView {
++    @MainActor static func glassGroup(spacing: CGFloat = Space.rowPad) -> UIVisualEffectView {
+         if #available(iOS 26.0, *) {
+             let effect = UIGlassContainerEffect()
+             effect.spacing = spacing
+@@ -221,16 +221,16 @@ enum Theme {
+         return UIVisualEffectView(effect: nil)
+     }
+
+-    private static let selection = UISelectionFeedbackGenerator()
+-    private static let impact = UIImpactFeedbackGenerator(style: .soft)
+-    static func selectionHaptic() { selection.selectionChanged() }
+-    static func openHaptic() { impact.impactOccurred(intensity: 0.7) }
+-    private static let light = UIImpactFeedbackGenerator(style: .light)
++    @MainActor private static let selection = UISelectionFeedbackGenerator()
++    @MainActor private static let impact = UIImpactFeedbackGenerator(style: .soft)
++    @MainActor static func selectionHaptic() { selection.selectionChanged() }
++    @MainActor static func openHaptic() { impact.impactOccurred(intensity: 0.7) }
++    @MainActor private static let light = UIImpactFeedbackGenerator(style: .light)
+     /// A swiped message reaching the point where letting go replies to it.
+-    static func lightHaptic() { light.impactOccurred() }
+-    private static let tick = UIImpactFeedbackGenerator(style: .rigid)
++    @MainActor static func lightHaptic() { light.impactOccurred() }
++    @MainActor private static let tick = UIImpactFeedbackGenerator(style: .rigid)
+     /// A firm tick for checking something off.
+-    static func checkHaptic() { tick.impactOccurred(intensity: 0.8) }
++    @MainActor static func checkHaptic() { tick.impactOccurred(intensity: 0.8) }
+ }
+
+ enum Motion {
+diff --git a/app/Squircle/Sources/UI/ThreadCells.swift b/app/Squircle/Sources/UI/ThreadCells.swift
+index cdec075..db3938c 100644
+--- a/app/Squircle/Sources/UI/ThreadCells.swift
++++ b/app/Squircle/Sources/UI/ThreadCells.swift
+@@ -233,7 +233,7 @@ final class MessageCell: TimelineCell {
+         label.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(quoteTapped)))
+         quoteRule.backgroundColor = .separator
+         quoteRule.layer.cornerRadius = 1
+-        [quoteRule, label].forEach(contentView.addSubview)
++        [quoteRule, label].forEach { contentView.addSubview($0) }
+         hasQuote = true
+         return label
+     }()
 diff --git a/app/Squircle/Sources/UI/ThreadViewController.swift b/app/Squircle/Sources/UI/ThreadViewController.swift
 index 2ab041f..12b7fa4 100644
 --- a/app/Squircle/Sources/UI/ThreadViewController.swift
@@ -277,6 +836,19 @@ index 2ab041f..12b7fa4 100644
          return items
      }
 
+diff --git a/app/Squircle/Sources/UI/ThreadViews.swift b/app/Squircle/Sources/UI/ThreadViews.swift
+index 12fb819..fa9759d 100644
+--- a/app/Squircle/Sources/UI/ThreadViews.swift
++++ b/app/Squircle/Sources/UI/ThreadViews.swift
+@@ -314,7 +314,7 @@ final class ComposerInput: UITextView, UITextDropDelegate {
+         }
+     }
+
+-    private nonisolated static func text(from provider: NSItemProvider) async -> String? {
++    private static func text(from provider: NSItemProvider) async -> String? {
+         guard provider.canLoadObject(ofClass: String.self) else { return nil }
+         return await withCheckedContinuation { continuation in
+             _ = provider.loadObject(ofClass: String.self) { text, _ in continuation.resume(returning: text) }
 diff --git a/app/Squircle/project.yml b/app/Squircle/project.yml
 index 64ae567..573c983 100644
 --- a/app/Squircle/project.yml
@@ -407,7 +979,7 @@ index df9bc6b..3e1dbe4 100644
      plist::Value::Dictionary(entitlements).to_file_xml(&entitlements_path)?;
 
 diff --git a/src/t3db/mod.rs b/src/t3db/mod.rs
-index 8ef2a6d..b6fc40b 100644
+index 8ef2a6d..0480011 100644
 --- a/src/t3db/mod.rs
 +++ b/src/t3db/mod.rs
 @@ -306,7 +306,7 @@ mod tests {
@@ -419,12 +991,21 @@ index 8ef2a6d..b6fc40b 100644
              insert into orchestration_v2_projection_messages values ('m','t',null,null,'user',0,'2026-10-18','2026-10-18','{"text":"test_name"}');
              insert into projection_thread_activities values ('a','t',1,'2026-10-18','turn','tool.completed',null,'test_name',
                  '{"toolCallId":"call","data":{"toolName":"mcp__t3-code__device_screenshot","input":{"command":"simctl list"},"result":{"content":[{"type":"image","source":{"media_type":"image/png","data":"AAAA"}}]}}}');
+@@ -362,7 +362,7 @@ mod tests {
+         let said = read(sql::LAST_REPLIES, vec![text(r#"["u","t","x"]"#)]);
+         assert_eq!(
+             column(&said, "text"),
+-            [json!("test_name rival reply")],
++            [json!("test_name not imported"), json!("test_name rival reply")],
+             "{said:?}"
+         );
+         // Thread-scoped reads see t's rows only, never u's under the same call IDs.
 @@ -376,7 +376,7 @@ mod tests {
          assert!(read(sql::STEPS, vec![text("t"), text("2026-10-19")]).is_empty());
          assert_eq!(
              column(&read(sql::IMAGES, vec![text("t"), text("call")]), "data"),
 -            [json!("AAAA")]
-+            []
++            Vec::<serde_json::Value>::new()
          );
          assert_eq!(
              column(&read(sql::IMAGES, vec![text("t"), text("toolu_2")]), "data"),
@@ -433,7 +1014,7 @@ index 8ef2a6d..b6fc40b 100644
                  "thread_id"
              ),
 -            [json!("t")]
-+            []
++            Vec::<serde_json::Value>::new()
          );
          assert_eq!(
              column(

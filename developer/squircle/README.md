@@ -73,17 +73,12 @@ python3 developer/squircle/check-sql.py /absolute/prepared/checkout
 python3 developer/squircle/check-sql.py /absolute/prepared/checkout /private/path/statev2.sqlite
 ```
 
-The owned overlay build waited for local capacity; its queued process was
-cancelled before handoff. Final attempts through process-gate --no-wait both
-exited **75**, `local slot is busy`, before compilation:
-
-- Overlay: `/tmp/og-squircle-build-final.log`; queued log `/tmp/og-squircle-build-wait.log`.
-- Rust `cargo test --locked --offline`: `/tmp/og-squircle-rust-final.log`.
-
-No compilation success is claimed. Swift 6 errors remain unknown; Rust policy
-and adapted upstream tests have not run. The Rust export exclusion matrix is
-executable test code, not exported-artifact proof. No device was acquired, no
-service started, and no signing or installation ran. This remains a draft pending those required checks.
+The original queued overlay build completed with exit **65** and exposed Swift 6
+compiler errors (`/tmp/og-squircle-queued-build.log`). The compiler fixes and
+subsequent verification are recorded in [COMPILER-FIXES.md](COMPILER-FIXES.md).
+All retries used process-gate with waiting enabled; no failed build was rerouted.
+No device was acquired, no service started, and no signing or installation ran.
+This remains a draft pending runtime, artifact and signing checks.
 
 Before calling this usable: finish gated Swift 6 and Rust compilation/tests;
 exercise enrollment/forget/re-enrollment and reconnect under dropped connections;
@@ -98,11 +93,10 @@ Fresh independent review and publication belong to the coordinator.
 The first fresh Sol review found one compilation blocker: a non-Sendable
 static Info.plist dictionary under Swift 6. The adapter now initializes only
 String values using bundle lookups, without retaining that dictionary.
-Compilation remains unverified because the post-fix gate also exited 75 before
-startup (`/tmp/og-squircle-after-review-build.log`). Source preparation and
-boundary checks passed after the fix. A fresh follow-up source review approved
-the fix with no additional findings in the changed scope. This is not build
-or runtime approval.
+The follow-up source review approved that dictionary fix. Actual compilation
+then exposed additional errors, now addressed separately; the coordinator must
+perform a fresh focused review of the compiler fixes. Historical source approval
+is not build or runtime approval.
 
 Read-only signing inspection found one valid local code-signing identity.
 This does not establish an appropriate development/distribution certificate,
