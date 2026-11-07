@@ -197,6 +197,10 @@ struct AccountView: View {
           }
         }
 
+        AccountSection {
+          CameraPhotoSetting()
+        }
+
         AccountSection(title: "Help and legal") {
           Link("Support", destination: AccountLinks.support)
             .accessibilityLabel("Email Organized Glitter support")

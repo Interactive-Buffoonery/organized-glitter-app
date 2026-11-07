@@ -20,6 +20,9 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<!-- // UNAPPROVED copy -->
+	<string>Save photos you take in Organized Glitter to your photo library.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos for your projects to add them to Organized Glitter.</string>
 	<key>NSAppTransportSecurity</key>

@@ -62,7 +62,11 @@ private struct SystemCameraPicker: UIViewControllerRepresentable {
 
     func imagePickerController(_ picker: UIImagePickerController,
       didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-      onFinish(info[.originalImage] as? UIImage)
+      let image = info[.originalImage] as? UIImage
+      if let image {
+        Task { await CameraRollSave.saveCapture(image, enabled: CameraPhotoPreference.isEnabled()) }
+      }
+      onFinish(image)
     }
 
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { onFinish(nil) }
