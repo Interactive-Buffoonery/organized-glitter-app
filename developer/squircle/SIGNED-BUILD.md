@@ -1,62 +1,88 @@
-# Local personal build
+# Personal build and connection evidence
 
-Source head: `d68ab372f1c5488fcf8f3713cffd20b9a238a3ed`.
-Build ID: `og-d68ab372-debug-1`.
+Source head: `74e678add92e7a42c0f2d6b38615756c4146d47e`.
+Current build ID: `8c50d974-8ee9-4705-be0d-814bcebeb2f6`.
 Upstream pin: `737f2e881483a4c7237b49d5696adff7d44cad1b`.
+IPA SHA-256: `66928b6720d26a5b9bae79984ebbd418b63c80167c5cc44f6bc7fb1c3fb33b1a`.
 
-The existing development identity and Xcode-managed profile signed the native
-Debug archive. Automatic signing used the existing team; provisioning updates
-were not enabled. An initial manual-signing attempt failed because the profile
-is Xcode managed and dependency resource targets cannot use an app profile.
-The automatic-signing retry passed.
+## Managed personal build
 
-An offline helper called the adapted Squircle library's existing
-`overlay::framework` and `overlay::inject` functions. The device framework built,
-was injected between archive and export, and the app was re-signed. No service
-was started. The helper and signing/export configuration are local preparation
-files, not additional application sources or tracked credentials.
-
-All build, assembly and export commands ran through process-gate with waiting
-enabled. The personal export uses `method=debugging`, `destination=export` and
-existing automatic signing. No upload, App Store or TestFlight action ran.
-
-## Verified artifact
-
-Local IPA: `/tmp/og-squircle-personal-export/OrganizedGlitter.ipa`.
-SHA-256: `4967b7daf04397723891c0bb946648b8c06d25bacf7d1dcd5f0e7e4004569dd6`.
+The adapted Squircle service completed the native Debug archive, device overlay
+build/injection, signing and `debugging` export. The Mac operator submitted and
+waited for this job inside one process-gate admission. The gate remained held
+through completion; no phone action or provider turn started the build.
+The existing Xcode-managed development profile and identity signed the app;
+provisioning updates were not enabled. An ignored local Debug xcconfig supplies
+the existing team. Private export options use automatic signing and export only.
 
 The exported arm64 app passes `codesign --verify --deep --strict`, contains and
 links SquircleOverlay, and retains the original host entitlements exactly. No
-shared Keychain group was added. No `client.json` or `client-t3.json` is bundled;
-no enrollment credential file was generated for this build. The embedded
-development profile lists three devices. This does not establish whether the
-selected acceptance device is among them.
+shared Keychain group was added. No `client.json` or `client-t3.json` is bundled.
+The profile lists three devices; the acceptance phone/iPad has not been matched
+to that list. The embedded SquircleBuildID equals the service job UUID, enabling
+real launch acknowledgement after enrollment. It has not yet been observed.
 
-Receipts are local: `/tmp/og-squircle-archive-signing-evidence.json`,
-`/tmp/og-squircle-injected-archive-evidence.json`,
-`/tmp/og-squircle-personal-build-evidence.json`. Sanitized logs:
-`/tmp/og-squircle-native-debug-archive-2.log`,
-`/tmp/og-squircle-offline-injection.log`,
-`/tmp/og-squircle-personal-export.log`.
+The earlier offline build `og-d68ab372-debug-1` established signing/injection,
+but its custom non-UUID ID could not produce launch acknowledgement. Use the
+managed build above for acceptance instead of that earlier IPA.
 
-## To try after connectivity is approved
+## Release exclusion
 
-1. Establish trusted HTTPS endpoints for the existing T3 managed endpoint and
-   the adapted build service. Keep the Mac awake; preserve T3 authorization and
-   existing coordinator settings. Do not expose either service or change network
-   sharing without approval.
-2. Privately provision the enrollment file described in README.md. Never put it
-   in app resources, the repository, screenshots or chat.
-3. Confirm that the device is covered by the signing profile and explicitly
-   authorize installation. This IPA uses the normal application's bundle ID,
-   `com.interactivebuffoonery.organizedglitter`; installing it targets the same
-   app identity. Do not assume an existing installation may be replaced.
-4. Use an expiring HTTPS manifest/IPA link, confirm installation, and manually
-   open the app. Open Developer tools, import enrollment, and explicitly connect.
-5. Verify the reported build ID is `og-d68ab372-debug-1`, then test a message,
-   reviewed screenshot attachment, activity, a question, explicit approval and
-   denial, cancellation, disconnected reconnect, and forget/re-enrollment.
+The normal signed Release device archive passes strict signature verification.
+It contains no Squircle linkage, named overlay/enrollment resources, or scanned
+overlay/enrollment/coordinator markers. Executable SHA-256:
+`a23fccd8c45e843e1f05486b467946472cdd1e481e62dd8ce0d9e239f8e085f8`.
+This archive used source head `d68ab372`; only documentation changed afterward.
+The earlier unsigned Release simulator artifact also passed exclusion inspection.
+No App Store/TestFlight export, upload or release was performed.
 
-No live RPC, launch acknowledgement, physical installation, cellular download,
-iPhone/iPad UI interaction or finite-background behavior has been verified.
-A successful export is not a usable-workflow claim.
+## Approved local connectivity
+
+The user approved reconnecting the existing tailnet, starting the local service,
+and HTTPS routes 443 to loopback Squircle 8787 and 8443 to existing T3 3773.
+Both HTTPS health checks passed certificate validation; Funnel is disabled.
+No T3 global authorization/provider/model settings were changed.
+
+A private-card one-time pairing token was exchanged for a separate
+`orchestration:read orchestration:operate` session. Authenticated HTTPS shell
+reads found both pinned projects and the existing coordinator. A protocol-2 WSS
+subscription returned that coordinator's thread snapshot. These checks sent no
+chat message or mutation command. The service reports T3 Connected.
+
+The installation page, manifest and IPA each returned HTTP 200 over HTTPS from
+the Mac. The downloaded IPA SHA-256 matches the signed export. This proves the
+Mac-side path, not cellular reachability or physical installation.
+
+The service binary, pinned adapted source, private state, ignored signing
+configuration, export options, and operator helper are prepared locally. The
+operator must run the helper from the intended native checkout under
+`process-gate python3 /absolute/private/path/build-personal.py`. It submits one
+Debug job and keeps admission until a terminal result. Use a fresh request ID
+for a new build. Do not run ungated builds on a gated host.
+
+## Manual checkpoint
+
+1. Confirm the selected device is covered by the profile and explicitly choose
+   whether to replace the current Organized Glitter installation. The developer
+   IPA uses the normal bundle ID `com.interactivebuffoonery.organizedglitter`.
+2. With Tailscale connected, open the expiring install page in Safari, confirm
+   installation, and manually launch the app. Do not treat a download as install
+   or launch proof.
+3. Transfer the private enrollment file directly to the phone (for example,
+   AirDrop from the Mac and Save to Files). Never send it through chat, add it to
+   resources, or expose it through the installation links. Open Developer tools,
+   import that file, and explicitly connect. Forget removes the app-private
+   Keychain enrollment; revoke the paired session separately on the Mac.
+4. Verify the service observes the exact build UUID above. Then test a message,
+   reviewed screenshot attachment, activity, question, explicit approval and
+   denial, cancellation, dropped-connection reconnect, and forget/re-enrollment.
+
+No physical installation, cellular download, iPhone/iPad UI interaction,
+mutation-command behavior, or finite-background behavior is verified yet.
+Session expiry still requires renewed explicit enrollment; credentials are not
+baked into this IPA.
+
+Local receipts: `/tmp/og-squircle-managed-build-evidence.json`,
+`/tmp/og-squircle-signed-release-exclusion.json`,
+`/tmp/og-squircle-live-readiness.json`,
+`/tmp/og-squircle-https-delivery-evidence.json`.

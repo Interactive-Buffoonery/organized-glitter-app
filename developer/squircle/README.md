@@ -77,8 +77,9 @@ The original queued overlay build completed with exit **65** and exposed Swift 6
 compiler errors (`/tmp/og-squircle-queued-build.log`). The compiler fixes and
 subsequent verification are recorded in [COMPILER-FIXES.md](COMPILER-FIXES.md).
 All retries used process-gate with waiting enabled; no failed build was rerouted.
-No device was acquired and no service or installation ran. Local signing and
-personal export subsequently passed; see [SIGNED-BUILD.md](SIGNED-BUILD.md).
+No device was acquired or installed. Local signing, managed personal export,
+approved service setup, and read-only live RPC subsequently passed; see
+[SIGNED-BUILD.md](SIGNED-BUILD.md).
 This remains a draft pending runtime and delivery checks.
 
 At source head `6655d816aaf1b1150b97fcbfd088ae374ebee953`, the gated
@@ -99,7 +100,9 @@ reconnect under dropped connections; verify questions, approval denial/acceptanc
 cancellation and screenshots against the pinned coordinator; then separately
 establish authorized HTTPS reachability, confirm the selected device is covered
 by the profile, and obtain manual device update proof. Personal Debug export
-composition and signatures passed; this does not establish device installation. T3's remote device listing
+composition and signatures, signed Release archive exclusion, live read-only
+protocol-2 RPC, and Mac-side HTTPS delivery passed. Mutation behavior and physical
+installation remain unverified. T3's remote device listing
 failed twice with “Could not reach the Simlock gateway”; no device was acquired
 or driven through an alternate path.
 
@@ -115,6 +118,6 @@ actor isolation. This was source and SDK-header review, not runtime testing.
 Local signing inspection found an available private-key identity with a matching,
 unexpired development profile. The resulting signed Debug archive and personal
 IPA passed verification. The profile lists three devices; the phone or iPad used
-for acceptance has not been matched to that list. Tailscale is installed but
-stopped, with no Serve route configured on this Mac. HTTPS origins and cellular
-reachability remain unverified. No network changes were made.
+for acceptance has not been matched to that list. The user subsequently approved reconnecting the existing tailnet and two HTTPS
+routes. Certificate-validated Mac-side health/download and read-only protocol-2
+checks passed; cellular reachability and device behavior remain unverified.
