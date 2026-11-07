@@ -24,7 +24,7 @@ final class AccountDeletionUITests: XCTestCase {
     review.tap()
     app.buttons["Delete Account Permanently"].tap()
     XCTAssertTrue(app.staticTexts["deletion.completed"].waitForExistence(timeout: 10))
-    XCTAssertTrue(app.staticTexts["Vendor cleanup is pending."].exists)
+    XCTAssertTrue(app.staticTexts["deletion.completed"].label.contains("usage analytics will be deleted shortly"))
     app.buttons["deletion.done"].tap()
     XCTAssertTrue(app.buttons["welcomeSignIn"].waitForExistence(timeout: 5))
   }

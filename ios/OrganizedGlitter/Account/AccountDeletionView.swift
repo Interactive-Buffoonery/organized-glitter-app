@@ -7,6 +7,36 @@ struct AccountDeletionView: View {
   @State private var confirmsDeletion = false
 
   var body: some View {
+    Group {
+      if case .completed(let cleanup) = appModel.deletion?.state {
+        AccountDeletionCompletedView(cleanup: cleanup, done: appModel.finishAccountDeletion)
+      } else {
+        form
+      }
+    }
+    .navigationTitle("Delete Account")
+    .navigationBarTitleDisplayMode(.inline)
+    .alert("Delete this account permanently?", isPresented: $confirmsDeletion) {
+      Button("Delete Account Permanently", role: .destructive) {
+        Task { await appModel.deletion?.confirm() }
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("Your account, library records, uploaded files and \(pendingCount) changes saved only on this device will be removed. Your usage analytics will be deleted shortly after.")
+    }
+    .task {
+      appModel.beginAccountDeletion()
+      await appModel.deletion?.loadMethods()
+    }
+    .onChange(of: appModel.deletion?.state, initial: true) { _, state in
+      if let message = AccountDeletionAccessibility.message(for: state) {
+        AccessibilityNotification.Announcement(message).post()
+      }
+    }
+    .onDisappear { appModel.deletion?.cancelPreparation() }
+  }
+
+  private var form: some View {
     Form {
       Section {
         Text("Permanently delete your account, library records and uploaded files. This cannot be undone.")
@@ -42,26 +72,35 @@ struct AccountDeletionView: View {
         }
       }
     }
-    .navigationTitle("Delete Account")
-    .navigationBarTitleDisplayMode(.inline)
-    .alert("Delete this account permanently?", isPresented: $confirmsDeletion) {
-      Button("Delete Account Permanently", role: .destructive) {
-        Task { await appModel.deletion?.confirm() }
+  }
+}
+
+private struct AccountDeletionCompletedView: View {
+  @Environment(\.theme) private var theme
+  @AccessibilityFocusState private var focused: Bool
+
+  let cleanup: AccountDeletionCleanup
+  let done: () -> Void
+
+  var body: some View {
+    AuthEntryContainer(fillsHeight: true) {
+      ContentUnavailableView {
+        Label("Your account is deleted", systemImage: "checkmark.circle")
+      } description: {
+        Text(cleanup == .pending
+          ? "Your library, uploaded files and the data on this device are gone. Your usage analytics will be deleted shortly."
+          : "Your library, uploaded files, usage analytics and the data on this device are gone.")
+          .accessibilityIdentifier("deletion.completed")
+          .accessibilityFocused($focused)
+      } actions: {
+        Button("Done", action: done)
+          .buttonStyle(AuthPrimaryButtonStyle())
+          .frame(maxWidth: 280)
+          .accessibilityIdentifier("deletion.done")
       }
-      Button("Cancel", role: .cancel) {}
-    } message: {
-      Text("Your account, library records, uploaded files and \(pendingCount) changes saved only on this device will be removed. Vendor cleanup may continue after account deletion.")
+      .foregroundStyle(theme.foreground)
     }
-    .task {
-      appModel.beginAccountDeletion()
-      await appModel.deletion?.loadMethods()
-    }
-    .onChange(of: appModel.deletion?.state, initial: true) { _, state in
-      if let message = AccountDeletionAccessibility.message(for: state) {
-        AccessibilityNotification.Announcement(message).post()
-      }
-    }
-    .onDisappear { appModel.deletion?.cancelPreparation() }
+    .onAppear { focused = true }
   }
 }
 
@@ -70,28 +109,36 @@ struct AccountDeletionRecoveryView: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        if let model = appModel.deletion {
-          AccountDeletionStatusContent(appModel: appModel, model: model)
-          if model.state == .uncertain || model.state == .verifying {
-            AccountDeletionVerificationForm(model: model, recovery: true)
-          }
-          if let error = model.errorMessage { Section { AccessibleErrorLabel(message: error) } }
-        } else {
-          Section {
-            Text("Secure deletion recovery could not be read. Account access remains locked and local data is preserved. Retry secure recovery or contact support for help.")
-              .accessibilityIdentifier("deletion.secureRecoveryLocked")
-            Button("Retry Secure Recovery", action: appModel.retrySessionRestoration)
-            Link("Contact support", destination: AccountLinks.accountDeletionSupport)
-          }
+      if case .completed(let cleanup) = appModel.deletion?.state {
+        AccountDeletionCompletedView(cleanup: cleanup, done: appModel.finishAccountDeletion)
+      } else {
+        recoveryForm
+      }
+    }
+  }
+
+  private var recoveryForm: some View {
+    Form {
+      if let model = appModel.deletion {
+        AccountDeletionStatusContent(appModel: appModel, model: model)
+        if model.state == .uncertain || model.state == .verifying {
+          AccountDeletionVerificationForm(model: model, recovery: true)
+        }
+        if let error = model.errorMessage { Section { AccessibleErrorLabel(message: error) } }
+      } else {
+        Section {
+          Text("Secure deletion recovery could not be read. Account access remains locked and local data is preserved. Retry secure recovery or contact support for help.")
+            .accessibilityIdentifier("deletion.secureRecoveryLocked")
+          Button("Retry Secure Recovery", action: appModel.retrySessionRestoration)
+          Link("Contact support", destination: AccountLinks.accountDeletionSupport)
         }
       }
-      .navigationTitle("Account Deletion")
-      .task { await appModel.deletion?.loadMethods() }
-      .onChange(of: appModel.deletion?.state, initial: true) { _, state in
-        if let message = AccountDeletionAccessibility.message(for: state) {
-          AccessibilityNotification.Announcement(message).post()
-        }
+    }
+    .navigationTitle("Account Deletion")
+    .task { await appModel.deletion?.loadMethods() }
+    .onChange(of: appModel.deletion?.state, initial: true) { _, state in
+      if let message = AccountDeletionAccessibility.message(for: state) {
+        AccessibilityNotification.Announcement(message).post()
       }
     }
   }
@@ -224,13 +271,8 @@ private struct AccountDeletionStatusContent: View {
   var body: some View {
     Section {
       switch model.state {
-      case .completed(let cleanup):
-        Text("Your account was deleted and its local data was removed.")
-          .accessibilityIdentifier("deletion.completed")
-          .accessibilityFocused($statusFocused)
-        Text(cleanup == .pending ? "Vendor cleanup is pending." : "Vendor cleanup is completed.")
-        Button("Done", action: appModel.finishAccountDeletion)
-          .accessibilityIdentifier("deletion.done")
+      case .completed:
+        EmptyView()
       case .localCleanupFailed:
         Text("Your account was deleted. Local cleanup is still pending.")
           .accessibilityFocused($statusFocused)
@@ -281,7 +323,7 @@ private enum AccountDeletionAccessibility {
     case .submitting: "Checking account deletion. Local data remains locked."
     case .uncertain: "Deletion is not confirmed. Account access remains locked."
     case .localCleanupFailed: "Account deleted. Local cleanup needs another attempt."
-    case .completed: "Account deleted and local data removed."
+    case .completed: "Your account is deleted."
     default: nil
     }
   }
