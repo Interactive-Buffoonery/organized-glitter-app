@@ -25,6 +25,6 @@ reads V2 only: it intentionally does not retrieve old migration-only history.
 
 Rust policy tests cover the complete configuration/export-method/disable matrix
 and approval-required defaults while preserving explicitly requested modes.
-They are added to the upstream harness but require a completed gated cargo test.
+The complete gated Rust suite passed all 99 tests, including these guards.
 Neither SQL preparation nor fixture execution proves live subscriptions,
 reconnection, provider approval behavior or screenshot upload.
