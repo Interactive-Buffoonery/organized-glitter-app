@@ -1,7 +1,9 @@
 # Automatic personal updates
 
-Sarah authorized this workflow for the dedicated Organized Glitter developer
-chat. After implementing a requested native-app change, complete the required
+Sarah authorized this workflow for feature threads launched by the
+[in-app dispatcher](DISPATCHER.md) into their own T3-managed worktrees. The
+dispatcher never implements or builds in its bound PR98 checkout. After
+implementing a requested native-app change in the feature worktree, complete the required
 checks and fresh review, then build and offer a personal update without asking
 for another build request. Questions, research, failed checks, and changes that
 do not affect the installed native app do not trigger a build. Batch one update
@@ -25,6 +27,11 @@ build-creation restriction stays in place.
 3. Generate the native Xcode project with `xcodegen generate --spec ios/project.yml`.
    Use the already approved local service, signing configuration, and HTTPS
    routes. Do not enable provisioning updates or read/print credential files.
+   A new worktree needs its own ignored `ios/Config/Debug.local.xcconfig`.
+   Populate only `DEVELOPMENT_TEAM` from the existing private export options'
+   `teamID` field, without printing the plist or copying other private settings.
+   Preserve an existing local config; if its team differs, report the mismatch
+   instead of overwriting it or selecting another identity/profile.
 4. Validate the prepared overlay with `check-invariants.py`, using the
    `overlay_project` parent recorded in the owned local `service-pid.json`.
    This checks the current patch and enrollment bytes as well as boundaries.
@@ -34,7 +41,8 @@ build-creation restriction stays in place.
 
 ## Build and deliver
 
-Run from the intended native checkout on the approved Mac. The private operator
+Run from the feature thread's own clean native checkout on the approved Mac,
+never from the dispatcher/PR98 checkout. The private operator
 helper already exists under `~/Library/Application Support/OrganizedGlitterDeveloper`.
 Its export options and signing configuration remain local. Save the full
 `git rev-parse HEAD` before submission.
