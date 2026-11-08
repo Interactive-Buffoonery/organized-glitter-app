@@ -4,6 +4,17 @@ import Testing
 @testable import OrganizedGlitter
 
 struct DetailDateOnlyTests {
+  @Test func midnightDSTDayPreservesNewAndEditedNoteDate() throws {
+    let zone = try #require(TimeZone(identifier: "America/Santiago"))
+    let selectedDay = "2026-09-06"
+    let pickerDate = try #require(DetailDateOnly.date(selectedDay, timeZone: zone))
+    #expect(DetailDateOnly.string(from: pickerDate, timeZone: zone) == selectedDay)
+    let savedDate = try #require(DetailDateOnly.date(
+      DetailDateOnly.string(from: pickerDate, timeZone: zone), timeZone: zone))
+    #expect(DetailDateOnly.string(from: savedDate, timeZone: zone) == selectedDay)
+    #expect(DetailDateOnly.date("2026-02-30", timeZone: zone) == nil)
+  }
+
   @Test func pickedDaySurvivesDeviceTimezoneChangeWhileEditing() throws {
     let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
     let losAngeles = try #require(TimeZone(identifier: "America/Los_Angeles"))

@@ -8,13 +8,19 @@ enum DetailDateOnly {
     let parser = DateFormatter()
     parser.calendar = Calendar(identifier: .gregorian)
     parser.locale = Locale(identifier: "en_US_POSIX")
-    parser.timeZone = timeZone
+    parser.timeZone = .gmt
     parser.dateFormat = "yyyy-MM-dd"
     parser.isLenient = false
     guard let date = parser.date(from: prefix), parser.string(from: date) == prefix else {
       return nil
     }
-    return date
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = .gmt
+    let components = calendar.dateComponents([.year, .month, .day], from: date)
+    calendar.timeZone = timeZone
+    guard let localDate = calendar.date(from: components),
+      string(from: localDate, timeZone: timeZone) == prefix else { return nil }
+    return localDate
   }
 
   /// The calendar day of `date` in `timeZone`, as PocketBase's `yyyy-MM-dd`.
