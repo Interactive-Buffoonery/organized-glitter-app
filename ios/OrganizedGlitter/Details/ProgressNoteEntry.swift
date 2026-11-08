@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct ProgressNoteEntry: View {
+  @Environment(\.timeZone) private var pickerTimeZone
   @Environment(\.photoViewer) private var viewer
   @Environment(\.theme) private var theme
 
@@ -15,7 +16,7 @@ struct ProgressNoteEntry: View {
 
   @State private var isEditing = false
   @State private var draftContent = ""
-  @State private var draftDate = Date()
+  @State private var draftDay = ""
   @State private var isSaving = false
   @State private var showsDeleteConfirmation = false
   @State private var errorMessage: String?
@@ -65,7 +66,8 @@ struct ProgressNoteEntry: View {
       }
 
       if isEditing {
-        DatePicker("Date", selection: $draftDate, displayedComponents: .date)
+        DatePicker("Date", selection: draftDate, displayedComponents: .date)
+          .environment(\.calendar, Calendar(identifier: .gregorian))
         TextField("Caption", text: $draftContent, axis: .vertical)
           .lineLimit(3...8)
           .accessibilityIdentifier("progressNote.captionEditor")
@@ -151,16 +153,23 @@ struct ProgressNoteEntry: View {
 
   private func beginEditing() {
     draftContent = note.content
-    draftDate = DetailDateOnly.date(note.date) ?? .now
+    draftDay = DetailDateOnly.date(note.date).map { DetailDateOnly.string(from: $0) }
+      ?? DetailDateOnly.string(from: .now)
     errorMessage = nil
     isEditing = true
   }
 
+  private var draftDate: Binding<Date> {
+    Binding(
+      get: { DetailDateOnly.date(draftDay, timeZone: pickerTimeZone) ?? .now },
+      set: { draftDay = DetailDateOnly.string(from: $0, timeZone: pickerTimeZone) })
+  }
+
   private func save() async {
-    guard let onSave else { return }
+    guard let onSave, let date = DetailDateOnly.date(draftDay) else { return }
     isSaving = true
     defer { isSaving = false }
-    errorMessage = await onSave(draftContent, draftDate)
+    errorMessage = await onSave(draftContent, date)
     if errorMessage == nil { isEditing = false }
   }
 
@@ -345,7 +354,20 @@ struct ProgressNotesSection: View {
   }
 }
 
+private struct NoteDefaultTimeZoneKey: EnvironmentKey {
+  static let defaultValue: TimeZone = .autoupdatingCurrent
+}
+
+extension EnvironmentValues {
+  var noteDefaultTimeZone: TimeZone {
+    get { self[NoteDefaultTimeZoneKey.self] }
+    set { self[NoteDefaultTimeZoneKey.self] = newValue }
+  }
+}
+
 struct ProgressNoteEditor: View {
+  @Environment(\.noteDefaultTimeZone) private var accountTimeZone
+  @Environment(\.timeZone) private var pickerTimeZone
   @Environment(\.dismiss) private var dismiss
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.theme) private var theme
@@ -353,7 +375,7 @@ struct ProgressNoteEditor: View {
   let model: LibraryItemDetailModel
   let onCollectionChanged: @MainActor @Sendable () async -> Void
 
-  @State private var date = Date()
+  @State private var date: String?
   @State private var content = ""
   @State private var isTakingPhoto = false
   @State private var cameraImage: UIImage?
@@ -371,7 +393,11 @@ struct ProgressNoteEditor: View {
       Form {
         Group {
           Section("Progress") {
-            DatePicker("Date", selection: $date, displayedComponents: .date)
+            DatePicker("Date", selection: pickerDate, displayedComponents: .date)
+              .environment(\.calendar, Calendar(identifier: .gregorian))
+              .onAppear {
+                if date == nil { date = DetailDateOnly.string(from: .now, timeZone: accountTimeZone) }
+              }
             TextField("Caption (optional)", text: $content, axis: .vertical)
               .lineLimit(3...8)
             Text("Add a photo, a caption, or both.")
@@ -539,12 +565,23 @@ struct ProgressNoteEditor: View {
     }
   }
 
+  private var selectedDay: String {
+    date ?? DetailDateOnly.string(from: .now, timeZone: accountTimeZone)
+  }
+
+  private var pickerDate: Binding<Date> {
+    Binding(
+      get: { DetailDateOnly.date(selectedDay, timeZone: pickerTimeZone) ?? .now },
+      set: { date = DetailDateOnly.string(from: $0, timeZone: pickerTimeZone) })
+  }
+
   private func submit() async {
     guard canSubmit else { return }
     AccessibilityNotification.Announcement(
       processedPhoto == nil ? "Adding progress note" : "Uploading photo"
     ).post()
-    if await model.addProgressNote(content: content, date: date, photo: processedPhoto) {
+    guard let savedDate = DetailDateOnly.date(selectedDay) else { return }
+    if await model.addProgressNote(content: content, date: savedDate, photo: processedPhoto) {
       await onCollectionChanged()
       AccessibilityNotification.Announcement(
         processedPhoto == nil ? "Progress note added" : "Photo added"

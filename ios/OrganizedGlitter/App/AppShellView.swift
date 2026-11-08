@@ -51,7 +51,7 @@ struct AppShellView: View {
   let user: UserRecord
   let library: LibrarySession
 
-  @AppStorage private var showCraftingStreak: Bool
+  @AppStorage private var craftingStreakModeValue: String
 
   @Environment(\.scenePhase) private var scenePhase
 
@@ -78,8 +78,9 @@ struct AppShellView: View {
     self.client = client
     self.user = user
     self.library = library
-    _showCraftingStreak = AppStorage(
-      wrappedValue: false, CraftingStreak.preferenceKey(userID: user.id))
+    _craftingStreakModeValue = AppStorage(
+      wrappedValue: CraftingStreak.migrateMode(userID: user.id),
+      CraftingStreak.modeKey(userID: user.id))
     _protectedFiles = State(initialValue: ProtectedFileAccess(client: client))
     _accountPreferences = State(
       initialValue: AccountPreferencesModel(
@@ -122,13 +123,12 @@ struct AppShellView: View {
               }
               .accessibilityIdentifier("account.open")
             }
-            if showCraftingStreak {
+            if craftingStreakMode.wrappedValue == .home {
               ToolbarSpacer(.fixed, placement: .topBarLeading)
               ToolbarItem(placement: .topBarLeading) {
                 CraftingStreakButton(
                   library: library,
-                  timeZone: accountPreferences.user.timezone.flatMap { TimeZone(identifier: $0) }
-                    ?? .current,
+                  timeZone: accountTimeZone,
                   onNotesRequest: { selectedTab = .notes })
               }
             }
@@ -177,6 +177,8 @@ struct AppShellView: View {
           NotesFeedView(
             library: library,
             verticals: accountPreferences.verticals,
+            showCraftingStreak: craftingStreakMode.wrappedValue == .notes,
+            streakTimeZone: accountTimeZone,
             onAddNote: presentNoteTargetPicker
           )
           .navigationDestination(for: LibraryItem.self) { item in
@@ -250,6 +252,7 @@ struct AppShellView: View {
       }
     }
     .onChange(of: library.generation) { _, _ in libraryRefresh.bump() }
+    .environment(\.noteDefaultTimeZone, accountTimeZone)
     .environment(\.pocketBaseClient, client)
     .environment(\.protectedFiles, protectedFiles)
     .environment(\.connectionAvailable, connectivity.connectionAvailable)
@@ -276,10 +279,20 @@ struct AppShellView: View {
     }
   }
 
+  private var accountTimeZone: TimeZone {
+    accountPreferences.user.timezone.flatMap { TimeZone(identifier: $0) } ?? .autoupdatingCurrent
+  }
+
+  private var craftingStreakMode: Binding<CraftingStreakMode> {
+    Binding(
+      get: { CraftingStreakMode(rawValue: craftingStreakModeValue) ?? .off },
+      set: { craftingStreakModeValue = $0.rawValue })
+  }
+
   private var accountView: some View {
     AccountView(
       appModel: model, library: library, client: client, preferences: accountPreferences,
-      showCraftingStreak: $showCraftingStreak)
+      craftingStreakMode: craftingStreakMode)
   }
 
   /// iPad pushes Account onto Home as its own page; iPhone keeps the sheet.
