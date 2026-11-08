@@ -72,6 +72,8 @@ struct NotesFeedView: View {
 
   let library: LibrarySession
   let verticals: VerticalPreferences
+  let showCraftingStreak: Bool
+  let streakTimeZone: TimeZone
   let onAddNote: () -> Void
 
   @State private var filters: NotesFilterModel
@@ -83,10 +85,14 @@ struct NotesFeedView: View {
   @State private var photos: [DetailPhoto] = []
 
   init(
-    library: LibrarySession, verticals: VerticalPreferences, onAddNote: @escaping () -> Void
+    library: LibrarySession, verticals: VerticalPreferences,
+    showCraftingStreak: Bool = false, streakTimeZone: TimeZone = .current,
+    onAddNote: @escaping () -> Void
   ) {
     self.library = library
     self.verticals = verticals
+    self.showCraftingStreak = showCraftingStreak
+    self.streakTimeZone = streakTimeZone
     self.onAddNote = onAddNote
     _filters = State(initialValue: NotesFilterModel(library: library))
   }
@@ -98,10 +104,16 @@ struct NotesFeedView: View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 20) {
         if sizeClass == .regular {
-          Text("Notes")
-            .font(.caveat(size: 34))
-            .foregroundStyle(theme.foreground)
-            .accessibilityAddTraits(.isHeader)
+          HStack(alignment: .firstTextBaseline) {
+            Text("Notes")
+              .font(.caveat(size: 34))
+              .foregroundStyle(theme.foreground)
+              .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 12)
+            if showCraftingStreak { streakIndicator }
+          }
+        } else if showCraftingStreak {
+          streakIndicator
         }
 
         if availableCrafts.count > 1 {
@@ -272,6 +284,11 @@ struct NotesFeedView: View {
         coloringNotes: library.coloringPageProgressNotes)
       updateVisible()
     }
+  }
+
+  private var streakIndicator: some View {
+    CraftingStreakIndicator(library: library, timeZone: streakTimeZone)
+      .accessibilityIdentifier("notes.craftingStreak")
   }
 
   private var selectedSource: NotesSource? {

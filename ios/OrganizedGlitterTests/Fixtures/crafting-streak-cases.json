@@ -1,0 +1,148 @@
+[
+  {
+    "id": "empty",
+    "noteDates": [],
+    "now": "2026-10-03T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 0
+  },
+  {
+    "id": "today",
+    "noteDates": [
+      "2026-10-03"
+    ],
+    "now": "2026-10-03T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 1
+  },
+  {
+    "id": "yesterday",
+    "noteDates": [
+      "2026-10-02",
+      "2026-10-01"
+    ],
+    "now": "2026-10-03T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 2
+  },
+  {
+    "id": "expired",
+    "noteDates": [
+      "2026-10-01"
+    ],
+    "now": "2026-10-03T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 0
+  },
+  {
+    "id": "gap",
+    "noteDates": [
+      "2026-10-03",
+      "2026-10-01"
+    ],
+    "now": "2026-10-03T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 1
+  },
+  {
+    "id": "duplicates",
+    "noteDates": [
+      "2026-10-03",
+      "2026-10-03",
+      "2026-10-02"
+    ],
+    "now": "2026-10-03T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 2
+  },
+  {
+    "id": "invalid",
+    "noteDates": [
+      "2026-02-30",
+      "2026-10-04",
+      "bad",
+      "2026-10-3",
+      "2026-10-03junk",
+      "2026-10-03\n"
+    ],
+    "now": "2026-10-03T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 0
+  },
+  {
+    "id": "America/Los_Angeles",
+    "noteDates": [
+      "2026-10-03",
+      "2026-10-02",
+      "2026-10-01"
+    ],
+    "now": "2026-10-03T02:30:00Z",
+    "timeZone": "America/Los_Angeles",
+    "expected": 2
+  },
+  {
+    "id": "Asia/Tokyo",
+    "noteDates": [
+      "2026-10-03",
+      "2026-10-02",
+      "2026-10-01"
+    ],
+    "now": "2026-10-03T02:30:00Z",
+    "timeZone": "Asia/Tokyo",
+    "expected": 3
+  },
+  {
+    "id": "leap",
+    "noteDates": [
+      "2024-03-01",
+      "2024-02-29",
+      "2024-02-28"
+    ],
+    "now": "2024-03-01T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 3
+  },
+  {
+    "id": "nonleap",
+    "noteDates": [
+      "2026-03-01",
+      "2026-02-29",
+      "2026-02-28"
+    ],
+    "now": "2026-03-01T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 2
+  },
+  {
+    "id": "spring-dst",
+    "noteDates": [
+      "2026-03-09",
+      "2026-03-08",
+      "2026-03-07"
+    ],
+    "now": "2026-03-09T12:00:00Z",
+    "timeZone": "America/New_York",
+    "expected": 3
+  },
+  {
+    "id": "fall-dst",
+    "noteDates": [
+      "2026-11-02",
+      "2026-11-01",
+      "2026-10-31"
+    ],
+    "now": "2026-11-02T12:00:00Z",
+    "timeZone": "America/New_York",
+    "expected": 3
+  },
+  {
+    "id": "year",
+    "noteDates": [
+      "2027-01-01",
+      "2026-12-31"
+    ],
+    "now": "2027-01-01T12:00:00Z",
+    "timeZone": "UTC",
+    "expected": 2
+  }
+]

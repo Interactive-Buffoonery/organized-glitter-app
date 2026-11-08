@@ -27,40 +27,68 @@ final class OverviewUITests: XCTestCase {
     element.exists && !element.frame.isEmpty && app.frame.contains(element.frame)
   }
 
-  func testCraftingStreakTogglePersistsAndOpensNotes() throws {
-    let app = XCUIApplication()
-    app.launchArguments = [
-      "-ui-testing-authenticated", "-overview-fixture", "design",
-    ]
-    app.launch()
+  private func chooseStreakMode(_ title: String, in app: XCUIApplication) {
     XCTAssertTrue(app.buttons["account.open"].waitForExistence(timeout: 5))
     app.buttons["account.open"].tap()
-    let toggle = app.switches["account.showCraftingStreak"]
-    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
-    XCTAssertTrue(toggle.isHittable)
-    if toggle.value as? String == "1" { toggle.switchControl.tap() }
+    let picker = app.buttons["account.craftingStreak"]
+    for _ in 0..<6 where !picker.isHittable { app.swipeUp() }
+    XCTAssertTrue(picker.isHittable)
+    picker.tap()
+    app.buttons[title].tap()
     app.closeAccount()
+  }
+
+  func testCraftingStreakModesPersistAndOpenNotes() throws {
+    let app = launch("design")
+    chooseStreakMode("Off", in: app)
     XCTAssertFalse(app.buttons["home.craftingStreak"].exists)
-    app.buttons["account.open"].tap()
-    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
-    toggle.switchControl.tap()
-    XCTAssertEqual(toggle.value as? String, "1")
-    app.closeAccount()
+    chooseStreakMode("Show on Home", in: app)
     let streak = app.buttons["home.craftingStreak"]
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
     XCTAssertEqual(streak.label, "5-day crafting streak")
     XCTAssertTrue(isOnScreen(streak, in: app))
     streak.tap()
     XCTAssertTrue(app.buttons["notes.add"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.descendants(matching: .any)["notes.craftingStreak"].exists)
     app.terminate()
-    app.launchArguments = ["-ui-testing-authenticated", "-overview-fixture", "design"]
     app.launch()
     XCTAssertTrue(streak.waitForExistence(timeout: 5))
-    app.buttons["account.open"].tap()
-    for _ in 0..<5 where !isOnScreen(toggle, in: app) || !toggle.isHittable { app.swipeUp() }
-    toggle.switchControl.tap()
-    app.closeAccount()
-    XCTAssertTrue(streak.waitForNonExistence(timeout: 5))
+    chooseStreakMode("Show in Notes", in: app)
+    XCTAssertFalse(streak.exists)
+    XCTAssertTrue(app.openNotes())
+    let status = app.descendants(matching: .any)["notes.craftingStreak"].firstMatch
+    XCTAssertTrue(status.waitForExistence(timeout: 5))
+    XCTAssertEqual(status.label, "5-day crafting streak")
+    XCTAssertFalse(app.buttons["notes.craftingStreak"].exists)
+    try capture(app, "crafting-streak-notes")
+    app.terminate()
+    app.launchArguments += [
+      "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+    ]
+    app.launch()
+    XCTAssertFalse(streak.exists)
+    XCTAssertTrue(app.openNotes())
+    XCTAssertTrue(status.waitForExistence(timeout: 5))
+    XCTAssertTrue(isOnScreen(status, in: app))
+    try capture(app, "crafting-streak-notes-accessibility")
+  }
+
+  func testCraftingStreakDistinguishesZeroFromUnavailable() throws {
+    for (scenario, label) in [
+      ("empty", "No current crafting streak"),
+      ("error", "Crafting streak unavailable"),
+    ] {
+      let app = launch(scenario)
+      chooseStreakMode("Show on Home", in: app)
+      let streak = app.buttons["home.craftingStreak"]
+      XCTAssertTrue(streak.waitForExistence(timeout: 5))
+      let expected = NSPredicate(format: "label == %@", label)
+      expectation(for: expected, evaluatedWith: streak)
+      waitForExpectations(timeout: 5)
+      XCTAssertTrue(isOnScreen(streak, in: app))
+      try capture(app, "crafting-streak-\(scenario)")
+      app.terminate()
+    }
   }
 
   func testNotesTabSharesNewLogsAndKeepsItsOwnDetailStack() throws {

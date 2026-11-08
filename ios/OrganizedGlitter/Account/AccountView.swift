@@ -10,7 +10,7 @@ struct AccountView: View {
   let library: LibrarySession
   let client: PocketBaseClient
   @Bindable var preferences: AccountPreferencesModel
-  @Binding var showCraftingStreak: Bool
+  @Binding var craftingStreakMode: CraftingStreakMode
   @State private var passwordAuthenticationEnabled: Bool?
 
   var body: some View {
@@ -145,20 +145,23 @@ struct AccountView: View {
           }
         }
 
-        AccountSection(title: "Home") {
-          Toggle("Show crafting streak", isOn: Binding(
-            get: { showCraftingStreak },
-            set: { enabled in
-              guard AccountPreferenceInteraction.changed(from: showCraftingStreak, to: enabled)
-              else { return }
-              showCraftingStreak = enabled
+        AccountSection(title: "Crafting streak", footer: "Lets you track your consecutive crafting days!") {
+          Picker("Crafting streak", selection: Binding(
+            get: { craftingStreakMode },
+            set: { mode in
+              guard mode != craftingStreakMode else { return }
+              craftingStreakMode = mode
               library.captureAnalytics(
                 .accountUpdated,
                 properties: ["setting": AnalyticsAccountSetting.craftingStreak.rawValue])
             }
-          ))
-            .accessibilityLabel("Show crafting streak")
-            .accessibilityIdentifier("account.showCraftingStreak")
+          )) {
+            ForEach(CraftingStreakMode.allCases) { mode in
+              Text(mode.title).tag(mode)
+            }
+          }
+          .pickerStyle(.menu)
+          .accessibilityIdentifier("account.craftingStreak")
         }
 
         AccountSection(

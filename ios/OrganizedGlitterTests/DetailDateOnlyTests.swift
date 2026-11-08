@@ -4,6 +4,32 @@ import Testing
 @testable import OrganizedGlitter
 
 struct DetailDateOnlyTests {
+  @Test func pickedDaySurvivesDeviceTimezoneChangeWhileEditing() throws {
+    let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+    let losAngeles = try #require(TimeZone(identifier: "America/Los_Angeles"))
+    let picked = try #require(DetailDateOnly.date("2026-10-03", timeZone: tokyo))
+    #expect(DetailDateOnly.string(from: picked, timeZone: losAngeles) == "2026-10-02")
+    let savedDay = DetailDateOnly.string(from: picked, timeZone: tokyo)
+    let redisplayed = try #require(DetailDateOnly.date(savedDay, timeZone: losAngeles))
+    #expect(DetailDateOnly.string(from: redisplayed, timeZone: losAngeles) == "2026-10-03")
+  }
+
+  @Test func newNoteUsesAccountDayAndPickerComponentsRoundTrip() throws {
+    let now = try #require(ISO8601DateFormatter().date(from: "2026-10-03T02:30:00Z"))
+    let accountZone = try #require(TimeZone(identifier: "America/Los_Angeles"))
+    let accountDay = DetailDateOnly.string(from: now, timeZone: accountZone)
+    #expect(accountDay == "2026-10-02")
+    for identifier in ["Asia/Tokyo", "Pacific/Honolulu", "Europe/London"] {
+      let pickerZone = try #require(TimeZone(identifier: identifier))
+      let pickerDate = try #require(DetailDateOnly.date(accountDay, timeZone: pickerZone))
+      #expect(DetailDateOnly.string(from: pickerDate, timeZone: pickerZone) == accountDay)
+      let picked = try #require(DetailDateOnly.date("2026-09-18", timeZone: pickerZone))
+      let pickedDay = DetailDateOnly.string(from: picked, timeZone: pickerZone)
+      let saved = try #require(DetailDateOnly.date(pickedDay))
+      #expect(DetailDateOnly.string(from: saved) == "2026-09-18")
+    }
+  }
+
   @Test
   func midnightUTCValueKeepsItsCalendarDayInNewYork() throws {
     let locale = Locale(identifier: "en_US")
