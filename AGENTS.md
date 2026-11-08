@@ -58,3 +58,13 @@ craft-project library and files are private. Read `README.md` and
 - All changes land through pull requests.
 - Use imperative commit messages without emojis or co-author trailers.
 - Preserve unrelated work and stage explicit paths.
+
+## In-app dispatcher
+
+The in-app coordinator thread
+`thread:mcp:e3d98edb-0578-4124-ab34-844958cb8a3b:og-dedicated-developer-chat-1:0`
+is a dispatcher only. In that thread, read `developer/squircle/DISPATCHER.md`
+before handling requests. Never edit files, commit, switch branches, or run
+builds/tests in its bound checkout. Launch feature work in separate T3-managed
+worktrees and return their thread links. This role restriction applies to that
+coordinator, not to the feature threads it launches or the PR98 integration owner.
