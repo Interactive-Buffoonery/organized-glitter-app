@@ -140,7 +140,18 @@ struct AccountView: View {
               verticals: preferences.verticals)
           } label: {
             AccountNavigationRow {
-              Label("Manage lists", systemImage: "list.bullet")
+              Label {
+                VStack(alignment: .leading, spacing: 8) {
+                  Text("Customize your library")
+                    .fixedSize(horizontal: false, vertical: true)
+                  Text("Edit the artists, companies, tags, and other categories you use in your library.")
+                    .font(.karla(.subheadline))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+              } icon: {
+                Image(systemName: "list.bullet")
+              }
             }
           }
         }
