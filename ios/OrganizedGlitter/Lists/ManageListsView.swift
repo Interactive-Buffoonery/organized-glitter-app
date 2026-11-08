@@ -18,7 +18,7 @@ struct ManageListsView: View {
     }
     .font(.karla(.body))
     .themedScrollBackground()
-    .navigationTitle("Manage lists")
+    .navigationTitle("Customize your library")
   }
 
   private func rows(_ kinds: [ListKind]) -> some View {
