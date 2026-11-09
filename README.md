@@ -87,8 +87,9 @@ sequentially:
 3. Fixture UI tests on an iPad simulator.
 
 The script uses an iPhone and an iPad simulator that you, or the agent's
-device tools, open first; it never creates, boots or shuts down devices. Pass
-both IDs:
+device tools, open first; it never creates, boots or shuts down devices. If the
+device tools show no iPad, agents lease one from Simlock (see `AGENTS.md`).
+Pass both IDs:
 
 ```sh
 IPHONE_SIMULATOR_ID='<iPhone simulator UUID>' \

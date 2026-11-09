@@ -10,6 +10,9 @@ craft-project library and files are private. Read `README.md` and
 
 - Support iPhone and iPad from iOS and iPadOS 26.0.
 - Use iOS and iPadOS 26 simulators for routine builds, tests, and UI review.
+- If T3's device list shows no iPad, lease one with Simlock inside the gated
+  command: `simlock lease --platform ios --class tablet --bind-pid <pid>`.
+  Only call iPad unavailable if that lease fails, and quote the error.
 - Guard APIs newer than iOS 26 with availability checks.
 - Keep PocketBase as the only backend and identity system.
 - Never merge accounts by email or reassign records on the client.
